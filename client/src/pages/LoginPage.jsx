@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { useNavigate } from 'react-router-dom';
 import { Lock, User, ArrowRight, Loader2 } from 'lucide-react';
 
@@ -16,9 +16,7 @@ const LoginPage = () => {
         setLoading(true);
 
         try {
-            const res = await axios.post('http://localhost:3000/api/auth/login', { username, password }, {
-                withCredentials: true
-            });
+            const res = await api.post('/api/auth/login', { username, password });
             localStorage.setItem('user', JSON.stringify(res.data.user));
             navigate('/dashboard');
         } catch (err) {
