@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Plus, Trash2, Upload, FileSpreadsheet, Folder, RefreshCw } from 'lucide-react';
 
 const ProjectManagement = () => {
@@ -11,7 +11,7 @@ const ProjectManagement = () => {
 
     const fetchProjects = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/api/projects', { withCredentials: true });
+            const response = await api.get('/api/projects');
             setProjects(response.data);
         } catch (error) {
             console.error('Error fetching projects:', error);
@@ -31,13 +31,12 @@ const ProjectManagement = () => {
                 data.append('projectName', formData.name);
                 data.append('file', formData.file);
 
-                await axios.post('http://localhost:3000/api/projects/import', data, {
-                    withCredentials: true,
+                await api.post('/api/projects/import', data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 alert('Proyecto importado correctamente');
             } else {
-                await axios.post('http://localhost:3000/api/projects', { name: formData.name }, { withCredentials: true });
+                await api.post('/api/projects', { name: formData.name });
             }
             fetchProjects();
             setIsModalOpen(false);
@@ -65,7 +64,7 @@ const ProjectManagement = () => {
         if (confirmName !== projectToDelete.name) return;
 
         try {
-            await axios.delete(`http://localhost:3000/api/projects/${projectToDelete.id}`, { withCredentials: true });
+            await api.delete(`/api/projects/${projectToDelete.id}`);
             fetchProjects();
             setDeleteModalOpen(false);
             setProjectToDelete(null);

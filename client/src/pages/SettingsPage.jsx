@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Save, DollarSign, Target, Lock } from 'lucide-react';
 
 const SettingsPage = () => {
@@ -17,7 +17,7 @@ const SettingsPage = () => {
 
     const fetchSettings = async () => {
         try {
-            const res = await axios.get('http://localhost:3000/api/settings', { withCredentials: true });
+            const res = await api.get('/api/settings');
             setSettings(res.data);
         } catch (error) {
             console.error('Error fetching settings:', error);
@@ -30,7 +30,7 @@ const SettingsPage = () => {
         e.preventDefault();
         setMessage(null);
         try {
-            await axios.put('http://localhost:3000/api/settings', settings, { withCredentials: true });
+            await api.put('/api/settings', settings);
             setMessage({ type: 'success', text: 'Configuración guardada correctamente' });
         } catch (error) {
             console.error('Settings save error:', error);
@@ -195,10 +195,10 @@ const PasswordChangeForm = () => {
 
         setLoading(true);
         try {
-            await axios.post('http://localhost:3000/api/auth/update-password', {
+            await api.post('/api/auth/update-password', {
                 currentPassword: passData.currentPassword,
                 newPassword: passData.newPassword
-            }, { withCredentials: true });
+            });
 
             setMessage({ type: 'success', text: 'Contraseña actualizada correctamente' });
             setPassData({ currentPassword: '', newPassword: '', confirmPassword: '' });

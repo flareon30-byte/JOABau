@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Calendar, CheckCircle, Clock, MapPin, X, ClipboardList } from 'lucide-react';
 
 const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
@@ -16,11 +16,11 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
         if (!attendedBy) return alert('Por favor, indica quién atendió.');
         setLoading(true);
         try {
-            await axios.put(`http://localhost:3000/api/appointments/${appointment.id}/status`, {
+            await api.put(`/api/appointments/${appointment.id}/status`, {
                 status: 'COMPLETADO',
                 attendedBy,
                 comments
-            }, { withCredentials: true });
+            });
             if (onUpdate) onUpdate();
             onClose();
         } catch (error) {
@@ -35,9 +35,9 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
         if (!reciteReason) return alert('Por favor, indica el motivo.');
         setLoading(true);
         try {
-            await axios.post(`http://localhost:3000/api/appointments/${appointment.id}/recite`, {
+            await api.post(`/api/appointments/${appointment.id}/recite`, {
                 reason: reciteReason
-            }, { withCredentials: true });
+            });
             if (onUpdate) onUpdate();
             onClose();
         } catch (error) {
@@ -166,7 +166,7 @@ const ProtocolsPage = () => {
     const fetchData = async () => {
         try {
             // We reuse the activator endpoint as it fetches appointments for the user's team
-            const res = await axios.get('http://localhost:3000/api/dashboard/activator', { withCredentials: true });
+            const res = await api.get('/api/dashboard/activator');
             setActivatorData(res.data);
         } catch (error) {
             console.error('Error fetching protocols data:', error);

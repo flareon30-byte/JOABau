@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Plus, Trash2, Users } from 'lucide-react';
 
 const TeamManagement = () => {
@@ -11,8 +11,8 @@ const TeamManagement = () => {
     const fetchData = async () => {
         try {
             const [teamsRes, usersRes] = await Promise.all([
-                axios.get('http://localhost:3000/api/teams', { withCredentials: true }),
-                axios.get('http://localhost:3000/api/users', { withCredentials: true })
+                api.get('/api/teams'),
+                api.get('/api/users')
             ]);
             setTeams(teamsRes.data);
             // Filter users who are not in a team or are Activators/Blowers/Protocol Managers
@@ -33,7 +33,7 @@ const TeamManagement = () => {
             return;
         }
         try {
-            await axios.post('http://localhost:3000/api/teams', formData, { withCredentials: true });
+            await api.post('/api/teams', formData);
             fetchData();
             setIsModalOpen(false);
             setFormData({ name: '', department: 'BLOWING', memberIds: [] });
@@ -46,7 +46,7 @@ const TeamManagement = () => {
     const handleDelete = async (id) => {
         if (window.confirm('¿Eliminar equipo? Los usuarios quedarán libres.')) {
             try {
-                await axios.delete(`http://localhost:3000/api/teams/${id}`, { withCredentials: true });
+                await api.delete(`/api/teams/${id}`);
                 fetchData();
             } catch (error) {
                 console.error('Error deleting team:', error);
