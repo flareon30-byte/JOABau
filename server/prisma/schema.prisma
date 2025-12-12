@@ -1,0 +1,223 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  BACK_OFFICE
+  ACTIVATOR
+  BLOWER
+  PROTOCOL_MANAGER
+}
+
+enum Department {
+  ACTIVATION
+  BLOWING
+  BACK_OFFICE
+  PROTOCOLS
+}
+
+model User {
+  id        String     @id @default(uuid())
+  username  String     @unique
+  password  String
+  role      Role
+  teamId    String?
+  team      Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  phone     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Team {
+  id          String     @id @default(uuid())
+  name        String
+  department  Department
+  members     User[]
+  appointments Appointment[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Project {
+  id        String    @id @default(uuid())
+  name      String    @unique
+  addresses Address[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Address {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  nvt         String?
+  street      String
+  number      String?
+  city        String?
+  klsId       String?
+  clientName  String?
+  
+  // Soplado
+  sopladoStatus SopladoStatus?
+  sopladoInfo   SopladoInfo?
+
+  // Fusion
+  fusionInfo    FusionInfo?
+
+  // Back Office / Citas
+  appointment   Appointment?
+
+  // Activacion
+  activationInfo ActivationInfo?
+  
+  notifications Notification[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum SopladoStatus {
+  OK
+  FALLIDO
+  PENDIENTE
+}
+
+model SopladoInfo {
+  id          String   @id @default(uuid())
+  addressId   String   @unique
+  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  meters      Float
+  tk          String
+  tubeColor   String 
+  
+  // Si fallido
+  failureReason String?
+  photos        String[] 
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FusionInfo {
+  id          String   @id @default(uuid())
+  addressId   String   @unique
+  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  description String
+  photos      String[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum AppointmentStatus {
+  PENDIENTE
+  CITADO
+  COMPLETADO
+  CANCELADO
+  RECITAR
+}
+
+model Appointment {
+  id          String   @id @default(uuid())
+  addressId   String   @unique
+  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  
+  clientName     String? // Mandatory for assignment
+  apartmentCount Int?    // Mandatory for assignment
+
+  contactAttempts Int @default(0)
+  contactHistory  String[] // "YYYY-MM-DD HH:mm: Resultado"
+  
+  assignedDate    DateTime?
+  assignedTeamId  String?
+  assignedTeam    Team?    @relation(fields: [assignedTeamId], references: [id], onDelete: SetNull)
+  
+  status          AppointmentStatus @default(PENDIENTE)
+  comments        Comment[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Comment {
+  id            String      @id @default(uuid())
+  content       String
+  authorName    String
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  createdAt     DateTime    @default(now())
+}
+
+enum ActivationType {
+  BP
+  BP_2_FAM
+  BR_MULTI
+  SDU
+  MDU
+}
+
+model ActivationInfo {
+  id          String   @id @default(uuid())
+  addressId   String   @unique
+  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  
+  activationType ActivationType
+  familiesCount  Int
+  apPorts        Int
+  hasMoreClients Boolean
+  spInstalled    Int 
+  taInstalled    Boolean
+  taCount        Int      @default(0)
+  homeIds        String[] 
+  description    String?
+  
+  photos         String[]
+  pdfPath        String?
+  
+  points         Float 
+  isSaturday     Boolean @default(false) // Track if it was a Saturday activation
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+
+model SystemSettings {
+  id                    String @id @default(uuid())
+  extraPointPrice       Float  @default(0.0)
+  saturdayPointPrice    Float  @default(0.0)
+  monthlyTargetPoints   Int    @default(100)
+  
+  // Point Values
+  bpPoints              Float    @default(10.0)
+  bp2FamPoints          Float    @default(15.0)
+  brMultiPoints         Float    @default(20.0)
+  sduPoints             Float    @default(25.0)
+  mduPoints             Float    @default(30.0)
+  spPoints              Float    @default(5.0)
+  taPoints              Float    @default(0.5)
+
+  updatedAt             DateTime @updatedAt
+}
+
+model Notification {
+  id          String   @id @default(uuid())
+  type        String   // e.g., 'RECITE', 'ISSUE'
+  message     String
+  isRead      Boolean  @default(false)
+  
+  addressId   String?
+  address     Address? @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  
+  createdById String?
+  targetRole  Role?
+
+  createdAt   DateTime @default(now())
+}
