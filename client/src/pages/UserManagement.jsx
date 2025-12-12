@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 
 const UserManagement = () => {
@@ -10,7 +10,7 @@ const UserManagement = () => {
 
     const fetchUsers = async () => {
         try {
-            const response = await axios.get('http://localhost:3000/api/users', { withCredentials: true });
+            const response = await api.get('/api/users');
             setUsers(response.data);
         } catch (error) {
             console.error('Error fetching users:', error);
@@ -42,9 +42,9 @@ const UserManagement = () => {
         e.preventDefault();
         try {
             if (currentUser) {
-                await axios.put(`http://localhost:3000/api/users/${currentUser.id}`, formData, { withCredentials: true });
+                await api.put(`/api/users/${currentUser.id}`, formData);
             } else {
-                await axios.post('http://localhost:3000/api/users', formData, { withCredentials: true });
+                await api.post('/api/users', formData);
             }
             fetchUsers();
             setIsModalOpen(false);
@@ -57,7 +57,7 @@ const UserManagement = () => {
     const handleDelete = async (id) => {
         if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
             try {
-                await axios.delete(`http://localhost:3000/api/users/${id}`, { withCredentials: true });
+                await api.delete(`/api/users/${id}`);
                 fetchUsers();
             } catch (error) {
                 console.error('Error deleting user:', error);
