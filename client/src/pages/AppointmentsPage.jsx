@@ -83,12 +83,40 @@ const AppointmentsPage = () => {
     const handleScheduleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await api.post(`/api/appointments/schedule/${selectedAddress.id}`, scheduleForm);
+            // Fix timezone: Convert local input time to ISO string (UTC) explicitly
+            const dateObj = new Date(scheduleForm.date);
+            const payload = {
+                ...scheduleForm,
+                date: dateObj.toISOString()
+            };
+
+            await api.post(`/api/appointments/schedule/${selectedAddress.id}`, payload);
             setIsScheduleModalOpen(false);
             setScheduleForm({ date: '', teamId: '', clientName: '', apartmentCount: '' });
             fetchData();
         } catch (error) {
             console.error('Error scheduling:', error);
+        }
+    };
+
+    const handleCancelAppointment = async () => {
+        if (!window.confirm('¿Eliminar esta cita? La dirección volverá a la lista de pendientes.')) return;
+
+        const appointmentId = scheduleForm.appointmentId; // Relies on state being set in openScheduleModal
+
+        if (!appointmentId) {
+            // Fallback if accessed via other means, but usually form state has it
+            alert('Error: No se encontró ID de cita para cancelar.');
+            return;
+        }
+
+        try {
+            await api.delete(`/api/appointments/${appointmentId}`);
+            setIsScheduleModalOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            alert('Error al cancelar la cita');
         }
     };
 
@@ -117,6 +145,7 @@ const AppointmentsPage = () => {
             const formattedDate = new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
 
             setScheduleForm({
+                appointmentId: existingAppointment.id,
                 date: formattedDate,
                 teamId: existingAppointment.assignedTeamId || '',
                 clientName: existingAppointment.clientName || '',
@@ -126,6 +155,7 @@ const AppointmentsPage = () => {
         } else {
             // Reset for new
             setScheduleForm({
+                appointmentId: null,
                 date: '',
                 teamId: '',
                 clientName: address.clientName || '',
@@ -562,9 +592,20 @@ const AppointmentsPage = () => {
                                     ))}
                                 </select>
                             </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button type="button" onClick={() => setIsScheduleModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
-                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
+                            <div className="flex justify-between mt-6">
+                                {scheduleForm.appointmentId ? (
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelAppointment}
+                                        className="px-4 py-2 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg border border-red-200 transition-colors"
+                                    >
+                                        Eliminar Cita
+                                    </button>
+                                ) : <div></div>}
+                                <div className="flex gap-3">
+                                    <button type="button" onClick={() => setIsScheduleModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cerrar</button>
+                                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
+                                </div>
                             </div>
                         </form>
                     </div>

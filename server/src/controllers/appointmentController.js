@@ -274,3 +274,14 @@ exports.updateProtocolStatus = async (req, res) => {
         res.status(500).json({ message: 'Error updating protocol status' });
     }
 };
+// Cancel/Delete appointment
+exports.deleteAppointment = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.appointment.delete({ where: { id } });
+        res.json({ message: 'Cita eliminada y dirección devuelta a pendientes.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error eliminando cita' });
+    }
+};
