@@ -68,10 +68,10 @@ const CalendarView = ({ appointments, onSlotClick }) => {
             </div>
 
             {/* Grid Header (Days) */}
-            <div className="grid grid-cols-8 border-b border-slate-200 bg-slate-50">
-                <div className="p-3 text-xs font-bold text-slate-400 text-center border-r border-slate-200">Hora</div>
+            <div className="grid grid-cols-8 border-b border-slate-300 bg-slate-50">
+                <div className="p-3 text-xs font-bold text-slate-400 text-center border-r border-slate-300">Hora</div>
                 {weekDays.map((day, i) => (
-                    <div key={i} className={`p-3 text-center border-r border-slate-100 ${day.toDateString() === new Date().toDateString() ? 'bg-blue-50' : ''}`}>
+                    <div key={i} className={`p-3 text-center border-r border-slate-300 ${day.toDateString() === new Date().toDateString() ? 'bg-blue-50' : ''}`}>
                         <p className="text-xs font-bold text-slate-500 uppercase">{day.toLocaleDateString('es-ES', { weekday: 'short' })}</p>
                         <p className={`text-lg font-bold ${day.toDateString() === new Date().toDateString() ? 'text-blue-600' : 'text-slate-800'}`}>
                             {day.getDate()}
@@ -86,7 +86,7 @@ const CalendarView = ({ appointments, onSlotClick }) => {
                     {hours.map(hour => (
                         <React.Fragment key={hour}>
                             {/* Time Label */}
-                            <div className="p-2 text-xs font-medium text-slate-400 text-center border-r border-b border-slate-100 sticky left-0 bg-white">
+                            <div className="p-2 text-xs font-medium text-slate-400 text-center border-r border-b border-slate-300 sticky left-0 bg-white">
                                 {hour}:00
                             </div>
 
@@ -98,14 +98,23 @@ const CalendarView = ({ appointments, onSlotClick }) => {
                                 return (
                                     <div
                                         key={i}
-                                        className={`min-h-[80px] border-r border-b border-slate-100 p-1 relative group transition-colors ${isPast ? 'bg-slate-50/50' : 'hover:bg-blue-50/30'}`}
+                                        className={`min-h-[80px] border-r border-b border-slate-300 p-1 relative group transition-colors ${isPast ? 'bg-slate-50/50' : 'hover:bg-blue-50/30'}`}
                                         onClick={() => onSlotClick && onSlotClick(day, hour)}
                                     >
+                                        {/* Hover Time Bubble */}
+                                        <div className="hidden group-hover:block absolute top-1 right-1 bg-slate-800 text-white text-[10px] px-1.5 py-0.5 rounded shadow-sm z-20 pointer-events-none opacity-80">
+                                            {hour}:00
+                                        </div>
+
                                         {slotApps.map(app => (
                                             <div
                                                 key={app.id}
-                                                className="bg-blue-100 border-l-2 border-blue-500 p-1 mb-1 rounded text-[10px] overflow-hidden cursor-pointer hover:bg-blue-200 transition-colors"
+                                                className="bg-blue-100 border-l-2 border-blue-500 p-1 mb-1 rounded text-[10px] overflow-hidden cursor-pointer hover:bg-blue-200 transition-colors relative z-10"
                                                 title={`${app.address.street} - ${app.assignedTeam?.name}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    onSlotClick && onSlotClick(day, hour); // Still trigger slot click or maybe edit? Usually slot click handles opening.
+                                                }}
                                             >
                                                 <div className="font-bold text-blue-800 truncate">{app.address.street}</div>
                                                 <div className="text-blue-600 truncate flex items-center gap-1">
