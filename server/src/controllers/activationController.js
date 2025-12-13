@@ -196,6 +196,12 @@ exports.submitActivation = async (req, res) => {
                 data: { status: 'COMPLETADO' }
             });
 
+            // 3. Update Address OrderStatus to remove from Soplado list
+            await prisma.address.update({
+                where: { id: addressId },
+                data: { orderStatus: 'Installiert' }
+            });
+
             return activation;
         });
 

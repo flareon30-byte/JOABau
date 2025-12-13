@@ -9,6 +9,12 @@ const ProjectManagement = () => {
     const [formData, setFormData] = useState({ name: '', file: null });
     const [uploading, setUploading] = useState(false);
 
+
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [projectToDelete, setProjectToDelete] = useState(null);
+    const [confirmName, setConfirmName] = useState('');
+    const [importType, setImportType] = useState('standard'); // 'standard' | 'protocol'
+
     const fetchProjects = async () => {
         try {
             const response = await api.get('/api/projects');
@@ -30,6 +36,7 @@ const ProjectManagement = () => {
                 const data = new FormData();
                 data.append('projectName', formData.name);
                 data.append('file', formData.file);
+                data.append('importType', importType);
 
                 await api.post('/api/projects/import', data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
@@ -48,10 +55,6 @@ const ProjectManagement = () => {
             setUploading(false);
         }
     };
-
-    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
-    const [projectToDelete, setProjectToDelete] = useState(null);
-    const [confirmName, setConfirmName] = useState('');
 
     const openDeleteModal = (project) => {
         setProjectToDelete(project);
@@ -76,8 +79,9 @@ const ProjectManagement = () => {
 
     const [isUpdateMode, setIsUpdateMode] = useState(false);
 
-    const openModal = (importMode = false) => {
+    const openModal = (importMode = false, type = 'standard') => {
         setIsImportMode(importMode);
+        setImportType(type);
         setIsUpdateMode(false);
         setFormData({ name: '', file: null });
         setIsModalOpen(true);
@@ -86,6 +90,7 @@ const ProjectManagement = () => {
     const openUpdateModal = (project) => {
         setIsImportMode(true);
         setIsUpdateMode(true);
+        setImportType('standard'); // Default to standard when updating via list item button
         setFormData({ name: project.name, file: null });
         setIsModalOpen(true);
     };
@@ -102,10 +107,16 @@ const ProjectManagement = () => {
                         <Plus size={18} /> Nuevo Proyecto
                     </button>
                     <button
-                        onClick={() => openModal(true)}
+                        onClick={() => openModal(true, 'standard')}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                     >
                         <Upload size={18} /> Importar Excel
+                    </button>
+                    <button
+                        onClick={() => openModal(true, 'protocol')}
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                        <Upload size={18} /> Importar Multiviviendas
                     </button>
                 </div>
             </div>
@@ -148,24 +159,50 @@ const ProjectManagement = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
                         <h3 className="text-xl font-bold mb-4">
-                            {isUpdateMode ? 'Actualizar Proyecto' : (isImportMode ? 'Importar Proyecto desde Excel' : 'Nuevo Proyecto')}
+                            {isUpdateMode ? 'Actualizar Proyecto' : (
+                                isImportMode ? (importType === 'protocol' ? 'Importar Multiviviendas (Protocolo)' : 'Importar Proyecto General') : 'Nuevo Proyecto'
+                            )}
                         </h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre del Proyecto</label>
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className={`w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none ${isUpdateMode ? 'bg-slate-100 text-slate-500' : ''}`}
-                                    required
-                                    readOnly={isUpdateMode}
-                                />
-                            </div>
+                            {isImportMode && importType === 'protocol' ? (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Seleccionar Proyecto Principal
+                                    </label>
+                                    <select
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        required
+                                    >
+                                        <option value="">Selecciona un proyecto...</option>
+                                        {projects.map(p => (
+                                            <option key={p.id} value={p.name}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Las direcciones del Excel se buscarán en este proyecto y se marcarán como "Requiere Protocolo".
+                                    </p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nombre del Proyecto</label>
+                                    <input
+                                        type="text"
+                                        value={formData.name}
+                                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                        className={`w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none ${isUpdateMode ? 'bg-slate-100 text-slate-500' : ''}`}
+                                        required
+                                        readOnly={isUpdateMode}
+                                    />
+                                </div>
+                            )}
 
                             {isImportMode && (
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Archivo Excel (.xlsx)</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        Archivo Excel (.xlsx) {importType === 'protocol' && <span className="text-purple-600 font-bold">- Multiviviendas</span>}
+                                    </label>
                                     <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
                                         <input
                                             type="file"
@@ -180,7 +217,7 @@ const ProjectManagement = () => {
                                         </p>
                                     </div>
                                     <p className="text-xs text-slate-400 mt-2">
-                                        El Excel debe tener columnas: NVT, CALLE, NUMERO, CIUDAD, KLS / P
+                                        El Excel debe tener columnas: NVT, CALLE, NUMERO, CIUDAD, KLS... {importType === 'protocol' && <strong> y STATUS</strong>}
                                     </p>
                                 </div>
                             )}

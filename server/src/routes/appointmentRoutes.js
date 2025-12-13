@@ -17,6 +17,7 @@ router.post('/schedule/:addressId', checkRole(allowedRoles), appointmentControll
 
 const operationalRoles = ['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN', 'PROTOCOL_MANAGER', 'ACTIVATOR', 'BLOWER'];
 router.put('/:id/status', checkRole(operationalRoles), appointmentController.updateStatus);
+router.put('/protocol-status/:addressId', checkRole(['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN']), appointmentController.updateProtocolStatus);
 router.post('/:id/recite', checkRole(operationalRoles), appointmentController.reciteAppointment);
 
 module.exports = router;

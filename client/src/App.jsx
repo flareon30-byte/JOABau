@@ -12,9 +12,10 @@ import AppointmentsPage from './pages/AppointmentsPage';
 import ActivationPage from './pages/ActivationPage';
 import SettingsPage from './pages/SettingsPage';
 
-import ActivationsHistoryPage from './pages/ActivationsHistoryPage';
+import BillingPage from './pages/BillingPage';
+import PayrollPage from './pages/PayrollPage';
 import CompleteActivationPage from './pages/CompleteActivationPage';
-import ProtocolsPage from './pages/ProtocolsPage';
+import ProtocolDepartment from './pages/ProtocolDepartment';
 
 function App() {
   return (
@@ -31,8 +32,9 @@ function App() {
           <Route path="fusion" element={<FusionDepartment />} />
           <Route path="appointments" element={<AppointmentsPage />} />
           <Route path="activations" element={<ActivationPage />} />
-          <Route path="protocols" element={<ProtocolsPage />} />
-          <Route path="activations-history" element={<ActivationsHistoryPage />} />
+          <Route path="protocols" element={<ProtocolDepartment />} />
+          <Route path="billing" element={<BillingPage />} />
+          <Route path="payroll" element={<PayrollPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />

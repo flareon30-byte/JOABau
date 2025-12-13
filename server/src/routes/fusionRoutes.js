@@ -19,7 +19,10 @@ const upload = multer({ storage: storage });
 
 router.use(verifyToken);
 
-// Submit report
-router.post('/report/:addressId', upload.array('photos', 5), fusionController.submitFusionReport);
+// Log Fusion Work
+router.post('/log-work', upload.array('photos', 5), fusionController.logFusionWork);
+
+// Get Fusion Works by Project (Optional filter ?nvt=...)
+router.get('/works/:projectId', fusionController.getFusionWorks);
 
 module.exports = router;

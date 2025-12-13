@@ -14,7 +14,9 @@ const upload = multer({ storage: storage });
 router.use(verifyToken);
 
 router.get('/my-appointments', activationController.getMyAppointments);
-router.get('/export-photos', checkRole(['ADMIN', 'SUPER_ADMIN']), exportController.exportActivationPhotos);
+router.get('/export-photos', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), exportController.exportActivationPhotos);
+router.get('/billing/data', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), exportController.getBillingData);
+router.get('/billing/export', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), exportController.exportBillingExcel);
 router.get('/all', checkRole(['ADMIN', 'SUPER_ADMIN']), activationController.getAllActivations);
 router.post('/generate-pdf', activationController.generatePdf);
 router.post('/report/:addressId', upload.fields([

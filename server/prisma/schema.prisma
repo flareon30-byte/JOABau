@@ -50,6 +50,7 @@ model Project {
   id        String    @id @default(uuid())
   name      String    @unique
   addresses Address[]
+  fusionWorks FusionWork[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }
@@ -78,6 +79,11 @@ model Address {
   // Activacion
   activationInfo ActivationInfo?
   
+  // New fields for Protocol and Status Logic
+  requiresProtocol Boolean  @default(false)
+  protocolStatus   String   @default("NONE") // NONE, PENDING, SCHEDULED, COMPLETED, RECITED
+  orderStatus      String?  @default("geplant") // Column C from Excel
+
   notifications Notification[]
 
   createdAt   DateTime @default(now())
@@ -140,6 +146,9 @@ model Appointment {
   assignedTeamId  String?
   assignedTeam    Team?    @relation(fields: [assignedTeamId], references: [id], onDelete: SetNull)
   
+  type            String            @default("ACTIVATION") // ACTIVATION, PROTOCOL
+  reciteReason    String?
+
   status          AppointmentStatus @default(PENDIENTE)
   comments        Comment[]
 
@@ -220,5 +229,22 @@ model Notification {
   createdById String?
   targetRole  Role?
 
+  createdAt   DateTime @default(now())
+}
+
+model FusionWork {
+  id          String   @id @default(uuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  nvtName     String   // The NVT identifier (e.g. "NVT-01")
+  
+  fusionCount Int
+  isTray      Boolean  @default(false) // "en bandejas"
+  
+  photos      String[]
+  description String?  // Optional comments
+
+  createdById String?
+  
   createdAt   DateTime @default(now())
 }

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios';
 import { Camera, Save, ArrowLeft, Trash2, X } from 'lucide-react';
+
+const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
 const CompleteActivationPage = () => {
     const { id } = useParams();
@@ -31,7 +33,7 @@ const CompleteActivationPage = () => {
     useEffect(() => {
         const fetchAppointment = async () => {
             try {
-                const res = await axios.get('http://localhost:3000/api/dashboard/activator', { withCredentials: true });
+                const res = await api.get('/api/dashboard/activator');
                 const found = res.data.appointments.find(a => a.id === id);
                 if (found) {
                     setAppointment(found);
@@ -56,7 +58,7 @@ const CompleteActivationPage = () => {
                         if (info.photos && info.photos.length > 0) {
                             setPhotos(info.photos.map((path, i) => ({
                                 blob: null,
-                                preview: `http://localhost:3000/${path.replace(/\\/g, '/')}`,
+                                preview: `${BASE_URL}/${path.replace(/\\/g, '/')}`,
                                 name: `Foto ${i + 1}`,
                                 isExisting: true,
                                 originalPath: path
@@ -192,8 +194,7 @@ const CompleteActivationPage = () => {
         data.append('existingPhotos', JSON.stringify(existingPaths));
 
         try {
-            await axios.post(`http://localhost:3000/api/activations/report/${appointment.addressId}`, data, {
-                withCredentials: true,
+            await api.post(`/api/activations/report/${appointment.addressId}`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             navigate('/dashboard'); // Return to dashboard

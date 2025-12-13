@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { CheckCircle, Camera, ArrowLeft, Calendar, MapPin, Trash2, X, FileText } from 'lucide-react';
+
+const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
 const ActivationPage = () => {
     const [appointments, setAppointments] = useState([]);
@@ -57,7 +59,7 @@ const ActivationPage = () => {
                 if (info.photos && info.photos.length > 0) {
                     setPhotos(info.photos.map((path, i) => ({
                         blob: null,
-                        preview: `http://localhost:3000/${path.replace(/\\/g, '/')}`,
+                        preview: `${BASE_URL}/${path.replace(/\\/g, '/')}`,
                         isExisting: true,
                         originalPath: path
                     })));
@@ -136,7 +138,7 @@ const ActivationPage = () => {
             if (res.data.success) {
                 setPdfPath(res.data.path);
                 alert('Documento PDF generado correctamente. Por favor, asegúrate de firmarlo/completarlo si es necesario.');
-                window.open(`http://localhost:3000/${res.data.path}`, '_blank');
+                window.open(`${BASE_URL}/${res.data.path}`, '_blank');
             }
         } catch (error) {
             console.error('Error creating PDF:', error);

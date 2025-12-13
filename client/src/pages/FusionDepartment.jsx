@@ -1,48 +1,71 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Search, Camera, ArrowLeft, Zap } from 'lucide-react';
+import { Search, Camera, ArrowLeft, Zap, Layers, History, Save } from 'lucide-react';
 
 const FusionDepartment = () => {
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
     const [addresses, setAddresses] = useState([]);
+    const [uniqueNvts, setUniqueNvts] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedAddress, setSelectedAddress] = useState(null);
+    const [selectedNvt, setSelectedNvt] = useState(null);
+
+    // History State
+    const [fusionHistory, setFusionHistory] = useState([]);
 
     // Form State
     const [formData, setFormData] = useState({
+        fusionCount: '',
+        isTray: false,
         description: '',
         photos: []
     });
     const [submitting, setSubmitting] = useState(false);
 
-    useEffect(() => {
-        fetchProjects();
-    }, []);
+    useEffect(() => { fetchProjects(); }, []);
 
     useEffect(() => {
-        if (selectedProject) {
-            fetchAddresses();
+        if (selectedProject) { fetchAddresses(); }
+    }, [selectedProject]);
+
+    useEffect(() => {
+        if (selectedNvt && selectedProject) {
+            fetchFusionHistory();
         }
-    }, [selectedProject, searchTerm]);
+    }, [selectedNvt]);
+
+    // Derive NVTs from addresses
+    useEffect(() => {
+        if (addresses.length > 0) {
+            const nvts = new Set();
+            addresses.forEach(addr => {
+                if (addr.nvt) nvts.add(addr.nvt.trim());
+            });
+            setUniqueNvts(Array.from(nvts).sort());
+        } else {
+            setUniqueNvts([]);
+        }
+    }, [addresses]);
 
     const fetchProjects = async () => {
         try {
             const res = await api.get('/api/projects');
             setProjects(res.data);
-        } catch (error) {
-            console.error('Error fetching projects:', error);
-        }
+        } catch (error) { console.error(error); }
     };
 
     const fetchAddresses = async () => {
         try {
-            // Reusing soplado endpoint for address search as it's the same logic
-            const res = await api.get(`/api/soplado/addresses/${selectedProject.id}?search=${searchTerm}`);
+            const res = await api.get(`/api/soplado/addresses/${selectedProject.id}`);
             setAddresses(res.data);
-        } catch (error) {
-            console.error('Error fetching addresses:', error);
-        }
+        } catch (error) { console.error(error); }
+    };
+
+    const fetchFusionHistory = async () => {
+        try {
+            const res = await api.get(`/api/fusion/works/${selectedProject.id}?nvt=${selectedNvt}`);
+            setFusionHistory(res.data);
+        } catch (error) { console.error(error); }
     };
 
     const handleFileChange = (e) => {
@@ -54,6 +77,10 @@ const FusionDepartment = () => {
         setSubmitting(true);
 
         const data = new FormData();
+        data.append('projectId', selectedProject.id);
+        data.append('nvt', selectedNvt);
+        data.append('fusionCount', formData.fusionCount);
+        data.append('isTray', formData.isTray);
         data.append('description', formData.description);
 
         formData.photos.forEach(file => {
@@ -61,20 +88,23 @@ const FusionDepartment = () => {
         });
 
         try {
-            await api.post(`/api/fusion/report/${selectedAddress.id}`, data, {
+            await api.post('/api/fusion/log-work', data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            alert('Reporte de fusión enviado correctamente');
-            setSelectedAddress(null);
-            setFormData({ description: '', photos: [] });
-            fetchAddresses();
+            alert('Trabajo registrado correctamente');
+            setFormData({ fusionCount: '', isTray: false, description: '', photos: [] });
+            fetchFusionHistory();
         } catch (error) {
-            console.error('Error submitting report:', error);
-            alert('Error al enviar reporte');
+            console.error(error);
+            alert('Error al registrar trabajo');
         } finally {
             setSubmitting(false);
         }
     };
+
+    const filteredNvts = uniqueNvts.filter(n =>
+        n.toLowerCase().includes(searchTerm.toLowerCase())
+    );
 
     // View: Project Selection
     if (!selectedProject) {
@@ -97,117 +127,163 @@ const FusionDepartment = () => {
         );
     }
 
-    // View: Address Selection
-    if (!selectedAddress) {
+    // View: NVT Selection
+    if (!selectedNvt) {
         return (
             <div className="space-y-6">
+                {/* Header & Search */}
                 <div className="flex items-center gap-4">
                     <button onClick={() => setSelectedProject(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                         <ArrowLeft size={24} className="text-slate-600" />
                     </button>
-                    <h2 className="text-2xl font-bold text-slate-800">{selectedProject.name} (Fusión)</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">{selectedProject.name} (Seleccionar NVT)</h2>
                 </div>
-
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                     <input
                         type="text"
-                        placeholder="Buscar por NVT o Calle..."
+                        placeholder="Buscar NVT..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500 outline-none"
                     />
                 </div>
 
-                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                    {addresses.length === 0 ? (
-                        <div className="p-8 text-center text-slate-500">No se encontraron direcciones</div>
-                    ) : (
-                        <div className="divide-y divide-slate-100">
-                            {addresses.map(address => (
-                                <div
-                                    key={address.id}
-                                    onClick={() => setSelectedAddress(address)}
-                                    className="p-4 hover:bg-slate-50 cursor-pointer transition-colors flex justify-between items-center"
-                                >
-                                    <div>
-                                        <div className="font-medium text-slate-800">{address.street} {address.number}</div>
-                                        <div className="text-sm text-slate-500">NVT: {address.nvt || 'N/A'}</div>
-                                    </div>
-                                    <div>
-                                        {address.fusionInfo ? (
-                                            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-bold">REALIZADO</span>
-                                        ) : (
-                                            <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs">PENDIENTE</span>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                {/* List */}
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {filteredNvts.map(nvt => (
+                        <div
+                            key={nvt}
+                            onClick={() => setSelectedNvt(nvt)}
+                            className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md hover:border-purple-400 transition-all flex items-center gap-3"
+                        >
+                            <Layers className="text-purple-600" />
+                            <span className="font-bold text-slate-700">{nvt}</span>
                         </div>
-                    )}
+                    ))}
+                    {filteredNvts.length === 0 && <div className="col-span-full text-center text-slate-500 py-8">No se encontraron resultados</div>}
                 </div>
             </div>
         );
     }
 
-    // View: Report Form
+    // View: Work Log Form & History
     return (
-        <div className="max-w-2xl mx-auto space-y-6">
-            <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => setSelectedAddress(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                    <ArrowLeft size={24} className="text-slate-600" />
-                </button>
-                <div>
-                    <h2 className="text-xl font-bold text-slate-800">{selectedAddress.street} {selectedAddress.number}</h2>
-                    <p className="text-sm text-slate-500">NVT: {selectedAddress.nvt}</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left: Form */}
+            <div className="space-y-6">
+                <div className="flex items-center gap-4 mb-2">
+                    <button onClick={() => setSelectedNvt(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                        <ArrowLeft size={24} className="text-slate-600" />
+                    </button>
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800">NVT: {selectedNvt}</h2>
+                        <p className="text-sm text-slate-500">Registrar nuevo trabajo</p>
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="flex gap-4">
+                            <div className="flex-1">
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Nº Fusiones</label>
+                                <input
+                                    type="number"
+                                    value={formData.fusionCount}
+                                    onChange={e => setFormData({ ...formData, fusionCount: e.target.value })}
+                                    className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500"
+                                    required
+                                />
+                            </div>
+                            <div className="flex items-end mb-3">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={formData.isTray}
+                                        onChange={e => setFormData({ ...formData, isTray: e.target.checked })}
+                                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                    />
+                                    <span className="text-slate-700 font-medium">En bandeja</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Notas / Descripción</label>
+                            <textarea
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 outline-none h-24 resize-none"
+                                placeholder="Detalles del trabajo..."
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">Fotos</label>
+                            <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={handleFileChange}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <Camera className="mx-auto text-slate-400 mb-2" size={32} />
+                                <p className="text-sm text-slate-500">
+                                    {formData.photos.length > 0 ? `${formData.photos.length} fotos` : 'Subir fotos'}
+                                </p>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="w-full py-3 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 transition-all flex items-center justify-center gap-2"
+                        >
+                            <Save size={20} /> {submitting ? 'Guardando...' : 'Guardar Trabajo'}
+                        </button>
+                    </form>
                 </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                <div className="flex items-center gap-3 mb-6 text-purple-600">
-                    <Zap size={24} />
-                    <h3 className="text-lg font-bold">Reporte de Fusión</h3>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Descripción / Notas</label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 outline-none h-32 resize-none"
-                            placeholder="Detalles del trabajo realizado..."
-                            required
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Fotos (Opcional)</label>
-                        <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
-                            <input
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                onChange={handleFileChange}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <Camera className="mx-auto text-slate-400 mb-2" size={32} />
-                            <p className="text-sm text-slate-500">
-                                {formData.photos.length > 0
-                                    ? `${formData.photos.length} archivos seleccionados`
-                                    : 'Toca para tomar o subir fotos'}
-                            </p>
+            {/* Right: History */}
+            <div className="space-y-6">
+                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <History /> Historial en {selectedNvt}
+                </h3>
+                <div className="space-y-4">
+                    {fusionHistory.length === 0 ? (
+                        <div className="text-slate-400 text-center py-8 bg-slate-50 rounded-xl border border-slate-100">
+                            No hay trabajos registrados
                         </div>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={submitting}
-                        className="w-full py-4 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 transition-all disabled:opacity-50"
-                    >
-                        {submitting ? 'Enviando...' : 'Guardar Fusión'}
-                    </button>
-                </form>
+                    ) : (
+                        fusionHistory.map(work => (
+                            <div key={work.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className="font-bold text-purple-700 text-lg">
+                                        {work.fusionCount} Fusiones
+                                    </span>
+                                    <span className="text-xs text-slate-400">
+                                        {new Date(work.createdAt).toLocaleDateString()}
+                                    </span>
+                                </div>
+                                {work.isTray && (
+                                    <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold mb-2">
+                                        En Bandeja
+                                    </span>
+                                )}
+                                {work.description && (
+                                    <p className="text-slate-600 text-sm mb-2">{work.description}</p>
+                                )}
+                                {work.photos && work.photos.length > 0 && (
+                                    <div className="text-xs text-slate-400 flex items-center gap-1">
+                                        <Camera size={12} /> {work.photos.length} fotos
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
             </div>
         </div>
     );

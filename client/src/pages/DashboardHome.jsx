@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, colorClass, subtext }) => (
@@ -28,9 +28,9 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
         if (!reciteReason) return alert('Por favor, indica el motivo.');
         setLoading(true);
         try {
-            await axios.post(`http://localhost:3000/api/appointments/${appointment.id}/recite`, {
+            await api.post(`/api/appointments/${appointment.id}/recite`, {
                 reason: reciteReason
-            }, { withCredentials: true });
+            });
             if (onUpdate) onUpdate();
             onClose();
         } catch (error) {
@@ -140,14 +140,14 @@ const DashboardHome = () => {
     const fetchData = async () => {
         try {
             if (isActivator) {
-                const res = await axios.get('http://localhost:3000/api/dashboard/activator', { withCredentials: true });
+                const res = await api.get('/api/dashboard/activator');
                 setActivatorData(res.data);
             } else {
-                const statsRes = await axios.get('http://localhost:3000/api/dashboard/stats', { withCredentials: true });
+                const statsRes = await api.get('/api/dashboard/stats');
                 setStats(statsRes.data);
 
                 if (isAdmin) {
-                    const payrollRes = await axios.get('http://localhost:3000/api/dashboard/payroll', { withCredentials: true });
+                    const payrollRes = await api.get('/api/dashboard/payroll');
                     setPayroll(payrollRes.data.teams);
                 }
             }

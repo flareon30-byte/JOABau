@@ -37,6 +37,8 @@ app.use('/api/activations', activationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 app.use('/api/settings', require('./src/routes/settingsRoutes'));
+app.use('/api/payroll', require('./src/routes/payrollRoutes'));
+app.use('/api/billing', require('./src/routes/billingRoutes'));
 
 app.get('/', (req, res) => {
     res.send('Fiber Optics App API is running');

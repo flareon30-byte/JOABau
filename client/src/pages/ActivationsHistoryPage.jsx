@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Calendar, Filter, Download, Eye, X, Image as ImageIcon } from 'lucide-react';
+
+const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
 const ActivationsHistoryPage = () => {
     const [activations, setActivations] = useState([]);
@@ -31,8 +33,8 @@ const ActivationsHistoryPage = () => {
     const fetchOptions = async () => {
         try {
             const [teamsRes, projectsRes] = await Promise.all([
-                axios.get('http://localhost:3000/api/teams', { withCredentials: true }),
-                axios.get('http://localhost:3000/api/projects', { withCredentials: true })
+                api.get('/api/teams'),
+                api.get('/api/projects')
             ]);
             setTeams(teamsRes.data);
             setProjects(projectsRes.data);
@@ -50,7 +52,7 @@ const ActivationsHistoryPage = () => {
             if (filters.teamId) params.append('teamId', filters.teamId);
             if (filters.projectId) params.append('projectId', filters.projectId);
 
-            const res = await axios.get(`http://localhost:3000/api/activations/all?${params.toString()}`, { withCredentials: true });
+            const res = await api.get(`/api/activations/all?${params.toString()}`);
             setActivations(res.data);
         } catch (error) {
             console.error('Error fetching activations:', error);
@@ -119,7 +121,7 @@ const ActivationsHistoryPage = () => {
         if (exportFiltersForm.projectId) params.append('projectId', exportFiltersForm.projectId);
 
         // Trigger download
-        window.open(`http://localhost:3000/api/activations/export-photos?${params.toString()}`, '_blank');
+        window.open(`${BASE_URL}/api/activations/export-photos?${params.toString()}`, '_blank');
         setIsExportModalOpen(false);
     };
 
@@ -291,10 +293,10 @@ const ActivationsHistoryPage = () => {
                                 selectedActivation.photos.map((photo, i) => (
                                     <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
                                         <img
-                                            src={`http://localhost:3000/${photo}`}
+                                            src={`${BASE_URL}/${photo}`}
                                             alt={`Foto ${i + 1}`}
                                             className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                            onClick={() => window.open(`http://localhost:3000/${photo}`, '_blank')}
+                                            onClick={() => window.open(`${BASE_URL}/${photo}`, '_blank')}
                                         />
                                     </div>
                                 ))

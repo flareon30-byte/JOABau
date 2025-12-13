@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, Folder, Zap, ChevronRight, Settings, Lock, ClipboardList, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, Folder, Zap, ChevronRight, Settings, Lock, ClipboardList, Bell, DollarSign, Wallet } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 
 const DashboardLayout = () => {
@@ -70,7 +70,8 @@ const DashboardLayout = () => {
         { icon: Calendar, label: 'Citas (Back Office)', path: '/dashboard/appointments', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
         { icon: CheckCircle, label: 'Activaciones', path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
         { icon: ClipboardList, label: 'Protocolos', path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] }, // New Section
-        { icon: Folder, label: 'Historial Activaciones', path: '/dashboard/activations-history', roles: ['SUPER_ADMIN', 'ADMIN'] },
+        { icon: DollarSign, label: 'Facturación', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
+        { icon: Wallet, label: 'Nóminas', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
         { icon: Settings, label: 'Configuración', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
     ];
 

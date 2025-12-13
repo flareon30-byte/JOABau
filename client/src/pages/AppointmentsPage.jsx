@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import axios from 'axios';
-import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X } from 'lucide-react';
+import api from '../api/axios';
+import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 
 const AppointmentsPage = () => {
@@ -36,8 +36,8 @@ const AppointmentsPage = () => {
     const fetchData = async () => {
         try {
             const [pendingRes, scheduledRes] = await Promise.all([
-                axios.get('http://localhost:3000/api/appointments/pending', { withCredentials: true }),
-                axios.get('http://localhost:3000/api/appointments/scheduled', { withCredentials: true })
+                api.get('/api/appointments/pending'),
+                api.get('/api/appointments/scheduled')
             ]);
             setPendingAddresses(pendingRes.data || []);
             setScheduledAppointments(scheduledRes.data || []);
@@ -50,7 +50,7 @@ const AppointmentsPage = () => {
 
     const fetchTeams = async () => {
         try {
-            const res = await axios.get('http://localhost:3000/api/teams', { withCredentials: true });
+            const res = await api.get('/api/teams');
             setTeams(res.data);
         } catch (error) {
             console.error('Error fetching teams:', error);
@@ -59,7 +59,7 @@ const AppointmentsPage = () => {
 
     const fetchProjects = async () => {
         try {
-            const res = await axios.get('http://localhost:3000/api/projects', { withCredentials: true });
+            const res = await api.get('/api/projects');
             setProjects(res.data);
         } catch (error) {
             console.error('Error fetching projects:', error);
@@ -71,7 +71,7 @@ const AppointmentsPage = () => {
     const handleContactSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(`http://localhost:3000/api/appointments/log-contact/${selectedAddress.id}`, contactForm, { withCredentials: true });
+            await api.post(`/api/appointments/log-contact/${selectedAddress.id}`, contactForm);
             setIsContactModalOpen(false);
             setContactForm({ result: 'No contesta', comment: '' });
             fetchData();
@@ -83,7 +83,7 @@ const AppointmentsPage = () => {
     const handleScheduleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(`http://localhost:3000/api/appointments/schedule/${selectedAddress.id}`, scheduleForm, { withCredentials: true });
+            await api.post(`/api/appointments/schedule/${selectedAddress.id}`, scheduleForm);
             setIsScheduleModalOpen(false);
             setScheduleForm({ date: '', teamId: '', clientName: '', apartmentCount: '' });
             fetchData();
@@ -92,12 +92,23 @@ const AppointmentsPage = () => {
         }
     };
 
+    const handleProtocolOverride = async (addressId) => {
+        if (!window.confirm('¿Seguro que deseas marcar el protocolo como OK manualmente? Esto permitirá agendar la activación.')) return;
+        try {
+            await api.put(`/api/appointments/protocol-status/${addressId}`, { status: 'OK' });
+            fetchData();
+        } catch (err) {
+            console.error(err);
+            alert('Error al actualizar protocolo');
+        }
+    };
+
     const openContactModal = (address) => {
         setSelectedAddress(address);
         setIsContactModalOpen(true);
     };
 
-    const openScheduleModal = (address, existingAppointment = null) => {
+    const openScheduleModal = (address, existingAppointment = null, defaultType = 'ACTIVATION') => {
         setSelectedAddress(address);
         if (existingAppointment) {
             // Pre-fill for editing
@@ -109,7 +120,8 @@ const AppointmentsPage = () => {
                 date: formattedDate,
                 teamId: existingAppointment.assignedTeamId || '',
                 clientName: existingAppointment.clientName || '',
-                apartmentCount: existingAppointment.apartmentCount || ''
+                apartmentCount: existingAppointment.apartmentCount || '',
+                type: existingAppointment.type || 'ACTIVATION'
             });
         } else {
             // Reset for new
@@ -117,7 +129,8 @@ const AppointmentsPage = () => {
                 date: '',
                 teamId: '',
                 clientName: address.clientName || '',
-                apartmentCount: ''
+                apartmentCount: '',
+                type: defaultType
             });
         }
         setIsScheduleModalOpen(true);
@@ -153,7 +166,16 @@ const AppointmentsPage = () => {
         });
     };
 
-    const filteredPending = filterAppointments(pendingAddresses);
+    const allPendingFiltered = filterAppointments(pendingAddresses);
+
+    // Addresses that NEED Protocol check
+    const filteredProtocols = allPendingFiltered.filter(a => a.requiresProtocol && a.protocolStatus !== 'OK');
+
+    // Addresses ready for Activation (or standard)
+    const filteredPending = allPendingFiltered.filter(a =>
+        (!a.requiresProtocol || a.protocolStatus === 'OK') && a.sopladoStatus === 'OK'
+    );
+
     const filteredScheduled = filterAppointments(scheduledAppointments);
 
     return (
@@ -167,6 +189,13 @@ const AppointmentsPage = () => {
                             }`}
                     >
                         Pendientes ({filteredPending.length})
+                    </button>
+                    <button
+                        onClick={() => setView('protocols')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${view === 'protocols' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+                            }`}
+                    >
+                        Protocolos ({filteredProtocols.length})
                     </button>
                     <button
                         onClick={() => setView('scheduled')}
@@ -225,6 +254,26 @@ const AppointmentsPage = () => {
                                 </div>
                             </div>
 
+                            {/* Alert for Protocol */}
+                            {address.requiresProtocol && address.protocolStatus !== 'OK' && (
+                                <div className="mb-4 bg-purple-50 border border-purple-100 p-3 rounded-lg flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 text-purple-700">
+                                        <FileText size={16} />
+                                        <div className="text-xs">
+                                            <span className="font-bold block">Requiere Protocolo</span>
+                                            <span className="opacity-75">Estado actual: {address.protocolStatus}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleProtocolOverride(address.id)}
+                                        className="text-xs bg-purple-200 hover:bg-purple-300 text-purple-800 px-2 py-1 rounded transition-colors"
+                                        title="Marcar manualmente como OK"
+                                    >
+                                        Forzar OK
+                                    </button>
+                                </div>
+                            )}
+
                             {/* Alert for Recite */}
                             {address.appointment?.status === 'RECITAR' && (
                                 <div className="mb-4 bg-red-50 border border-red-100 p-3 rounded-lg flex items-start gap-3">
@@ -271,6 +320,48 @@ const AppointmentsPage = () => {
                     {filteredPending.length === 0 && (
                         <div className="col-span-full text-center py-12 text-slate-400">
                             No se encontraron direcciones pendientes con los filtros actuales.
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {view === 'protocols' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {filteredProtocols.map(address => (
+                        <div key={address.id} className="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 bg-purple-200 text-purple-800 text-xs px-2 py-1 rounded-bl-lg font-bold">
+                                PROTOCOLO REQUERIDO
+                            </div>
+
+                            <div className="flex justify-between items-start mb-4">
+                                <div>
+                                    <h3 className="font-bold text-lg text-slate-800">{address.street} {address.number}</h3>
+                                    {address.clientName && (
+                                        <p className="text-sm font-semibold text-purple-700 mb-1">{address.clientName}</p>
+                                    )}
+                                    <p className="text-sm text-slate-500">{address.project.name} | NVT: {address.nvt}</p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-4">
+                                <button
+                                    onClick={() => openContactModal(address)}
+                                    className="flex-1 bg-white hover:bg-slate-50 text-slate-700 py-2 rounded-lg flex items-center justify-center gap-2 border border-slate-200 transition-colors"
+                                >
+                                    <Phone size={18} /> Contactar
+                                </button>
+                                <button
+                                    onClick={() => openScheduleModal(address, null, 'PROTOCOL')}
+                                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm"
+                                >
+                                    <Calendar size={18} /> Agendar Protocolo
+                                </button>
+                            </div>
+                        </div>
+                    ))}
+                    {filteredProtocols.length === 0 && (
+                        <div className="col-span-full text-center py-12 text-slate-400">
+                            No hay direcciones pendientes de protocolo.
                         </div>
                     )}
                 </div>
@@ -402,6 +493,17 @@ const AppointmentsPage = () => {
                         </div>
                         <p className="text-sm text-slate-500 mb-4">{selectedAddress?.street} {selectedAddress?.number}</p>
                         <form onSubmit={handleScheduleSubmit} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Cita</label>
+                                <select
+                                    value={scheduleForm.type}
+                                    onChange={(e) => setScheduleForm({ ...scheduleForm, type: e.target.value })}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="ACTIVATION">Activación (Instalación)</option>
+                                    <option value="PROTOCOL">Protocolo (Medición)</option>
+                                </select>
+                            </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Nombre del Cliente</label>
                                 <input

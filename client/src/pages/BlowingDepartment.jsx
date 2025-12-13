@@ -58,11 +58,11 @@ const BlowingDepartment = () => {
 
         const data = new FormData();
         data.append('status', status);
-        if (status === 'OK') {
-            data.append('meters', formData.meters);
-            data.append('tk', formData.tk);
-            data.append('tubeColor', formData.tubeColor);
-        } else {
+        data.append('meters', formData.meters);
+        data.append('tk', formData.tk);
+        data.append('tubeColor', formData.tubeColor);
+
+        if (status === 'FALLIDO') {
             data.append('failureReason', formData.failureReason);
         }
 
@@ -190,48 +190,46 @@ const BlowingDepartment = () => {
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
-                    {status === 'OK' ? (
-                        <>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Metros Soplados</label>
-                                <input
-                                    type="number"
-                                    step="0.1"
-                                    value={formData.meters}
-                                    onChange={(e) => setFormData({ ...formData, meters: e.target.value })}
-                                    className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">TK (Identificador)</label>
-                                <input
-                                    type="text"
-                                    value={formData.tk}
-                                    onChange={(e) => setFormData({ ...formData, tk: e.target.value })}
-                                    className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Color del Tubo</label>
-                                <select
-                                    value={formData.tubeColor}
-                                    onChange={(e) => setFormData({ ...formData, tubeColor: e.target.value })}
-                                    className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none bg-white"
-                                    required
-                                >
-                                    <option value="">Selecciona un color</option>
-                                    {[
-                                        'Rojo', 'Verde', 'Azul', 'Amarillo', 'Blanco', 'Gris', 'Marrón', 'Morado', 'Turquesa', 'Negro', 'Naranja', 'Rosa',
-                                        'Rojo-Rayado', 'Verde-Rayado', 'Azul-Rayado', 'Amarillo-Rayado', 'Blanco-Rayado', 'Gris-Rayado', 'Marrón-Rayado', 'Morado-Rayado', 'Turquesa-Rayado', 'Negro-Rayado'
-                                    ].map(color => (
-                                        <option key={color} value={color}>{color}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </>
-                    ) : (
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Metros Soplados</label>
+                        <input
+                            type="number"
+                            step="0.1"
+                            value={formData.meters}
+                            onChange={(e) => setFormData({ ...formData, meters: e.target.value })}
+                            className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">TK (Identificador)</label>
+                        <input
+                            type="text"
+                            value={formData.tk}
+                            onChange={(e) => setFormData({ ...formData, tk: e.target.value })}
+                            className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Color del Tubo</label>
+                        <select
+                            value={formData.tubeColor}
+                            onChange={(e) => setFormData({ ...formData, tubeColor: e.target.value })}
+                            className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none bg-white"
+                            required
+                        >
+                            <option value="">Selecciona un color</option>
+                            {[
+                                'Rojo', 'Verde', 'Azul', 'Amarillo', 'Blanco', 'Gris', 'Marrón', 'Morado', 'Turquesa', 'Negro', 'Naranja', 'Rosa',
+                                'Rojo-Rayado', 'Verde-Rayado', 'Azul-Rayado', 'Amarillo-Rayado', 'Blanco-Rayado', 'Gris-Rayado', 'Marrón-Rayado', 'Morado-Rayado', 'Turquesa-Rayado', 'Negro-Rayado'
+                            ].map(color => (
+                                <option key={color} value={color}>{color}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {status === 'FALLIDO' && (
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Motivo del Fallo</label>
                             <textarea

@@ -6,7 +6,14 @@ exports.getProjectAddresses = async (req, res) => {
     const { search } = req.query;
 
     try {
-        const where = { projectId };
+        const where = {
+            projectId,
+            // Filter out completed or cancelled orders
+            // User rule: Only show if NOT Installiert AND NOT Abgebrochen
+            orderStatus: {
+                notIn: ['Installiert', 'Abgebrochen']
+            }
+        };
 
         if (search) {
             where.OR = [
@@ -89,9 +96,9 @@ exports.submitSopladoReport = async (req, res) => {
 
             // 4. Create or Update SopladoInfo for ALL related addresses
             const sopladoInfoData = {
-                meters: status === 'OK' ? parseFloat(meters) : 0,
-                tk: status === 'OK' ? tk : '',
-                tubeColor: status === 'OK' ? tubeColor : '',
+                meters: parseFloat(meters) || 0,
+                tk: tk || '',
+                tubeColor: tubeColor || '',
                 failureReason: status === 'FALLIDO' ? failureReason : null,
                 photos: photoPaths
             };

@@ -5,14 +5,24 @@ exports.getPendingAppointments = async (req, res) => {
     try {
         const addresses = await prisma.address.findMany({
             where: {
-                sopladoStatus: 'OK',
                 AND: [
-                    { clientName: { not: { startsWith: '***' } } }
-                ],
-                OR: [
-                    { appointment: { is: null } },
-                    { appointment: { status: 'PENDIENTE' } },
-                    { appointment: { status: 'RECITAR' } }
+                    { clientName: { not: { startsWith: '***' } } },
+                    {
+                        OR: [
+                            { appointment: { is: null } },
+                            { appointment: { status: 'PENDIENTE' } },
+                            { appointment: { status: 'RECITAR' } }
+                        ]
+                    },
+                    {
+                        OR: [
+                            { sopladoStatus: 'OK' },
+                            {
+                                requiresProtocol: true,
+                                protocolStatus: { not: 'OK' }
+                            }
+                        ]
+                    }
                 ]
             },
             include: {
@@ -78,33 +88,66 @@ exports.logContactAttempt = async (req, res) => {
 // Schedule an appointment
 exports.scheduleAppointment = async (req, res) => {
     const { addressId } = req.params;
-    const { date, teamId, clientName, apartmentCount } = req.body;
+    const { date, teamId, clientName, apartmentCount, type = 'ACTIVATION' } = req.body;
 
     if (!clientName || !apartmentCount) {
         return res.status(400).json({ message: 'El nombre del cliente y el número de apartamentos son obligatorios.' });
     }
 
     try {
-        const appointment = await prisma.appointment.upsert({
-            where: { addressId },
-            update: {
-                assignedDate: new Date(date),
-                assignedTeamId: teamId,
-                status: 'CITADO',
-                clientName,
-                apartmentCount: parseInt(apartmentCount)
-            },
-            create: {
-                addressId,
-                assignedDate: new Date(date),
-                assignedTeamId: teamId,
-                status: 'CITADO',
-                clientName,
-                apartmentCount: parseInt(apartmentCount)
+        // 1. Validation Logic
+        const address = await prisma.address.findUnique({ where: { id: addressId } });
+
+        if (!address) {
+            return res.status(404).json({ message: 'Dirección no encontrada' });
+        }
+
+        // BLOCKING RULES
+        if (type === 'ACTIVATION') {
+            if (address.sopladoStatus !== 'OK') {
+                return res.status(400).json({ message: 'Bloqueado: Esta dirección aún no tiene Soplado OK.' });
             }
+            // Check protocol ONLY if required. "OK" or "COMPLETED" are valid success states (using "OK" for simplicity based on prompt)
+            if (address.requiresProtocol && address.protocolStatus !== 'OK') {
+                return res.status(400).json({ message: 'Bloqueado: Esta dirección require Protocolo OK antes de activar.' });
+            }
+        }
+
+        // 2. Transaction to update Appointment and Address Status
+        const result = await prisma.$transaction(async (tx) => {
+            const appointment = await tx.appointment.upsert({
+                where: { addressId },
+                update: {
+                    assignedDate: new Date(date),
+                    assignedTeamId: teamId,
+                    status: 'CITADO',
+                    clientName,
+                    apartmentCount: parseInt(apartmentCount),
+                    type
+                },
+                create: {
+                    addressId,
+                    assignedDate: new Date(date),
+                    assignedTeamId: teamId,
+                    status: 'CITADO',
+                    clientName,
+                    apartmentCount: parseInt(apartmentCount),
+                    type
+                }
+            });
+
+            // If scheduling a Protocol, update address status to imply it is in progress/scheduled
+            if (type === 'PROTOCOL') {
+                await tx.address.update({
+                    where: { id: addressId },
+                    data: { protocolStatus: 'SCHEDULED' }
+                });
+            }
+
+            return appointment;
         });
 
-        res.json(appointment);
+        res.json(result);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error scheduling appointment' });
@@ -212,5 +255,22 @@ exports.reciteAppointment = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error submitting recite request' });
+    }
+};
+
+// Manually update Protocol Status (Backoffice override)
+exports.updateProtocolStatus = async (req, res) => {
+    const { addressId } = req.params;
+    const { status } = req.body; // 'OK', 'PENDING', 'NONE'
+
+    try {
+        const address = await prisma.address.update({
+            where: { id: addressId },
+            data: { protocolStatus: status }
+        });
+        res.json(address);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error updating protocol status' });
     }
 };

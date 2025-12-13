@@ -39,7 +39,7 @@ exports.importProject = async (req, res) => {
         return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const { projectName } = req.body;
+    const { projectName, importType } = req.body; // importType: 'standard' | 'protocol'
     const filePath = req.file.path;
 
     try {
@@ -84,13 +84,14 @@ exports.importProject = async (req, res) => {
             return null;
         };
 
-        const addressesToCreate = data.map(row => {
+        const addressesToProcess = data.map(row => {
             const nvt = findCol(row, ['NVT', 'nvt', 'KVz', 'kvz', 'Verteiler', 'verteiler', 'Caja', 'caja']);
             const street = findCol(row, ['CALLE', 'calle', 'Street', 'street', 'DIRECCION', 'direccion', 'STRASSE', 'strasse', 'Address', 'address', 'Anschrift', 'anschrift', 'Str.', 'str.', 'Straße', 'straße', 'Lage', 'lage', 'Weg', 'weg']) || 'Sin calle';
             const number = findCol(row, ['NUMERO', 'numero', 'Number', 'number', 'Hausnummer', 'hausnummer', 'No', 'no', 'Nr', 'nr', 'Nr.', 'nr.']);
             const clientName = findCol(row, ['NOMBRE', 'nombre', 'Name', 'name', 'Cliente', 'cliente', 'Client', 'client', 'Kunde', 'kunde']);
             const city = findCol(row, ['CIUDAD', 'ciudad', 'City', 'city', 'Ort', 'ort', 'Stadt', 'stadt', 'Town', 'town', 'Poblacion', 'poblacion']);
-            const klsId = findCol(row, ['KLS', 'kls', 'KLS-ID', 'kls-id', 'KLS ID', 'kls id', 'KLS-Id', 'Kls-Id', 'P']); // Added 'P' just in case of simple column mapping, mostly implies header 'P' which is unlikely but safe.
+            const klsId = findCol(row, ['KLS', 'kls', 'KLS-ID', 'kls-id', 'KLS ID', 'kls id', 'KLS-Id', 'Kls-Id', 'P']);
+            const status = findCol(row, ['Status', 'status', 'Estado', 'estado']); // Column C logic
 
             return {
                 projectId: project.id,
@@ -99,43 +100,63 @@ exports.importProject = async (req, res) => {
                 number: number ? String(number).trim() : null,
                 clientName: clientName ? String(clientName).trim() : null,
                 city: city ? String(city).trim() : null,
-                klsId: klsId ? String(klsId).trim() : null
+                klsId: klsId ? String(klsId).trim() : null,
+                status: status ? String(status).trim() : 'geplant'
             };
         });
 
-        // 3. Create or Update Addresses
+        const isProtocol = importType === 'protocol';
         let createdCount = 0;
         let updatedCount = 0;
 
-        for (const addrData of addressesToCreate) {
-            const whereClause = {
-                projectId: project.id,
-                street: addrData.street,
-                number: addrData.number
-            };
-
+        for (const addrData of addressesToProcess) {
+            // Updated matching logic to be case-insensitive
             const existing = await prisma.address.findFirst({
-                where: whereClause
+                where: {
+                    projectId: project.id,
+                    street: { equals: addrData.street, mode: 'insensitive' },
+                    number: { equals: addrData.number, mode: 'insensitive' }
+                }
             });
 
             if (existing) {
+                const updateData = {
+                    klsId: addrData.klsId || existing.klsId,
+                    city: addrData.city || existing.city,
+                    clientName: addrData.clientName || existing.clientName,
+                    nvt: addrData.nvt || existing.nvt,
+                    orderStatus: addrData.status || existing.orderStatus
+                };
+
+                // Only if importing protocol list, we enforce protocol flag
+                if (isProtocol) {
+                    updateData.requiresProtocol = true;
+                }
+
                 await prisma.address.update({
                     where: { id: existing.id },
-                    data: {
-                        klsId: addrData.klsId || existing.klsId,
-                        city: addrData.city || existing.city,
-                        clientName: addrData.clientName || existing.clientName,
-                        nvt: addrData.nvt || existing.nvt
-                    }
+                    data: updateData
                 });
                 updatedCount++;
             } else {
-                await prisma.address.create({ data: addrData });
+                await prisma.address.create({
+                    data: {
+                        projectId: project.id,
+                        street: addrData.street,
+                        number: addrData.number,
+                        city: addrData.city,
+                        clientName: addrData.clientName,
+                        klsId: addrData.klsId,
+                        nvt: addrData.nvt,
+                        orderStatus: addrData.status, // Load status from excel
+                        requiresProtocol: isProtocol // Set flag if this is a protocol import
+                    }
+                });
                 createdCount++;
             }
         }
 
-        res.json({ message: `Import successful. Created: ${createdCount}, Updated: ${updatedCount} addresses.` });
+        res.json({ message: `Import successful (${isProtocol ? 'Protocol' : 'Standard'}). Created: ${createdCount}, Updated: ${updatedCount} addresses.` });
 
     } catch (error) {
         console.error(error);

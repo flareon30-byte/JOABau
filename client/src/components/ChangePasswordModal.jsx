@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Lock, X, Check, AlertCircle } from 'lucide-react';
 
 const ChangePasswordModal = ({ isOpen, onClose }) => {
@@ -27,10 +27,10 @@ const ChangePasswordModal = ({ isOpen, onClose }) => {
 
         setLoading(true);
         try {
-            await axios.post('http://localhost:3000/api/auth/update-password', {
+            await api.post('/api/auth/update-password', {
                 currentPassword,
                 newPassword
-            }, { withCredentials: true });
+            });
 
             setStatus({ type: 'success', message: 'Contraseña actualizada correctamente' });
             setTimeout(() => {
