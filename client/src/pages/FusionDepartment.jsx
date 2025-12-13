@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Search, Camera, ArrowLeft, Zap } from 'lucide-react';
 
 const FusionDepartment = () => {
@@ -28,7 +28,7 @@ const FusionDepartment = () => {
 
     const fetchProjects = async () => {
         try {
-            const res = await axios.get('http://localhost:3000/api/projects', { withCredentials: true });
+            const res = await api.get('/api/projects');
             setProjects(res.data);
         } catch (error) {
             console.error('Error fetching projects:', error);
@@ -38,7 +38,7 @@ const FusionDepartment = () => {
     const fetchAddresses = async () => {
         try {
             // Reusing soplado endpoint for address search as it's the same logic
-            const res = await axios.get(`http://localhost:3000/api/soplado/addresses/${selectedProject.id}?search=${searchTerm}`, { withCredentials: true });
+            const res = await api.get(`/api/soplado/addresses/${selectedProject.id}?search=${searchTerm}`);
             setAddresses(res.data);
         } catch (error) {
             console.error('Error fetching addresses:', error);
@@ -61,8 +61,7 @@ const FusionDepartment = () => {
         });
 
         try {
-            await axios.post(`http://localhost:3000/api/fusion/report/${selectedAddress.id}`, data, {
-                withCredentials: true,
+            await api.post(`/api/fusion/report/${selectedAddress.id}`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert('Reporte de fusión enviado correctamente');

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Search, CheckCircle, XCircle, Camera, Upload, ArrowLeft } from 'lucide-react';
 
 const BlowingDepartment = () => {
@@ -32,7 +32,7 @@ const BlowingDepartment = () => {
 
     const fetchProjects = async () => {
         try {
-            const res = await axios.get('http://localhost:3000/api/projects', { withCredentials: true });
+            const res = await api.get('/api/projects');
             setProjects(res.data);
         } catch (error) {
             console.error('Error fetching projects:', error);
@@ -41,7 +41,7 @@ const BlowingDepartment = () => {
 
     const fetchAddresses = async () => {
         try {
-            const res = await axios.get(`http://localhost:3000/api/soplado/addresses/${selectedProject.id}?search=${searchTerm}`, { withCredentials: true });
+            const res = await api.get(`/api/soplado/addresses/${selectedProject.id}?search=${searchTerm}`);
             setAddresses(res.data);
         } catch (error) {
             console.error('Error fetching addresses:', error);
@@ -71,8 +71,7 @@ const BlowingDepartment = () => {
         });
 
         try {
-            await axios.post(`http://localhost:3000/api/soplado/report/${selectedAddress.id}`, data, {
-                withCredentials: true,
+            await api.post(`/api/soplado/report/${selectedAddress.id}`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert('Reporte enviado correctamente');
