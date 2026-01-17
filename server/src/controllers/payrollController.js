@@ -158,12 +158,23 @@ exports.getMyPayroll = async (req, res) => {
         }
 
         const teamId = user.teamId;
+        let team = null;
 
-        // Fetch full team info to get member count
-        const team = await prisma.team.findUnique({
-            where: { id: teamId },
-            include: { members: true }
-        });
+        if (teamId) {
+            team = await prisma.team.findUnique({
+                where: { id: teamId },
+                include: { members: true }
+            });
+        }
+
+        // Fallback for Admin without team
+        if (!team) {
+            team = {
+                id: 'virtual',
+                name: 'Modo Administrador (Sin Equipo)',
+                members: [user]
+            };
+        }
 
         const now = new Date();
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -172,23 +183,23 @@ exports.getMyPayroll = async (req, res) => {
         const settings = await prisma.systemSettings.findFirst();
 
         // Determine Financial Group (Installers vs Blowers)
-        // Default to installers. If user role is BLOWER, use blowers.
         const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
         const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
 
         // Fetch user's team activations
-        // TODO: If Blower, we might need to fetch from a different table later. 
-        // For now, assuming Activations table usage or user will add Blowing functionality later.
-        const activations = await prisma.activationInfo.findMany({
-            where: {
-                createdAt: { gte: start, lte: end },
-                address: {
-                    appointment: {
-                        assignedTeamId: teamId
+        let activations = [];
+        if (teamId) {
+            activations = await prisma.activationInfo.findMany({
+                where: {
+                    createdAt: { gte: start, lte: end },
+                    address: {
+                        appointment: {
+                            assignedTeamId: teamId
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         // Use new calculation logic
         const advancedStats = calculateAdvancedPayroll(activations, financialConfig, team.members);
