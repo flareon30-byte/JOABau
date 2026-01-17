@@ -17,11 +17,15 @@ const MyEarningsPage = () => {
 
     const fetchMyEarnings = async () => {
         try {
+            console.log('Fetching earnings...');
             const res = await api.get('/api/payroll/my-summary');
-            console.log('Earnings Data:', res.data);
-            setStats(res.data.stats);
-            setMeta(res.data.meta);
-            setResData(res.data);
+            console.log('Earnings Data Received:', res.data);
+
+            if (res.data) {
+                setStats(res.data.stats);
+                setMeta(res.data.meta);
+                setResData(res.data);
+            }
         } catch (error) {
             console.error('Error fetching earnings:', error);
         } finally {
