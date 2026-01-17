@@ -164,6 +164,11 @@ exports.getMyPayroll = async (req, res) => {
 
         res.json({
             stats: myTeamStats,
+            personal: {
+                baseSalary: user.baseSalary || 1500,
+                userId: user.id,
+                username: user.username
+            },
             meta: {
                 prices: {
                     weekday: settings?.extraPointPrice || 0,

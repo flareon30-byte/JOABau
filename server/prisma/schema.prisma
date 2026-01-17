@@ -32,6 +32,7 @@ model User {
   teamId    String?
   team      Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
   phone     String?
+  baseSalary Float     @default(1500.0) // Sueldo Base para nóminas
   createdAt DateTime   @default(now())
   updatedAt DateTime   @updatedAt
 }

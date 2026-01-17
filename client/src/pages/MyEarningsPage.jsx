@@ -30,10 +30,12 @@ const MyEarningsPage = () => {
     const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val);
 
     if (loading) return <div className="p-8 text-center text-slate-500">Cargando datos financieros...</div>;
-    if (!stats || !meta) return <div className="p-8 text-center text-red-500">No se pudieron cargar los datos. Asegúrate de estar asignado a un equipo.</div>;
+    if (!stats || !meta || !resData) return <div className="p-8 text-center text-red-500">No se pudieron cargar los datos. Asegúrate de estar asignado a un equipo.</div>;
 
-    // Calculation Helper
-    const calculateTotal = (extraP, extraSatP) => {
+    // Calculation Helper - Calculates ONLY the Variable Bonus Share per person
+    const calculateVariableBonusShare = (extraP, extraSatP) => {
+        if (!stats || !meta) return 0;
+
         const currentLV = stats.weekdayPoints;
         const currentSat = stats.saturdayPoints;
 
@@ -46,11 +48,24 @@ const MyEarningsPage = () => {
         const moneyLV = bonusPoints * meta.prices.weekday;
         const moneySat = totalSat * meta.prices.saturday;
 
-        return moneyLV + moneySat;
+        const totalBonus = moneyLV + moneySat;
+
+        // Split bonus by team member count (assuming equal split)
+        const teamSize = stats.memberCount || 1;
+        const myBonusShare = totalBonus / teamSize;
+
+        return myBonusShare;
     };
 
-    const currentTotal = calculateTotal(0, 0);
-    const projectedTotal = calculateTotal(simPoints, simSatPoints);
+    if (loading) return <div className="p-8 text-center text-slate-500">Cargando datos financieros...</div>;
+    if (!stats || !meta || !resData) return <div className="p-8 text-center text-red-500">No se pudieron cargar los datos. Asegúrate de estar asignado a un equipo.</div>;
+
+    const baseSalary = resData?.personal?.baseSalary || 0;
+    const currentVariableBonus = calculateVariableBonusShare(0, 0);
+    const currentTotal = baseSalary + currentVariableBonus;
+
+    const projectedVariableBonus = calculateVariableBonusShare(simPoints, simSatPoints);
+    const projectedTotal = baseSalary + projectedVariableBonus;
     const difference = projectedTotal - currentTotal;
 
     const progressPercent = Math.min(100, (stats.weekdayPoints / stats.target) * 100);
@@ -62,17 +77,32 @@ const MyEarningsPage = () => {
                 <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                     <Wallet className="text-green-600" /> Mis Ganancias (Estimación)
                 </h2>
-                <p className="text-slate-500 text-sm">Resumen de puntos y bonus acumulados este mes.</p>
+                <p className="text-slate-500 text-sm">Resumen de puntos y bonus acumulados este mes (Base + Variable).</p>
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+                {/* Base Salary */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <p className="text-slate-500 text-xs font-bold uppercase">Sueldo Base</p>
+                            <h3 className="text-2xl font-bold text-slate-800 mt-1">{money(baseSalary)}</h3>
+                        </div>
+                        <div className="p-2 rounded-lg bg-slate-100 text-slate-600">
+                            <Wallet size={20} />
+                        </div>
+                    </div>
+                    <p className="text-xs text-slate-400">Mensual fijo garantizado</p>
+                </div>
+
                 {/* L-V Performance */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                     <div className="flex justify-between items-start mb-4">
                         <div>
                             <p className="text-slate-500 text-xs font-bold uppercase">Puntos Lunes-Viernes</p>
-                            <h3 className="text-3xl font-bold text-slate-800 mt-1">{stats.weekdayPoints.toFixed(1)}</h3>
+                            <h3 className="text-2xl font-bold text-slate-800 mt-1">{stats.weekdayPoints.toFixed(1)}</h3>
                         </div>
                         <div className={`p-2 rounded-lg ${stats.weekdayPoints >= stats.target ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600'}`}>
                             <TrendingUp size={20} />
@@ -82,7 +112,7 @@ const MyEarningsPage = () => {
                     {/* Progress Bar */}
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs font-medium text-slate-500">
-                            <span>Progreso Meta</span>
+                            <span>Meta Equipo</span>
                             <span>{stats.target} pts</span>
                         </div>
                         <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
@@ -94,7 +124,7 @@ const MyEarningsPage = () => {
                         {stats.weekdayPoints < stats.target && (
                             <p className="text-xs text-orange-500 mt-1 flex items-center gap-1">
                                 <AlertCircle size={12} />
-                                Faltan {(stats.target - stats.weekdayPoints).toFixed(1)} pts para bonus
+                                Faltan {(stats.target - stats.weekdayPoints).toFixed(1)} pts
                             </p>
                         )}
                     </div>
@@ -104,16 +134,16 @@ const MyEarningsPage = () => {
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                     <div className="flex justify-between items-start mb-4">
                         <div>
-                            <p className="text-slate-500 text-xs font-bold uppercase">Puntos Sábados</p>
-                            <h3 className="text-3xl font-bold text-blue-600 mt-1">{stats.saturdayPoints.toFixed(1)}</h3>
+                            <p className="text-slate-500 text-xs font-bold uppercase">Bonus Sábados</p>
+                            <h3 className="text-2xl font-bold text-blue-600 mt-1">{money(stats.saturdayMoney / (stats.memberCount || 1))}</h3>
                         </div>
                         <div className="p-2 rounded-lg bg-blue-50 text-blue-600">
                             <Calendar size={20} />
                         </div>
                     </div>
-                    <div className="text-sm text-slate-500">
-                        <p>Valor Sábado: <span className="font-bold text-slate-700">{money(meta.prices.saturday)} / pt</span></p>
-                        <p className="mt-1 text-green-600 font-bold">Total: {money(stats.saturdayMoney)}</p>
+                    <div className="text-xs text-slate-500">
+                        <p>Total Equipo: {money(stats.saturdayMoney)}</p>
+                        <p className="mt-1">Puntos Sab: {stats.saturdayPoints}</p>
                     </div>
                 </div>
 
@@ -122,12 +152,13 @@ const MyEarningsPage = () => {
                     <div className="absolute top-0 right-0 p-8 opacity-10">
                         <Wallet size={100} />
                     </div>
-                    <p className="text-slate-300 text-xs font-bold uppercase mb-1">Bonus Variable Acumulado</p>
-                    <h3 className="text-4xl font-bold text-white mb-4">{money(currentTotal)}</h3>
+                    <p className="text-slate-300 text-xs font-bold uppercase mb-1">Total Estimado</p>
+                    <h3 className="text-3xl font-bold text-white mb-2">{money(currentTotal)}</h3>
 
-                    <div className="text-xs text-slate-400 border-t border-slate-700/50 pt-3">
-                        <p>Precio Bonus L-V: {money(meta.prices.weekday)}</p>
-                        <p>Precio Sábado: {money(meta.prices.saturday)}</p>
+                    <div className="text-xs text-slate-400 border-t border-slate-700/50 pt-2 mt-2">
+                        Variable: {money(currentTotal - baseSalary)}
+                        <br />
+                        (Tu parte del equipo)
                     </div>
                 </div>
             </div>
