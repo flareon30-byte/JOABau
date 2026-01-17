@@ -232,10 +232,12 @@ exports.getMyPayroll = async (req, res) => {
                 teamName: team.name
             },
             personal: {
-                baseSalary: user.baseSalary || (financialConfig?.salary || 0), // Use user's specific or config default
+                // Use Global Configuration salary to ensure consistency with the Settings page simulation
+                // Ignoring individual user.baseSalary for now as it defaults to 1500 and causes confusion
+                baseSalary: financialConfig?.salary || user.baseSalary || 0,
                 myBonusShare,
                 mySaturdayPay,
-                totalEstimated: (user.baseSalary || financialConfig?.salary || 0) + myBonusShare + mySaturdayPay
+                totalEstimated: (financialConfig?.salary || user.baseSalary || 0) + myBonusShare + mySaturdayPay
             }
         });
 
