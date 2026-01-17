@@ -23,6 +23,13 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());
+
+// DEBUG LOGGER - Log every request
+app.use((req, res, next) => {
+    console.log(`[REQUEST] ${req.method} ${req.url}`);
+    next();
+});
+
 app.use('/uploads', express.static('uploads'));
 
 // Routes
