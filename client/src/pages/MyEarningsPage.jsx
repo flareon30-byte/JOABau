@@ -41,7 +41,10 @@ const MyEarningsPage = () => {
                 <AlertCircle size={40} className="mx-auto mb-4 text-orange-500" />
                 <h3 className="text-xl font-bold mb-2">Configuración Financiera Necesaria</h3>
                 <p>El administrador aún no ha configurado los parámetros de costes y bonus para tu rol ({user.role}).</p>
-                <p className="text-sm mt-4 text-orange-600">Por favor, contacta con administración.</p>
+                <div className="mt-6 text-left bg-white p-4 rounded border border-orange-200 overflow-auto max-h-60 text-xs font-mono">
+                    <p className="font-bold mb-2">Debug Info (Pasa esto a soporte):</p>
+                    <pre>{JSON.stringify(data, null, 2)}</pre>
+                </div>
             </div>
         );
     }

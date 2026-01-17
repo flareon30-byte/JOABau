@@ -1,0 +1,52 @@
+--- System Settings ---
+ID: 0848fdbc-c4af-4ee2-aa39-0b9439e8f2f2
+Financials Type: object
+Financials Value: {
+  "blowers": {
+    "car": 400,
+    "gas": 300,
+    "salary": 1600,
+    "insurance": 352,
+    "materials": 50,
+    "bonusPerUnit": 0.05,
+    "dietasPerDay": 0,
+    "pricePerUnit": 0.4,
+    "saturdayRate": 40
+  },
+  "installers": {
+    "car": 400,
+    "gas": 300,
+    "salary": 1500,
+    "insurance": 330,
+    "materials": 100,
+    "bonusPerTA": 5,
+    "pricePerTA": 25,
+    "bonusPerUnit": 20,
+    "dietasPerDay": 0,
+    "pricePerUnit": 60,
+    "saturdayRate": 40,
+    "bonusPerMulti": 10,
+    "pricePerMulti": 35
+  }
+}
+
+--- User Info ---
+Username: jane.orden.hidalgo@gmail.com
+Role: SUPER_ADMIN
+Group Key: installers
+Resolved Financial Config: {
+  "car": 400,
+  "gas": 300,
+  "salary": 1500,
+  "insurance": 330,
+  "materials": 100,
+  "bonusPerTA": 5,
+  "pricePerTA": 25,
+  "bonusPerUnit": 20,
+  "dietasPerDay": 0,
+  "pricePerUnit": 60,
+  "saturdayRate": 40,
+  "bonusPerMulti": 10,
+  "pricePerMulti": 35
+}
+SUCCESS: Financial Config found
