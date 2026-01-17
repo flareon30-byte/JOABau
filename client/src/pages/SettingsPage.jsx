@@ -1,15 +1,43 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Save, DollarSign, Target, Lock } from 'lucide-react';
+import { Save, DollarSign, Target, Lock, Truck, Users, Briefcase } from 'lucide-react';
 
 const SettingsPage = () => {
-    const [settings, setSettings] = useState({
-        extraPointPrice: 0,
-        saturdayPointPrice: 0,
-        monthlyTargetPoints: 100
+    // Stores the complex financial config
+    const [financials, setFinancials] = useState({
+        installers: {
+            salary: 1500,
+            insurance: 330,
+            dietasPerDay: 0,
+            car: 400,
+            gas: 300,
+            materials: 100,
+            pricePerUnit: 60,
+            bonusPerUnit: 20,
+            saturdayRate: 40
+        },
+        blowers: {
+            salary: 1600,
+            insurance: 352,
+            dietasPerDay: 0,
+            car: 400,
+            gas: 300,
+            materials: 50,
+            pricePerUnit: 0.40,
+            bonusPerUnit: 0.05,
+            saturdayRate: 40
+        }
     });
+
+    const [settings, setSettings] = useState({
+        // Legacy points points - keep for now as they are used in activation creation
+        bpPoints: 10, bp2FamPoints: 15, brMultiPoints: 20,
+        sduPoints: 25, mduPoints: 30, spPoints: 5, taPoints: 0.5
+    });
+
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState(null);
+    const [activeTab, setActiveTab] = useState('installers');
 
     useEffect(() => {
         fetchSettings();
@@ -18,6 +46,13 @@ const SettingsPage = () => {
     const fetchSettings = async () => {
         try {
             const res = await api.get('/api/settings');
+            // Merge existing financials if they exist
+            if (res.data.financials) {
+                setFinancials(prev => ({
+                    ...prev,
+                    ...res.data.financials
+                }));
+            }
             setSettings(res.data);
         } catch (error) {
             console.error('Error fetching settings:', error);
@@ -26,32 +61,110 @@ const SettingsPage = () => {
         }
     };
 
+    const handleFinancialChange = (group, field, value) => {
+        setFinancials(prev => ({
+            ...prev,
+            [group]: {
+                ...prev[group],
+                [field]: parseFloat(value) || 0
+            }
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage(null);
         try {
-            await api.put('/api/settings', settings);
-            setMessage({ type: 'success', text: 'Configuración guardada correctamente' });
+            await api.put('/api/settings', {
+                ...settings,
+                financials: financials
+            });
+            setMessage({ type: 'success', text: 'Configuración Financiera Avanzada guardada correctamente' });
         } catch (error) {
             console.error('Settings save error:', error);
-            const serverMsg = error.response?.data?.message;
-            const status = error.response?.status;
-            const fallback = error.message;
-            setMessage({
-                type: 'error',
-                text: `Error (${status || '?'}) al guardar: ${serverMsg || fallback}`
-            });
+            setMessage({ type: 'error', text: 'Error al guardar la configuración' });
         }
     };
 
     if (loading) return <div className="p-8">Cargando...</div>;
 
+    const renderFinancialInputs = (groupKey, title) => {
+        const data = financials[groupKey];
+        return (
+            <div className="space-y-6 animate-fadeIn">
+                <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-xl font-bold text-slate-700">{title}</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Personnel Costs */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h4 className="font-bold text-slate-600 mb-4 flex items-center gap-2"><Users size={18} /> Costes de Personal (Por Persona/Mes)</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Salario Base (€)</label>
+                                <input type="number" value={data.salary} onChange={(e) => handleFinancialChange(groupKey, 'salary', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (€)</label>
+                                <input type="number" value={data.insurance} onChange={(e) => handleFinancialChange(groupKey, 'insurance', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Dietas (por día) (€)</label>
+                                <input type="number" value={data.dietasPerDay} onChange={(e) => handleFinancialChange(groupKey, 'dietasPerDay', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Operational Costs */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h4 className="font-bold text-slate-600 mb-4 flex items-center gap-2"><Truck size={18} /> Gastos Operativos (Por Equipo/Mes)</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Coche / Renting (€)</label>
+                                <input type="number" value={data.car} onChange={(e) => handleFinancialChange(groupKey, 'car', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Combustible (€)</label>
+                                <input type="number" value={data.gas} onChange={(e) => handleFinancialChange(groupKey, 'gas', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Materiales (€)</label>
+                                <input type="number" value={data.materials} onChange={(e) => handleFinancialChange(groupKey, 'materials', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Revenue & Bonus */}
+                    <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 md:col-span-2">
+                        <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2"><DollarSign size={18} /> Ingresos y Bonus</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-blue-600 uppercase">Precio por {groupKey === 'installers' ? 'Instalación' : 'Metro'} (€)</label>
+                                <input type="number" step="0.01" value={data.pricePerUnit} onChange={(e) => handleFinancialChange(groupKey, 'pricePerUnit', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-green-600 uppercase">Bonus por {groupKey === 'installers' ? 'Unidad' : 'Metro'} Extra (€)</label>
+                                <input type="number" step="0.01" value={data.bonusPerUnit} onChange={(e) => handleFinancialChange(groupKey, 'bonusPerUnit', e.target.value)} className="w-full p-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500" />
+                                <p className="text-[10px] text-green-700 mt-1">Lo que recibe el equipo por cada unidad sobre el objetivo (Break-even)</p>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-blue-600 uppercase">Tarifa Sábado Fix (€)</label>
+                                <input type="number" value={data.saturdayRate} onChange={(e) => handleFinancialChange(groupKey, 'saturdayRate', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-4xl mx-auto pb-20">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
                 <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                    <DollarSign className="text-joa-blue" />
-                    Configuración Financiera
+                    <Briefcase className="text-joa-blue" />
+                    Configuración de Rentabilidad
                 </h2>
 
                 {message && (
@@ -60,103 +173,62 @@ const SettingsPage = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">
-                            Objetivo Mensual de Puntos (Activaciones)
-                        </label>
-                        <div className="relative">
-                            <Target className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                            <input
-                                type="number"
-                                value={settings.monthlyTargetPoints ?? ''}
-                                onChange={(e) => setSettings({ ...settings, monthlyTargetPoints: e.target.value })}
-                                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none"
-                                required
-                            />
-                        </div>
-                        <p className="text-xs text-slate-500 mt-1">Puntos necesarios para activar la paga extra.</p>
-                    </div>
+                <p className="text-slate-500 mb-6">
+                    Define los costes base y precios de cobro para calcular la rentabilidad real de cada departamento.
+                    El "Punto de Equilibrio" (Break-even) se calculará automáticamente con estos datos.
+                </p>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Precio por Punto Extra (€)
-                            </label>
-                            <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={settings.extraPointPrice ?? ''}
-                                    onChange={(e) => setSettings({ ...settings, extraPointPrice: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none"
-                                    required
-                                />
-                            </div>
-                            <p className="text-xs text-slate-500 mt-1">Se aplica a puntos por encima del objetivo.</p>
-                        </div>
+                {/* Tabs */}
+                <div className="flex gap-2 mb-8 border-b border-slate-200">
+                    <button
+                        onClick={() => setActiveTab('installers')}
+                        className={`px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'installers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Instaladores (Altas)
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('blowers')}
+                        className={`px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'blowers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Soplado
+                    </button>
+                </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">
-                                Precio por Punto Sábado (€)
-                            </label>
-                            <div className="relative">
-                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    value={settings.saturdayPointPrice ?? ''}
-                                    onChange={(e) => setSettings({ ...settings, saturdayPointPrice: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none"
-                                    required
-                                />
-                            </div>
-                            <p className="text-xs text-slate-500 mt-1">Se aplica a todas las activaciones en sábado.</p>
-                        </div>
-                    </div>
+                <form onSubmit={handleSubmit}>
+                    {activeTab === 'installers' && renderFinancialInputs('installers', 'Configuración de Instaladores')}
+                    {activeTab === 'blowers' && renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
 
-                    <h3 className="font-bold text-slate-800 pt-4 border-t border-slate-100">Valores de Puntos por Tipo</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {[
-                            { label: 'BP (Básico)', key: 'bpPoints' },
-                            { label: 'BP 2 Familias', key: 'bp2FamPoints' },
-                            { label: 'BR Multi', key: 'brMultiPoints' },
-                            { label: 'SDU / TA', key: 'sduPoints' },
-                            { label: 'MDU', key: 'mduPoints' },
-                            { label: 'SP (cada uno)', key: 'spPoints' },
-                        ].map(field => (
-                            <div key={field.key}>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">
-                                    {field.label}
-                                </label>
-                                <div className="relative">
-                                    <Target className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                    {/* Legacy Points Config (Still needed for Activation Points logic in backend) */}
+                    <div className="mt-12 pt-8 border-t border-slate-200">
+                        <h3 className="font-bold text-slate-500 text-sm uppercase mb-4">Valores de Puntos por Tipo de Activación (Referencia)</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {['bpPoints', 'bp2FamPoints', 'brMultiPoints', 'sduPoints', 'mduPoints', 'spPoints', 'taPoints'].map(key => (
+                                <div key={key}>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase">{key}</label>
                                     <input
                                         type="number"
-                                        step="0.01"
-                                        value={settings[field.key] ?? ''}
-                                        onChange={(e) => setSettings({ ...settings, [field.key]: e.target.value })}
-                                        className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none"
-                                        required
+                                        step="0.1"
+                                        value={settings[key] || 0}
+                                        onChange={(e) => setSettings({ ...settings, [key]: parseFloat(e.target.value) })}
+                                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-sm"
                                     />
                                 </div>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
                         <button
                             type="submit"
-                            className="w-full bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition-colors flex items-center justify-center gap-2"
+                            className="bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
                         >
                             <Save size={20} />
-                            Guardar Configuración Financiera
+                            Guardar Toda la Configuración
                         </button>
                     </div>
                 </form>
 
-                <div className="my-8 border-t border-slate-200"></div>
+                <div className="my-12 border-t border-slate-200"></div>
 
                 <PasswordChangeForm />
             </div>
@@ -222,7 +294,7 @@ const PasswordChangeForm = () => {
                 </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-6 max-w-lg">
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">Contraseña Actual</label>
                     <input

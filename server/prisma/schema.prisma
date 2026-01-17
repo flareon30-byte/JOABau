@@ -214,6 +214,8 @@ model SystemSettings {
   mduPoints             Float    @default(30.0)
   spPoints              Float    @default(5.0)
   taPoints              Float    @default(0.5)
+  
+  financials            Json?    // Stores complex calculator config (salaries, cars, etc.)
 
   updatedAt             DateTime @updatedAt
 }
