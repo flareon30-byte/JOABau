@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { Camera, Save, ArrowLeft, Trash2, X } from 'lucide-react';
+import { Camera, Save, ArrowLeft, Trash2, X, FileText } from 'lucide-react';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
@@ -23,8 +23,12 @@ const CompleteActivationPage = () => {
         taCount: '', // kept as string for input
         spInstalled: '',
         homeId: '',
+        klsId: '',
         description: ''
     });
+
+    const [pdfPath, setPdfPath] = useState(null);
+    const [signedPdf, setSignedPdf] = useState(null);
 
     const [photos, setPhotos] = useState([]);
     const fileInputRef = useRef(null);
@@ -50,9 +54,13 @@ const CompleteActivationPage = () => {
                             spInstalled: info.spInstalled || '',
                             taInstalled: info.taInstalled || false,
                             taCount: info.taCount || '',
+                            taCount: info.taCount || '',
                             homeId: info.homeIds && info.homeIds.length > 0 ? info.homeIds[0] : '',
+                            klsId: info.klsId || found.address.klsId || '',
                             description: info.description || ''
                         });
+
+                        setPdfPath(info.pdfPath || null);
 
                         // Load existing photos
                         if (info.photos && info.photos.length > 0) {
@@ -64,9 +72,11 @@ const CompleteActivationPage = () => {
                                 originalPath: path
                             })));
                         }
-                    } else if (found.status === 'COMPLETADO') {
                         // Logic if it's completed but info might be elsewhere or partial
                         // usually specific info block handles this, basically fallback
+                    } else if (found.address.klsId) {
+                        // Default KLS ID if available
+                        setFormData(prev => ({ ...prev, klsId: found.address.klsId }));
                     }
                 } else {
                     console.error('Appointment not found');
@@ -163,6 +173,46 @@ const CompleteActivationPage = () => {
         if (viewingPhotoIndex === index) setViewingPhotoIndex(null);
     };
 
+    const handleGeneratePdf = async () => {
+        // Validate mandatory fields
+        if (!formData.activationType) {
+            alert('Por favor, selecciona un tipo de activación.');
+            return;
+        }
+
+        const klsIdToUse = formData.klsId || appointment.address.klsId;
+
+        if (!klsIdToUse) {
+            alert('Por favor, indica o verifica el KLS ID antes de generar el PDF.');
+            return;
+        }
+
+        try {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const payload = {
+                addressId: appointment.addressId,
+                clientName: appointment.clientName || appointment.address.clientName,
+                street: appointment.address.street,
+                number: appointment.address.number,
+                city: appointment.address.city,
+                klsId: klsIdToUse,
+                username: user.username,
+                userPhone: user.phone || ''
+            };
+
+            const res = await api.post('/api/activations/generate-pdf', payload);
+
+            if (res.data.success) {
+                setPdfPath(res.data.path);
+                alert('Documento PDF generado correctamente. Por favor, asegúrate de firmarlo/completarlo si es necesario.');
+                window.open(`${BASE_URL}/${res.data.path}`, '_blank');
+            }
+        } catch (error) {
+            console.error('Error creating PDF:', error);
+            alert('Error al generar el PDF.');
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!appointment) return;
@@ -178,7 +228,15 @@ const CompleteActivationPage = () => {
         data.append('taCount', formData.taCount);
         data.append('spInstalled', formData.spInstalled);
         data.append('homeIds', JSON.stringify([formData.homeId])); // Sending as array
+        data.append('klsId', formData.klsId);
         data.append('description', formData.description);
+
+        if (pdfPath) {
+            data.append('pdfPath', pdfPath);
+        }
+        if (signedPdf) {
+            data.append('signedPdf', signedPdf);
+        }
 
         // Separate existing photos from new photos
         const existingPaths = [];
@@ -361,6 +419,80 @@ const CompleteActivationPage = () => {
                     </div>
                 </div>
 
+                {/* PDF Document Section */}
+                <div className={`p-6 rounded-2xl shadow-sm border-2 ${pdfPath ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
+                    <div className="flex justify-between items-center mb-4">
+                        <label className="text-base font-bold text-slate-700 flex items-center gap-2">
+                            <FileText size={20} className={pdfPath ? 'text-green-600' : 'text-orange-500'} />
+                            Documentación GlasfaserPlus
+                        </label>
+                        {pdfPath ? (
+                            <span className="text-xs text-green-700 font-bold bg-white px-3 py-1 rounded-full border border-green-200 shadow-sm">¡Generado!</span>
+                        ) : (
+                            <span className="text-xs text-orange-700 font-bold bg-white px-3 py-1 rounded-full border border-orange-200 shadow-sm">Pendiente</span>
+                        )}
+                    </div>
+
+                    <div className="mb-4">
+                        <label className="block text-sm font-medium text-slate-600 mb-1">KLS ID (Para el PDF)</label>
+                        <input
+                            type="text"
+                            name="klsId"
+                            value={formData.klsId}
+                            onChange={handleInputChange}
+                            placeholder="KLS ID"
+                            className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
+                        />
+                    </div>
+
+                    <p className="text-sm text-slate-600 mb-4">
+                        {pdfPath
+                            ? 'El documento ha sido generado. Puedes abrirlo para verificarlo o regenerarlo si han cambiado datos.'
+                            : 'Es necesario generar este documento para la documentación.'}
+                    </p>
+
+                    <button
+                        type="button"
+                        onClick={handleGeneratePdf}
+                        className={`w-full py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${pdfPath
+                            ? 'bg-white border-2 border-green-500 text-green-700 hover:bg-green-100'
+                            : 'bg-orange-500 text-white hover:bg-orange-600 shadow-md'
+                            }`}
+                    >
+                        <FileText size={18} />
+                        {pdfPath ? 'Abrir / Regenerar PDF' : 'Generar PDF Automático'}
+                    </button>
+
+                    <div className="mt-6 pt-4 border-t border-slate-200/50">
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Adjuntar PDF Firmado (Opcional)</label>
+                        <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 hover:bg-white hover:border-joa-blue transition-all cursor-pointer relative bg-slate-50/50">
+                            <input
+                                type="file"
+                                accept=".pdf"
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                onChange={(e) => setSignedPdf(e.target.files[0])}
+                            />
+                            <div className="flex flex-col items-center justify-center text-slate-500">
+                                {signedPdf ? (
+                                    <>
+                                        <FileText size={32} className="text-joa-blue mb-2" />
+                                        <span className="font-bold text-slate-700 text-center">{signedPdf.name}</span>
+                                        <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full mt-2 font-bold">Listo para enviar</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="mb-2 bg-white p-3 rounded-full shadow-sm">
+                                            <FileText size={24} className="text-slate-400" />
+                                        </div>
+                                        <span className="font-bold text-slate-600">Subir PDF Firmado</span>
+                                        <span className="text-xs text-slate-400 mt-1">o arrastra el archivo aquí</span>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Photos */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
@@ -426,44 +558,46 @@ const CompleteActivationPage = () => {
                         </>
                     )}
                 </button>
-            </form>
+            </form >
 
             {/* Photo Viewer Modal */}
-            {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
-                <div
-                    className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4"
-                    onClick={() => setViewingPhotoIndex(null)}
-                >
-                    <button
-                        onClick={() => setViewingPhotoIndex(null)}
-                        className="absolute top-4 right-4 text-white p-2 bg-white/10 rounded-full hover:bg-white/20 transition"
-                    >
-                        <X size={24} />
-                    </button>
-
+            {
+                viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
                     <div
-                        className="relative max-w-full max-h-[80vh] mb-8"
-                        onClick={(e) => e.stopPropagation()}
+                        className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4"
+                        onClick={() => setViewingPhotoIndex(null)}
                     >
-                        <img
-                            src={photos[viewingPhotoIndex].preview}
-                            alt="Full viewing"
-                            className="max-h-[75vh] object-contain rounded-lg shadow-2xl"
-                        />
-                    </div>
+                        <button
+                            onClick={() => setViewingPhotoIndex(null)}
+                            className="absolute top-4 right-4 text-white p-2 bg-white/10 rounded-full hover:bg-white/20 transition"
+                        >
+                            <X size={24} />
+                        </button>
 
-                    <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            removePhoto(viewingPhotoIndex);
-                        }}
-                        className="flex items-center gap-2 bg-red-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-700 transition transform active:scale-95"
-                    >
-                        <Trash2 size={20} /> Eliminar Foto
-                    </button>
-                </div>
-            )}
-        </div>
+                        <div
+                            className="relative max-w-full max-h-[80vh] mb-8"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <img
+                                src={photos[viewingPhotoIndex].preview}
+                                alt="Full viewing"
+                                className="max-h-[75vh] object-contain rounded-lg shadow-2xl"
+                            />
+                        </div>
+
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                removePhoto(viewingPhotoIndex);
+                            }}
+                            className="flex items-center gap-2 bg-red-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-700 transition transform active:scale-95"
+                        >
+                            <Trash2 size={20} /> Eliminar Foto
+                        </button>
+                    </div>
+                )
+            }
+        </div >
     );
 };
 
