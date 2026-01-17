@@ -102,15 +102,24 @@ const calculateAdvancedPayroll = (activations, financials, teamMembers) => {
     // We will count basic units for now.
 
     let standardUnits = 0;
-    let saturdayDays = new Set(); // To count distinct saturday dates
+    let potentialBonus = 0;
+    let saturdayDays = new Set();
 
     activations.forEach(act => {
         standardUnits++;
 
-        // Revenue from this unit
-        stats.totalRevenue += financials.pricePerUnit;
+        // Determine price/bonus based on type (Placeholder for future type logic)
+        // Currently utilizing base inputs only as per current Schema availability
+        let price = financials.pricePerUnit;
+        let bonus = financials.bonusPerUnit;
 
-        // Saturday check
+        // Future: 
+        // if (act.activationType === 'TA') { price = financials.pricePerTA; bonus = financials.bonusPerTA; }
+        // if (act.activationType === 'MULTI') { price = financials.pricePerMulti; bonus = financials.bonusPerMulti; }
+
+        stats.totalRevenue += price;
+        potentialBonus += bonus;
+
         if (act.isSaturday) {
             const dateStr = new Date(act.createdAt).toDateString();
             saturdayDays.add(dateStr);
@@ -119,9 +128,9 @@ const calculateAdvancedPayroll = (activations, financials, teamMembers) => {
 
     stats.unitsDone = standardUnits;
 
-    // 3. Break Even
-    // How many units needed to cover totalCost?
-    stats.breakEvenUnits = financials.pricePerUnit > 0 ? Math.ceil(stats.totalCost / financials.pricePerUnit) : 0;
+    // 3. Break Even (Dynamic based on average revenue per unit this month)
+    const avgPrice = standardUnits > 0 ? (stats.totalRevenue / standardUnits) : financials.pricePerUnit;
+    stats.breakEvenUnits = avgPrice > 0 ? Math.ceil(stats.totalCost / avgPrice) : 0;
 
     // 4. Progress
     if (stats.breakEvenUnits > 0) {
@@ -130,10 +139,17 @@ const calculateAdvancedPayroll = (activations, financials, teamMembers) => {
         stats.progressPercent = 100;
     }
 
-    // 5. Bonus Calculation
-    // Bonus is paid for units ABOVE breakEven
-    const extraUnits = Math.max(0, stats.unitsDone - stats.breakEvenUnits);
-    stats.bonusPool = extraUnits * financials.bonusPerUnit;
+    // 5. Bonus Calculation (Proportional Surplus)
+    // We calculate what % of the work done was "extra" above break-even, 
+    // and pay that same % of the total generated bonus potential.
+    if (stats.unitsDone > stats.breakEvenUnits) {
+        const profitableUnits = stats.unitsDone - stats.breakEvenUnits;
+        const profitableRatio = profitableUnits / stats.unitsDone;
+
+        stats.bonusPool = potentialBonus * profitableRatio;
+    } else {
+        stats.bonusPool = 0;
+    }
 
     // 6. Saturday Pay (Fixed per Saturday worked? or per unit?)
     // Settings says "Tarifa Sábado (Por día)". 
