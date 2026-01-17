@@ -412,6 +412,18 @@ const ActivationPage = () => {
                         </>
                     )}
 
+                    {/* Technician Comments */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Comentarios del Técnico</label>
+                        <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            placeholder="Escribe aquí cualquier observación relevante..."
+                            rows="3"
+                            className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-green-500 resize-none"
+                        ></textarea>
+                    </div>
+
                     {/* Photos Section */}
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">Fotos</label>
