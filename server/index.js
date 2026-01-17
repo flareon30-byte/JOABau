@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv');
 const authRoutes = require('./src/routes/authRoutes');
@@ -47,8 +48,17 @@ app.use('/api/settings', require('./src/routes/settingsRoutes'));
 app.use('/api/payroll', require('./src/routes/payrollRoutes'));
 app.use('/api/billing', require('./src/routes/billingRoutes'));
 
-app.get('/', (req, res) => {
-    res.send('Fiber Optics App API is running');
+// Serve static files from React app
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// Catch-all handler for any request that doesn't match an API route (SPA support)
+app.get('*', (req, res) => {
+    const indexPath = path.join(__dirname, '../client/dist/index.html');
+    if (require('fs').existsSync(indexPath)) {
+        res.sendFile(indexPath);
+    } else {
+        res.send('API is running. Frontend build not found (run npm run build in client).');
+    }
 });
 
 app.listen(PORT, () => {
