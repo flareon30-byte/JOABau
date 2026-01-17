@@ -280,7 +280,7 @@ exports.generatePdf = async (req, res) => {
         const activePhone = user ? user.phone : (req.body.userPhone || '');
 
         // Load PDF
-        const pdfPath = path.join(__dirname, '../../../dokumentation von GlasfaserPlus.pdf');
+        const pdfPath = path.join(__dirname, '../../templates/dokumentation von GlasfaserPlus.pdf');
         if (!fs.existsSync(pdfPath)) {
             return res.status(404).json({ message: 'Template PDF not found' });
         }
