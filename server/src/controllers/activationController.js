@@ -267,27 +267,40 @@ exports.getAllActivations = async (req, res) => {
 };
 
 exports.generatePdf = async (req, res) => {
+    console.log('--- STARTING PDF GENERATION ---');
     try {
         const { addressId, clientName, street, number, city, klsId } = req.body;
+        console.log('Request body:', { addressId, clientName, street, number, city, klsId });
 
         // Fetch User details (Phone, Username) safely from DB
         const user = await prisma.user.findUnique({
             where: { id: req.userId },
             select: { username: true, phone: true }
         });
+        console.log('User found:', user);
 
         const activeUsername = user ? user.username : (req.body.username || '');
         const activePhone = user ? user.phone : (req.body.userPhone || '');
 
         // Load PDF
         const pdfPath = path.join(__dirname, '../../templates/dokumentation von GlasfaserPlus.pdf');
+        console.log('Looking for PDF at:', pdfPath);
+
         if (!fs.existsSync(pdfPath)) {
-            return res.status(404).json({ message: 'Template PDF not found' });
+            console.error('CRITICAL: PDF Template NOT FOUND at', pdfPath);
+            // Attempt to list directory to debug
+            const dir = path.dirname(pdfPath);
+            console.log('Contents of directory ' + dir + ':', fs.readdirSync(dir));
+            return res.status(404).json({ message: 'Template PDF not found on server' });
         }
 
+        console.log('PDF Template found. Reading file...');
         const existingPdfBytes = fs.readFileSync(pdfPath);
+        console.log('PDF Read. Size:', existingPdfBytes.length);
+
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
         const form = pdfDoc.getForm();
+        console.log('PDF Loaded. Form fields count:', form.getFields().length);
 
         // Helper to safe fill
         const fill = (name, val, fontSize) => {
@@ -299,6 +312,7 @@ exports.generatePdf = async (req, res) => {
                 }
             } catch (e) {
                 // Field might be checkbox or not exist, ignore
+                // console.log(`Field ${name} skipped or error:`, e.message);
             }
         };
 
@@ -322,26 +336,36 @@ exports.generatePdf = async (req, res) => {
         fill('Text17', ''); // Safety Clear
         fill('Text18', ''); // Safety Clear
 
+        console.log('Fields filled. Saving PDF...');
+
         // Save
         const pdfBytes = await pdfDoc.save();
+        console.log('PDF Saved in memory. Size:', pdfBytes.length);
 
         // Sanitize filename
         const cleanName = `${street} ${number || ''}`.replace(/[^a-zA-Z0-9äöüÄÖÜß \-]/g, '').trim();
         const fileName = `${cleanName}.pdf`;
 
         const outDir = path.join(__dirname, '../../uploads/pdfs');
+        console.log('Ensuring output directory exists:', outDir);
+
         if (!fs.existsSync(outDir)) {
             fs.mkdirSync(outDir, { recursive: true });
+            console.log('Created directory:', outDir);
         }
 
         const outPath = path.join(outDir, fileName);
+        console.log('Writing file to:', outPath);
         fs.writeFileSync(outPath, pdfBytes);
+        console.log('File write successful.');
 
         // Return public path (add timestamp query to prevent caching)
         res.json({ success: true, path: `uploads/pdfs/${fileName}?t=${Date.now()}` });
+        console.log('--- END PDF GENERATION SUCCESS ---');
 
     } catch (error) {
-        console.error('PDF Gen Error:', error);
+        console.error('--- PDF GENERATION ERROR ---');
+        console.error(error);
         res.status(500).json({ message: 'Error generating PDF', error: error.message });
     }
 };
