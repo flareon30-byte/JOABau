@@ -5,6 +5,7 @@ import { Wallet, TrendingUp, Calendar, AlertCircle, Calculator } from 'lucide-re
 const MyEarningsPage = () => {
     const [stats, setStats] = useState(null);
     const [meta, setMeta] = useState(null);
+    const [resData, setResData] = useState(null); // Fix: Initialize state
     const [loading, setLoading] = useState(true);
 
     // Simulation State
