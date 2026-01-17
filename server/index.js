@@ -52,7 +52,8 @@ app.use('/api/billing', require('./src/routes/billingRoutes'));
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Catch-all handler for any request that doesn't match an API route (SPA support)
-app.get('*', (req, res) => {
+// Note: Using (.*) because Express 5 (beta) uses a newer path-to-regexp that requires named parameters or explicit regex for wildcards
+app.get(/(.*)/, (req, res) => {
     const indexPath = path.join(__dirname, '../client/dist/index.html');
     if (require('fs').existsSync(indexPath)) {
         res.sendFile(indexPath);
