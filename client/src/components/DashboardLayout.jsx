@@ -71,7 +71,9 @@ const DashboardLayout = () => {
         { icon: CheckCircle, label: 'Activaciones', path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
         { icon: ClipboardList, label: 'Protocolos', path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] }, // New Section
         { icon: DollarSign, label: 'Facturación', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
-        { icon: Wallet, label: 'Nóminas', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
+        { icon: DollarSign, label: 'Facturación', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
+        { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
+        { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER', 'SUPER_ADMIN'] },
         { icon: Settings, label: 'Configuración', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
     ];
 
