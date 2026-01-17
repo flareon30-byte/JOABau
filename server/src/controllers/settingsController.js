@@ -37,7 +37,8 @@ exports.updateSettings = async (req, res) => {
         sduPoints,
         mduPoints,
         spPoints,
-        taPoints
+        taPoints,
+        financials
     } = req.body;
 
     try {
@@ -61,7 +62,8 @@ exports.updateSettings = async (req, res) => {
             sduPoints: safeFloat(sduPoints),
             mduPoints: safeFloat(mduPoints),
             spPoints: safeFloat(spPoints),
-            taPoints: safeFloat(taPoints)
+            taPoints: safeFloat(taPoints),
+            financials: financials // Save the complex JSON config
         };
 
         if (!settings) {

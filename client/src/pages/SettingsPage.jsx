@@ -12,8 +12,17 @@ const SettingsPage = () => {
             car: 400,
             gas: 300,
             materials: 100,
+
+            // Revenue Prices (Client pays)
             pricePerUnit: 60,
+            pricePerTA: 25,
+            pricePerMulti: 35,
+
+            // Bonus Payouts (Team receives)
             bonusPerUnit: 20,
+            bonusPerTA: 5,
+            bonusPerMulti: 10,
+
             saturdayRate: 40
         },
         blowers: {
@@ -137,8 +146,10 @@ const SettingsPage = () => {
 
                     {/* Revenue & Bonus */}
                     <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 md:col-span-2">
-                        <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2"><DollarSign size={18} /> Ingresos y Bonus</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2"><DollarSign size={18} /> Ingresos (Cliente) y Bonus (Técnico)</h4>
+
+                        {/* Standard Unit (Installation / Meter) */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 pb-4 border-b border-blue-100">
                             <div>
                                 <label className="block text-xs font-bold text-blue-600 uppercase">Precio por {groupKey === 'installers' ? 'Instalación' : 'Metro'} (€)</label>
                                 <input type="number" step="0.01" value={data.pricePerUnit} onChange={(e) => handleFinancialChange(groupKey, 'pricePerUnit', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500" />
@@ -146,13 +157,41 @@ const SettingsPage = () => {
                             <div>
                                 <label className="block text-xs font-bold text-green-600 uppercase">Bonus por {groupKey === 'installers' ? 'Unidad' : 'Metro'} Extra (€)</label>
                                 <input type="number" step="0.01" value={data.bonusPerUnit} onChange={(e) => handleFinancialChange(groupKey, 'bonusPerUnit', e.target.value)} className="w-full p-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500" />
-                                <p className="text-[10px] text-green-700 mt-1">Lo que recibe el equipo por cada unidad sobre el objetivo (Break-even)</p>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-blue-600 uppercase">Tarifa Sábado Fix (€)</label>
-                                <input type="number" value={data.saturdayRate} onChange={(e) => handleFinancialChange(groupKey, 'saturdayRate', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Tarifa Sábado Fix (€)</label>
+                                <input type="number" value={data.saturdayRate} onChange={(e) => handleFinancialChange(groupKey, 'saturdayRate', e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500" />
                             </div>
                         </div>
+
+                        {/* Extra Fields ONLY for Installers */}
+                        {groupKey === 'installers' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-blue-600 uppercase">Precio TA (Cliente)</label>
+                                    <input type="number" step="0.01" value={data.pricePerTA || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerTA', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-green-600 uppercase">Bonus TA (Técnico)</label>
+                                    <input type="number" step="0.01" value={data.bonusPerTA || 0} onChange={(e) => handleFinancialChange(groupKey, 'bonusPerTA', e.target.value)} className="w-full p-2 border border-green-200 rounded-lg" />
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-bold text-blue-600 uppercase">Precio Multi (Cliente)</label>
+                                    <input type="number" step="0.01" value={data.pricePerMulti || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerMulti', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-green-600 uppercase">Bonus Multi (Técnico)</label>
+                                    <input type="number" step="0.01" value={data.bonusPerMulti || 0} onChange={(e) => handleFinancialChange(groupKey, 'bonusPerMulti', e.target.value)} className="w-full p-2 border border-green-200 rounded-lg" />
+                                </div>
+                            </div>
+                        )}
+
+                        {groupKey === 'installers' && (
+                            <p className="text-[10px] text-blue-800/60 mt-2 italic">
+                                * Nota: El 'Bonus por Unidad' se paga solo al superar el objetivo (Break-even). Los bonus TA y Multi se pagan directos si así se configura.
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
@@ -198,7 +237,8 @@ const SettingsPage = () => {
                     {activeTab === 'installers' && renderFinancialInputs('installers', 'Configuración de Instaladores')}
                     {activeTab === 'blowers' && renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
 
-                    {/* Legacy Points Config (Still needed for Activation Points logic in backend) */}
+                    {/* Legacy Points Config Hidden */}
+                    {/* 
                     <div className="mt-12 pt-8 border-t border-slate-200">
                         <h3 className="font-bold text-slate-500 text-sm uppercase mb-4">Valores de Puntos por Tipo de Activación (Referencia)</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -216,6 +256,7 @@ const SettingsPage = () => {
                             ))}
                         </div>
                     </div>
+*/}
 
                     <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
                         <button
