@@ -289,18 +289,34 @@ exports.getMyPayroll = async (req, res) => {
 };
 
 exports.getPayrollSummary = async (req, res) => {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, userId } = req.query;
 
-    console.log('Fetching Payroll Summary', { startDate, endDate });
+    console.log('Fetching Admin Payroll Summary', { startDate, endDate, userId });
 
     try {
+        // Parse dates (Frontend should provide YYYY-MM-DD)
+        // Ensure strictly parsed to start of day and end of day
+        // If provided as strings YYYY-MM-DD:
         const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        const end = endDate ? new Date(new Date(endDate).setHours(23, 59, 59, 999)) : new Date();
+        // Fix timezone/EOD issues by ensuring we target the full day if only date is given
+        if (startDate && !startDate.includes('T')) start.setHours(0, 0, 0, 0);
 
-        // 1. Fetch System Settings
+        const end = endDate ? new Date(endDate) : new Date();
+        if (endDate && !endDate.includes('T')) end.setHours(23, 59, 59, 999);
+
         const settings = await prisma.systemSettings.findFirst();
 
-        // 2. Fetch Activations
+        // 1. Fetch Users
+        const usersWhere = {};
+        if (userId && userId !== 'all') usersWhere.id = userId;
+
+        const users = await prisma.user.findMany({
+            where: usersWhere,
+            include: { team: { include: { members: true } } },
+            orderBy: { username: 'asc' }
+        });
+
+        // 2. Fetch Activations in Range
         const activations = await prisma.activationInfo.findMany({
             where: {
                 createdAt: { gte: start, lte: end }
@@ -309,33 +325,86 @@ exports.getPayrollSummary = async (req, res) => {
                 address: {
                     include: {
                         appointment: {
-                            include: {
-                                assignedTeam: {
-                                    include: { members: true }
-                                }
-                            }
+                            include: { assignedTeam: true }
                         }
                     }
                 }
             }
         });
 
-        const summary = calculatePayroll(activations, settings);
+        // 3. Group Activations by Team
+        const teamActivations = {};
+        activations.forEach(act => {
+            const teamId = act.address?.appointment?.assignedTeamId;
+            if (teamId) {
+                if (!teamActivations[teamId]) teamActivations[teamId] = [];
+                teamActivations[teamId].push(act);
+            }
+        });
+
+        // 4. Calculate for each User
+        const summary = users.map(user => {
+            const team = user.team;
+            const teamId = team?.id;
+
+            // Determine config
+            const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
+            const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
+
+            let stats = null;
+            let personal = {
+                baseSalary: financialConfig?.salary || user.baseSalary || 0,
+                bonus: 0,
+                saturday: 0,
+                total: 0
+            };
+
+            if (team) {
+                const acts = teamActivations[teamId] || [];
+                // Calculate Team Stats
+                const teamStats = calculateAdvancedPayroll(acts, financialConfig, team.members);
+
+                // User Share (Equal Split)
+                const memberCount = team.members.length || 1;
+                personal.bonus = teamStats.bonusPool / memberCount;
+                personal.saturday = teamStats.saturdayPay / memberCount;
+                personal.total = personal.baseSalary + personal.bonus + personal.saturday;
+
+                stats = {
+                    teamName: team.name,
+                    ...teamStats
+                };
+            } else {
+                // User with no team (e.g. Admin/Office)
+                // Just show salary
+                personal.total = personal.baseSalary;
+                stats = {
+                    teamName: 'Sin Equipo',
+                    unitsDone: 0,
+                    totalRevenue: 0,
+                    bonusPool: 0,
+                    saturdayPay: 0,
+                    details: { salaryCost: 0, opCost: 0 },
+                    counts: { bp: 0, ta: 0, multi: 0, mdu: 0 }
+                };
+            }
+
+            return {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                ...personal,
+                production: stats
+            };
+        });
 
         res.json({
-            meta: {
-                prices: {
-                    weekday: settings?.extraPointPrice || 0,
-                    saturday: settings?.saturdayPointPrice || 0,
-                    target: settings?.monthlyTargetPoints || 100
-                },
-                range: { start, end }
-            },
+            meta: { range: { start, end } },
             data: summary
         });
 
     } catch (error) {
-        console.error('Error getting payroll summary:', error);
+        console.error('Error Admin Payroll:', error);
         res.status(500).json({ message: 'Error fetching payroll data' });
     }
 };
