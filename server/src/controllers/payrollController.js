@@ -105,17 +105,58 @@ const calculateAdvancedPayroll = (activations, financials, teamMembers) => {
     let potentialBonus = 0;
     let saturdayDays = new Set();
 
+    // Detailed Counters
+    stats.counts = {
+        bp: 0,    // BP + BP_2_FAM
+        ta: 0,    // SDU
+        multi: 0, // BR_MULTI
+        mdu: 0    // MDU
+    };
+
     activations.forEach(act => {
         standardUnits++;
 
-        // Determine price/bonus based on type (Placeholder for future type logic)
-        // Currently utilizing base inputs only as per current Schema availability
-        let price = financials.pricePerUnit;
-        let bonus = financials.bonusPerUnit;
+        let price = 0;
+        let bonus = 0;
+        const type = act.activationType || 'BP'; // Default to BP
 
-        // Future: 
-        // if (act.activationType === 'TA') { price = financials.pricePerTA; bonus = financials.bonusPerTA; }
-        // if (act.activationType === 'MULTI') { price = financials.pricePerMulti; bonus = financials.bonusPerMulti; }
+        switch (type) {
+            case 'BP':
+            case 'BP_2_FAM':
+                // "BP basic y BP 2 familias seria el precio base"
+                price = financials.pricePerUnit || 0;
+                bonus = financials.bonusPerUnit || 0;
+                stats.counts.bp++;
+                break;
+
+            case 'BR_MULTI':
+                // "BR Multi seria el precio base + precio multi"
+                price = (financials.pricePerUnit || 0) + (financials.pricePerMulti || 0);
+                bonus = (financials.bonusPerUnit || 0) + (financials.bonusPerMulti || 0);
+                stats.counts.multi++;
+                break;
+
+            case 'SDU':
+                // "SDU seria Precio TA"
+                price = financials.pricePerTA || 0;
+                bonus = financials.bonusPerTA || 0;
+                stats.counts.ta++;
+                break;
+
+            case 'MDU':
+                // New MDU Price
+                price = financials.pricePerMDU || 0;
+                bonus = financials.bonusPerMDU || 0;
+                stats.counts.mdu++;
+                break;
+
+            // Fallback for any other type (e.g. legacy data)
+            default:
+                price = financials.pricePerUnit || 0;
+                bonus = financials.bonusPerUnit || 0;
+                stats.counts.bp++;
+                break;
+        }
 
         stats.totalRevenue += price;
         potentialBonus += bonus;

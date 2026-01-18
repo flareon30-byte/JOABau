@@ -244,6 +244,31 @@ const MyEarningsPage = () => {
                 </div>
             </div>
 
+            {/* Production Breakdown */}
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <CheckCircle className="text-joa-blue" size={20} /> Detalle de Producción
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Básicas (BP)</p>
+                        <p className="text-2xl font-bold text-slate-700">{stats?.counts?.bp || 0}</p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">TA (SDU)</p>
+                        <p className="text-2xl font-bold text-slate-700">{stats?.counts?.ta || 0}</p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Multi (BR)</p>
+                        <p className="text-2xl font-bold text-slate-700">{stats?.counts?.multi || 0}</p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">MDU</p>
+                        <p className="text-2xl font-bold text-slate-700">{stats?.counts?.mdu || 0}</p>
+                    </div>
+                </div>
+            </div>
+
             {/* Simulator */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">

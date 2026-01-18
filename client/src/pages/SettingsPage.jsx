@@ -158,12 +158,16 @@ const SettingsPage = () => {
                                 {groupKey === 'installers' && (
                                     <>
                                         <div>
-                                            <label className="block text-xs font-bold text-blue-600 uppercase">Precio TA</label>
+                                            <label className="block text-xs font-bold text-blue-600 uppercase">Precio TA (SDU)</label>
                                             <input type="number" step="0.01" value={data.pricePerTA || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerTA', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-blue-600 uppercase">Precio Multi</label>
+                                            <label className="block text-xs font-bold text-blue-600 uppercase">Precio Multi (BR)</label>
                                             <input type="number" step="0.01" value={data.pricePerMulti || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerMulti', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-blue-600 uppercase">Precio MDU</label>
+                                            <input type="number" step="0.01" value={data.pricePerMDU || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerMDU', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
                                         </div>
                                     </>
                                 )}
@@ -182,12 +186,16 @@ const SettingsPage = () => {
                                 {groupKey === 'installers' && (
                                     <>
                                         <div>
-                                            <label className="block text-xs font-bold text-green-600 uppercase">Bonus TA</label>
+                                            <label className="block text-xs font-bold text-green-600 uppercase">Bonus TA (SDU)</label>
                                             <input type="number" step="0.01" value={data.bonusPerTA || 0} onChange={(e) => handleFinancialChange(groupKey, 'bonusPerTA', e.target.value)} className="w-full p-2 border border-green-200 rounded-lg" />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-green-600 uppercase">Bonus Multi</label>
+                                            <label className="block text-xs font-bold text-green-600 uppercase">Bonus Multi (BR)</label>
                                             <input type="number" step="0.01" value={data.bonusPerMulti || 0} onChange={(e) => handleFinancialChange(groupKey, 'bonusPerMulti', e.target.value)} className="w-full p-2 border border-green-200 rounded-lg" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-green-600 uppercase">Bonus MDU</label>
+                                            <input type="number" step="0.01" value={data.bonusPerMDU || 0} onChange={(e) => handleFinancialChange(groupKey, 'bonusPerMDU', e.target.value)} className="w-full p-2 border border-green-200 rounded-lg" />
                                         </div>
                                     </>
                                 )}
