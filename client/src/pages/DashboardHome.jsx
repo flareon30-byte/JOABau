@@ -261,63 +261,39 @@ const DashboardHome = () => {
                 </div>
 
                 {/* Stats Grid */}
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                        <p className="text-slate-500 text-sm font-medium mb-4">Activaciones Realizadas</p>
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-blue-100 text-blue-600 rounded-xl">
-                                <CheckCircle size={24} />
-                            </div>
-                            <div>
-                                <h3 className="text-3xl font-bold text-slate-800">{stats.regularActivations + stats.saturdayActivations}</h3>
-                                <p className="text-xs text-slate-400">Total mes actual</p>
-                            </div>
+                {/* Stats Grid - Production Breakdown */}
+                <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-2">Resumen de Producción (Mes Actual)</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
+                        <div className="p-3 bg-blue-50 text-blue-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                            <span className="font-extrabold text-xs">BP</span>
                         </div>
+                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.bp || 0}</h3>
+                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">Básicas</p>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                        <p className="text-slate-500 text-sm font-medium mb-4">Objetivo Mensual</p>
-                        <div className="flex items-end gap-2 mb-2">
-                            <h3 className="text-4xl font-bold text-slate-800">{stats.regularPoints}</h3>
-                            <span className="text-slate-400 mb-1">/ {stats.target} pts</span>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
+                        <div className="p-3 bg-green-50 text-green-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                            <span className="font-extrabold text-xs">TA</span>
                         </div>
-                        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
-                            <div className="h-full bg-gradient-to-r from-joa-blue to-joa-cyan transition-all duration-1000" style={{ width: `${progress}%` }}></div>
-                        </div>
+                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.ta || 0}</h3>
+                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">SDU / TA</p>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                        <p className="text-slate-500 text-sm font-medium mb-4">Puntos de Sábado</p>
-                        <div className="flex items-center gap-4">
-                            <div className="p-3 bg-purple-100 text-purple-600 rounded-xl">
-                                <Calendar size={24} />
-                            </div>
-                            <div>
-                                <h3 className="text-3xl font-bold text-slate-800">{stats.saturdayPoints}</h3>
-                                <p className="text-xs text-slate-400">
-                                    Generado: {(stats.saturdayPoints * stats.saturdayPrice).toFixed(2)}€
-                                </p>
-                            </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
+                        <div className="p-3 bg-purple-50 text-purple-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                            <span className="font-extrabold text-xs">MUL</span>
                         </div>
+                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.multi || 0}</h3>
+                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">Multi / BR</p>
                     </div>
 
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden">
-                        {stats.isBonusMode && <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-yellow-400 to-orange-500 opacity-20 rounded-bl-full"></div>}
-                        <p className="text-slate-500 text-sm font-medium mb-4">Bonus Objetivo</p>
-                        <div className="flex items-center gap-4">
-                            <div className={`p-3 rounded-xl ${stats.isBonusMode ? 'bg-green-100 text-green-600' : 'bg-slate-100 text-slate-400'}`}>
-                                {showMoney ? <DollarSign size={24} /> : <Star size={24} />}
-                            </div>
-                            <div>
-                                <h3 className={`text-3xl font-bold ${stats.isBonusMode ? 'text-green-600' : 'text-slate-600'}`}>
-                                    {showMoney ? bonusMoney.toFixed(2) + '€' : bonusPoints + ' pts'}
-                                </h3>
-                                <p className="text-xs text-slate-400">
-                                    {showMoney ? 'Extra por objetivo' : 'Puntos sobre objetivo'}
-                                </p>
-                            </div>
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
+                        <div className="p-3 bg-orange-50 text-orange-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                            <span className="font-extrabold text-xs">MDU</span>
                         </div>
+                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.mdu || 0}</h3>
+                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">MDU</p>
                     </div>
                 </div>
 

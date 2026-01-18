@@ -164,7 +164,36 @@ exports.getActivatorDashboard = async (req, res) => {
         let regularActivations = 0;
         let saturdayActivations = 0;
 
+        // Production Counts
+        const counts = {
+            bp: 0,
+            ta: 0,
+            multi: 0,
+            mdu: 0
+        };
+
         activations.forEach(act => {
+            // Calculate Type Counts
+            const type = act.activationType || 'BP';
+            switch (type) {
+                case 'BP':
+                case 'BP_2_FAM':
+                    counts.bp++;
+                    break;
+                case 'SDU': // TA
+                    counts.ta++;
+                    break;
+                case 'BR_MULTI': // MULTI
+                    counts.multi++;
+                    break;
+                case 'MDU':
+                    counts.mdu++;
+                    break;
+                default:
+                    counts.bp++;
+            }
+
+            // Existing Points Logic (Keep for backward compatibility mostly, but dashboard will prioritize counts now)
             if (act.isSaturday) {
                 saturdayPoints += act.points;
                 saturdayActivations++;
@@ -188,6 +217,7 @@ exports.getActivatorDashboard = async (req, res) => {
                 saturdayPoints,
                 regularActivations,
                 saturdayActivations,
+                counts, // New detailed counts
                 target: settings.monthlyTargetPoints,
                 extraPrice: settings.extraPointPrice,
                 saturdayPrice: settings.saturdayPointPrice,
