@@ -1,29 +1,18 @@
-
+const axios = require('axios');
 
 async function testLogin() {
     try {
-        console.log('Testing login for Super Admin...');
-        const res = await fetch('http://localhost:3000/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                username: 'jane.orden.hidalgo@gmail.com',
-                password: '2122000'
-            })
+        const res = await axios.post('http://localhost:3000/api/auth/login', {
+            username: 'jane.orden.hidalgo@gmail.com',
+            password: 'your_password_here' // I don't know the password, but the server should handle invalid creds with 400, not 500
         });
-
-        if (res.ok) {
-            console.log('Login SUCCESS!');
-            const data = await res.json();
-            console.log('User:', data.user.username);
+        console.log('Login Status:', res.status);
+    } catch (e) {
+        if (e.response) {
+            console.log('Login Response:', e.response.status, e.response.data);
         } else {
-            console.log('Login FAILED:', res.status, res.statusText);
-            const err = await res.text();
-            console.log('Error:', err);
+            console.error('Login Network Error:', e.message);
         }
-
-    } catch (error) {
-        console.error('Test failed:', error);
     }
 }
 

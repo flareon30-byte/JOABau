@@ -1,8 +1,10 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const cookieParser = require('cookie-parser');
-const dotenv = require('dotenv');
 const authRoutes = require('./src/routes/authRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const teamRoutes = require('./src/routes/teamRoutes');
@@ -12,8 +14,8 @@ const fusionRoutes = require('./src/routes/fusionRoutes');
 const appointmentRoutes = require('./src/routes/appointmentRoutes');
 const activationRoutes = require('./src/routes/activationRoutes');
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
-
-dotenv.config();
+const payrollRoutes = require('./src/routes/payrollRoutes');
+const settingsRoutes = require('./src/routes/settingsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
