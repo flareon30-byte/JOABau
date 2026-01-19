@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { Camera, Save, ArrowLeft, Trash2, X, FileText } from 'lucide-react';
+import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool } from 'lucide-react';
+import SignatureCanvas from 'react-signature-canvas';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
@@ -28,7 +29,9 @@ const CompleteActivationPage = () => {
     });
 
     const [pdfPath, setPdfPath] = useState(null);
-    const [signedPdf, setSignedPdf] = useState(null);
+    const [signatures, setSignatures] = useState({ client: null, tech: null });
+    const [isSigning, setIsSigning] = useState('NONE'); // 'NONE' | 'CLIENT' | 'TECH'
+    const sigRef = useRef({});
 
     const [photos, setPhotos] = useState([]);
     const fileInputRef = useRef(null);
@@ -53,7 +56,6 @@ const CompleteActivationPage = () => {
                             hasMoreClients: info.hasMoreClients || false,
                             spInstalled: info.spInstalled || '',
                             taInstalled: info.taInstalled || false,
-                            taCount: info.taCount || '',
                             taCount: info.taCount || '',
                             homeId: info.homeIds && info.homeIds.length > 0 ? info.homeIds[0] : '',
                             klsId: info.klsId || found.address.klsId || '',
@@ -173,7 +175,32 @@ const CompleteActivationPage = () => {
         if (viewingPhotoIndex === index) setViewingPhotoIndex(null);
     };
 
-    const handleGeneratePdf = async () => {
+    const handleSignatureSave = async () => {
+        if (sigRef.current.isEmpty()) {
+            alert('Por favor, firme antes de continuar.');
+            return;
+        }
+
+        const signatureData = sigRef.current.toDataURL(); // Base64 png
+
+        if (isSigning === 'CLIENT') {
+            setSignatures(prev => ({ ...prev, client: signatureData }));
+            sigRef.current.clear();
+            setIsSigning('TECH');
+        } else if (isSigning === 'TECH') {
+            const finalSignatures = {
+                client: signatures.client,
+                tech: signatureData
+            };
+            setSignatures(prev => ({ ...prev, tech: signatureData }));
+            setIsSigning('NONE');
+
+            // Trigger PDF Generation immediately with captured signatures
+            await handleGeneratePdf(finalSignatures);
+        }
+    };
+
+    const handleGeneratePdf = async (currentSignatures = null) => {
         // Validate mandatory fields
         if (!formData.activationType) {
             alert('Por favor, selecciona un tipo de activación.');
@@ -187,6 +214,14 @@ const CompleteActivationPage = () => {
             return;
         }
 
+        // Use passed signatures (from immediate flow) or state (if retrying - though retry usually clears)
+        const sigs = currentSignatures || signatures;
+
+        if (!sigs.client || !sigs.tech) {
+            alert('Faltan las firmas. Por favor inicie el proceso de firma.');
+            return;
+        }
+
         try {
             const user = JSON.parse(localStorage.getItem('user') || '{}');
             const payload = {
@@ -197,19 +232,25 @@ const CompleteActivationPage = () => {
                 city: appointment.address.city,
                 klsId: klsIdToUse,
                 username: user.username,
-                userPhone: user.phone || ''
+                userPhone: user.phone || '',
+                clientSignature: sigs.client,
+                techSignature: sigs.tech
             };
 
+            setLoading(true); // Show global loading or local? relying on global for now or just generic await
             const res = await api.post('/api/activations/generate-pdf', payload);
 
             if (res.data.success) {
                 setPdfPath(res.data.path);
-                alert('Documento PDF generado correctamente. Por favor, asegúrate de firmarlo/completarlo si es necesario.');
-                window.open(`${BASE_URL}/${res.data.path}`, '_blank');
+                // alert('Documento generado y firmado correctamente.');
+                // Open in new tab
+                // window.open(`${BASE_URL}/${res.data.path}`, '_blank');
             }
         } catch (error) {
             console.error('Error creating PDF:', error);
-            alert('Error al generar el PDF.');
+            alert('Error al generar el PDF. ' + (error.response?.data?.message || ''));
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -233,9 +274,6 @@ const CompleteActivationPage = () => {
 
         if (pdfPath) {
             data.append('pdfPath', pdfPath);
-        }
-        if (signedPdf) {
-            data.append('signedPdf', signedPdf);
         }
 
         // Separate existing photos from new photos
@@ -419,17 +457,15 @@ const CompleteActivationPage = () => {
                     </div>
                 </div>
 
-                {/* PDF Document Section */}
-                <div className={`p-6 rounded-2xl shadow-sm border-2 ${pdfPath ? 'border-green-200 bg-green-50' : 'border-orange-200 bg-orange-50'}`}>
+                {/* Signatures & PDF Section */}
+                <div className={`p-6 rounded-2xl shadow-sm border-2 ${pdfPath ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
                     <div className="flex justify-between items-center mb-4">
                         <label className="text-base font-bold text-slate-700 flex items-center gap-2">
-                            <FileText size={20} className={pdfPath ? 'text-green-600' : 'text-orange-500'} />
-                            Documentación GlasfaserPlus
+                            <FileText size={20} className={pdfPath ? 'text-green-600' : 'text-blue-500'} />
+                            Firmas y Documentación
                         </label>
-                        {pdfPath ? (
-                            <span className="text-xs text-green-700 font-bold bg-white px-3 py-1 rounded-full border border-green-200 shadow-sm">¡Generado!</span>
-                        ) : (
-                            <span className="text-xs text-orange-700 font-bold bg-white px-3 py-1 rounded-full border border-orange-200 shadow-sm">Pendiente</span>
+                        {pdfPath && (
+                            <span className="text-xs text-green-700 font-bold bg-white px-3 py-1 rounded-full border border-green-200 shadow-sm">¡Firmado y Generado!</span>
                         )}
                     </div>
 
@@ -445,52 +481,42 @@ const CompleteActivationPage = () => {
                         />
                     </div>
 
-                    <p className="text-sm text-slate-600 mb-4">
-                        {pdfPath
-                            ? 'El documento ha sido generado. Puedes abrirlo para verificarlo o regenerarlo si han cambiado datos.'
-                            : 'Es necesario generar este documento para la documentación.'}
-                    </p>
-
-                    <button
-                        type="button"
-                        onClick={handleGeneratePdf}
-                        className={`w-full py-3 font-bold rounded-xl transition-all flex items-center justify-center gap-2 shadow-sm ${pdfPath
-                            ? 'bg-white border-2 border-green-500 text-green-700 hover:bg-green-100'
-                            : 'bg-orange-500 text-white hover:bg-orange-600 shadow-md'
-                            }`}
-                    >
-                        <FileText size={18} />
-                        {pdfPath ? 'Abrir / Regenerar PDF' : 'Generar PDF Automático'}
-                    </button>
-
-                    <div className="mt-6 pt-4 border-t border-slate-200/50">
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Adjuntar PDF Firmado (Opcional)</label>
-                        <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 hover:bg-white hover:border-joa-blue transition-all cursor-pointer relative bg-slate-50/50">
-                            <input
-                                type="file"
-                                accept=".pdf"
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                onChange={(e) => setSignedPdf(e.target.files[0])}
-                            />
-                            <div className="flex flex-col items-center justify-center text-slate-500">
-                                {signedPdf ? (
-                                    <>
-                                        <FileText size={32} className="text-joa-blue mb-2" />
-                                        <span className="font-bold text-slate-700 text-center">{signedPdf.name}</span>
-                                        <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full mt-2 font-bold">Listo para enviar</span>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="mb-2 bg-white p-3 rounded-full shadow-sm">
-                                            <FileText size={24} className="text-slate-400" />
-                                        </div>
-                                        <span className="font-bold text-slate-600">Subir PDF Firmado</span>
-                                        <span className="text-xs text-slate-400 mt-1">o arrastra el archivo aquí</span>
-                                    </>
-                                )}
-                            </div>
+                    {pdfPath ? (
+                        <div className="space-y-4">
+                            <p className="text-sm text-green-700">
+                                El documento ha sido generado y firmado digitalmente.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => window.open(`${BASE_URL}/${pdfPath}`, '_blank')}
+                                className="w-full py-3 bg-white border-2 border-green-500 text-green-700 font-bold rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-green-50"
+                            >
+                                <FileText size={18} />
+                                Ver PDF Generado
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => { setPdfPath(null); setSignatures({ client: null, tech: null }); }}
+                                className="w-full py-2 text-slate-500 text-sm hover:text-red-500 transition-colors"
+                            >
+                                Volver a firmar (Borrar actual)
+                            </button>
                         </div>
-                    </div>
+                    ) : (
+                        <div>
+                            <p className="text-sm text-slate-600 mb-4">
+                                Se requiere la firma del cliente y del técnico para generar la documentación automáticamente.
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => setIsSigning('CLIENT')}
+                                className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                            >
+                                <PenTool size={18} />
+                                Iniciar Proceso de Firma
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Photos */}
@@ -546,8 +572,8 @@ const CompleteActivationPage = () => {
                 {/* Submit Button */}
                 <button
                     type="submit"
-                    disabled={submitting}
-                    className="w-full py-4 bg-joa-blue text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                    disabled={submitting || !pdfPath}
+                    className="w-full py-4 bg-joa-blue text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {submitting ? (
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -558,7 +584,65 @@ const CompleteActivationPage = () => {
                         </>
                     )}
                 </button>
+                {!pdfPath && (
+                    <p className="text-center text-xs text-red-400 mt-2">
+                        Debes firmar y generar el PDF antes de finalizar.
+                    </p>
+                )}
             </form >
+
+            {/* Signature Modal */}
+            {isSigning !== 'NONE' && (
+                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-2xl p-4 shadow-2xl">
+                        <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">
+                                    {isSigning === 'CLIENT' ? 'Firma del Cliente' : 'Firma del Técnico'}
+                                </h3>
+                                <p className="text-sm text-slate-500">
+                                    {isSigning === 'CLIENT' ? 'Por favor, pida al cliente que firme.' : 'Firme usted para confirmar.'}
+                                </p>
+                            </div>
+                            <button onClick={() => setIsSigning('NONE')} className="text-slate-400 hover:text-slate-600">
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        <div className="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 touch-none overflow-hidden h-64 relative">
+                            <SignatureCanvas
+                                ref={sigRef}
+                                penColor="black"
+                                velocityFilterWeight={0.1} // More ink-like feel
+                                canvasProps={{
+                                    className: "w-full h-full",
+                                    style: { width: '100%', height: '100%' }
+                                }}
+                            />
+                            <div className="absolute bottom-2 right-2 text-[10px] text-slate-300 pointer-events-none">
+                                Área de Firma
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-4">
+                            <button
+                                type="button"
+                                onClick={() => sigRef.current.clear()}
+                                className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                            >
+                                Borrar / Corregir
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleSignatureSave}
+                                className="flex-1 py-3 bg-joa-blue text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
+                            >
+                                {isSigning === 'CLIENT' ? 'Siguiente (Técnico)' : 'Finalizar y Generar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Photo Viewer Modal */}
             {

@@ -269,8 +269,8 @@ exports.getAllActivations = async (req, res) => {
 exports.generatePdf = async (req, res) => {
     console.log('--- STARTING PDF GENERATION ---');
     try {
-        const { addressId, clientName, street, number, city, klsId } = req.body;
-        console.log('Request body:', { addressId, clientName, street, number, city, klsId });
+        const { addressId, clientName, street, number, city, klsId, clientSignature, techSignature } = req.body;
+        console.log('Request body:', { addressId, clientName, street, number, city, klsId, hasClientSig: !!clientSignature, hasTechSig: !!techSignature });
 
         // Fetch User details (Phone, Username) safely from DB
         const user = await prisma.user.findUnique({
@@ -296,11 +296,11 @@ exports.generatePdf = async (req, res) => {
 
         console.log('PDF Template found. Reading file...');
         const existingPdfBytes = fs.readFileSync(pdfPath);
-        console.log('PDF Read. Size:', existingPdfBytes.length);
 
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
         const form = pdfDoc.getForm();
-        console.log('PDF Loaded. Form fields count:', form.getFields().length);
+        const pages = pdfDoc.getPages();
+        const firstPage = pages[0];
 
         // Helper to safe fill
         const fill = (name, val, fontSize) => {
@@ -312,7 +312,6 @@ exports.generatePdf = async (req, res) => {
                 }
             } catch (e) {
                 // Field might be checkbox or not exist, ignore
-                // console.log(`Field ${name} skipped or error:`, e.message);
             }
         };
 
@@ -336,28 +335,60 @@ exports.generatePdf = async (req, res) => {
         fill('Text17', ''); // Safety Clear
         fill('Text18', ''); // Safety Clear
 
-        console.log('Fields filled. Saving PDF...');
+        // --- EMBED SIGNATURES ---
+        if (clientSignature) {
+            try {
+                const pngImageBytes = Buffer.from(clientSignature.split(',')[1], 'base64');
+                const clientSigImage = await pdfDoc.embedPng(pngImageBytes);
+                // Draw Client Signature (Bottom Left usually, or specific box)
+                // Assuming standard layout: Eigentümer/Auftraggeber is usually Left or Right.
+                // Based on "Text43" being Eigentümer Middle, let's place it near bottom.
+                firstPage.drawImage(clientSigImage, {
+                    x: 60,
+                    y: 130, // Adjust Y based on PDF layout (0 is bottom)
+                    width: 120,
+                    height: 60
+                });
+            } catch (sigErr) {
+                console.error('Error embedding Client Signature:', sigErr);
+            }
+        }
+
+        if (techSignature) {
+            try {
+                const pngImageBytes = Buffer.from(techSignature.split(',')[1], 'base64');
+                const techSigImage = await pdfDoc.embedPng(pngImageBytes);
+                // Draw Tech Signature (Bottom Right usually)
+                firstPage.drawImage(techSigImage, {
+                    x: 350,
+                    y: 130, // Adjust Y based on PDF layout
+                    width: 120,
+                    height: 60
+                });
+            } catch (sigErr) {
+                console.error('Error embedding Tech Signature:', sigErr);
+            }
+        }
+
+        form.flatten(); // Flatten form fields to make them uneditable
+
+        console.log('Fields filled and Signatures added. Saving PDF...');
 
         // Save
         const pdfBytes = await pdfDoc.save();
-        console.log('PDF Saved in memory. Size:', pdfBytes.length);
 
         // Sanitize filename
         const cleanName = `${street} ${number || ''}`.replace(/[^a-zA-Z0-9äöüÄÖÜß \-]/g, '').trim();
         const fileName = `${cleanName}.pdf`;
 
         const outDir = path.join(__dirname, '../../uploads/pdfs');
-        console.log('Ensuring output directory exists:', outDir);
 
         if (!fs.existsSync(outDir)) {
             fs.mkdirSync(outDir, { recursive: true });
-            console.log('Created directory:', outDir);
         }
 
         const outPath = path.join(outDir, fileName);
-        console.log('Writing file to:', outPath);
         fs.writeFileSync(outPath, pdfBytes);
-        console.log('File write successful.');
 
         // Return public path (add timestamp query to prevent caching)
         res.json({ success: true, path: `uploads/pdfs/${fileName}?t=${Date.now()}` });
