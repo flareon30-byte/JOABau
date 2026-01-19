@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool } from 'lucide-react';
-import SignatureCanvas from 'react-signature-canvas';
+import SignaturePad from 'signature_pad';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
@@ -21,7 +21,7 @@ const CompleteActivationPage = () => {
         apPorts: '2',
         hasMoreClients: false,
         taInstalled: false,
-        taCount: '', // kept as string for input
+        taCount: '',
         spInstalled: '',
         homeId: '',
         klsId: '',
@@ -31,7 +31,10 @@ const CompleteActivationPage = () => {
     const [pdfPath, setPdfPath] = useState(null);
     const [signatures, setSignatures] = useState({ client: null, tech: null });
     const [isSigning, setIsSigning] = useState('NONE'); // 'NONE' | 'CLIENT' | 'TECH'
-    const sigRef = useRef({});
+
+    // Signature Refs
+    const canvasRef = useRef(null);
+    const signaturePadRef = useRef(null);
 
     const [photos, setPhotos] = useState([]);
     const fileInputRef = useRef(null);
@@ -74,10 +77,7 @@ const CompleteActivationPage = () => {
                                 originalPath: path
                             })));
                         }
-                        // Logic if it's completed but info might be elsewhere or partial
-                        // usually specific info block handles this, basically fallback
                     } else if (found.address.klsId) {
-                        // Default KLS ID if available
                         setFormData(prev => ({ ...prev, klsId: found.address.klsId }));
                     }
                 } else {
@@ -91,6 +91,30 @@ const CompleteActivationPage = () => {
         };
         fetchAppointment();
     }, [id]);
+
+    // Initialize Signature Pad when modal opens
+    useEffect(() => {
+        if (isSigning !== 'NONE' && canvasRef.current) {
+            // Wait for modal transition/render
+            const timer = setTimeout(() => {
+                const canvas = canvasRef.current;
+                if (!canvas) return;
+
+                // High DPI adjustment
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
+
+                signaturePadRef.current = new SignaturePad(canvas, {
+                    backgroundColor: 'rgba(255, 255, 255, 0)', // Transparent
+                    penColor: 'rgb(0, 0, 0)'
+                });
+            }, 100);
+
+            return () => clearTimeout(timer);
+        }
+    }, [isSigning]);
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -176,16 +200,16 @@ const CompleteActivationPage = () => {
     };
 
     const handleSignatureSave = async () => {
-        if (sigRef.current.isEmpty()) {
+        if (!signaturePadRef.current || signaturePadRef.current.isEmpty()) {
             alert('Por favor, firme antes de continuar.');
             return;
         }
 
-        const signatureData = sigRef.current.toDataURL(); // Base64 png
+        const signatureData = signaturePadRef.current.toDataURL(); // Base64 png
 
         if (isSigning === 'CLIENT') {
             setSignatures(prev => ({ ...prev, client: signatureData }));
-            sigRef.current.clear();
+            signaturePadRef.current.clear();
             setIsSigning('TECH');
         } else if (isSigning === 'TECH') {
             const finalSignatures = {
@@ -237,14 +261,12 @@ const CompleteActivationPage = () => {
                 techSignature: sigs.tech
             };
 
-            setLoading(true); // Show global loading or local? relying on global for now or just generic await
+            setLoading(true);
             const res = await api.post('/api/activations/generate-pdf', payload);
 
             if (res.data.success) {
                 setPdfPath(res.data.path);
                 // alert('Documento generado y firmado correctamente.');
-                // Open in new tab
-                // window.open(`${BASE_URL}/${res.data.path}`, '_blank');
             }
         } catch (error) {
             console.error('Error creating PDF:', error);
@@ -610,15 +632,11 @@ const CompleteActivationPage = () => {
                         </div>
 
                         <div className="border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 touch-none overflow-hidden h-64 relative">
-                            <SignatureCanvas
-                                ref={sigRef}
-                                penColor="black"
-                                velocityFilterWeight={0.1} // More ink-like feel
-                                canvasProps={{
-                                    className: "w-full h-full",
-                                    style: { width: '100%', height: '100%' }
-                                }}
-                            />
+                            {/* Native Canvas */}
+                            <canvas
+                                ref={canvasRef}
+                                className="w-full h-full touch-none"
+                            ></canvas>
                             <div className="absolute bottom-2 right-2 text-[10px] text-slate-300 pointer-events-none">
                                 Área de Firma
                             </div>
@@ -627,7 +645,7 @@ const CompleteActivationPage = () => {
                         <div className="flex gap-3 mt-4">
                             <button
                                 type="button"
-                                onClick={() => sigRef.current.clear()}
+                                onClick={() => signaturePadRef.current?.clear()}
                                 className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
                             >
                                 Borrar / Corregir
