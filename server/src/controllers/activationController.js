@@ -340,12 +340,11 @@ exports.generatePdf = async (req, res) => {
             try {
                 const pngImageBytes = Buffer.from(clientSignature.split(',')[1], 'base64');
                 const clientSigImage = await pdfDoc.embedPng(pngImageBytes);
-                // Draw Client Signature (Bottom Left usually, or specific box)
-                // Assuming standard layout: Eigentümer/Auftraggeber is usually Left or Right.
-                // Based on "Text43" being Eigentümer Middle, let's place it near bottom.
+                // Client usually "Eigentümer" (Right side based on user feedback)
+                // Moving UP to aligns with the middle section (approx y=360)
                 firstPage.drawImage(clientSigImage, {
-                    x: 60,
-                    y: 130, // Adjust Y based on PDF layout (0 is bottom)
+                    x: 350,  // Moved to Right
+                    y: 360,  // Moved UP
                     width: 120,
                     height: 60
                 });
@@ -358,10 +357,10 @@ exports.generatePdf = async (req, res) => {
             try {
                 const pngImageBytes = Buffer.from(techSignature.split(',')[1], 'base64');
                 const techSigImage = await pdfDoc.embedPng(pngImageBytes);
-                // Draw Tech Signature (Bottom Right usually)
+                // Tech usually "Monteur" (Left side)
                 firstPage.drawImage(techSigImage, {
-                    x: 350,
-                    y: 130, // Adjust Y based on PDF layout
+                    x: 60,   // Moved to Left
+                    y: 360,  // Moved UP
                     width: 120,
                     height: 60
                 });
