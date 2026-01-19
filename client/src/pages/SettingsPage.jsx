@@ -11,6 +11,7 @@ const SettingsPage = () => {
             dietasPerDay: 0,
             car: 400,
             gas: 300,
+            equipmentRent: 0,
             materials: 100,
 
             // Revenue Prices (Client pays)
@@ -31,6 +32,7 @@ const SettingsPage = () => {
             dietasPerDay: 0,
             car: 400,
             gas: 300,
+            equipmentRent: 0,
             materials: 50,
             pricePerUnit: 0.40,
             bonusPerUnit: 0.05,
@@ -140,6 +142,10 @@ const SettingsPage = () => {
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase">Materiales (€)</label>
                                 <input type="number" value={data.materials} onChange={(e) => handleFinancialChange(groupKey, 'materials', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Alquiler Equipos / Herramientas (€)</label>
+                                <input type="number" value={data.equipmentRent || 0} onChange={(e) => handleFinancialChange(groupKey, 'equipmentRent', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
                         </div>
                     </div>

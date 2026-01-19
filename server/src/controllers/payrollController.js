@@ -88,7 +88,7 @@ const calculateAdvancedPayroll = (activations, financials, teamMembers) => {
     const personnelMonthly = (financials.salary + financials.insurance + (financials.dietasPerDay * 21)) * memberCount;
 
     // Operational: Fixed per team
-    const operationalMonthly = financials.car + financials.gas + financials.materials;
+    const operationalMonthly = financials.car + financials.gas + financials.materials + (financials.equipmentRent || 0);
 
     stats.totalCost = personnelMonthly + operationalMonthly;
     stats.details.salaryCost = personnelMonthly;
