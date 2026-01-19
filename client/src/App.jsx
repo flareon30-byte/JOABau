@@ -14,7 +14,7 @@ import SettingsPage from './pages/SettingsPage';
 
 import BillingPage from './pages/BillingPage';
 import PayrollPage from './pages/PayrollPage';
-import CompleteActivationPage from './pages/CompleteActivationPage';
+import ActivationPageV2 from './pages/ActivationPageV2';
 import ProtocolDepartment from './pages/ProtocolDepartment';
 import MyEarningsPage from './pages/MyEarningsPage';
 
@@ -23,7 +23,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/activation/:id/complete" element={<CompleteActivationPage />} />
+        <Route path="/activation/:id/complete" element={<ActivationPageV2 />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
           <Route path="users" element={<UserManagement />} />

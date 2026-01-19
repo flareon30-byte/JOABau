@@ -6,7 +6,7 @@ import SignaturePad from 'signature_pad';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
-const CompleteActivationPage = () => {
+const ActivationPageV2 = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [appointment, setAppointment] = useState(null);
@@ -335,7 +335,7 @@ const CompleteActivationPage = () => {
                     <ArrowLeft size={24} className="text-slate-600" />
                 </button>
                 <div>
-                    <h1 className="text-lg font-bold text-slate-800">Finalizar Activación</h1>
+                    <h1 className="text-lg font-bold text-slate-800">Finalizar Activación (V2)</h1>
                     <p className="text-xs text-slate-500">{appointment.address.street} {appointment.address.number}</p>
                 </div>
             </div>
@@ -593,7 +593,7 @@ const CompleteActivationPage = () => {
 
                 {/* Debug Header - REMOVE LATER */}
                 <div className="bg-red-500 text-white text-center font-bold p-2 rounded mb-4">
-                    DEBUG: VERSIÓN NUEVA FIRMAS ACTIVADA
+                    DEBUG: VERSIÓN V2 NUEVA FIRMAS ACTIVADA
                 </div>
 
                 {/* Submit Button */}
@@ -708,4 +708,4 @@ const CompleteActivationPage = () => {
     );
 };
 
-export default CompleteActivationPage;
+export default ActivationPageV2;
