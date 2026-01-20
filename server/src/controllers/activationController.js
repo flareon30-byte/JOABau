@@ -335,59 +335,54 @@ exports.generatePdf = async (req, res) => {
         fill('Text17', ''); // Safety Clear
         fill('Text18', ''); // Safety Clear
 
-        // --- EMBED SIGNATURES (Smart Placement) ---
-        // Coordinates: Y=190 (Sitting on line), X=40/340 (Aligned with margins)
-        const sigY = 190;
-
-        const placeSignature = async (sigBase64, fieldName, fallbackCoords) => {
-            if (!sigBase64) return;
+        // --- EMBED SIGNATURES (ANCHOR SYSTEM) ---
+        // Plan C: Use known fields (Text42/Text43 - Dates) as anchors
+        const placeSignatureRelative = async (sigBase64, anchorFieldName, fallbackX) => {
+            if (!sigBase66) return;
 
             try {
                 const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
                 const sigImage = await pdfDoc.embedPng(pngImageBytes);
 
-                let x = fallbackCoords.x;
-                let y = fallbackCoords.y;
-                let w = fallbackCoords.w;
-                let h = fallbackCoords.h;
+                let x = fallbackX;
+                // Default Yfallback (approximate visual line)
+                let y = 190;
 
-                // 1. Try to find the specific field for the signature
+                // Try to find anchor field
                 try {
-                    const sigField = form.getTextField(fieldName);
-                    if (sigField) {
-                        const widgets = sigField.getWidgets();
+                    const anchorField = form.getTextField(anchorFieldName);
+                    if (anchorField) {
+                        const widgets = anchorField.getWidgets();
                         if (widgets && widgets.length > 0) {
                             const rect = widgets[0].getRectangle();
+                            // Place signature ABOVE the date field
                             x = rect.x;
-                            y = rect.y;
-                            w = rect.width;
-                            h = rect.height;
+                            y = rect.y + rect.height + 5; // Start 5 pts above the date box
 
-                            // Optional: Center specific aspect ratio inside the box?
-                            // For now, stretch to box is safest to ensure location match
+                            console.log(`Anchor '${anchorFieldName}' found at X=${rect.x}, Y=${rect.y}. Placing signature at Y=${y}`);
                         }
                     }
                 } catch (e) {
-                    // Field not found, proceed with fallback
+                    console.warn(`Anchor field '${anchorFieldName}' not found, utilizing fallback.`);
                 }
 
                 firstPage.drawImage(sigImage, {
                     x: x,
                     y: y,
-                    width: w,
-                    height: h
+                    width: 120,
+                    height: 50 // Slightly shorter height to fit nicely
                 });
 
             } catch (err) {
-                console.error(`Error placing signature for ${fieldName}:`, err);
+                console.error(`Error placing signature for anchor ${anchorFieldName}:`, err);
             }
         };
 
-        // Place Client Signature (Right)
-        await placeSignature(clientSignature, 'SIG_EIGENTUEMER', { x: 340, y: sigY, w: 120, h: 60 });
+        // Place Client Signature (Anchor: Text43 - Eigentümer Date)
+        await placeSignatureRelative(clientSignature, 'Text43', 340);
 
-        // Place Tech Signature (Left)
-        await placeSignature(techSignature, 'SIG_MONTEUR', { x: 40, y: sigY, w: 120, h: 60 });
+        // Place Tech Signature (Anchor: Text42 - Monteur Date)
+        await placeSignatureRelative(techSignature, 'Text42', 40);
 
         form.flatten(); // Flatten form fields to make them uneditable
 
