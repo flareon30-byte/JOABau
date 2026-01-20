@@ -5,7 +5,7 @@ import { Search, FileText, Download, Filter, Calendar, Trash2 } from 'lucide-rea
 const BillingPage = () => {
     // 1. Projects State
     const [projects, setProjects] = useState([]);
-    
+
     // 2. Filters State
     const [filters, setFilters] = useState({
         projectId: '',
@@ -28,6 +28,17 @@ const BillingPage = () => {
 
     // 5. Selection State (New)
     const [selectedIds, setSelectedIds] = useState([]);
+
+    // 6. Photo Modal State
+    const [selectedPhotos, setSelectedPhotos] = useState([]);
+    const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+
+    // Photo Viewer Handler
+    const handleViewPhotos = (photos) => {
+        if (!photos || photos.length === 0) return;
+        setSelectedPhotos(photos);
+        setIsPhotoModalOpen(true);
+    };
 
     useEffect(() => {
         fetchProjects();
@@ -161,8 +172,26 @@ const BillingPage = () => {
         let columns = [];
         let emptyMsg = "No hay datos";
 
-        // Base URL for viewing PDFs
-        const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        // Smart Base URL Detection for Production
+        let BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        // If we are in browser environment (not SSR)
+        if (typeof window !== 'undefined') {
+            // If the current hostname is NOT localhost (e.g. it's an IP or domain)
+            // AND the configured API URL IS localhost, then we have a mismatch.
+            // We fix it by using the current hostname.
+            if (window.location.hostname !== 'localhost' && BASE_URL.includes('localhost')) {
+                // Assuming backend is on same host, port 5000 (standard setup)
+                // Extract protocol (http:) and hostname (1.2.3.4)
+                BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+            }
+        }
+
+        const getFileUrl = (path) => {
+            if (!path) return '';
+            // Remove leading slash if present to avoid double slash
+            const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+            return `${BASE_URL}/${cleanPath}`;
+        };
 
         switch (activeTab) {
             case 'soplado':
@@ -244,13 +273,27 @@ const BillingPage = () => {
                                         <td className="p-4">{row.address?.street} {row.address?.number}</td>
                                         <td className="p-4">{row.address?.clientName || 'Sin Nombre'}</td>
                                         <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{row.activationType}</span></td>
-                                        <td className="p-4 font-bold text-slate-500">{row.photos?.length || 0}</td>
 
-                                        {/* PDF Status / Link */}
+                                        {/* Photos Column - Clickable for Modal */}
+                                        <td className="p-4">
+                                            {row.photos && row.photos.length > 0 ? (
+                                                <button
+                                                    onClick={() => handleViewPhotos(row.photos)}
+                                                    className="font-bold text-blue-600 hover:text-blue-800 underline decoration-dotted transition-colors"
+                                                    title="Ver Galería de Fotos"
+                                                >
+                                                    {row.photos.length} Fotos
+                                                </button>
+                                            ) : (
+                                                <span className="text-slate-400">0</span>
+                                            )}
+                                        </td>
+
+                                        {/* PDF Status / Link with Dynamic URL */}
                                         <td className="p-4">
                                             {row.pdfPath ? (
                                                 <a
-                                                    href={`${BASE_URL}/${row.pdfPath}`}
+                                                    href={getFileUrl(row.pdfPath)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-red-500 hover:text-red-700 flex items-center gap-1 font-semibold"
@@ -305,7 +348,47 @@ const BillingPage = () => {
         );
     };
 
+    // --- PHOTO MODAL ---
+    const PhotoModal = () => {
+        if (!isPhotoModalOpen) return null;
 
+        let BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && BASE_URL.includes('localhost')) {
+            BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+        }
+
+        const getUrl = (path) => {
+            if (!path) return '';
+            const cleanPath = path.startsWith('/') ? path.slice(1) : path;
+            return `${BASE_URL}/${cleanPath}`;
+        };
+
+        return (
+            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setIsPhotoModalOpen(false)}>
+                <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
+                    <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+                        <h3 className="font-bold text-lg">Galería de Fotos ({selectedPhotos.length})</h3>
+                        <button onClick={() => setIsPhotoModalOpen(false)} className="text-slate-500 hover:text-black font-bold text-xl">×</button>
+                    </div>
+                    <div className="p-4 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {selectedPhotos.map((photo, idx) => (
+                            <div key={idx} className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group">
+                                <img
+                                    src={getUrl(photo)}
+                                    alt={`Evidencia ${idx}`}
+                                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={() => window.open(getUrl(photo), '_blank')}
+                                />
+                            </div>
+                        ))}
+                    </div>
+                    <div className="p-4 border-t border-slate-200 text-right">
+                        <button onClick={() => setIsPhotoModalOpen(false)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg font-medium text-slate-700">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="max-w-7xl mx-auto space-y-6">
@@ -422,6 +505,8 @@ const BillingPage = () => {
                     {renderTable()}
                 </div>
             </div>
+
+            <PhotoModal />
         </div>
     );
 };
