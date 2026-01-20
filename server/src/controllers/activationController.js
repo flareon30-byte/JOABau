@@ -336,8 +336,8 @@ exports.generatePdf = async (req, res) => {
         fill('Text18', ''); // Safety Clear
 
         // --- EMBED SIGNATURES (Smart Placement) ---
-        // Coordinates manually adjusted: Lowering to 205 to sit ON the signature line.
-        const sigY = 205;
+        // Coordinates manually adjusted: Y=215 (Sweet spot between floating and overlapping).
+        const sigY = 215;
 
         const placeSignature = async (sigBase64, fieldName, fallbackCoords) => {
             if (!sigBase64) return;
@@ -384,7 +384,7 @@ exports.generatePdf = async (req, res) => {
         };
 
         // Place Client Signature (Right)
-        await placeSignature(clientSignature, 'SIG_EIGENTUEMER', { x: 350, y: sigY, w: 120, h: 60 });
+        await placeSignature(clientSignature, 'SIG_EIGENTUEMER', { x: 300, y: sigY, w: 120, h: 60 });
 
         // Place Tech Signature (Left)
         await placeSignature(techSignature, 'SIG_MONTEUR', { x: 60, y: sigY, w: 120, h: 60 });
