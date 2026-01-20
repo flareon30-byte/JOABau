@@ -343,8 +343,8 @@ exports.generatePdf = async (req, res) => {
                 // Client usually "Eigentümer" (Right side based on user feedback)
                 // Lowering significantly to y=235 to hit the target line
                 firstPage.drawImage(clientSigImage, {
-                    x: 350,  // Right
-                    y: 235,  // Lowered from 360
+                    x: 290,  // Moved Left from 350 to align with line start
+                    y: 235,  // Kept same height
                     width: 120,
                     height: 60
                 });
