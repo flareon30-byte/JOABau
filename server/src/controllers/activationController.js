@@ -299,6 +299,19 @@ exports.generatePdf = async (req, res) => {
 
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
         const form = pdfDoc.getForm();
+
+        // --- DIAGNOSTIC SPY ---
+        console.log('--- AUDITING PDF FIELDS ---');
+        const fields = form.getFields();
+        fields.forEach(f => {
+            console.log(`Field Found: name='${f.getName()}' type='${f.constructor.name}'`);
+            // Check specifically for anything looking like SIG_
+            if (f.getName().includes('SIG') || f.getName().includes('MONTEUR') || f.getName().includes('EIGEN')) {
+                console.log('!!! POTENTIAL MATCH FOUND !!!');
+            }
+        });
+        console.log('--- END AUDIT ---');
+
         const pages = pdfDoc.getPages();
         const firstPage = pages[0];
 
