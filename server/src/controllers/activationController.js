@@ -150,7 +150,6 @@ exports.submitActivation = async (req, res) => {
         if (finalTaCount > 0) {
             // Determine TA Point Value based on Activation Type
             let taPointValue = pointsConfig['SDU']; // Default
-
             if (activationType === 'BP') {
                 taPointValue = pointsConfig['SDU'];
             } else if (['BP_2_FAM', 'BR_MULTI'].includes(activationType)) {
@@ -329,90 +328,63 @@ exports.generatePdf = async (req, res) => {
         fill('Text42', cityDate, 7); // Monteur Middle - Smaller font
         fill('Text43', cityDate, 7); // Eigentümer Middle - Smaller font
 
-        fill('Text1', ''); // Clear Abweichung        // --- EMBED SIGNATURES (EXACT FIELD MATCH) ---
-        // Using confirmed fields: 'SIG_MONTEUR' and 'SIG_EIGENTUEMER'
-        const placeSignatureInField = async (sigBase64, fieldName) => {
+        fill('Text1', ''); // Clear Abweichung
+
+        // --- EMBED SIGNATURES (PIN SYSTEM) ---
+        // Strategy: Use SIG_ fields as "Pins" for coordinates (X,Y), but force a fixed size (140x50)
+
+        const placeSignaturePin = async (sigBase64, fieldName) => {
             if (!sigBase64) {
-                console.log(`Skipping signature for ${fieldName} - No data provided.`);
+                console.warn(`[PDF GEN] No signature data for ${fieldName}`);
                 return;
             }
 
             try {
-                // 1. Get the field
-                const sigField = form.getTextField(fieldName);
-                if (!sigField) {
-                    console.warn(`Field ${fieldName} not found despite audit. Skipping.`);
-                    return;
+                // 1. Find the "Pin" field
+                let rect = { x: 0, y: 0 };
+                let found = false;
+
+                try {
+                    const sigField = form.getTextField(fieldName);
+                    const widgets = sigField.getWidgets();
+                    if (widgets && widgets.length > 0) {
+                        const wRect = widgets[0].getRectangle();
+                        rect = { x: wRect.x, y: wRect.y }; // Use the field's position
+                        found = true;
+                        console.log(`[PDF GEN] Found Pin '${fieldName}' at X=${rect.x}, Y=${rect.y}`);
+                    }
+                } catch (e) {
+                    // Field not found
                 }
 
-                // 2. Get location rect
-                const widgets = sigField.getWidgets();
-                if (!widgets || widgets.length === 0) {
-                    console.warn(`Field ${fieldName} has no visible widgets.`);
-                    return;
+                // 2. Fallback if Pin not found (Safety net)
+                if (!found) {
+                    console.warn(`[PDF GEN] Pin field '${fieldName}' NOT FOUND. Using fallback coordinates.`);
+                    // Fallback to manual if user forgot to upload new PDF
+                    if (fieldName === 'SIG_EIGENTUEMER') rect = { x: 330, y: 210 };
+                    if (fieldName === 'SIG_MONTEUR') rect = { x: 40, y: 210 };
                 }
-                const rect = widgets[0].getRectangle();
 
-                // 3. Embed and Draw
+                // 3. Embed and Draw (FIXED SIZE)
                 const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
                 const sigImage = await pdfDoc.embedPng(pngImageBytes);
 
+                // Draw at the Pin's X,Y with a standard size
                 firstPage.drawImage(sigImage, {
                     x: rect.x,
                     y: rect.y,
-                    width: rect.width,
-                    height: rect.height
+                    width: 140,     // Fixed width
+                    height: 50      // Fixed height
                 });
-
-                console.log(`Success: Signature placed in matching field '${fieldName}' at (${rect.x}, ${rect.y})`);
+                console.log(`[PDF GEN] Success: Signature drawn at ${rect.x}, ${rect.y}`);
 
             } catch (err) {
-                console.error(`Error placing signature into field ${fieldName}:`, err);
+                console.error(`[PDF GEN] Error placing signature for ${fieldName}:`, err);
             }
         };
 
-        // --- EMBED SIGNATURES (MANUAL OVERRIDE - ROBUST) ---
-        // Coordinates: Y=210 (Vertical center), X=40 (Left), X=330 (Right)
-
-        const placeSignatureManual = async (sigBase64, x, y, name) => {
-            if (!sigBase64) {
-                console.warn(`[PDF GEN] No signature data provided for ${name}`);
-                return;
-            }
-
-            try {
-                console.log(`[PDF GEN] Embedding signature for ${name} at ${x},${y}`);
-                const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
-                const sigImage = await pdfDoc.embedPng(pngImageBytes);
-
-                firstPage.drawImage(sigImage, {
-                    x: x,
-                    y: y,
-                    width: 140,
-                    height: 50
-                });
-                console.log(`[PDF GEN] Success: Placed ${name} signature.`);
-
-            } catch (err) {
-                console.error(`[PDF GEN] Error placing signature for ${name}:`, err);
-            }
-        };
-
-        // Client Signature (Right)
-        if (clientSignature) {
-            console.log('[PDF GEN] Processing Client Signature...');
-            await placeSignatureManual(clientSignature, 330, 210, 'Client');
-        } else {
-            console.warn('[PDF GEN] SKIPPING Client Signature - Data is missing/empty');
-        }
-
-        // Tech Signature (Left)
-        if (techSignature) {
-            console.log('[PDF GEN] Processing Tech Signature...');
-            await placeSignatureManual(techSignature, 40, 210, 'Tech');
-        } else {
-            console.warn('[PDF GEN] SKIPPING Tech Signature - Data is missing/empty');
-        }
+        await placeSignaturePin(clientSignature, 'SIG_EIGENTUEMER');
+        await placeSignaturePin(techSignature, 'SIG_MONTEUR');
 
         form.flatten(); // Flatten form fields to make them uneditable
 
