@@ -302,16 +302,6 @@ exports.generatePdf = async (req, res) => {
         const pages = pdfDoc.getPages();
         const firstPage = pages[0];
 
-        // DEBUG: List all fields in the PDF
-        const fields = form.getFields();
-        console.log('--- PDF FORM FIELDS FOUND ---');
-        fields.forEach(field => {
-            const type = field.constructor.name;
-            const name = field.getName();
-            console.log(`Field Name: "${name}" (Type: ${type})`);
-        });
-        console.log('-----------------------------');
-
         // Helper to safe fill
         const fill = (name, val, fontSize) => {
             try {
@@ -345,54 +335,41 @@ exports.generatePdf = async (req, res) => {
         fill('Text17', ''); // Safety Clear
         fill('Text18', ''); // Safety Clear
 
-        // --- EMBED SIGNATURES (Smart Placement) ---
-        const placeSignature = async (sigBase64, fieldName, fallbackCoords) => {
-            if (!sigBase64) return;
+        // --- EMBED SIGNATURES ---
+        // Coordinates manually adjusted based on user feedback
+        const sigY = 210; // Slightly higher than 195 to avoid overlapping date
 
+        if (clientSignature) {
             try {
-                const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
-                const sigImage = await pdfDoc.embedPng(pngImageBytes);
-
-                let x = fallbackCoords.x;
-                let y = fallbackCoords.y;
-                let w = fallbackCoords.w;
-                let h = fallbackCoords.h;
-
-                // 1. Try to find the specific field for the signature
-                try {
-                    const sigField = form.getTextField(fieldName);
-                    if (sigField) {
-                        const widgets = sigField.getWidgets();
-                        if (widgets && widgets.length > 0) {
-                            const rect = widgets[0].getRectangle();
-                            x = rect.x;
-                            y = rect.y;
-                            w = rect.width;
-                            h = rect.height;
-                            console.log(`Found Smart Field '${fieldName}' at:`, { x, y, w, h });
-                        }
-                    }
-                } catch (e) {
-                    // Field not found, proceed with fallback
-                }
-
-                firstPage.drawImage(sigImage, {
-                    x: x,
-                    y: y,
-                    width: w,
-                    height: h
+                const pngImageBytes = Buffer.from(clientSignature.split(',')[1], 'base64');
+                const clientSigImage = await pdfDoc.embedPng(pngImageBytes);
+                // Client (Right)
+                firstPage.drawImage(clientSigImage, {
+                    x: 350,
+                    y: sigY,
+                    width: 120,
+                    height: 60
                 });
-
-            } catch (err) {
-                console.error(`Error placing signature for ${fieldName}:`, err);
+            } catch (sigErr) {
+                console.error('Error embedding Client Signature:', sigErr);
             }
-        };
+        }
 
-        // Place Client Signature
-        await placeSignature(clientSignature, 'SIG_EIGENTUEMER', { x: 350, y: 195, w: 120, h: 60 });
-
-        // Place Tech Signature
-        await placeSignature(techSignature, 'SIG_MONTEUR', { x: 90, y: 195, w: 120, h: 60 });
+        if (techSignature) {
+            try {
+                const pngImageBytes = Buffer.from(techSignature.split(',')[1], 'base64');
+                const techSigImage = await pdfDoc.embedPng(pngImageBytes);
+                // Tech (Left)
+                firstPage.drawImage(techSigImage, {
+                    x: 85,   // Centered in left column
+                    y: sigY,
+                    width: 120,
+                    height: 60
+                });
+            } catch (sigErr) {
+                console.error('Error embedding Tech Signature:', sigErr);
+            }
+        }
 
         form.flatten(); // Flatten form fields to make them uneditable
 
