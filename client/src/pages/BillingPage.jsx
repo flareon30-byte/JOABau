@@ -3,7 +3,30 @@ import api from '../api/axios';
 import { Search, FileText, Download, Filter, Calendar, Trash2 } from 'lucide-react';
 
 const BillingPage = () => {
-    // Selection State
+    // 1. Projects State
+    const [projects, setProjects] = useState([]);
+    
+    // 2. Filters State
+    const [filters, setFilters] = useState({
+        projectId: '',
+        startDate: '',
+        endDate: '',
+        nvt: ''
+    });
+
+    // 3. Data State
+    const [billingData, setBillingData] = useState({
+        soplado: [],
+        fusion: [],
+        activation: [],
+        protocol: []
+    });
+    const [loading, setLoading] = useState(false);
+
+    // 4. Tab State
+    const [activeTab, setActiveTab] = useState('soplado');
+
+    // 5. Selection State (New)
     const [selectedIds, setSelectedIds] = useState([]);
 
     useEffect(() => {
