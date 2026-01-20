@@ -300,21 +300,6 @@ exports.generatePdf = async (req, res) => {
         const pdfDoc = await PDFDocument.load(existingPdfBytes);
         const form = pdfDoc.getForm();
 
-        // --- DIAGNOSTIC SPY ---
-        console.log('--- AUDITING PDF FIELDS ---');
-        const fields = form.getFields();
-        fields.forEach(f => {
-            console.log(`Field Found: name='${f.getName()}' type='${f.constructor.name}'`);
-            // Check specifically for anything looking like SIG_
-            if (f.getName().includes('SIG') || f.getName().includes('MONTEUR') || f.getName().includes('EIGEN')) {
-                console.log('!!! POTENTIAL MATCH FOUND !!!');
-            }
-        });
-        console.log('--- END AUDIT ---');
-
-        const pages = pdfDoc.getPages();
-        const firstPage = pages[0];
-
         // Helper to safe fill
         const fill = (name, val, fontSize) => {
             try {
@@ -328,6 +313,8 @@ exports.generatePdf = async (req, res) => {
             }
         };
 
+        const pages = pdfDoc.getPages();
+        const firstPage = pages[0];
         const today = new Date().toLocaleDateString('de-DE');
         const cityDate = `${city || ''}, ${today}`;
 
@@ -342,60 +329,50 @@ exports.generatePdf = async (req, res) => {
         fill('Text42', cityDate, 7); // Monteur Middle - Smaller font
         fill('Text43', cityDate, 7); // Eigentümer Middle - Smaller font
 
-        fill('Text1', ''); // Clear Abweichung (Big Box) - Identified as Text1
-
-        fill('Text46', cityDate, 7);  // Monteur Bottom - Identified as Text46
-        fill('Text17', ''); // Safety Clear
-        fill('Text18', ''); // Safety Clear
-
-        // --- EMBED SIGNATURES (ANCHOR SYSTEM) ---
-        // Plan C: Use known fields (Text42/Text43 - Dates) as anchors
-        const placeSignatureRelative = async (sigBase64, anchorFieldName, fallbackX) => {
-            if (!sigBase64) return;
+        fill('Text1', ''); // Clear Abweichung        // --- EMBED SIGNATURES (EXACT FIELD MATCH) ---
+        // Using confirmed fields: 'SIG_MONTEUR' and 'SIG_EIGENTUEMER'
+        const placeSignatureInField = async (sigBase64, fieldName) => {
+            if (!sigBase64) {
+                console.log(`Skipping signature for ${fieldName} - No data provided.`);
+                return;
+            }
 
             try {
+                // 1. Get the field
+                const sigField = form.getTextField(fieldName);
+                if (!sigField) {
+                    console.warn(`Field ${fieldName} not found despite audit. Skipping.`);
+                    return;
+                }
+
+                // 2. Get location rect
+                const widgets = sigField.getWidgets();
+                if (!widgets || widgets.length === 0) {
+                    console.warn(`Field ${fieldName} has no visible widgets.`);
+                    return;
+                }
+                const rect = widgets[0].getRectangle();
+
+                // 3. Embed and Draw
                 const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
                 const sigImage = await pdfDoc.embedPng(pngImageBytes);
 
-                let x = fallbackX;
-                // Default Yfallback (approximate visual line)
-                let y = 190;
-
-                // Try to find anchor field
-                try {
-                    const anchorField = form.getTextField(anchorFieldName);
-                    if (anchorField) {
-                        const widgets = anchorField.getWidgets();
-                        if (widgets && widgets.length > 0) {
-                            const rect = widgets[0].getRectangle();
-                            // Place signature ABOVE the date field
-                            x = rect.x;
-                            y = rect.y + rect.height + 5; // Start 5 pts above the date box
-
-                            console.log(`Anchor '${anchorFieldName}' found at X=${rect.x}, Y=${rect.y}. Placing signature at Y=${y}`);
-                        }
-                    }
-                } catch (e) {
-                    console.warn(`Anchor field '${anchorFieldName}' not found, utilizing fallback.`);
-                }
-
                 firstPage.drawImage(sigImage, {
-                    x: x,
-                    y: y,
-                    width: 120,
-                    height: 50 // Slightly shorter height to fit nicely
+                    x: rect.x,
+                    y: rect.y,
+                    width: rect.width,
+                    height: rect.height
                 });
 
+                console.log(`Success: Signature placed in matching field '${fieldName}' at (${rect.x}, ${rect.y})`);
+
             } catch (err) {
-                console.error(`Error placing signature for anchor ${anchorFieldName}:`, err);
+                console.error(`Error placing signature into field ${fieldName}:`, err);
             }
         };
 
-        // Place Client Signature (Anchor: Text43 - Eigentümer Date)
-        await placeSignatureRelative(clientSignature, 'Text43', 340);
-
-        // Place Tech Signature (Anchor: Text42 - Monteur Date)
-        await placeSignatureRelative(techSignature, 'Text42', 40);
+        await placeSignatureInField(clientSignature, 'SIG_EIGENTUEMER');
+        await placeSignatureInField(techSignature, 'SIG_MONTEUR');
 
         form.flatten(); // Flatten form fields to make them uneditable
 
