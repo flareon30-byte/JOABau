@@ -336,8 +336,8 @@ exports.generatePdf = async (req, res) => {
         fill('Text18', ''); // Safety Clear
 
         // --- EMBED SIGNATURES (Smart Placement) ---
-        // Coordinates derived from user's tool (Y measured from top? 496 -> Inverted ~346 from bottom)
-        const sigY = 346;
+        // Coordinates: Y=190 (Sitting on line), X=40/340 (Aligned with margins)
+        const sigY = 190;
 
         const placeSignature = async (sigBase64, fieldName, fallbackCoords) => {
             if (!sigBase64) return;
