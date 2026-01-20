@@ -341,10 +341,10 @@ exports.generatePdf = async (req, res) => {
                 const pngImageBytes = Buffer.from(clientSignature.split(',')[1], 'base64');
                 const clientSigImage = await pdfDoc.embedPng(pngImageBytes);
                 // Client usually "Eigentümer" (Right side based on user feedback)
-                // Moving UP to aligns with the middle section (approx y=360)
+                // Lowering significantly to y=235 to hit the target line
                 firstPage.drawImage(clientSigImage, {
-                    x: 350,  // Moved to Right
-                    y: 360,  // Moved UP
+                    x: 350,  // Right
+                    y: 235,  // Lowered from 360
                     width: 120,
                     height: 60
                 });
@@ -359,8 +359,8 @@ exports.generatePdf = async (req, res) => {
                 const techSigImage = await pdfDoc.embedPng(pngImageBytes);
                 // Tech usually "Monteur" (Left side)
                 firstPage.drawImage(techSigImage, {
-                    x: 60,   // Moved to Left
-                    y: 360,  // Moved UP
+                    x: 70,   // Slightly adjusted right for centering
+                    y: 235,  // Lowered from 360
                     width: 120,
                     height: 60
                 });
