@@ -335,41 +335,59 @@ exports.generatePdf = async (req, res) => {
         fill('Text17', ''); // Safety Clear
         fill('Text18', ''); // Safety Clear
 
-        // --- EMBED SIGNATURES ---
-        // Coordinates manually adjusted based on user feedback
-        const sigY = 210; // Slightly higher than 195 to avoid overlapping date
+        // --- EMBED SIGNATURES (Smart Placement) ---
+        // Coordinates manually adjusted based on user feedback (Fallback)
+        const sigY = 210;
 
-        if (clientSignature) {
-            try {
-                const pngImageBytes = Buffer.from(clientSignature.split(',')[1], 'base64');
-                const clientSigImage = await pdfDoc.embedPng(pngImageBytes);
-                // Client (Right)
-                firstPage.drawImage(clientSigImage, {
-                    x: 350,
-                    y: sigY,
-                    width: 120,
-                    height: 60
-                });
-            } catch (sigErr) {
-                console.error('Error embedding Client Signature:', sigErr);
-            }
-        }
+        const placeSignature = async (sigBase64, fieldName, fallbackCoords) => {
+            if (!sigBase64) return;
 
-        if (techSignature) {
             try {
-                const pngImageBytes = Buffer.from(techSignature.split(',')[1], 'base64');
-                const techSigImage = await pdfDoc.embedPng(pngImageBytes);
-                // Tech (Left)
-                firstPage.drawImage(techSigImage, {
-                    x: 85,   // Centered in left column
-                    y: sigY,
-                    width: 120,
-                    height: 60
+                const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
+                const sigImage = await pdfDoc.embedPng(pngImageBytes);
+
+                let x = fallbackCoords.x;
+                let y = fallbackCoords.y;
+                let w = fallbackCoords.w;
+                let h = fallbackCoords.h;
+
+                // 1. Try to find the specific field for the signature
+                try {
+                    const sigField = form.getTextField(fieldName);
+                    if (sigField) {
+                        const widgets = sigField.getWidgets();
+                        if (widgets && widgets.length > 0) {
+                            const rect = widgets[0].getRectangle();
+                            x = rect.x;
+                            y = rect.y;
+                            w = rect.width;
+                            h = rect.height;
+
+                            // Optional: Center specific aspect ratio inside the box?
+                            // For now, stretch to box is safest to ensure location match
+                        }
+                    }
+                } catch (e) {
+                    // Field not found, proceed with fallback
+                }
+
+                firstPage.drawImage(sigImage, {
+                    x: x,
+                    y: y,
+                    width: w,
+                    height: h
                 });
-            } catch (sigErr) {
-                console.error('Error embedding Tech Signature:', sigErr);
+
+            } catch (err) {
+                console.error(`Error placing signature for ${fieldName}:`, err);
             }
-        }
+        };
+
+        // Place Client Signature (Try 'SIG_EIGENTUEMER', fallback to Right column)
+        await placeSignature(clientSignature, 'SIG_EIGENTUEMER', { x: 350, y: sigY, w: 120, h: 60 });
+
+        // Place Tech Signature (Try 'SIG_MONTEUR', fallback to Left column)
+        await placeSignature(techSignature, 'SIG_MONTEUR', { x: 85, y: sigY, w: 120, h: 60 });
 
         form.flatten(); // Flatten form fields to make them uneditable
 
