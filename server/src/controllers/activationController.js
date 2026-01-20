@@ -372,7 +372,7 @@ exports.generatePdf = async (req, res) => {
                 // Draw at the Pin's X,Y with offsets to center in the red boxes
                 // PDF Coordinates: (0,0) is Bottom-Left. To move UP, we INCREASE Y.
 
-                let yOffset = 60;   // Move UP significantly to clear the 'Monteur' text
+                let yOffset = 35;   // Lowered from 60 to 35
                 let xOffset = 0;
 
                 // Special correction for Client signature which appears too far right
