@@ -302,6 +302,16 @@ exports.generatePdf = async (req, res) => {
         const pages = pdfDoc.getPages();
         const firstPage = pages[0];
 
+        // DEBUG: List all fields in the PDF
+        const fields = form.getFields();
+        console.log('--- PDF FORM FIELDS FOUND ---');
+        fields.forEach(field => {
+            const type = field.constructor.name;
+            const name = field.getName();
+            console.log(`Field Name: "${name}" (Type: ${type})`);
+        });
+        console.log('-----------------------------');
+
         // Helper to safe fill
         const fill = (name, val, fontSize) => {
             try {
