@@ -338,7 +338,7 @@ exports.generatePdf = async (req, res) => {
         // --- EMBED SIGNATURES (ANCHOR SYSTEM) ---
         // Plan C: Use known fields (Text42/Text43 - Dates) as anchors
         const placeSignatureRelative = async (sigBase64, anchorFieldName, fallbackX) => {
-            if (!sigBase66) return;
+            if (!sigBase64) return;
 
             try {
                 const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
