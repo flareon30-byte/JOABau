@@ -369,14 +369,16 @@ exports.generatePdf = async (req, res) => {
                 const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
                 const sigImage = await pdfDoc.embedPng(pngImageBytes);
 
-                // Draw at the Pin's X,Y with a standard size
+                // Draw at the Pin's X,Y with a vertical offset to move it DOWN onto the line
+                const yOffset = 45;
+
                 firstPage.drawImage(sigImage, {
                     x: rect.x,
-                    y: rect.y,
+                    y: rect.y - yOffset,
                     width: 140,     // Fixed width
                     height: 50      // Fixed height
                 });
-                console.log(`[PDF GEN] Success: Signature drawn at ${rect.x}, ${rect.y}`);
+                console.log(`[PDF GEN] Success: Signature drawn at ${rect.x}, ${rect.y - yOffset} (Offset -${yOffset})`);
 
             } catch (err) {
                 console.error(`[PDF GEN] Error placing signature for ${fieldName}:`, err);
