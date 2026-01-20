@@ -369,18 +369,24 @@ exports.generatePdf = async (req, res) => {
                 const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
                 const sigImage = await pdfDoc.embedPng(pngImageBytes);
 
-                // Draw at the Pin's X,Y with a vertical offset to move it UP into the empty space
+                // Draw at the Pin's X,Y with offsets to center in the red boxes
                 // PDF Coordinates: (0,0) is Bottom-Left. To move UP, we INCREASE Y.
 
-                const yOffset = 25;
+                let yOffset = 60;   // Move UP significantly to clear the 'Monteur' text
+                let xOffset = 0;
+
+                // Special correction for Client signature which appears too far right
+                if (fieldName === 'SIG_EIGENTUEMER') {
+                    xOffset = -100; // Shift LEFT
+                }
 
                 firstPage.drawImage(sigImage, {
-                    x: rect.x,
-                    y: rect.y + yOffset, // + adds height, moving UP
+                    x: rect.x + xOffset,
+                    y: rect.y + yOffset,
                     width: 140,     // Fixed width
                     height: 50      // Fixed height
                 });
-                console.log(`[PDF GEN] Success: Signature drawn at ${rect.x}, ${rect.y + yOffset} (Offset +${yOffset} UP)`);
+                console.log(`[PDF GEN] Success ${fieldName}: Drawn at ${rect.x + xOffset}, ${rect.y + yOffset} (Offsets: X=${xOffset}, Y=${yOffset})`);
 
             } catch (err) {
                 console.error(`[PDF GEN] Error placing signature for ${fieldName}:`, err);
