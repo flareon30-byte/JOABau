@@ -371,8 +371,48 @@ exports.generatePdf = async (req, res) => {
             }
         };
 
-        await placeSignatureInField(clientSignature, 'SIG_EIGENTUEMER');
-        await placeSignatureInField(techSignature, 'SIG_MONTEUR');
+        // --- EMBED SIGNATURES (MANUAL OVERRIDE - ROBUST) ---
+        // Coordinates: Y=210 (Vertical center), X=40 (Left), X=330 (Right)
+
+        const placeSignatureManual = async (sigBase64, x, y, name) => {
+            if (!sigBase64) {
+                console.warn(`[PDF GEN] No signature data provided for ${name}`);
+                return;
+            }
+
+            try {
+                console.log(`[PDF GEN] Embedding signature for ${name} at ${x},${y}`);
+                const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
+                const sigImage = await pdfDoc.embedPng(pngImageBytes);
+
+                firstPage.drawImage(sigImage, {
+                    x: x,
+                    y: y,
+                    width: 140,
+                    height: 50
+                });
+                console.log(`[PDF GEN] Success: Placed ${name} signature.`);
+
+            } catch (err) {
+                console.error(`[PDF GEN] Error placing signature for ${name}:`, err);
+            }
+        };
+
+        // Client Signature (Right)
+        if (clientSignature) {
+            console.log('[PDF GEN] Processing Client Signature...');
+            await placeSignatureManual(clientSignature, 330, 210, 'Client');
+        } else {
+            console.warn('[PDF GEN] SKIPPING Client Signature - Data is missing/empty');
+        }
+
+        // Tech Signature (Left)
+        if (techSignature) {
+            console.log('[PDF GEN] Processing Tech Signature...');
+            await placeSignatureManual(techSignature, 40, 210, 'Tech');
+        } else {
+            console.warn('[PDF GEN] SKIPPING Tech Signature - Data is missing/empty');
+        }
 
         form.flatten(); // Flatten form fields to make them uneditable
 
