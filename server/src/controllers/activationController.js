@@ -336,8 +336,8 @@ exports.generatePdf = async (req, res) => {
         fill('Text18', ''); // Safety Clear
 
         // --- EMBED SIGNATURES (Smart Placement) ---
-        // Coordinates manually adjusted based on user feedback (Fallback)
-        const sigY = 210;
+        // Coordinates manually adjusted: Y raised to 225 to clear text below. Not relying on fields as they aren't detected.
+        const sigY = 225;
 
         const placeSignature = async (sigBase64, fieldName, fallbackCoords) => {
             if (!sigBase64) return;
@@ -383,11 +383,11 @@ exports.generatePdf = async (req, res) => {
             }
         };
 
-        // Place Client Signature (Try 'SIG_EIGENTUEMER', fallback to Right column)
-        await placeSignature(clientSignature, 'SIG_EIGENTUEMER', { x: 350, y: sigY, w: 120, h: 60 });
+        // Place Client Signature (Right)
+        await placeSignature(clientSignature, 'SIG_EIGENTUEMER', { x: 330, y: sigY, w: 120, h: 60 });
 
-        // Place Tech Signature (Try 'SIG_MONTEUR', fallback to Left column)
-        await placeSignature(techSignature, 'SIG_MONTEUR', { x: 85, y: sigY, w: 120, h: 60 });
+        // Place Tech Signature (Left)
+        await placeSignature(techSignature, 'SIG_MONTEUR', { x: 75, y: sigY, w: 120, h: 60 });
 
         form.flatten(); // Flatten form fields to make them uneditable
 
