@@ -5,46 +5,54 @@ const path = require('path');
 const XLSX = require('xlsx');
 
 exports.exportActivationPhotos = async (req, res) => {
-    const { projectId, startDate, endDate } = req.query;
+    const { projectId, startDate, endDate, ids } = req.query;
 
-    console.log('Exporting photos with filters:', { projectId, startDate, endDate });
+    console.log('Exporting documentation with filters:', { projectId, startDate, endDate, ids });
 
     try {
         // Build filters
-        const whereClause = {
-            photos: { isEmpty: false }
-        };
+        const whereClause = {};
 
-        const addressWhere = {};
-        if (projectId) addressWhere.projectId = projectId;
+        // If specific IDs are provided, prioritize them
+        if (ids) {
+            const idList = ids.split(',');
+            whereClause.id = { in: idList };
+        } else {
+            // Otherwise apply date/project filters
+            whereClause.photos = { isEmpty: false }; // Only default if filtering by date
 
-        if (startDate && endDate) {
-            whereClause.createdAt = {
-                gte: new Date(startDate),
-                lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-            };
-        } else if (startDate) {
-            whereClause.createdAt = {
-                gte: new Date(startDate)
-            };
-        } else if (endDate) {
-            whereClause.createdAt = {
-                lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-            };
+            const addressWhere = {};
+            if (projectId) addressWhere.projectId = projectId;
+
+            if (startDate && endDate) {
+                whereClause.createdAt = {
+                    gte: new Date(startDate),
+                    lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+                };
+            } else if (startDate) {
+                whereClause.createdAt = {
+                    gte: new Date(startDate)
+                };
+            } else if (endDate) {
+                whereClause.createdAt = {
+                    lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+                };
+            }
+
+            if (projectId) {
+                whereClause.address = addressWhere;
+            }
         }
 
         const activations = await prisma.activationInfo.findMany({
-            where: {
-                ...whereClause,
-                address: addressWhere
-            },
+            where: whereClause,
             include: {
                 address: true
             }
         });
 
         if (activations.length === 0) {
-            return res.status(404).send('No se encontraron activaciones con fotos en este rango.');
+            return res.status(404).send('No se encontraron activaciones con los criterios seleccionados.');
         }
 
         // Create Zip
@@ -52,25 +60,41 @@ exports.exportActivationPhotos = async (req, res) => {
             zlib: { level: 9 }
         });
 
-        res.attachment('activation_photos.zip');
+        res.attachment('documentacion_clientes.zip');
         archive.pipe(res);
 
         for (const act of activations) {
             const address = act.address;
-            // Clean folder name
+            // Clean folder name: Street Number - Client Name
             const folderName = `${address.street} ${address.number || ''} - ${address.clientName || 'Sin Cliente'}`
                 .trim()
                 .replace(/[\\/:*?"<>|]/g, '_');
 
-            for (const photoPath of act.photos) {
-                const normalizePath = photoPath.replace(/\\/g, '/');
-                const fullPath = path.resolve(__dirname, '../../', normalizePath);
+            // 1. Add Photos
+            if (act.photos && Array.isArray(act.photos)) {
+                for (const photoPath of act.photos) {
+                    const normalizePath = photoPath.replace(/\\/g, '/');
+                    const fullPath = path.resolve(__dirname, '../../', normalizePath);
 
-                if (fs.existsSync(fullPath)) {
-                    const fileName = path.basename(normalizePath);
-                    archive.file(fullPath, { name: `${folderName}/${fileName}` });
+                    if (fs.existsSync(fullPath)) {
+                        const fileName = path.basename(normalizePath);
+                        archive.file(fullPath, { name: `${folderName}/Fotos/${fileName}` });
+                    }
+                }
+            }
+
+            // 2. Add PDF
+            if (act.pdfPath) {
+                const normalizePdfPath = act.pdfPath.replace(/\\/g, '/');
+                // If path is relative like 'uploads/pdfs/xxx.pdf', resolve it
+                // Logic assumes pdfPath is stored relative to root or public
+                // Let's try standard resolve
+                const fullPdfPath = path.resolve(__dirname, '../../', normalizePdfPath);
+
+                if (fs.existsSync(fullPdfPath)) {
+                    archive.file(fullPdfPath, { name: `${folderName}/Montageprotokoll.pdf` });
                 } else {
-                    console.warn(`File not found: ${fullPath}`);
+                    console.warn(`PDF not found: ${fullPdfPath}`);
                 }
             }
         }
@@ -80,7 +104,7 @@ exports.exportActivationPhotos = async (req, res) => {
     } catch (error) {
         console.error(error);
         if (!res.headersSent) {
-            res.status(500).json({ message: 'Error exporting photos' });
+            res.status(500).json({ message: 'Error exporting documentation' });
         }
     }
 };
