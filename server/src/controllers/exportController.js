@@ -73,6 +73,9 @@ exports.exportActivationPhotos = async (req, res) => {
             const addFileToArchive = (filePath, archivePath) => {
                 if (!filePath) return;
 
+                // Strip query parameters (e.g. ?t=123456)
+                filePath = filePath.split('?')[0];
+
                 // Normalize slashes
                 let normalized = filePath.replace(/\\/g, '/');
 
