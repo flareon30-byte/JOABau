@@ -116,14 +116,25 @@ exports.exportActivationPhotos = async (req, res) => {
             }
         }
 
-        await archive.finalize();
-
-    } catch (error) {
-        console.error('[EXPORT CONTROLLER ERROR]', error);
-        if (!res.headersSent) {
-            res.status(500).json({ message: 'Error exporting documentation' });
+        // 2. Add PDF
+        if (act.pdfPath) {
+            addFileToArchive(act.pdfPath, `${folderName}/Montageprotokoll.pdf`);
         }
     }
+
+        // --- FIX: Add a dummy file to ensure ZIP is never empty/corrupt ---
+        archive.append('Generación de documentación completada.\n' +
+        'Si faltan carpetas, es posible que los archivos originales no existan en el servidor.',
+        { name: 'LEEME.txt' });
+
+    await archive.finalize();
+
+} catch (error) {
+    console.error('[EXPORT CONTROLLER ERROR]', error);
+    if (!res.headersSent) {
+        res.status(500).json({ message: 'Error exporting documentation' });
+    }
+}
 };
 
 exports.getBillingData = async (req, res) => {
