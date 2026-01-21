@@ -172,25 +172,28 @@ const BillingPage = () => {
         let columns = [];
         let emptyMsg = "No hay datos";
 
-        // Smart Base URL Detection for Production
-        let BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        // If we are in browser environment (not SSR)
-        if (typeof window !== 'undefined') {
-            // If the current hostname is NOT localhost (e.g. it's an IP or domain)
-            // AND the configured API URL IS localhost, then we have a mismatch.
-            // We fix it by using the current hostname.
-            if (window.location.hostname !== 'localhost' && BASE_URL.includes('localhost')) {
-                // Assuming backend is on same host, port 5000 (standard setup)
-                // Extract protocol (http:) and hostname (1.2.3.4)
-                BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
-            }
+        // Use relative path for production (since Express serves both API and frontend)
+        // or fallback to localhost for local dev if environment variable is not set.
+        let BASE_URL = '';
+        if (import.meta.env.DEV) {
+            BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
         }
 
         const getFileUrl = (path) => {
             if (!path) return '';
-            // Remove leading slash if present to avoid double slash
-            const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-            return `${BASE_URL}/${cleanPath}`;
+
+            // Fix backslashes for all paths
+            let cleanPath = path.replace(/\\/g, '/');
+
+            // Remove leading slash to ensure we append correctly to BASE_URL (which might be empty or end in /)
+            if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
+
+            // For legacy data check: if path starts with 'tmp/', it's broken old data.
+            // We can't fix the file missing, but we can try to link it relative just in case.
+
+            // If BASE_URL is empty (production), the result is '/path/to/file' (via root)
+            // If BASE_URL is localhost:5000, result is 'http://localhost:5000/path/to/file'
+            return `${BASE_URL ? BASE_URL + '/' : '/'}${cleanPath}`;
         };
 
         switch (activeTab) {
@@ -352,15 +355,17 @@ const BillingPage = () => {
     const PhotoModal = () => {
         if (!isPhotoModalOpen) return null;
 
-        let BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        if (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && BASE_URL.includes('localhost')) {
-            BASE_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+        // Use relative path logic matching the main component
+        let BASE_URL = '';
+        if (import.meta.env.DEV) {
+            BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
         }
 
         const getUrl = (path) => {
             if (!path) return '';
-            const cleanPath = path.startsWith('/') ? path.slice(1) : path;
-            return `${BASE_URL}/${cleanPath}`;
+            let cleanPath = path.replace(/\\/g, '/');
+            if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
+            return `${BASE_URL ? BASE_URL + '/' : '/'}${cleanPath}`;
         };
 
         return (
