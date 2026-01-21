@@ -7,20 +7,12 @@ exports.getPendingAppointments = async (req, res) => {
             where: {
                 AND: [
                     { clientName: { not: { startsWith: '***' } } },
+                    { sopladoStatus: 'OK' },
                     {
                         OR: [
                             { appointment: { is: null } },
                             { appointment: { status: 'PENDIENTE' } },
                             { appointment: { status: 'RECITAR' } }
-                        ]
-                    },
-                    {
-                        OR: [
-                            { sopladoStatus: 'OK' },
-                            {
-                                requiresProtocol: true,
-                                protocolStatus: { not: 'OK' }
-                            }
                         ]
                     }
                 ]
