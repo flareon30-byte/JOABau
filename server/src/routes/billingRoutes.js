@@ -14,6 +14,7 @@ const allowBilling = checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']);
 // Ideally, migrated entirely. I will expose them here too.
 router.get('/data', allowBilling, exportController.getBillingData);
 router.get('/export', allowBilling, exportController.exportBillingExcel);
+router.get('/export-photos', allowBilling, exportController.exportActivationPhotos);
 
 // DELETE Operations
 router.delete('/soplado/:id', allowBilling, billingController.deleteSoplado);
