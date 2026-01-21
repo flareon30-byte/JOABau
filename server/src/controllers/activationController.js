@@ -88,7 +88,7 @@ exports.submitActivation = async (req, res) => {
             });
         }
 
-        const photoPaths = photos.map(f => f.path);
+        const photoPaths = photos.map(f => f.path.replace(/\\/g, '/'));
 
         // Parse homeIds (expecting JSON string)
         let homeIdsArray = [];
