@@ -294,19 +294,34 @@ const BillingPage = () => {
 
                                         {/* PDF Status / Link with Dynamic URL */}
                                         <td className="p-4">
-                                            {row.pdfPath ? (
-                                                <a
-                                                    href={getFileUrl(row.pdfPath)}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-red-500 hover:text-red-700 flex items-center gap-1 font-semibold"
-                                                    title="Ver PDF"
-                                                >
-                                                    <FileText size={18} /> PDF
-                                                </a>
-                                            ) : (
-                                                <span className="text-slate-300">-</span>
-                                            )}
+                                            <td className="p-4">
+                                                {(() => {
+                                                    if (!row.pdfPath) return <span className="text-slate-300">-</span>;
+
+                                                    // Check for broken/legacy paths (e.g. /tmp/ or C:\)
+                                                    const isLegacy = row.pdfPath.includes('/tmp/') || row.pdfPath.match(/^[a-zA-Z]:/);
+
+                                                    if (isLegacy) {
+                                                        return (
+                                                            <span className="text-slate-400 text-xs flex items-center gap-1 cursor-not-allowed" title="Archivo antiguo no disponible">
+                                                                <FileText size={14} /> Expired
+                                                            </span>
+                                                        );
+                                                    }
+
+                                                    return (
+                                                        <a
+                                                            href={getFileUrl(row.pdfPath)}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-red-500 hover:text-red-700 flex items-center gap-1 font-semibold"
+                                                            title="Ver PDF"
+                                                        >
+                                                            <FileText size={18} /> PDF
+                                                        </a>
+                                                    );
+                                                })()}
+                                            </td>
                                         </td>
                                     </>
                                 )}
@@ -378,12 +393,26 @@ const BillingPage = () => {
                     <div className="p-4 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-4">
                         {selectedPhotos.map((photo, idx) => (
                             <div key={idx} className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group">
-                                <img
-                                    src={getUrl(photo)}
-                                    alt={`Evidencia ${idx}`}
-                                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                    onClick={() => window.open(getUrl(photo), '_blank')}
-                                />
+                                <div key={idx} className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group">
+                                    {(() => {
+                                        const isLegacy = photo.includes('/tmp/') || photo.match(/^[a-zA-Z]:/);
+                                        if (isLegacy) {
+                                            return (
+                                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-2 text-center">
+                                                    <span className="text-xs">Imagen no disponible (Formato antiguo)</span>
+                                                </div>
+                                            );
+                                        }
+                                        return (
+                                            <img
+                                                src={getUrl(photo)}
+                                                alt={`Evidencia ${idx}`}
+                                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                                onClick={() => window.open(getUrl(photo), '_blank')}
+                                            />
+                                        );
+                                    })()}
+                                </div>
                             </div>
                         ))}
                     </div>
