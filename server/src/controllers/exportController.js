@@ -13,14 +13,11 @@ exports.exportActivationPhotos = async (req, res) => {
         // Build filters
         const whereClause = {};
 
-        // If specific IDs are provided, prioritize them
         if (ids) {
             const idList = ids.split(',');
             whereClause.id = { in: idList };
         } else {
-            // Otherwise apply date/project filters
-            whereClause.photos = { isEmpty: false }; // Only default if filtering by date
-
+            whereClause.photos = { isEmpty: false };
             const addressWhere = {};
             if (projectId) addressWhere.projectId = projectId;
 
@@ -30,34 +27,37 @@ exports.exportActivationPhotos = async (req, res) => {
                     lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
                 };
             } else if (startDate) {
-                whereClause.createdAt = {
-                    gte: new Date(startDate)
-                };
+                whereClause.createdAt = { gte: new Date(startDate) };
             } else if (endDate) {
-                whereClause.createdAt = {
-                    lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-                };
+                whereClause.createdAt = { lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)) };
             }
 
-            if (projectId) {
-                whereClause.address = addressWhere;
-            }
+            if (projectId) whereClause.address = addressWhere;
         }
 
         const activations = await prisma.activationInfo.findMany({
             where: whereClause,
-            include: {
-                address: true
-            }
+            include: { address: true }
         });
 
         if (activations.length === 0) {
-            return res.status(404).send('No se encontraron activaciones con los criterios seleccionados.');
+            return res.status(404).send('No se encontraron activaciones.');
         }
 
-        // Create Zip
-        const archive = archiver('zip', {
-            zlib: { level: 9 }
+        const archive = archiver('zip', { zlib: { level: 9 } });
+
+        // Error handling for archive
+        archive.on('error', (err) => {
+            console.error('[ZIP ERROR]', err);
+            if (!res.headersSent) res.status(500).send({ error: err.message });
+        });
+
+        archive.on('warning', (err) => {
+            if (err.code === 'ENOENT') {
+                console.warn('[ZIP WARNING]', err);
+            } else {
+                console.error('[ZIP WARNING]', err);
+            }
         });
 
         res.attachment('documentacion_clientes.zip');
@@ -65,44 +65,61 @@ exports.exportActivationPhotos = async (req, res) => {
 
         for (const act of activations) {
             const address = act.address;
-            // Clean folder name: Street Number - Client Name
             const folderName = `${address.street} ${address.number || ''} - ${address.clientName || 'Sin Cliente'}`
                 .trim()
                 .replace(/[\\/:*?"<>|]/g, '_');
 
-            // 1. Add Photos
-            if (act.photos && Array.isArray(act.photos)) {
-                for (const photoPath of act.photos) {
-                    const normalizePath = photoPath.replace(/\\/g, '/');
-                    const fullPath = path.resolve(__dirname, '../../', normalizePath);
+            // Helper to add file safely
+            const addFileToArchive = (filePath, archivePath) => {
+                if (!filePath) return;
 
-                    if (fs.existsSync(fullPath)) {
-                        const fileName = path.basename(normalizePath);
-                        archive.file(fullPath, { name: `${folderName}/Fotos/${fileName}` });
+                // Normalize slashes
+                let normalized = filePath.replace(/\\/g, '/');
+
+                // Security/Legacy check: Ignore absolute paths (C:/, /tmp/) if on server
+                // We assume valid files are relative 'uploads/...'
+                if (normalized.startsWith('/') || normalized.match(/^[a-zA-Z]:/)) {
+                    // Check if it's a legacy /tmp path or absolute path
+                    // Try to match it to our project structure if possible, otherwise skip
+                    // For now, simple heuristic: if it doesn't start with 'uploads', skip it to avoid crashing
+                    if (!normalized.includes('uploads/')) {
+                        console.warn(`[ZIP SKIP] Ignoring absolute/legacy path: ${normalized}`);
+                        return;
                     }
                 }
+
+                // Remove leading slash or './' if present to make it clean relative
+                if (normalized.startsWith('./')) normalized = normalized.slice(2);
+                if (normalized.startsWith('/')) normalized = normalized.slice(1);
+
+                // Resolve against server root (../../ relative to controller)
+                const fullPath = path.resolve(__dirname, '../../', normalized);
+
+                if (fs.existsSync(fullPath)) {
+                    archive.file(fullPath, { name: archivePath });
+                } else {
+                    console.warn(`[ZIP MISSING] File not found: ${fullPath} (Org: ${filePath})`);
+                }
+            };
+
+            // 1. Add Photos
+            if (act.photos && Array.isArray(act.photos)) {
+                act.photos.forEach(photoPath => {
+                    const fileName = path.basename(photoPath.replace(/\\/g, '/'));
+                    addFileToArchive(photoPath, `${folderName}/Fotos/${fileName}`);
+                });
             }
 
             // 2. Add PDF
             if (act.pdfPath) {
-                const normalizePdfPath = act.pdfPath.replace(/\\/g, '/');
-                // If path is relative like 'uploads/pdfs/xxx.pdf', resolve it
-                // Logic assumes pdfPath is stored relative to root or public
-                // Let's try standard resolve
-                const fullPdfPath = path.resolve(__dirname, '../../', normalizePdfPath);
-
-                if (fs.existsSync(fullPdfPath)) {
-                    archive.file(fullPdfPath, { name: `${folderName}/Montageprotokoll.pdf` });
-                } else {
-                    console.warn(`PDF not found: ${fullPdfPath}`);
-                }
+                addFileToArchive(act.pdfPath, `${folderName}/Montageprotokoll.pdf`);
             }
         }
 
         await archive.finalize();
 
     } catch (error) {
-        console.error(error);
+        console.error('[EXPORT CONTROLLER ERROR]', error);
         if (!res.headersSent) {
             res.status(500).json({ message: 'Error exporting documentation' });
         }
