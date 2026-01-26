@@ -60,6 +60,50 @@ exports.createTeam = async (req, res) => {
     }
 };
 
+exports.updateTeam = async (req, res) => {
+    const { id } = req.params;
+    const { name, department, memberIds } = req.body;
+
+    try {
+        // Validation: Verify that new members are not in OTHER teams
+        const busyMembers = await prisma.user.findMany({
+            where: {
+                id: { in: memberIds },
+                teamId: { not: null, not: id } // Busy in another team
+            }
+        });
+
+        if (busyMembers.length > 0) {
+            return res.status(400).json({
+                message: `Users ${busyMembers.map(u => u.username).join(', ')} are already in another team`
+            });
+        }
+
+        // Update
+        // 1. Disconnect all current members (optional if using 'set', but explicit is safer for logic)
+        // With Prisma 'set', it replaces relations.
+
+        const team = await prisma.team.update({
+            where: { id },
+            data: {
+                name,
+                department,
+                members: {
+                    set: [], // Disconnect everyone
+                    connect: memberIds.map(uid => ({ id: uid })) // Connect new list
+                }
+            },
+            include: { members: true }
+        });
+
+        res.json({ message: 'Team updated', team });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error updating team' });
+    }
+};
+
 exports.deleteTeam = async (req, res) => {
     const { id } = req.params;
     try {

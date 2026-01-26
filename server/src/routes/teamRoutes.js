@@ -8,6 +8,7 @@ router.use(checkRole(['ADMIN', 'SUPER_ADMIN']));
 
 router.get('/', teamController.getAllTeams);
 router.post('/', teamController.createTeam);
+router.put('/:id', teamController.updateTeam);
 router.delete('/:id', teamController.deleteTeam);
 
 module.exports = router;

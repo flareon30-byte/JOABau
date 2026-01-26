@@ -45,8 +45,24 @@ model Team {
   isDemo      Boolean    @default(false)
   members     User[]
   appointments Appointment[]
+  tools       Tool[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+}
+
+model Tool {
+  id           String   @id @default(uuid())
+  name         String
+  serialNumber String
+  status       String   @default("ACTIVE") // ACTIVE, BROKEN, REPAIR
+  
+  teamId       String
+  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  photos       String[] 
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Project {
