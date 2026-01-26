@@ -44,7 +44,7 @@ exports.login = async (req, res) => {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
 
-        const token = jwt.sign({ userId: user.id, role: user.role }, JWT_SECRET, { expiresIn: '1d' });
+        const token = jwt.sign({ userId: user.id, role: user.role, isDemo: user.isDemo }, JWT_SECRET, { expiresIn: '1d' });
 
         res.cookie('token', token, {
             httpOnly: true,
@@ -52,7 +52,7 @@ exports.login = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000 // 1 day
         });
 
-        res.json({ message: 'Logged in successfully', user: { id: user.id, username: user.username, role: user.role } });
+        res.json({ message: 'Logged in successfully', user: { id: user.id, username: user.username, role: user.role, isDemo: user.isDemo } });
     } catch (error) {
         console.error('Login Error Full Details:', error);
         res.status(500).json({ message: 'Server error', error: error.message, stack: error.stack });

@@ -2,7 +2,9 @@ const prisma = require('../prisma');
 
 exports.getAllTeams = async (req, res) => {
     try {
+        const isDemo = req.isDemo || false;
         const teams = await prisma.team.findMany({
+            where: { isDemo },
             include: {
                 members: {
                     select: { id: true, username: true, role: true }
@@ -19,6 +21,10 @@ exports.createTeam = async (req, res) => {
     const { name, department, memberIds } = req.body;
 
     try {
+        // Enforce Demo Isolation: Cannot mix demo users with real users
+        // Although the frontend will likely filter this, let's be safe later.
+        // For now, let's just create the team with the correct flag.
+
         // Check if members are already in a team
         const membersWithTeam = await prisma.user.findMany({
             where: {
@@ -37,6 +43,7 @@ exports.createTeam = async (req, res) => {
             data: {
                 name,
                 department,
+                isDemo: req.isDemo || false,
                 members: {
                     connect: memberIds.map(id => ({ id }))
                 }

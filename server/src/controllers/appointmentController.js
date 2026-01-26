@@ -8,6 +8,7 @@ exports.getPendingAppointments = async (req, res) => {
                 AND: [
                     { clientName: { not: { startsWith: '***' } } },
                     { sopladoStatus: 'OK' },
+                    { project: { isDemo: req.isDemo || false } },
                     {
                         OR: [
                             { appointment: { is: null } },
@@ -151,7 +152,8 @@ exports.getScheduledAppointments = async (req, res) => {
     try {
         const appointments = await prisma.appointment.findMany({
             where: {
-                status: 'CITADO'
+                status: 'CITADO',
+                address: { project: { isDemo: req.isDemo || false } }
             },
             include: {
                 address: {

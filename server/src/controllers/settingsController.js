@@ -2,10 +2,12 @@ const prisma = require('../prisma');
 
 exports.getSettings = async (req, res) => {
     try {
-        let settings = await prisma.systemSettings.findFirst();
+        const isDemo = req.isDemo || false;
+        let settings = await prisma.systemSettings.findFirst({ where: { isDemo } });
         if (!settings) {
             settings = await prisma.systemSettings.create({
                 data: {
+                    isDemo,
                     extraPointPrice: 0,
                     saturdayPointPrice: 0,
                     monthlyTargetPoints: 100,
@@ -42,7 +44,8 @@ exports.updateSettings = async (req, res) => {
     } = req.body;
 
     try {
-        let settings = await prisma.systemSettings.findFirst();
+        const isDemo = req.isDemo || false;
+        let settings = await prisma.systemSettings.findFirst({ where: { isDemo } });
 
         // Helper to safely parse float
         const safeFloat = (val) => {
@@ -69,7 +72,7 @@ exports.updateSettings = async (req, res) => {
         if (!settings) {
             // Create if not exists
             const newSettings = await prisma.systemSettings.create({
-                data
+                data: { ...data, isDemo }
             });
             return res.json(newSettings);
         }

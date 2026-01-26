@@ -7,6 +7,7 @@ exports.getDashboardStats = async (req, res) => {
             prisma.address.count({
                 where: {
                     sopladoStatus: 'OK',
+                    project: { isDemo: req.isDemo || false }, // Filter by Demo
                     AND: [
                         { clientName: { not: { startsWith: '***' } } }
                     ],
@@ -18,10 +19,17 @@ exports.getDashboardStats = async (req, res) => {
             }),
             // Assigned: Appointment status CITADO
             prisma.appointment.count({
-                where: { status: 'CITADO' }
+                where: {
+                    status: 'CITADO',
+                    address: { project: { isDemo: req.isDemo || false } }
+                }
             }),
-            // Completed: ActivationInfo exists (or Appointment status COMPLETADO)
-            prisma.activationInfo.count()
+            // Completed: ActivationInfo exists
+            prisma.activationInfo.count({
+                where: {
+                    address: { project: { isDemo: req.isDemo || false } }
+                }
+            })
         ]);
 
         res.json({

@@ -6,7 +6,9 @@ const prisma = new PrismaClient();
 
 exports.getAllProjects = async (req, res) => {
     try {
+        const isDemo = req.isDemo || false;
         const projects = await prisma.project.findMany({
+            where: { isDemo },
             include: {
                 _count: {
                     select: { addresses: true }
@@ -23,7 +25,10 @@ exports.createProject = async (req, res) => {
     const { name } = req.body;
     try {
         const project = await prisma.project.create({
-            data: { name }
+            data: {
+                name,
+                isDemo: req.isDemo || false
+            }
         });
         res.status(201).json(project);
     } catch (error) {

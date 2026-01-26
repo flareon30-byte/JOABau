@@ -3,7 +3,9 @@ const prisma = require('../prisma');
 
 exports.getAllUsers = async (req, res) => {
     try {
+        const isDemo = req.isDemo || false;
         const users = await prisma.user.findMany({
+            where: { isDemo },
             select: {
                 id: true,
                 username: true,
@@ -29,7 +31,8 @@ exports.createUser = async (req, res) => {
                 password: hashedPassword,
                 role,
                 teamId: teamId || null,
-                phone: phone || null
+                phone: phone || null,
+                isDemo: req.isDemo || false
             }
         });
         res.status(201).json({ message: 'User created', user });

@@ -13,6 +13,7 @@ exports.verifyToken = (req, res, next) => {
         const decoded = jwt.verify(token, JWT_SECRET);
         req.userId = decoded.userId;
         req.userRole = decoded.role;
+        req.isDemo = decoded.isDemo;
         next();
     } catch (error) {
         return res.status(403).json({ message: 'Invalid token' });
