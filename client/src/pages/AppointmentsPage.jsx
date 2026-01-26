@@ -181,10 +181,12 @@ const AppointmentsPage = () => {
 
             const street = address.street || '';
             const clientName = (item.clientName || address.clientName) || '';
+            const nvt = address.nvt || '';
 
             const matchesSearch =
                 street.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                clientName.toLowerCase().includes(searchTerm.toLowerCase());
+                clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                nvt.toLowerCase().includes(searchTerm.toLowerCase());
 
             // Check project id. 
             // Keep in mind 'address.project' might differ in structure depending on include
