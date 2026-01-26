@@ -31,6 +31,7 @@ model User {
   role      Role
   teamId    String?
   team      Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  scheduledAppointments Appointment[] @relation("ScheduledBy")
   phone     String?
   baseSalary Float     @default(1500.0) // Sueldo Base para nóminas
   isDemo    Boolean    @default(false)
@@ -45,7 +46,6 @@ model Team {
   isDemo      Boolean    @default(false)
   members     User[]
   appointments Appointment[]
-  scheduledAppointments Appointment[] @relation("ScheduledBy")
   tools       Tool[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
