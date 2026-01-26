@@ -241,6 +241,31 @@ exports.getMyPayroll = async (req, res) => {
             where: { isDemo: req.isDemo || false }
         });
 
+        if (user.role === 'BACK_OFFICE') {
+            const config = settings?.financials?.backOffice || {};
+            const apptCount = await prisma.appointment.count({
+                where: {
+                    scheduledById: user.id,
+                    status: { in: ['CITADO', 'COMPLETADO'] },
+                    updatedAt: { gte: start, lte: end }
+                }
+            });
+            const revenue = apptCount * (config.pricePerAppointment || 15);
+
+            return res.json({
+                role: 'BACK_OFFICE',
+                baseSalary: config.salary || user.baseSalary || 1500,
+                metrics: {
+                    appointmentsDone: apptCount,
+                    targetDaily: 15,
+                    revenueGenerated: revenue
+                },
+                financials: {
+                    total: config.salary || user.baseSalary || 1500
+                }
+            });
+        }
+
         // Determine Financial Group (Installers vs Blowers)
         const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
         const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
@@ -261,27 +286,28 @@ exports.getMyPayroll = async (req, res) => {
             });
         }
 
-        // Use new calculation logic
-        const advancedStats = calculateAdvancedPayroll(activations, financialConfig, team.members);
+        // Calculate
+        const teamMembers = user.team ? user.team.members : [user];
+        const stats = calculateAdvancedPayroll(activations, financialConfig, teamMembers);
 
-        // Calculate user's share (assuming equal split among team members for the bonus pool)
-        const memberCount = team.members.length || 1;
-        const myBonusShare = advancedStats.bonusPool / memberCount;
-        const mySaturdayPay = advancedStats.saturdayPay / memberCount;
+        // User share
+        const memberCount = teamMembers.length || 1;
+        const myBonus = stats.bonusPool / memberCount;
+        const mySaturday = stats.saturdayPay / memberCount;
+        const myTotal = (financialConfig?.salary || user.baseSalary) + myBonus + mySaturday;
 
         res.json({
-            financials: financialConfig,
-            stats: {
-                ...advancedStats,
-                teamName: team.name
+            role: user.role,
+            teamName: user.team?.name || 'Sin Equipo',
+            baseSalary: financialConfig?.salary || user.baseSalary,
+            financials: {
+                bonus: myBonus,
+                saturday: mySaturday,
+                total: myTotal
             },
-            personal: {
-                // Use Global Configuration salary to ensure consistency with the Settings page simulation
-                // Ignoring individual user.baseSalary for now as it defaults to 1500 and causes confusion
-                baseSalary: financialConfig?.salary || user.baseSalary || 0,
-                myBonusShare,
-                mySaturdayPay,
-                totalEstimated: (financialConfig?.salary || user.baseSalary || 0) + myBonusShare + mySaturdayPay
+            production: {
+                ...stats,
+                activationsCount: activations.length
             }
         });
 
@@ -349,49 +375,80 @@ exports.getPayrollSummary = async (req, res) => {
         });
 
         // 4. Calculate for each User
-        const summary = users.map(user => {
+        const summary = await Promise.all(users.map(async (user) => {
             const team = user.team;
             const teamId = team?.id;
 
             // Determine config
-            const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
+            let groupKey = 'installers';
+            if (user.role === 'BLOWER') groupKey = 'blowers';
+            if (user.role === 'BACK_OFFICE') groupKey = 'backOffice';
+
             const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
+            const baseSalary = financialConfig?.salary || user.baseSalary || 0;
 
             let stats = null;
             let personal = {
-                baseSalary: financialConfig?.salary || user.baseSalary || 0,
+                baseSalary: baseSalary,
                 bonus: 0,
                 saturday: 0,
                 total: 0
             };
 
-            if (team) {
+            if (user.role === 'BACK_OFFICE') {
+                // Back Office Logic
+                // Count appointments scheduled by this user in the range with status CITADO or COMPLETADO
+                const appointmentCount = await prisma.appointment.count({
+                    where: {
+                        scheduledById: user.id,
+                        status: { in: ['CITADO', 'COMPLETADO'] },
+                        updatedAt: { gte: start, lte: end } // Use updatedAt when they secured the appointment
+                    }
+                });
+
+                // Calculate generated revenue
+                const revenuePerAppt = financialConfig?.pricePerAppointment || 15;
+                const totalRevenue = appointmentCount * revenuePerAppt;
+
+                // Calculate simple cost (Salary + Insurance + OpCost)
+                // OpCost is per person for BackOffice
+                const monthlyCost = (financialConfig?.salary || 0) + (financialConfig?.insurance || 0) + (financialConfig?.opCostPerPerson || 0);
+
+                personal.total = baseSalary; // Back Office typically fixed salary unless specific bonus logic added
+
+                stats = {
+                    type: 'BACK_OFFICE',
+                    appointmentsDone: appointmentCount,
+                    totalRevenue: totalRevenue,
+                    cost: monthlyCost,
+                    profit: totalRevenue - monthlyCost,
+                    targetDaily: 15, // Hardcoded expectation for now
+                    todayCount: 0 // Calculated later if needed or separate query
+                };
+
+            } else if (team) {
+                // Installer/Blower Logic
                 const acts = teamActivations[teamId] || [];
-                // Calculate Team Stats
                 const teamStats = calculateAdvancedPayroll(acts, financialConfig, team.members);
 
-                // User Share (Equal Split)
+                // User Share
                 const memberCount = team.members.length || 1;
                 personal.bonus = teamStats.bonusPool / memberCount;
                 personal.saturday = teamStats.saturdayPay / memberCount;
                 personal.total = personal.baseSalary + personal.bonus + personal.saturday;
 
                 stats = {
+                    type: 'TEAM',
                     teamName: team.name,
                     ...teamStats
                 };
             } else {
-                // User with no team (e.g. Admin/Office)
-                // Just show salary
+                // Admin or Unassigned
                 personal.total = personal.baseSalary;
                 stats = {
+                    type: 'no_team',
                     teamName: 'Sin Equipo',
-                    unitsDone: 0,
-                    totalRevenue: 0,
-                    bonusPool: 0,
-                    saturdayPay: 0,
-                    details: { salaryCost: 0, opCost: 0 },
-                    counts: { bp: 0, ta: 0, multi: 0, mdu: 0 }
+                    unitsDone: 0
                 };
             }
 
@@ -402,7 +459,7 @@ exports.getPayrollSummary = async (req, res) => {
                 ...personal,
                 production: stats
             };
-        });
+        }));
 
         res.json({
             meta: { range: { start, end } },

@@ -34,16 +34,108 @@ const MyEarningsPage = () => {
 
     const { stats, personal, financials } = data;
 
-    // Safety check: Financials not configured
-    if (!financials) {
+    // Special View for Back Office
+    if (data.role === 'BACK_OFFICE') {
+        const { metrics } = data;
+        const revenue = metrics?.revenueGenerated || 0;
+        const appts = metrics?.appointmentsDone || 0;
+        const target = metrics?.targetDaily || 15;
+        // Asuming we count monthly appointments in appts, let's just show Monthly Progress
+        // or simplistic view.
+
         return (
-            <div className="max-w-4xl mx-auto mt-10 p-8 bg-orange-50 text-orange-800 rounded-xl border border-orange-200 text-center animate-fadeIn">
-                <AlertCircle size={40} className="mx-auto mb-4 text-orange-500" />
-                <h3 className="text-xl font-bold mb-2">Configuración Financiera Necesaria</h3>
-                <p>El administrador aún no ha configurado los parámetros de costes y bonus para tu rol ({user.role}).</p>
-                <div className="mt-6 text-left bg-white p-4 rounded border border-orange-200 overflow-auto max-h-60 text-xs font-mono">
-                    <p className="font-bold mb-2">Debug Info (Pasa esto a soporte):</p>
-                    <pre>{JSON.stringify(data, null, 2)}</pre>
+            <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-fadeIn">
+                {/* Header */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                            <Wallet className="text-joa-blue" /> Mis Ganancias
+                        </h2>
+                        <p className="text-slate-500 text-sm">Back Office - Rendimiento Personal</p>
+                    </div>
+                    <div className="bg-slate-800 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+                        {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                    </div>
+                </div>
+
+                {/* KPI Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* 1. Base Salary */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                        <div className="relative">
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Sueldo Base</p>
+                            <h3 className="text-3xl font-bold text-slate-800">{money(data.baseSalary)}</h3>
+                            <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                                <CheckCircle size={12} className="text-green-500" /> Garantizado
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* 2. Revenue */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+                        <div className="relative">
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Ingresos Generados</p>
+                            <h3 className="text-3xl font-bold text-green-600">{money(revenue)}</h3>
+                            <p className="text-xs text-slate-400 mt-2">
+                                Valor aportado a la empresa
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* 3. Citas */}
+                    <div className="bg-blue-600 p-6 rounded-2xl shadow-xl text-white relative overflow-hidden">
+                        <div className="relative">
+                            <p className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">Citas Agendadas</p>
+                            <h3 className="text-4xl font-bold text-white">{appts}</h3>
+                            <p className="text-xs text-blue-100 opacity-80 mt-2">
+                                En este periodo
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Metrics Section */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
+                        <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2">
+                            <Target className="text-green-500" />
+                            Rendimiento de Citas
+                        </h3>
+
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-bold text-slate-600">Total Periodo</span>
+                            <span className="text-2xl font-bold text-slate-800">{appts}</span>
+                        </div>
+                        <div className="w-full bg-slate-100 h-4 rounded-full overflow-hidden">
+                            <div className="bg-green-500 h-full rounded-full" style={{ width: `${Math.min(100, (appts / (target * 20)) * 100)}%` }}></div>
+                        </div>
+                        <p className="text-xs text-slate-400 mt-2 text-right">Objetivo aprox. mensual: {target * 20} (Ref)</p>
+                    </div>
+
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                        <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                            <DollarSign size={18} /> Resumen Rentabilidad
+                        </h3>
+                        <div className="space-y-3">
+                            <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Coste Empresa (Est.)</span>
+                                <span className="font-bold text-slate-700">{money(data.financials.total * 1.30)}</span>
+                            </div>
+                            <div className="flex justify-between">
+                                <span className="text-sm text-slate-500">Ingresos Generados</span>
+                                <span className="font-bold text-green-600">{money(revenue)}</span>
+                            </div>
+                            <div className="border-t border-slate-200 pt-2 flex justify-between">
+                                <span className="font-bold text-slate-700">Balance</span>
+                                <span className={`font-bold ${revenue - (data.financials.total * 1.3) > 0 ? 'text-green-600' : 'text-red-500'}`}>
+                                    {money(revenue - (data.financials.total * 1.30))}
+                                </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-2">* Coste estimado incluye SS y gastos operativos básicos.</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         );

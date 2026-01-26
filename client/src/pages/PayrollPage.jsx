@@ -194,26 +194,43 @@ const PayrollPage = () => {
                             </div>
 
                             {/* Production Detail (Team Contribution) */}
+                            {/* Production Detail (Team Contribution or Personal) */}
                             <div className="bg-slate-50 p-4 border-t border-slate-100 text-xs text-slate-500">
-                                <p className="font-bold mb-2 uppercase text-[10px] tracking-wider text-slate-400">Producción del Equipo</p>
-                                <div className="grid grid-cols-4 gap-2 text-center">
-                                    <div className="bg-white p-1 rounded border border-slate-200">
-                                        <div className="font-bold text-slate-700">{item.production?.counts?.bp || 0}</div>
-                                        <div className="text-[9px] uppercase">BP</div>
-                                    </div>
-                                    <div className="bg-white p-1 rounded border border-slate-200">
-                                        <div className="font-bold text-slate-700">{item.production?.counts?.ta || 0}</div>
-                                        <div className="text-[9px] uppercase">TA</div>
-                                    </div>
-                                    <div className="bg-white p-1 rounded border border-slate-200">
-                                        <div className="font-bold text-slate-700">{item.production?.counts?.multi || 0}</div>
-                                        <div className="text-[9px] uppercase">MUL</div>
-                                    </div>
-                                    <div className="bg-white p-1 rounded border border-slate-200">
-                                        <div className="font-bold text-slate-700">{item.production?.counts?.mdu || 0}</div>
-                                        <div className="text-[9px] uppercase">MDU</div>
-                                    </div>
-                                </div>
+                                {item.role === 'BACK_OFFICE' ? (
+                                    <>
+                                        <p className="font-bold mb-2 uppercase text-[10px] tracking-wider text-slate-400">Rendimiento Individual</p>
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span>Citas Agendadas (Periodo):</span>
+                                            <span className="font-bold text-slate-700 text-sm">{item.production?.appointmentsDone || 0}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span>Ingresos Generados:</span>
+                                            <span className="font-bold text-green-600 text-sm">{money(item.production?.totalRevenue)}</span>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="font-bold mb-2 uppercase text-[10px] tracking-wider text-slate-400">Producción del Equipo</p>
+                                        <div className="grid grid-cols-4 gap-2 text-center">
+                                            <div className="bg-white p-1 rounded border border-slate-200">
+                                                <div className="font-bold text-slate-700">{item.production?.counts?.bp || 0}</div>
+                                                <div className="text-[9px] uppercase">BP</div>
+                                            </div>
+                                            <div className="bg-white p-1 rounded border border-slate-200">
+                                                <div className="font-bold text-slate-700">{item.production?.counts?.ta || 0}</div>
+                                                <div className="text-[9px] uppercase">TA</div>
+                                            </div>
+                                            <div className="bg-white p-1 rounded border border-slate-200">
+                                                <div className="font-bold text-slate-700">{item.production?.counts?.multi || 0}</div>
+                                                <div className="text-[9px] uppercase">MUL</div>
+                                            </div>
+                                            <div className="bg-white p-1 rounded border border-slate-200">
+                                                <div className="font-bold text-slate-700">{item.production?.counts?.mdu || 0}</div>
+                                                <div className="text-[9px] uppercase">MDU</div>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     ))}
