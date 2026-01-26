@@ -45,6 +45,7 @@ model Team {
   isDemo      Boolean    @default(false)
   members     User[]
   appointments Appointment[]
+  scheduledAppointments Appointment[] @relation("ScheduledBy")
   tools       Tool[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -166,6 +167,9 @@ model Appointment {
   assignedTeamId  String?
   assignedTeam    Team?    @relation(fields: [assignedTeamId], references: [id], onDelete: SetNull)
   
+  scheduledById   String?
+  scheduledBy     User?    @relation("ScheduledBy", fields: [scheduledById], references: [id], onDelete: SetNull)
+
   type            String            @default("ACTIVATION") // ACTIVATION, PROTOCOL
   reciteReason    String?
 

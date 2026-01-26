@@ -18,11 +18,13 @@ const SettingsPage = () => {
             pricePerUnit: 60,
             pricePerTA: 25,
             pricePerMulti: 35,
+            pricePerMDU: 50, // Added default
 
             // Bonus Payouts (Team receives)
             bonusPerUnit: 20,
             bonusPerTA: 5,
             bonusPerMulti: 10,
+            bonusPerMDU: 15,
 
             saturdayRate: 40
         },
@@ -37,6 +39,13 @@ const SettingsPage = () => {
             pricePerUnit: 0.40,
             bonusPerUnit: 0.05,
             saturdayRate: 40
+        },
+        backOffice: {
+            salary: 1500,
+            insurance: 330,
+            dietasPerDay: 0,
+            opCostPerPerson: 200,
+            pricePerAppointment: 15
         }
     });
 
@@ -59,9 +68,12 @@ const SettingsPage = () => {
             const res = await api.get('/api/settings');
             // Merge existing financials if they exist
             if (res.data.financials) {
+                // Deep merge to ensure backOffice key exists if old config loaded
                 setFinancials(prev => ({
                     ...prev,
-                    ...res.data.financials
+                    ...res.data.financials,
+                    // Ensure backOffice exists if coming from DB without it
+                    backOffice: { ...prev.backOffice, ...(res.data.financials.backOffice || {}) }
                 }));
             }
             setSettings(res.data);
@@ -97,7 +109,62 @@ const SettingsPage = () => {
         }
     };
 
-    if (loading) return <div className="p-8">Cargando...</div>;
+    const renderBackOfficeInputs = () => {
+        const data = financials.backOffice || {};
+        const groupKey = 'backOffice';
+        return (
+            <div className="space-y-6 animate-fadeIn">
+                <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-xl font-bold text-slate-700">Configuración Back Office</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Personnel Costs */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h4 className="font-bold text-slate-600 mb-4 flex items-center gap-2"><Users size={18} /> Costes de Personal (Por Persona/Mes)</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Salario Base (€)</label>
+                                <input type="number" value={data.salary} onChange={(e) => handleFinancialChange(groupKey, 'salary', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (€)</label>
+                                <input type="number" value={data.insurance} onChange={(e) => handleFinancialChange(groupKey, 'insurance', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Dietas (por día) (€)</label>
+                                <input type="number" value={data.dietasPerDay} onChange={(e) => handleFinancialChange(groupKey, 'dietasPerDay', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Operational Costs */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h4 className="font-bold text-slate-600 mb-4 flex items-center gap-2"><Truck size={18} /> Gastos Operativos</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Gasto Operativo (Por Persona) (€)</label>
+                                <input type="number" value={data.opCostPerPerson} onChange={(e) => handleFinancialChange(groupKey, 'opCostPerPerson', e.target.value)} className="w-full p-2 border rounded-lg" />
+                                <p className="text-[10px] text-slate-400 mt-1">Licencias de software, equipo de oficina, etc.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Revenue */}
+                    <div className="md:col-span-2 bg-blue-50 p-4 rounded-xl border border-blue-200">
+                        <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2"><DollarSign size={18} /> Facturación (Ingresos)</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-blue-600 uppercase">Precio por Cita Agendada (€)</label>
+                                <input type="number" step="0.01" value={data.pricePerAppointment} onChange={(e) => handleFinancialChange(groupKey, 'pricePerAppointment', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500" />
+                                <p className="text-[10px] text-blue-700 mt-1">Ingreso generado cada vez que este usuario agenda una cita.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const renderFinancialInputs = (groupKey, title) => {
         const data = financials[groupKey];
@@ -217,6 +284,8 @@ const SettingsPage = () => {
         );
     };
 
+    if (loading) return <div className="p-8">Cargando...</div>;
+
     return (
         <div className="max-w-4xl mx-auto pb-20">
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
@@ -250,32 +319,18 @@ const SettingsPage = () => {
                     >
                         Soplado
                     </button>
+                    <button
+                        onClick={() => setActiveTab('backOffice')}
+                        className={`px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'backOffice' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Back Office
+                    </button>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     {activeTab === 'installers' && renderFinancialInputs('installers', 'Configuración de Instaladores')}
                     {activeTab === 'blowers' && renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
-
-                    {/* Legacy Points Config Hidden */}
-                    {/* 
-                    <div className="mt-12 pt-8 border-t border-slate-200">
-                        <h3 className="font-bold text-slate-500 text-sm uppercase mb-4">Valores de Puntos por Tipo de Activación (Referencia)</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {['bpPoints', 'bp2FamPoints', 'brMultiPoints', 'sduPoints', 'mduPoints', 'spPoints', 'taPoints'].map(key => (
-                                <div key={key}>
-                                    <label className="block text-[10px] font-bold text-slate-400 uppercase">{key}</label>
-                                    <input 
-                                        type="number" 
-                                        step="0.1"
-                                        value={settings[key] || 0} 
-                                        onChange={(e) => setSettings({...settings, [key]: parseFloat(e.target.value)})}
-                                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded text-sm"
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-*/}
+                    {activeTab === 'backOffice' && renderBackOfficeInputs()}
 
                     <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
                         <button
@@ -295,8 +350,6 @@ const SettingsPage = () => {
         </div>
     );
 };
-
-
 
 const PasswordChangeForm = () => {
     const [passData, setPassData] = useState({

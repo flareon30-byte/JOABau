@@ -107,6 +107,8 @@ exports.scheduleAppointment = async (req, res) => {
         }
 
         // 2. Transaction to update Appointment and Address Status
+        const userId = req.userId; // Who is scheduling this?
+
         const result = await prisma.$transaction(async (tx) => {
             const appointment = await tx.appointment.upsert({
                 where: { addressId },
@@ -116,7 +118,8 @@ exports.scheduleAppointment = async (req, res) => {
                     status: 'CITADO',
                     clientName,
                     apartmentCount: parseInt(apartmentCount),
-                    type
+                    type,
+                    scheduledById: userId // Track who made the appointment
                 },
                 create: {
                     addressId,
@@ -125,7 +128,8 @@ exports.scheduleAppointment = async (req, res) => {
                     status: 'CITADO',
                     clientName,
                     apartmentCount: parseInt(apartmentCount),
-                    type
+                    type,
+                    scheduledById: userId // Track who made the appointment
                 }
             });
 
