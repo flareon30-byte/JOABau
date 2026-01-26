@@ -245,6 +245,8 @@ exports.getMyPayroll = async (req, res) => {
         // Logic for Back Office
         if (user.role === 'BACK_OFFICE') {
             const config = settings?.financials?.backOffice || {};
+            console.log(`[MyPayroll BackOffice] Config found:`, !!settings?.financials?.backOffice);
+
             const apptCount = await prisma.appointment.count({
                 where: {
                     scheduledById: user.id,
@@ -271,6 +273,9 @@ exports.getMyPayroll = async (req, res) => {
         // Logic for Installers / Blowers
         const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
         const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
+
+        console.log(`[MyPayroll] User: ${user.username}, Role: ${user.role}, Group: ${groupKey}`);
+        console.log(`[MyPayroll] Financials found:`, !!financialConfig);
 
         let activations = [];
         if (teamId) {
