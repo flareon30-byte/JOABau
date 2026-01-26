@@ -237,7 +237,9 @@ exports.getMyPayroll = async (req, res) => {
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
         const end = new Date();
 
-        const settings = await prisma.systemSettings.findFirst();
+        const settings = await prisma.systemSettings.findFirst({
+            where: { isDemo: req.isDemo || false }
+        });
 
         // Determine Financial Group (Installers vs Blowers)
         const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
@@ -250,6 +252,7 @@ exports.getMyPayroll = async (req, res) => {
                 where: {
                     createdAt: { gte: start, lte: end },
                     address: {
+                        project: { isDemo: req.isDemo || false },
                         appointment: {
                             assignedTeamId: teamId
                         }
@@ -304,10 +307,12 @@ exports.getPayrollSummary = async (req, res) => {
         const end = endDate ? new Date(endDate) : new Date();
         if (endDate && !endDate.includes('T')) end.setHours(23, 59, 59, 999);
 
-        const settings = await prisma.systemSettings.findFirst();
+        const settings = await prisma.systemSettings.findFirst({
+            where: { isDemo: req.isDemo || false }
+        });
 
         // 1. Fetch Users
-        const usersWhere = {};
+        const usersWhere = { isDemo: req.isDemo || false };
         if (userId && userId !== 'all') usersWhere.id = userId;
 
         const users = await prisma.user.findMany({
@@ -319,7 +324,8 @@ exports.getPayrollSummary = async (req, res) => {
         // 2. Fetch Activations in Range
         const activations = await prisma.activationInfo.findMany({
             where: {
-                createdAt: { gte: start, lte: end }
+                createdAt: { gte: start, lte: end },
+                address: { project: { isDemo: req.isDemo || false } }
             },
             include: {
                 address: {
