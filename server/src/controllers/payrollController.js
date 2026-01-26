@@ -210,7 +210,8 @@ exports.getMyPayroll = async (req, res) => {
             include: { team: true }
         });
 
-        if (!user || (!user.teamId && user.role !== 'SUPER_ADMIN')) {
+        // Allow Super Admin and Back Office to proceed without a team
+        if (!user || (!user.teamId && user.role !== 'SUPER_ADMIN' && user.role !== 'BACK_OFFICE')) {
             return res.status(400).json({ message: 'User not assigned to a team' });
         }
 
@@ -225,7 +226,7 @@ exports.getMyPayroll = async (req, res) => {
         }
 
         // Fallback for Admin without team
-        if (!team) {
+        if (!team && user.role === 'SUPER_ADMIN') {
             team = {
                 id: 'virtual',
                 name: 'Modo Administrador (Sin Equipo)',
@@ -235,12 +236,13 @@ exports.getMyPayroll = async (req, res) => {
 
         const now = new Date();
         const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        const end = new Date();
+        const end = new Date(); // Today
 
         const settings = await prisma.systemSettings.findFirst({
             where: { isDemo: req.isDemo || false }
         });
 
+        // Logic for Back Office
         if (user.role === 'BACK_OFFICE') {
             const config = settings?.financials?.backOffice || {};
             const apptCount = await prisma.appointment.count({
@@ -266,11 +268,10 @@ exports.getMyPayroll = async (req, res) => {
             });
         }
 
-        // Determine Financial Group (Installers vs Blowers)
+        // Logic for Installers / Blowers
         const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
         const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
 
-        // Fetch user's team activations
         let activations = [];
         if (teamId) {
             activations = await prisma.activationInfo.findMany({
@@ -286,8 +287,8 @@ exports.getMyPayroll = async (req, res) => {
             });
         }
 
-        // Calculate
-        const teamMembers = user.team ? user.team.members : [user];
+        // Safe team members access
+        const teamMembers = team ? team.members : [user];
         const stats = calculateAdvancedPayroll(activations, financialConfig, teamMembers);
 
         // User share
