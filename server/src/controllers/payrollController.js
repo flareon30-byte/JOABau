@@ -303,17 +303,17 @@ exports.getMyPayroll = async (req, res) => {
         const myTotal = (financialConfig?.salary || user.baseSalary) + myBonus + mySaturday;
 
         res.json({
-            role: user.role,
-            teamName: user.team?.name || 'Sin Equipo',
-            baseSalary: financialConfig?.salary || user.baseSalary,
-            financials: {
-                bonus: myBonus,
-                saturday: mySaturday,
-                total: myTotal
-            },
-            production: {
+            financials: financialConfig,
+            stats: {
                 ...stats,
-                activationsCount: activations.length
+                activationsCount: activations.length,
+                teamName: user.team?.name || 'Sin Equipo'
+            },
+            personal: {
+                baseSalary: financialConfig?.salary || user.baseSalary || 0,
+                myBonusShare: myBonus,
+                mySaturdayPay: mySaturday,
+                totalEstimated: myTotal
             }
         });
 
