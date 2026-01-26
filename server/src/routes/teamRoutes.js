@@ -4,11 +4,12 @@ const teamController = require('../controllers/teamController');
 const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 
 router.use(verifyToken);
-router.use(checkRole(['ADMIN', 'SUPER_ADMIN']));
+// Allow Back Office to VIEW teams to assign appointments
+router.get('/', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), teamController.getAllTeams);
 
-router.get('/', teamController.getAllTeams);
-router.post('/', teamController.createTeam);
-router.put('/:id', teamController.updateTeam);
-router.delete('/:id', teamController.deleteTeam);
+// Only Admins can MANAGE teams
+router.post('/', checkRole(['ADMIN', 'SUPER_ADMIN']), teamController.createTeam);
+router.put('/:id', checkRole(['ADMIN', 'SUPER_ADMIN']), teamController.updateTeam);
+router.delete('/:id', checkRole(['ADMIN', 'SUPER_ADMIN']), teamController.deleteTeam);
 
 module.exports = router;
