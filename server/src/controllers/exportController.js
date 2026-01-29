@@ -137,7 +137,7 @@ exports.exportActivationPhotos = async (req, res) => {
 };
 
 exports.getBillingData = async (req, res) => {
-    const { projectId, startDate, endDate, nvt } = req.query;
+    const { projectId, startDate, endDate, nvt, type } = req.query;
 
     const dateFilter = {};
     if (startDate) dateFilter.gte = new Date(startDate);
@@ -187,7 +187,8 @@ exports.getBillingData = async (req, res) => {
                 address: {
                     ...projectFilter,
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
-                }
+                },
+                ...(type ? { activationType: type } : {})
             },
             include: { address: { include: { project: true } } },
             orderBy: { createdAt: 'desc' }
@@ -216,7 +217,7 @@ exports.getBillingData = async (req, res) => {
 };
 
 exports.exportBillingExcel = async (req, res) => {
-    const { projectId, startDate, endDate, nvt } = req.query;
+    const { projectId, startDate, endDate, nvt, type } = req.query;
 
     const dateFilter = {};
     if (startDate) dateFilter.gte = new Date(startDate);
@@ -252,7 +253,8 @@ exports.exportBillingExcel = async (req, res) => {
                 address: {
                     ...projectFilter,
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
-                }
+                },
+                ...(type ? { activationType: type } : {})
             },
             include: { address: { include: { project: true } } }
         });
