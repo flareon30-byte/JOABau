@@ -16,6 +16,7 @@ import BillingPage from './pages/BillingPage';
 import PayrollPage from './pages/PayrollPage';
 import ActivationPageV2 from './pages/ActivationPageV2';
 import ProtocolDepartment from './pages/ProtocolDepartment';
+import IssuesPage from './pages/IssuesPage';
 import MyEarningsPage from './pages/MyEarningsPage';
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
           <Route path="billing" element={<BillingPage />} />
           <Route path="payroll" element={<PayrollPage />} />
           <Route path="my-earnings" element={<MyEarningsPage />} />
+          <Route path="issues" element={<IssuesPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
