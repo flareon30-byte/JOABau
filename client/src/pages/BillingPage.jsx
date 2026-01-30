@@ -433,7 +433,7 @@ const BillingPage = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <FileText className="text-blue-600" /> Facturación
+                        <FileText className="text-blue-600" /> Facturación (v2.1)
                     </h2>
                     <p className="text-slate-500 text-sm">Gestiona y exporta los trabajos realizados para facturar.</p>
                 </div>
