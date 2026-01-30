@@ -3,6 +3,7 @@ FROM node:18-alpine as build
 WORKDIR /app
 COPY package*.json ./
 RUN npm install
+ENV FORCE_REBUILD=v2
 COPY . .
 RUN npm run build
 
