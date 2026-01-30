@@ -163,7 +163,12 @@ exports.getBillingData = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     ...projectFilter,
-                    project: { isDemo: isDemo }, // Filter by Demo
+                    ...projectFilter,
+                    project: {
+                        isDemo: isDemo,
+                        // DOUBLE SAFETY: If not demo user, exclude anything with "Demo" in name
+                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    },
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
             },
@@ -176,7 +181,10 @@ exports.getBillingData = async (req, res) => {
             where: {
                 createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
-                project: { isDemo: isDemo }, // Filter by Demo
+                project: {
+                    isDemo: isDemo,
+                    ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                }, // Filter by Demo
                 ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
             },
             include: { project: true },
@@ -189,7 +197,10 @@ exports.getBillingData = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     ...projectFilter,
-                    project: { isDemo: isDemo }, // Filter by Demo
+                    project: {
+                        isDemo: isDemo,
+                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
                 ...(type ? { activationType: type } : {})
@@ -206,7 +217,10 @@ exports.getBillingData = async (req, res) => {
                 updatedAt: hasDate ? dateFilter : undefined,
                 address: {
                     ...projectFilter,
-                    project: { isDemo: isDemo }, // Filter by Demo
+                    project: {
+                        isDemo: isDemo,
+                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
             },
@@ -238,7 +252,10 @@ exports.exportBillingExcel = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     ...projectFilter,
-                    project: { isDemo: isDemo }, // Filter by Demo
+                    project: {
+                        isDemo: isDemo,
+                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
             },
@@ -249,7 +266,10 @@ exports.exportBillingExcel = async (req, res) => {
             where: {
                 createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
-                project: { isDemo: isDemo }, // Filter by Demo
+                project: {
+                    isDemo: isDemo,
+                    ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                }, // Filter by Demo
                 ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
             },
             include: { project: true }
@@ -260,7 +280,10 @@ exports.exportBillingExcel = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     ...projectFilter,
-                    project: { isDemo: isDemo }, // Filter by Demo
+                    project: {
+                        isDemo: isDemo,
+                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
                 ...(type ? { activationType: type } : {})
@@ -275,7 +298,10 @@ exports.exportBillingExcel = async (req, res) => {
                 updatedAt: hasDate ? dateFilter : undefined,
                 address: {
                     ...projectFilter,
-                    project: { isDemo: isDemo }, // Filter by Demo
+                    project: {
+                        isDemo: isDemo,
+                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
             },

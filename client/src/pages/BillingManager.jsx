@@ -456,7 +456,7 @@ const BillingPage = () => {
             </div>
 
             {/* Filters */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="flex flex-col gap-1">
                     <label className="text-xs font-bold text-slate-500 uppercase">Proyecto</label>
                     <div className="relative">
