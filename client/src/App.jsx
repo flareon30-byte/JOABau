@@ -12,7 +12,7 @@ import AppointmentsPage from './pages/AppointmentsPage';
 import ActivationPage from './pages/ActivationPage';
 import SettingsPage from './pages/SettingsPage';
 
-import BillingPage from './pages/BillingPage';
+import BillingPage from './pages/BillingManager';
 import PayrollPage from './pages/PayrollPage';
 import ActivationPageV2 from './pages/ActivationPageV2';
 import ProtocolDepartment from './pages/ProtocolDepartment';
