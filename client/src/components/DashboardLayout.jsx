@@ -75,7 +75,6 @@ const DashboardLayout = () => {
         { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
         { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER', 'SUPER_ADMIN'] },
         { icon: Settings, label: 'Configuración', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
-        { icon: AlertTriangle, label: 'DEBUG CHECK', path: '/dashboard/debug', roles: ['SUPER_ADMIN'] },
     ];
 
     // Close sidebar on route change on mobile
