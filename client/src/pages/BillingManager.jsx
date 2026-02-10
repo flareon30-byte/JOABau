@@ -20,7 +20,8 @@ const BillingPage = () => {
         soplado: [],
         fusion: [],
         activation: [],
-        protocol: []
+        protocol: [],
+        repair: []
     });
     const [loading, setLoading] = useState(false);
 
@@ -224,6 +225,11 @@ const BillingPage = () => {
                 columns = ['Fecha', 'Proyecto', 'Dirección', 'NVT', 'Estado', 'Notas', 'Acciones'];
                 emptyMsg = "No hay protocolos completados";
                 break;
+            case 'repair':
+                data = billingData.repair;
+                columns = ['Fecha', 'Proyecto', 'Dirección', 'NVT', 'Tipo', 'Detalles', 'Acciones'];
+                emptyMsg = "No hay reparaciones facturables completadas";
+                break;
             default:
                 break;
         }
@@ -336,6 +342,16 @@ const BillingPage = () => {
                                         <td className="p-4 font-bold text-purple-600">{row.address?.nvt || '-'}</td>
                                         <td className="p-4"><span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-bold">{row.status}</span></td>
                                         <td className="p-4 text-slate-500">{row.reciteReason || '-'}</td>
+                                    </>
+                                )}
+                                {activeTab === 'repair' && (
+                                    <>
+                                        <td className="p-4">{new Date(row.updatedAt).toLocaleDateString()}</td>
+                                        <td className="p-4 font-medium text-slate-800">{row.address?.project?.name}</td>
+                                        <td className="p-4">{row.address?.street} {row.address?.number}</td>
+                                        <td className="p-4 font-bold text-red-600">{row.address?.nvt || '-'}</td>
+                                        <td className="p-4"><span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-bold">Avería</span></td>
+                                        <td className="p-4 text-slate-500 italic">"{row.comments?.[0]?.text || 'Sin detalle'}"</td>
                                     </>
                                 )}
 
@@ -544,7 +560,8 @@ const BillingPage = () => {
                         { id: 'soplado', label: 'Soplado', color: 'blue' },
                         { id: 'fusion', label: 'Fusión', color: 'purple' },
                         { id: 'activation', label: 'Activaciones', color: 'green' },
-                        { id: 'protocol', label: 'Protocolos', color: 'indigo' }
+                        { id: 'protocol', label: 'Protocolos', color: 'indigo' },
+                        { id: 'repair', label: 'Reparaciones', color: 'orange' }
                     ].map(tab => (
                         <button
                             key={tab.id}

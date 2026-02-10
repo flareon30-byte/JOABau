@@ -154,7 +154,8 @@ exports.getBillingData = async (req, res) => {
             soplado: [],
             fusion: [],
             activation: [],
-            protocol: []
+            protocol: [], // Added newline for clarity
+            repair: [] // Added repair here
         };
 
         // 1. SOPLADO
@@ -225,6 +226,28 @@ exports.getBillingData = async (req, res) => {
                 }
             },
             include: { address: { include: { project: true } } },
+            orderBy: { updatedAt: 'desc' }
+        });
+
+        // 5. REPAIRS (Billable Only)
+        results.repair = await prisma.appointment.findMany({
+            where: {
+                type: 'REPAIR_BILLABLE',
+                status: 'COMPLETADO',
+                updatedAt: hasDate ? dateFilter : undefined,
+                address: {
+                    ...projectFilter,
+                    project: {
+                        isDemo: isDemo,
+                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    }, // Filter by Demo
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                }
+            },
+            include: {
+                address: { include: { project: true } },
+                comments: { orderBy: { createdAt: 'desc' }, take: 1 }
+            },
             orderBy: { updatedAt: 'desc' }
         });
 
@@ -308,6 +331,26 @@ exports.exportBillingExcel = async (req, res) => {
             include: { address: { include: { project: true } } }
         });
 
+        const repair = await prisma.appointment.findMany({
+            where: {
+                type: 'REPAIR_BILLABLE',
+                status: 'COMPLETADO',
+                updatedAt: hasDate ? dateFilter : undefined,
+                address: {
+                    ...projectFilter,
+                    project: {
+                        isDemo: isDemo,
+                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    }, // Filter by Demo
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                }
+            },
+            include: {
+                address: { include: { project: true } },
+                comments: { orderBy: { createdAt: 'desc' }, take: 1 }
+            }
+        });
+
         const wb = XLSX.utils.book_new();
 
         // 1. Soplado Sheet
@@ -362,6 +405,18 @@ exports.exportBillingExcel = async (req, res) => {
         }));
         const wsProt = XLSX.utils.json_to_sheet(protRows);
         XLSX.utils.book_append_sheet(wb, wsProt, "Protocolos");
+
+        // 5. Repair Sheet
+        const repairRows = repair.map(i => ({
+            Fecha: i.updatedAt.toISOString().split('T')[0],
+            Proyecto: i.address.project.name,
+            Direccion: `${i.address.street} ${i.address.number}`,
+            NVT: i.address.nvt,
+            Tipo: 'Avería',
+            Detalle: i.comments?.[0]?.text || 'Sin detalle'
+        }));
+        const wsRepair = XLSX.utils.json_to_sheet(repairRows);
+        XLSX.utils.book_append_sheet(wb, wsRepair, "Averias");
 
         const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
