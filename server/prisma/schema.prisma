@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
 }
 
@@ -25,90 +25,90 @@ enum Department {
 }
 
 model User {
-  id        String     @id @default(uuid())
-  username  String     @unique
-  password  String
-  role      Role
-  teamId    String?
-  team      Team?      @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  id                    String        @id @default(uuid())
+  username              String        @unique
+  password              String
+  role                  Role
+  teamId                String?
+  team                  Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
   scheduledAppointments Appointment[] @relation("ScheduledBy")
-  phone     String?
-  baseSalary Float     @default(1500.0) // Sueldo Base para nóminas
-  isDemo    Boolean    @default(false)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  phone                 String?
+  baseSalary            Float         @default(1500.0) // Sueldo Base para nóminas
+  isDemo                Boolean       @default(false)
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
 }
 
 model Team {
-  id          String     @id @default(uuid())
-  name        String
-  department  Department
-  isDemo      Boolean    @default(false)
-  members     User[]
+  id           String        @id @default(uuid())
+  name         String
+  department   Department
+  isDemo       Boolean       @default(false)
+  members      User[]
   appointments Appointment[]
-  tools       Tool[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  tools        Tool[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Tool {
-  id           String   @id @default(uuid())
+  id           String @id @default(uuid())
   name         String
   serialNumber String
-  status       String   @default("ACTIVE") // ACTIVE, BROKEN, REPAIR
-  
-  teamId       String
-  team         Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  
-  photos       String[] 
+  status       String @default("ACTIVE") // ACTIVE, BROKEN, REPAIR
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  photos String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Project {
-  id        String    @id @default(uuid())
-  name      String    @unique
-  isDemo    Boolean   @default(false)
-  addresses Address[]
+  id          String       @id @default(uuid())
+  name        String       @unique
+  isDemo      Boolean      @default(false)
+  addresses   Address[]
   fusionWorks FusionWork[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Address {
-  id          String   @id @default(uuid())
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  nvt         String?
-  street      String
-  number      String?
-  city        String?
-  klsId       String?
-  clientName  String?
-  
+  id         String  @id @default(uuid())
+  projectId  String
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  nvt        String?
+  street     String
+  number     String?
+  city       String?
+  klsId      String?
+  clientName String?
+
   // Soplado
   sopladoStatus SopladoStatus?
   sopladoInfo   SopladoInfo?
 
   // Fusion
-  fusionInfo    FusionInfo?
+  fusionInfo FusionInfo?
 
   // Back Office / Citas
-  appointment   Appointment?
+  appointment Appointment?
 
   // Activacion
   activationInfo ActivationInfo?
-  
+
   // New fields for Protocol and Status Logic
-  requiresProtocol Boolean  @default(false)
-  protocolStatus   String   @default("NONE") // NONE, PENDING, SCHEDULED, COMPLETED, RECITED
-  orderStatus      String?  @default("geplant") // Column C from Excel
+  requiresProtocol Boolean @default(false)
+  protocolStatus   String  @default("NONE") // NONE, PENDING, SCHEDULED, COMPLETED, RECITED
+  orderStatus      String? @default("geplant") // Column C from Excel
 
   notifications Notification[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum SopladoStatus {
@@ -118,19 +118,19 @@ enum SopladoStatus {
 }
 
 model SopladoInfo {
-  id          String   @id @default(uuid())
-  addressId   String   @unique
-  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  meters      Float
-  tk          String
-  tubeColor   String 
-  
+  id        String  @id @default(uuid())
+  addressId String  @unique
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  meters    Float
+  tk        String
+  tubeColor String
+
   // Si fallido
   failureReason String?
-  photos        String[] 
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  photos        String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model FusionInfo {
@@ -140,8 +140,8 @@ model FusionInfo {
   description String
   photos      String[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum AppointmentStatus {
@@ -153,31 +153,31 @@ enum AppointmentStatus {
 }
 
 model Appointment {
-  id          String   @id @default(uuid())
-  addressId   String   @unique
-  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(uuid())
+  addressId String  @unique
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+
   clientName     String? // Mandatory for assignment
-  apartmentCount Int?    // Mandatory for assignment
+  apartmentCount Int? // Mandatory for assignment
 
-  contactAttempts Int @default(0)
+  contactAttempts Int      @default(0)
   contactHistory  String[] // "YYYY-MM-DD HH:mm: Resultado"
-  
-  assignedDate    DateTime?
-  assignedTeamId  String?
-  assignedTeam    Team?    @relation(fields: [assignedTeamId], references: [id], onDelete: SetNull)
-  
-  scheduledById   String?
-  scheduledBy     User?    @relation("ScheduledBy", fields: [scheduledById], references: [id], onDelete: SetNull)
 
-  type            String            @default("ACTIVATION") // ACTIVATION, PROTOCOL
-  reciteReason    String?
+  assignedDate   DateTime?
+  assignedTeamId String?
+  assignedTeam   Team?     @relation(fields: [assignedTeamId], references: [id], onDelete: SetNull)
 
-  status          AppointmentStatus @default(PENDIENTE)
-  comments        Comment[]
+  scheduledById String?
+  scheduledBy   User?   @relation("ScheduledBy", fields: [scheduledById], references: [id], onDelete: SetNull)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  type         String  @default("ACTIVATION") // ACTIVATION, PROTOCOL
+  reciteReason String?
+
+  status   AppointmentStatus @default(PENDIENTE)
+  comments Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Comment {
@@ -198,80 +198,80 @@ enum ActivationType {
 }
 
 model ActivationInfo {
-  id          String   @id @default(uuid())
-  addressId   String   @unique
-  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  
+  id        String  @id @default(uuid())
+  addressId String  @unique
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+
   activationType ActivationType
   familiesCount  Int
   apPorts        Int
   hasMoreClients Boolean
-  spInstalled    Int 
+  spInstalled    Int
   taInstalled    Boolean
-  taCount        Int      @default(0)
-  homeIds        String[] 
+  taCount        Int            @default(0)
+  homeIds        String[]
   description    String?
-  
-  photos         String[]
-  pdfPath        String?
-  
-  points         Float 
-  isSaturday     Boolean @default(false) // Track if it was a Saturday activation
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  photos  String[]
+  pdfPath String?
+
+  points     Float
+  isSaturday Boolean @default(false) // Track if it was a Saturday activation
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
-
 model SystemSettings {
-  id                    String @id @default(uuid())
-  isDemo                Boolean @default(false)
-  extraPointPrice       Float  @default(0.0)
-  saturdayPointPrice    Float  @default(0.0)
-  monthlyTargetPoints   Int    @default(100)
-  
-  // Point Values
-  bpPoints              Float    @default(10.0)
-  bp2FamPoints          Float    @default(15.0)
-  brMultiPoints         Float    @default(20.0)
-  sduPoints             Float    @default(25.0)
-  mduPoints             Float    @default(30.0)
-  spPoints              Float    @default(5.0)
-  taPoints              Float    @default(0.5)
-  
-  financials            Json?    // Stores complex calculator config (salaries, cars, etc.)
+  id                  String  @id @default(uuid())
+  isDemo              Boolean @default(false)
+  extraPointPrice     Float   @default(0.0)
+  saturdayPointPrice  Float   @default(0.0)
+  repairPrice         Float   @default(45.0) // Precio por Avería (Facturable)
+  monthlyTargetPoints Int     @default(100)
 
-  updatedAt             DateTime @updatedAt
+  // Point Values
+  bpPoints      Float @default(10.0)
+  bp2FamPoints  Float @default(15.0)
+  brMultiPoints Float @default(20.0)
+  sduPoints     Float @default(25.0)
+  mduPoints     Float @default(30.0)
+  spPoints      Float @default(5.0)
+  taPoints      Float @default(0.5)
+
+  financials Json? // Stores complex calculator config (salaries, cars, etc.)
+
+  updatedAt DateTime @updatedAt
 }
 
 model Notification {
-  id          String   @id @default(uuid())
-  type        String   // e.g., 'RECITE', 'ISSUE'
-  message     String
-  isRead      Boolean  @default(false)
-  
-  addressId   String?
-  address     Address? @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  
+  id      String  @id @default(uuid())
+  type    String // e.g., 'RECITE', 'ISSUE'
+  message String
+  isRead  Boolean @default(false)
+
+  addressId String?
+  address   Address? @relation(fields: [addressId], references: [id], onDelete: Cascade)
+
   createdById String?
   targetRole  Role?
 
-  createdAt   DateTime @default(now())
+  createdAt DateTime @default(now())
 }
 
 model FusionWork {
-  id          String   @id @default(uuid())
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  nvtName     String   // The NVT identifier (e.g. "NVT-01")
-  
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  nvtName   String // The NVT identifier (e.g. "NVT-01")
+
   fusionCount Int
-  isTray      Boolean  @default(false) // "en bandejas"
-  
+  isTray      Boolean @default(false) // "en bandejas"
+
   photos      String[]
-  description String?  // Optional comments
+  description String? // Optional comments
 
   createdById String?
-  
-  createdAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
 }

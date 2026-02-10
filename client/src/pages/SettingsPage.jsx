@@ -242,6 +242,10 @@ const SettingsPage = () => {
                                             <label className="block text-xs font-bold text-blue-600 uppercase">Precio MDU</label>
                                             <input type="number" step="0.01" value={data.pricePerMDU || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerMDU', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
                                         </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-red-600 uppercase">Precio Avería (Facturable)</label>
+                                            <input type="number" step="0.01" value={settings.repairPrice || 0} onChange={(e) => setSettings({ ...settings, repairPrice: parseFloat(e.target.value) })} className="w-full p-2 border border-red-200 rounded-lg focus:ring-2 focus:ring-red-500" />
+                                        </div>
                                     </>
                                 )}
                             </div>

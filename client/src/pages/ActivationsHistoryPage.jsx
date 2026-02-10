@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Calendar, Filter, Download, Eye, X, Image as ImageIcon } from 'lucide-react';
+import { Calendar, Filter, Download, Eye, X, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
@@ -125,6 +125,149 @@ const ActivationsHistoryPage = () => {
         setIsExportModalOpen(false);
     };
 
+    const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
+    const [repairForm, setRepairForm] = useState({
+        type: 'WARRANTY', // WARRANTY, BILLABLE
+        date: new Date().toISOString().split('T')[0],
+        teamId: '',
+        reason: ''
+    });
+
+    const openRepairModal = (act) => {
+        setSelectedActivation(act);
+        setRepairForm({
+            type: 'WARRANTY',
+            date: new Date().toISOString().split('T')[0],
+            teamId: act.address.appointment?.assignedTeamId || '',
+            reason: ''
+        });
+        setIsRepairModalOpen(true);
+    };
+
+    const handleRepairSubmit = async () => {
+        if (!repairForm.teamId || !repairForm.date) {
+            alert('Por favor selecciona equipo y fecha');
+            return;
+        }
+
+        try {
+            await api.post(`/api/appointments/repair/${selectedActivation.addressId}`, repairForm);
+            alert('Cita de reparación creada correctamente');
+            setIsRepairModalOpen(false);
+            fetchData(); // Refresh list (might not show changed status if we only list 'activations', but it changes the backend state)
+        } catch (error) {
+            console.error(error);
+            alert('Error al crear reparación');
+        }
+    };
+
+    const RepairModal = () => {
+        if (!isRepairModalOpen || !selectedActivation) return null;
+
+        const originalTeamName = selectedActivation.address.appointment?.assignedTeam?.name || 'Desconocido';
+        const originalDate = new Date(selectedActivation.createdAt).toLocaleDateString();
+
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+                <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
+                    <button onClick={() => setIsRepairModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                        <X size={24} />
+                    </button>
+
+                    <h3 className="text-xl font-bold text-red-600 mb-1 flex items-center gap-2">
+                        <AlertTriangle /> Reportar Incidencia / Reparación
+                    </h3>
+                    <p className="text-sm text-slate-500 mb-6 border-b border-slate-100 pb-4">
+                        {selectedActivation.address.street} {selectedActivation.address.number}
+                    </p>
+
+                    <div className="bg-yellow-50 p-4 rounded-lg mb-6 border border-yellow-200 text-sm text-yellow-800">
+                        <p><strong>Instalación Original:</strong></p>
+                        <ul className="list-disc pl-5 mt-1">
+                            <li>Realizada por: <strong>{originalTeamName}</strong></li>
+                            <li>Fecha: {originalDate}</li>
+                        </ul>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">Tipo de Incidencia</label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => setRepairForm({ ...repairForm, type: 'WARRANTY' })}
+                                    className={`p-3 rounded-xl border text-center transition-all ${repairForm.type === 'WARRANTY' ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200' : 'border-slate-200 hover:border-slate-300'}`}
+                                >
+                                    <div className="font-bold">Reclamación</div>
+                                    <div className="text-xs opacity-75">(Garantía / Sin Cobro)</div>
+                                </button>
+                                <button
+                                    onClick={() => setRepairForm({ ...repairForm, type: 'BILLABLE' })}
+                                    className={`p-3 rounded-xl border text-center transition-all ${repairForm.type === 'BILLABLE' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
+                                >
+                                    <div className="font-bold">Avería Externa</div>
+                                    <div className="text-xs opacity-75">(Facturable)</div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Asignar a Equipo</label>
+                            <select
+                                value={repairForm.teamId}
+                                onChange={(e) => setRepairForm({ ...repairForm, teamId: e.target.value })}
+                                className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            >
+                                <option value="">Selecciona un equipo</option>
+                                {teams.map(t => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.name} {t.id === selectedActivation.address.appointment?.assignedTeamId ? '(Original)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Reparación</label>
+                            <input
+                                type="date"
+                                value={repairForm.date}
+                                onChange={(e) => setRepairForm({ ...repairForm, date: e.target.value })}
+                                className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Motivo / Descripción</label>
+                            <textarea
+                                value={repairForm.reason}
+                                onChange={(e) => setRepairForm({ ...repairForm, reason: e.target.value })}
+                                className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder="Describe el problema reportado..."
+                                rows="2"
+                            />
+                        </div>
+
+                        <div className="pt-4 flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsRepairModalOpen(false)}
+                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleRepairSubmit}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-500/30 flex items-center gap-2"
+                            >
+                                <AlertTriangle size={18} />
+                                Generar Cita de Reparación
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -237,13 +380,22 @@ const ActivationsHistoryPage = () => {
                                         </td>
                                         <td className="p-4 font-bold text-joa-blue">{act.points}</td>
                                         <td className="p-4 text-right">
-                                            <button
-                                                onClick={() => setSelectedActivation(act)}
-                                                className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
-                                                title="Ver Detalles y Fotos"
-                                            >
-                                                <Eye size={18} />
-                                            </button>
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => openRepairModal(act)}
+                                                    className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                                                    title="Reportar Incidencia / Reparación"
+                                                >
+                                                    <AlertTriangle size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setSelectedActivation(act)}
+                                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                                                    title="Ver Detalles y Fotos"
+                                                >
+                                                    <Eye size={18} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))
@@ -254,7 +406,7 @@ const ActivationsHistoryPage = () => {
             </div>
 
             {/* Details Modal */}
-            {selectedActivation && (
+            {selectedActivation && !isRepairModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
                         <button onClick={() => setSelectedActivation(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
@@ -307,6 +459,9 @@ const ActivationsHistoryPage = () => {
                     </div>
                 </div>
             )}
+
+            <RepairModal />
+
             {/* Export Photos Modal */}
             {isExportModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">

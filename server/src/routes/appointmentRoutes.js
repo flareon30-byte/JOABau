@@ -10,10 +10,13 @@ router.use(verifyToken);
 // Let's restrict to relevant roles.
 const allowedRoles = ['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN'];
 
+const repairController = require('../controllers/repairController');
+
 router.get('/pending', checkRole(allowedRoles), appointmentController.getPendingAppointments);
 router.get('/scheduled', checkRole(allowedRoles), appointmentController.getScheduledAppointments);
 router.post('/log-contact/:addressId', checkRole(allowedRoles), appointmentController.logContactAttempt);
 router.post('/schedule/:addressId', checkRole(allowedRoles), appointmentController.scheduleAppointment);
+router.post('/repair/:addressId', checkRole(allowedRoles), repairController.createRepairAppointment); // New Endpoint for Repairs
 
 const operationalRoles = ['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN', 'PROTOCOL_MANAGER', 'ACTIVATOR', 'BLOWER'];
 router.put('/:id/status', checkRole(operationalRoles), appointmentController.updateStatus);
