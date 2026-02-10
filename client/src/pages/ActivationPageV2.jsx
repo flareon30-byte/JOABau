@@ -378,17 +378,15 @@ const ActivationPageV2 = () => {
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-1">Puertos AP</label>
-                                <select
+                                <input
+                                    type="number"
                                     name="apPorts"
                                     value={formData.apPorts}
                                     onChange={handleInputChange}
+                                    placeholder="2"
+                                    min="1"
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
-                                >
-                                    <option value="2">2 Puertos</option>
-                                    <option value="4">4 Puertos</option>
-                                    <option value="8">8 Puertos</option>
-                                    <option value="16">16 Puertos</option>
-                                </select>
+                                />
                             </div>
 
                             <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
