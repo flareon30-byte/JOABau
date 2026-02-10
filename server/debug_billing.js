@@ -1,6 +1,12 @@
-const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '.env') });
-const prisma = require('./src/prisma');
+const { PrismaClient } = require('@prisma/client');
+
+const prisma = new PrismaClient({
+    datasources: {
+        db: {
+            url: 'postgresql://postgres:12345@localhost:5432/fiber_optics_db?schema=public',
+        },
+    },
+});
 
 async function debugActivations() {
     try {

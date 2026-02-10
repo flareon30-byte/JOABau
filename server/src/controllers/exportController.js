@@ -166,9 +166,8 @@ exports.getBillingData = async (req, res) => {
                     ...projectFilter,
                     ...projectFilter,
                     project: {
-                        isDemo: isDemo,
-                        // DOUBLE SAFETY: If not demo user, exclude anything with "Demo" in name
-                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                        isDemo: isDemo
+                        // Removed extra check that was causing issues
                     },
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
@@ -183,8 +182,7 @@ exports.getBillingData = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
                 project: {
-                    isDemo: isDemo,
-                    ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    isDemo: isDemo
                 }, // Filter by Demo
                 ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
             },
@@ -199,8 +197,7 @@ exports.getBillingData = async (req, res) => {
                 address: {
                     ...projectFilter,
                     project: {
-                        isDemo: isDemo,
-                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                        isDemo: isDemo
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
@@ -219,8 +216,7 @@ exports.getBillingData = async (req, res) => {
                 address: {
                     ...projectFilter,
                     project: {
-                        isDemo: isDemo,
-                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                        isDemo: isDemo
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
@@ -238,8 +234,7 @@ exports.getBillingData = async (req, res) => {
                 address: {
                     ...projectFilter,
                     project: {
-                        isDemo: isDemo,
-                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                        isDemo: isDemo
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
@@ -276,8 +271,7 @@ exports.exportBillingExcel = async (req, res) => {
                 address: {
                     ...projectFilter,
                     project: {
-                        isDemo: isDemo,
-                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                        isDemo: isDemo
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
@@ -290,8 +284,7 @@ exports.exportBillingExcel = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
                 project: {
-                    isDemo: isDemo,
-                    ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                    isDemo: isDemo
                 }, // Filter by Demo
                 ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
             },
@@ -304,8 +297,7 @@ exports.exportBillingExcel = async (req, res) => {
                 address: {
                     ...projectFilter,
                     project: {
-                        isDemo: isDemo,
-                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                        isDemo: isDemo
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
@@ -322,8 +314,7 @@ exports.exportBillingExcel = async (req, res) => {
                 address: {
                     ...projectFilter,
                     project: {
-                        isDemo: isDemo,
-                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                        isDemo: isDemo
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
@@ -339,8 +330,7 @@ exports.exportBillingExcel = async (req, res) => {
                 address: {
                     ...projectFilter,
                     project: {
-                        isDemo: isDemo,
-                        ...(isDemo ? {} : { name: { not: { contains: 'Demo', mode: 'insensitive' } } })
+                        isDemo: isDemo
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
