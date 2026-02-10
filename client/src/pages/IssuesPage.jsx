@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar } from 'lucide-react';
+import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network } from 'lucide-react';
 
 const IssuesPage = () => {
     const [activeTab, setActiveTab] = useState('search');
@@ -208,7 +208,7 @@ const IssuesPage = () => {
                     </div>
 
                     {/* Results */}
-                    {hasSearched && !searchResult && (
+                    {hasSearched && (!searchResult || searchResult.length === 0) && (
                         <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center space-y-4">
                             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
                                 <Search size={32} />
@@ -227,91 +227,107 @@ const IssuesPage = () => {
                         </div>
                     )}
 
-                    {searchResult && (
+                    {searchResult && searchResult.length > 0 && (
                         <div className="space-y-6 animate-in fade-in zoom-in-95">
-                            {/* Address Header */}
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between">
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className="text-xs font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                            {searchResult.project?.name || 'Proyecto Desconocido'}
-                                        </span>
-                                        <span className="text-xs font-bold uppercase text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                                            NVT: {searchResult.nvt || 'N/A'}
-                                        </span>
-                                    </div>
-                                    <h2 className="text-2xl font-bold text-slate-800 flex items-baseline gap-2">
-                                        {searchResult.street} {searchResult.number}
-                                        <span className="text-lg font-normal text-slate-500">{searchResult.city}</span>
-                                    </h2>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                {/* Soplado Info */}
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                                    <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 pb-2 border-b border-slate-50">
-                                        <Network className="text-purple-500" size={20} /> Estado de Soplado
-                                    </h3>
-                                    <div className="space-y-3">
-                                        <div className="flex justify-between">
-                                            <span className="text-slate-500 text-sm">Estado:</span>
-                                            <StatusBadge status={searchResult.status} />
-                                        </div>
-                                        {searchResult.soplado?.map((s, idx) => (
-                                            <div key={idx} className="bg-slate-50 p-3 rounded-lg text-sm space-y-1">
-                                                <div className="flex justify-between">
-                                                    <span className="text-slate-500">Metros:</span>
-                                                    <span className="font-medium">{s.meters}m</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-slate-500">Microducto:</span>
-                                                    <span className="font-medium">{s.microduct}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-slate-500">Fecha:</span>
-                                                    <span className="font-medium">{new Date(s.createdAt).toLocaleDateString()}</span>
-                                                </div>
+                            {searchResult.map((result) => (
+                                <div key={result.id} className="space-y-6 border-b border-slate-200 pb-8 last:border-0 last:pb-0">
+                                    {/* Address Header */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xs font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                                    {result.project?.name || 'Proyecto Desconocido'}
+                                                </span>
+                                                <span className="text-xs font-bold uppercase text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                                                    NVT: {result.nvt || 'N/A'}
+                                                </span>
                                             </div>
-                                        ))}
-                                        {!searchResult.soplado?.length && <p className="text-sm text-slate-400 italic">Sin información registrada.</p>}
+                                            <h2 className="text-2xl font-bold text-slate-800 flex items-baseline gap-2">
+                                                {result.street} {result.number}
+                                                <span className="text-lg font-normal text-slate-500">{result.city}</span>
+                                            </h2>
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Appointment History */}
-                                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
-                                    <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 pb-2 border-b border-slate-50">
-                                        <History className="text-orange-500" size={20} /> Historial de Citas
-                                    </h3>
-                                    <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                                        {searchResult.appointments?.map((apt) => (
-                                            <div key={apt.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-50 rounded-lg text-sm gap-2">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
-                                                        {new Date(apt.date).getDate()}
-                                                    </div>
-                                                    <div>
-                                                        <p className="font-medium text-slate-800">{new Date(apt.date).toLocaleDateString()}</p>
-                                                        <p className="text-xs text-slate-500">{apt.timeSlot}</p>
-                                                    </div>
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                        {/* Soplado Info */}
+                                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                                            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 pb-2 border-b border-slate-50">
+                                                <Network className="text-purple-500" size={20} /> Estado de Soplado
+                                            </h3>
+                                            <div className="space-y-3">
+                                                <div className="flex justify-between">
+                                                    <span className="text-slate-500 text-sm">Estado:</span>
+                                                    <StatusBadge status={result.sopladoStatus || 'Pendiente'} />
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="bg-white px-2 py-1 rounded border border-slate-200 text-xs font-mono text-slate-600">
-                                                        {apt.team?.name || 'Sin Equipo'}
-                                                    </span>
-                                                    <StatusBadge status={apt.status} />
-                                                </div>
-                                                {apt.scheduledBy && (
-                                                    <div className="text-xs text-slate-400 md:text-right">
-                                                        Por: {apt.scheduledBy.username}
+                                                {result.sopladoInfo ? (
+                                                    <div className="bg-slate-50 p-3 rounded-lg text-sm space-y-1">
+                                                        <div className="flex justify-between">
+                                                            <span className="text-slate-500">Metros:</span>
+                                                            <span className="font-medium">{result.sopladoInfo.meters}m</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-slate-500">TK:</span>
+                                                            <span className="font-medium">{result.sopladoInfo.tk}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-slate-500">Color Tubo:</span>
+                                                            <span className="font-medium">{result.sopladoInfo.tubeColor}</span>
+                                                        </div>
+                                                        <div className="flex justify-between">
+                                                            <span className="text-slate-500">Fecha:</span>
+                                                            <span className="font-medium">
+                                                                {result.sopladoInfo.createdAt ? new Date(result.sopladoInfo.createdAt).toLocaleDateString() : '-'}
+                                                            </span>
+                                                        </div>
                                                     </div>
+                                                ) : (
+                                                    <p className="text-sm text-slate-400 italic">Sin información de soplado.</p>
                                                 )}
                                             </div>
-                                        ))}
-                                        {!searchResult.appointments?.length && <p className="text-sm text-slate-400 italic">No hay citas registradas.</p>}
+                                        </div>
+
+                                        {/* Appointment Info (Only 1 per address in schema) */}
+                                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
+                                            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 pb-2 border-b border-slate-50">
+                                                <History className="text-orange-500" size={20} /> Cita / Protocolo
+                                            </h3>
+                                            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                                {result.appointment ? (
+                                                    <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-50 rounded-lg text-sm gap-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                                                {result.appointment.assignedDate ? new Date(result.appointment.assignedDate).getDate() : '?'}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-slate-800">
+                                                                    {result.appointment.assignedDate ? new Date(result.appointment.assignedDate).toLocaleDateString() : 'Sin Fecha'}
+                                                                </p>
+                                                                <p className="text-xs text-slate-500">
+                                                                    {result.appointment.timeSlot || 'Todo el día'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="bg-white px-2 py-1 rounded border border-slate-200 text-xs font-mono text-slate-600">
+                                                                {result.appointment.assignedTeam?.name || 'Sin Equipo'}
+                                                            </span>
+                                                            <StatusBadge status={result.appointment.status} />
+                                                        </div>
+                                                        {result.appointment.scheduledBy && (
+                                                            <div className="text-xs text-slate-400 md:text-right">
+                                                                Por: {result.appointment.scheduledBy.username}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm text-slate-400 italic">No hay citas registradas para esta dirección.</p>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            ))}
                         </div>
                     )}
                 </div>
