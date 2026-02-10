@@ -44,7 +44,7 @@ const DashboardLayout = () => {
     const handleNotificationClick = (n) => {
         markAsRead(n.id);
         setShowNotifications(false);
-        if (n.type === 'RECITE_REQUEST') {
+        if (n.type === 'RECITE_REQUEST' || n.type === 'REPAIR_ASSIGNED') {
             if (n.address && n.address.street) {
                 navigate(`/dashboard/appointments?search=${encodeURIComponent(n.address.street)}`);
             } else {

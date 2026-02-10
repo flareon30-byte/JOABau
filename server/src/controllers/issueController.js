@@ -59,7 +59,7 @@ exports.createManualIssue = async (req, res) => {
     try {
         // A. Find or Create the Special Project "AVERIAS_EXTERNAS"
         let project = await prisma.project.findUnique({
-            where: { name: 'AVERIAS_EXTERNAS' }
+            where: { name: 'AVERIAS_EXTERNAS' },
         });
 
         if (!project) {
@@ -108,10 +108,128 @@ exports.createManualIssue = async (req, res) => {
             }
         });
 
+        // D. Create Notification for the assigned team
+        if (teamId) {
+            const team = await prisma.team.findUnique({
+                where: { id: teamId },
+                select: { department: true }
+            });
+
+            let targetRole = 'ACTIVATOR';
+            if (team && team.department === 'BLOWING') targetRole = 'BLOWER';
+            if (team && team.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
+
+            await prisma.notification.create({
+                data: {
+                    type: 'REPAIR_ASSIGNED',
+                    message: `Nueva avería asignada: ${street} ${number} - ${description || 'Sin detalles'}`,
+                    createdById: userId,
+                    addressId: address.id,
+                    targetRole: targetRole
+                }
+            });
+        }
+
         res.json({ message: 'Avería creada correctamente', address, appointment });
 
     } catch (error) {
         console.error('Error creating manual issue:', error);
         res.status(500).json({ message: 'Error creando la avería.' });
+    }
+};
+
+// 3. Create Issue from Existing Address
+exports.createFromExisting = async (req, res) => {
+    const { addressId, teamId, date, description, clientName } = req.body;
+    const userId = req.userId;
+
+    if (!addressId || !teamId || !date) {
+        return res.status(400).json({ message: 'Faltan datos obligatorios (Dirección, Equipo, Fecha).' });
+    }
+
+    try {
+        // Check if there is already an active appointment? 
+        // For repairs, we might allow multiple, but usually we just want one active.
+        // For simplicity, we create a new appointment of type REPAIR.
+
+        // First, update client name if provided (often updated during trouble calls)
+        if (clientName) {
+            await prisma.address.update({
+                where: { id: addressId },
+                data: { clientName }
+            });
+        }
+
+        // Get address details for notification
+        const address = await prisma.address.findUnique({ where: { id: addressId } });
+
+        // Upsert appointment? Or just create a new one?
+        // If we use 'addressId' as unique in Appointment schema, we must update the existing one or delete/archive it.
+        // The schema says: addressId String @unique. So we can only have ONE active appointment per address.
+        // We should OVERWRITE the existing appointment (or update it) to be a Repair.
+
+        const appointment = await prisma.appointment.upsert({
+            where: { addressId: addressId },
+            update: {
+                status: 'CITADO',
+                assignedTeamId: teamId,
+                assignedDate: new Date(date),
+                type: 'REPAIR',
+                scheduledById: userId,
+                // Append to contact history
+                // contactHistory: { push:  ... } // Prisma doesn't support simple push easily depending on DB, but let's try raw update later if needed.
+                // For now, simple update fields:
+                updatedAt: new Date(),
+                comments: {
+                    create: {
+                        content: `RECLAMACIÓN/AVERÍA: ${description}`,
+                        authorName: 'BackOffice'
+                    }
+                }
+            },
+            create: {
+                addressId: addressId,
+                clientName: clientName || address.clientName || 'Sin Nombre',
+                apartmentCount: 1,
+                status: 'CITADO',
+                assignedTeamId: teamId,
+                assignedDate: new Date(date),
+                type: 'REPAIR',
+                scheduledById: userId,
+                comments: {
+                    create: {
+                        content: `RECLAMACIÓN/AVERÍA: ${description}`,
+                        authorName: 'BackOffice'
+                    }
+                }
+            }
+        });
+
+        // Determine Target Role based on Team Department
+        const team = await prisma.team.findUnique({
+            where: { id: teamId },
+            select: { department: true }
+        });
+
+        let targetRole = 'ACTIVATOR'; // Default
+        if (team && team.department === 'BLOWING') targetRole = 'BLOWER';
+        if (team && team.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
+
+        // Add Notification
+        await prisma.notification.create({
+            data: {
+                type: 'REPAIR_ASSIGNED',
+                message: `URGENTE RECLAMACIÓN: ${address.street} ${address.number} - ${description}`,
+                createdById: userId,
+                addressId: addressId,
+                targetRole: targetRole
+            }
+        });
+
+        res.json({ message: 'Reclamación creada y asignada exitosamente.', appointment });
+
+    } catch (error) {
+        console.error('Error creating issue from existing:', error);
+        res.status(500).json({ message: 'Error al crear reclamación.' });
     }
 };

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import api from '../api/axios';
-import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network } from 'lucide-react';
+// ... imports
+import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X } from 'lucide-react';
 
 const IssuesPage = () => {
+    // ... existing state
     const [activeTab, setActiveTab] = useState('search');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
@@ -24,8 +24,19 @@ const IssuesPage = () => {
         description: ''
     });
 
+    // New Claim Modal State
+    const [claimModalOpen, setClaimModalOpen] = useState(false);
+    const [selectedAddress, setSelectedAddress] = useState(null);
+    const [claimData, setClaimData] = useState({
+        clientName: '',
+        teamId: '',
+        date: new Date().toISOString().split('T')[0], // Default today
+        description: ''
+    });
+
     const [teams, setTeams] = useState([]);
 
+    // ... existing useEffect and handlers ...
     useEffect(() => {
         // Fetch teams for assignment
         const fetchTeams = async () => {
@@ -48,10 +59,11 @@ const IssuesPage = () => {
     };
 
     const handleSearch = async (e) => {
+        // ... existing handleSearch logic ...
         e.preventDefault();
         setLoading(true);
         setError(null);
-        setSearchResult(null);
+        setSearchResult(null); // Clear previous results immediately
         setHasSearched(false);
 
         try {
@@ -71,7 +83,7 @@ const IssuesPage = () => {
         } catch (err) {
             console.error(err);
             if (err.response && err.response.status === 404) {
-                setHasSearched(true); // searched but found nothing
+                setHasSearched(true);
                 setSearchResult(null);
             } else {
                 setError("Error al buscar la dirección. Intente nuevamente.");
@@ -82,6 +94,7 @@ const IssuesPage = () => {
     };
 
     const handleCreateManual = async (e) => {
+        // ... existing handleCreateManual logic ...
         e.preventDefault();
         setLoading(true);
         setError(null);
@@ -91,7 +104,7 @@ const IssuesPage = () => {
             await api.post('/api/issues/create', manualIssue);
             setSuccessMessage("Avería registrada exitosamente. Se ha creado una cita de reparación.");
             setManualIssue({ ...manualIssue, city: '', street: '', number: '', clientName: '', description: '' });
-            setActiveTab('search'); // Go back to search or stay?
+            setActiveTab('search');
         } catch (err) {
             console.error(err);
             setError("Error al crear la avería. Verifique los datos");
@@ -108,6 +121,48 @@ const IssuesPage = () => {
             number: searchParams.number
         });
         setActiveTab('create');
+    };
+
+    // --- NEW CLAIM LOGIC ---
+    const openClaimModal = (address) => {
+        setSelectedAddress(address);
+        setClaimData({
+            clientName: address.clientName || '',
+            teamId: '',
+            date: new Date().toISOString().split('T')[0],
+            description: ''
+        });
+        setClaimModalOpen(true);
+    };
+
+    const handleClaimDataChange = (e) => {
+        setClaimData({ ...claimData, [e.target.name]: e.target.value });
+    };
+
+    const handleCreateClaim = async (e) => {
+        e.preventDefault();
+        if (!claimData.teamId || !claimData.date) {
+            alert("Por favor seleccione fecha y equipo.");
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await api.post('/api/issues/create-existing', {
+                addressId: selectedAddress.id,
+                ...claimData
+            });
+            setSuccessMessage("Reclamación creada y asignada correctamente.");
+            setClaimModalOpen(false);
+            // Refresh search results to show new appointment?
+            // Simplified: just trigger search again if simple enough, or hack state
+            handleSearch(e); // Re-run search to update view
+        } catch (err) {
+            console.error(err);
+            alert("Error al crear reclamación: " + (err.response?.data?.message || err.message));
+        } finally {
+            setLoading(false);
+        }
     };
 
     const StatusBadge = ({ status }) => {
@@ -247,6 +302,14 @@ const IssuesPage = () => {
                                                 <span className="text-lg font-normal text-slate-500">{result.city}</span>
                                             </h2>
                                         </div>
+                                        {/* Create Claim Button */}
+                                        <button
+                                            onClick={() => openClaimModal(result)}
+                                            className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 font-medium border border-red-100"
+                                        >
+                                            <AlertTriangle size={16} />
+                                            Crear Reclamación
+                                        </button>
                                     </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -446,6 +509,102 @@ const IssuesPage = () => {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* CREATE CLAIM MODAL */}
+            {claimModalOpen && selectedAddress && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-in fade-in">
+                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                <AlertTriangle className="text-red-500" />
+                                Crear Reclamación / Avería
+                            </h3>
+                            <button onClick={() => setClaimModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleCreateClaim}>
+                            <div className="p-6 space-y-4">
+                                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm mb-4">
+                                    <p className="font-bold text-slate-700">{selectedAddress.street} {selectedAddress.number}</p>
+                                    <p className="text-slate-500">{selectedAddress.city} - NVT: {selectedAddress.nvt}</p>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Cliente</label>
+                                    <input
+                                        type="text"
+                                        name="clientName"
+                                        value={claimData.clientName}
+                                        onChange={handleClaimDataChange}
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                        placeholder="Nombre del cliente"
+                                    />
+                                    <p className="text-xs text-slate-400 mt-1">Si dejas este campo vacío, se mantendrá el actual.</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Asignar Equipo *</label>
+                                        <select
+                                            name="teamId"
+                                            value={claimData.teamId}
+                                            onChange={handleClaimDataChange}
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                            required
+                                        >
+                                            <option value="">-- Seleccionar --</option>
+                                            {teams.map(team => (
+                                                <option key={team.id} value={team.id}>{team.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Cita *</label>
+                                        <input
+                                            type="date"
+                                            name="date"
+                                            value={claimData.date}
+                                            onChange={handleClaimDataChange}
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Motivo / Descripción *</label>
+                                    <textarea
+                                        name="description"
+                                        value={claimData.description}
+                                        onChange={handleClaimDataChange}
+                                        rows="3"
+                                        className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                        placeholder="Explica el problema o avería..."
+                                        required
+                                    ></textarea>
+                                </div>
+                            </div>
+                            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setClaimModalOpen(false)}
+                                    className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-200 transition-colors bg-white border border-slate-200 shadow-sm"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30 font-medium"
+                                >
+                                    {loading ? 'Creando...' : 'Crear Reclamación'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>

@@ -9,5 +9,6 @@ const allowedRoles = ['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN'];
 
 router.get('/search', checkRole(allowedRoles), issueController.searchAddressHistory);
 router.post('/create', checkRole(allowedRoles), issueController.createManualIssue);
+router.post('/create-existing', checkRole(allowedRoles), issueController.createFromExisting);
 
 module.exports = router;
