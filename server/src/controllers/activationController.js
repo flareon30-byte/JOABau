@@ -396,6 +396,10 @@ exports.generatePdf = async (req, res) => {
         await placeSignaturePin(clientSignature, 'SIG_EIGENTUEMER');
         await placeSignaturePin(techSignature, 'SIG_MONTEUR');
 
+        // Added per user request: Tech signature at bottom (Text46)
+        fill('Text46', cityDate, 7);
+        await placeSignaturePin(techSignature, 'Text46');
+
         form.flatten(); // Flatten form fields to make them uneditable
 
         console.log('Fields filled and Signatures added. Saving PDF...');
