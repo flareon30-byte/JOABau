@@ -106,13 +106,19 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
                                 </button>
                             )}
                             <button
-                                onClick={() => window.location.href = `/activation/${appointment.id}/complete`}
+                                onClick={() => {
+                                    if (appointment.type === 'REPAIR') {
+                                        window.location.href = `/repair/${appointment.id}/complete`;
+                                    } else {
+                                        window.location.href = `/activation/${appointment.id}/complete`;
+                                    }
+                                }}
                                 className={`flex-1 py-3 rounded-xl font-bold transition-colors shadow-lg ${appointment.status === 'COMPLETADO'
                                     ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-200'
                                     : 'bg-joa-blue hover:bg-blue-700 text-white shadow-blue-200'
                                     }`}
                             >
-                                {appointment.status === 'COMPLETADO' ? 'Modificar Activación' : 'Cerrar Activación'}
+                                {appointment.status === 'COMPLETADO' ? 'Modificar' : (appointment.type === 'REPAIR' ? 'Cerrar Avería' : 'Cerrar Activación')}
                             </button>
                         </div>
                     </>
@@ -369,7 +375,12 @@ const DashboardHome = () => {
                                             <span className="text-xl font-bold">{new Date(apt.assignedDate).getDate()}</span>
                                         </div>
                                         <div>
-                                            <h4 className="font-bold text-slate-800">{apt.address.street} {apt.address.number}</h4>
+                                            <h4 className="font-bold text-slate-800 flex items-center gap-2">
+                                                {apt.address.street} {apt.address.number}
+                                                {apt.type === 'REPAIR' && (
+                                                    <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full border border-red-200 uppercase tracking-wider">AVERÍA</span>
+                                                )}
+                                            </h4>
                                             <p className="text-sm text-slate-500">{apt.address.project.name} • {new Date(apt.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
                                         </div>
                                     </div>
