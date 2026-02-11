@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X, Grid, List, ChevronRight, Filter } from 'lucide-react';
+import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X, Grid, List, ChevronRight, Filter, Edit, Trash2 } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 
 const IssuesPage = () => {
@@ -260,6 +260,56 @@ const IssuesPage = () => {
         if (status === 'OK' || status === 'COMPLETED' || status === 'Active') return <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><CheckCircle size={12} /> {status}</span>;
         if (status === 'Pending' || status === 'PENDING') return <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><Clock size={12} /> {status}</span>;
         return <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold flex items-center gap-1"><XCircle size={12} /> {status}</span>;
+    };
+
+    // Edit/Delete State
+    const [editModalOpen, setEditModalOpen] = useState(false);
+    const [editingRepair, setEditingRepair] = useState(null);
+
+    const handleDeleteRepair = async (id) => {
+        if (!window.confirm('¿Estás seguro de que quieres eliminar esta avería pendiente? Esta acción no se puede deshacer.')) return;
+
+        setLoading(true);
+        try {
+            await api.delete(`/api/issues/repair/${id}`);
+            setSuccessMessage("Avería eliminada correctamente.");
+            fetchRepairs();
+        } catch (err) {
+            console.error(err);
+            alert("Error al eliminar: " + (err.response?.data?.message || err.message));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const openEditModal = (item) => {
+        setEditingRepair({
+            id: item.id,
+            teamId: item.assignedTeamId || '',
+            date: item.assignedDate ? item.assignedDate.split('T')[0] : '',
+            description: item.comments && item.comments.length > 0 ? item.comments[0].content.replace('RECLAMACIÓN/AVERÍA: ', '').replace('ACTUALIZACIÓN AVERÍA: ', '') : ''
+        });
+        setEditModalOpen(true);
+    };
+
+    const handleUpdateRepair = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            await api.put(`/api/issues/repair/${editingRepair.id}`, {
+                teamId: editingRepair.teamId,
+                date: editingRepair.date,
+                description: editingRepair.description
+            });
+            setSuccessMessage("Avería actualizada correctamente.");
+            setEditModalOpen(false);
+            fetchRepairs();
+        } catch (err) {
+            console.error(err);
+            alert("Error al actualizar: " + (err.response?.data?.message || err.message));
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -637,27 +687,18 @@ const IssuesPage = () => {
                                         <th className="p-4">Problema Reportado</th>
                                         <th className="p-4">Equipo Asignado</th>
                                         <th className="p-4">Estado</th>
-                                        {repairsFilter === 'COMPLETADO' && <th className="p-4">Acciones</th>}
+                                        <th className="p-4">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
                                     {repairsList.map((item) => {
-                                        // "item" structure depends on endpoint.
-                                        // PENDING: Appointment object
-                                        // COMPLETED: Repair object (includes address)
-                                        const isRepairObj = item.addressId && item.technicianId; // Simple check for Repair model
+                                        const isRepairObj = item.addressId && item.technicianId;
                                         const address = item.address;
                                         const date = isRepairObj ? item.updatedAt : item.assignedDate;
                                         const status = isRepairObj ? 'COMPLETADO' : item.status;
-                                        // Problem description: For pending, it's in comments usually or created note.
-                                        // For Completed Repair, it's item.description (solution), but we might want the original problem too.
-                                        // The original problem is in the Appointment which might be linked or hard to reach if completed.
-                                        // But usually we just show what we have.
-
-                                        // If it's an Appointment (Pending)
                                         const problemDesc = !isRepairObj
                                             ? (item.comments && item.comments.length > 0 ? item.comments[0].content : 'Sin descripción')
-                                            : 'Ver Detalle'; // Since Repair Object has "Solution Description", original problem is in Address history or Appointment.
+                                            : 'Ver Detalle';
 
                                         return (
                                             <tr key={item.id} className="hover:bg-slate-50 transition-colors">
@@ -685,25 +726,40 @@ const IssuesPage = () => {
                                                     {!isRepairObj ? (
                                                         item.assignedTeam ? <span className="flex items-center gap-1"><User size={14} /> {item.assignedTeam.name}</span> : <span className="text-red-300">Sin Asignar</span>
                                                     ) : (
-                                                        // Repair object doesn't have team relation directly included in my controller yet, or maybe deeper.
-                                                        // But valid point. I'll just show "Técnico ID" or skip.
-                                                        // Wait, in controller I included: appointment: { include: { assignedTeam: true } } inside address.
                                                         address.appointment?.assignedTeam?.name || 'Técnico'
                                                     )}
                                                 </td>
                                                 <td className="p-4">
                                                     <StatusBadge status={status} />
                                                 </td>
-                                                {repairsFilter === 'COMPLETADO' && (
-                                                    <td className="p-4">
+                                                <td className="p-4">
+                                                    {isRepairObj && (
                                                         <button
                                                             onClick={() => { setSelectedRepair(item); setDetailsModalOpen(true); }}
                                                             className="text-blue-600 hover:text-blue-800 font-bold text-xs flex items-center gap-1 border border-blue-200 px-2 py-1.5 rounded hover:bg-blue-50 transition-colors"
                                                         >
                                                             <FileText size={14} /> Ver Informe
                                                         </button>
-                                                    </td>
-                                                )}
+                                                    )}
+                                                    {!isRepairObj && repairsFilter !== 'COMPLETADO' && (
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => openEditModal(item)}
+                                                                className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                                title="Modificar Cita"
+                                                            >
+                                                                <Edit size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteRepair(item.id)}
+                                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                                title="Eliminar Avería"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </td>
                                             </tr>
                                         );
                                     })}
@@ -927,6 +983,75 @@ const IssuesPage = () => {
                                 onSlotClick={handleDateSelect}
                             />
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* EDIT REPAIR MODAL */}
+            {editModalOpen && editingRepair && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[70] animate-in fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                <Edit className="text-blue-500" />
+                                Modificar Avería / Cita
+                            </h3>
+                            <button onClick={() => setEditModalOpen(false)} className="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full shadow-sm hover:shadow transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleUpdateRepair} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Cita</label>
+                                <input
+                                    type="date"
+                                    value={editingRepair.date || ''}
+                                    onChange={(e) => setEditingRepair({ ...editingRepair, date: e.target.value })}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Equipo Asignado</label>
+                                <select
+                                    value={editingRepair.teamId || ''}
+                                    onChange={(e) => setEditingRepair({ ...editingRepair, teamId: e.target.value })}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                    required
+                                >
+                                    <option value="">-- Sin Asignar --</option>
+                                    {teams.map(team => (
+                                        <option key={team.id} value={team.id}>{team.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Notas / Razón Cambio</label>
+                                <textarea
+                                    value={editingRepair.description || ''}
+                                    onChange={(e) => setEditingRepair({ ...editingRepair, description: e.target.value })}
+                                    rows="3"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                    placeholder="Detalles..."
+                                    required
+                                ></textarea>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setEditModalOpen(false)}
+                                    className="px-4 py-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/30 font-bold"
+                                >
+                                    Guardar Cambios
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

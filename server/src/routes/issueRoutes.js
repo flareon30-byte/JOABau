@@ -29,5 +29,7 @@ router.post('/create-existing', checkRole(allowedRoles), issueController.createF
 // Repair Routes
 router.post('/repair/:addressId', upload.array('photos', 5), issueController.submitRepair);
 router.get('/repairs', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), issueController.getRepairs);
+router.delete('/repair/:appointmentId', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), issueController.deleteIssue);
+router.put('/repair/:appointmentId', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), issueController.updateIssue);
 
 module.exports = router;

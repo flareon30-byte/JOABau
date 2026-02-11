@@ -425,3 +425,68 @@ exports.getRepairs = async (req, res) => {
         res.status(500).json({ message: 'Error obteniendo reparaciones' });
     }
 };
+
+// 6. Delete Issue (Pending Only)
+exports.deleteIssue = async (req, res) => {
+    const { appointmentId } = req.params;
+
+    try {
+        const appointment = await prisma.appointment.findUnique({
+            where: { id: appointmentId }
+        });
+
+        if (!appointment) return res.status(404).json({ message: 'Cita no encontrada.' });
+
+        if (appointment.status === 'COMPLETADO') {
+            return res.status(400).json({ message: 'No se puede eliminar una avería completada.' });
+        }
+
+        await prisma.appointment.delete({
+            where: { id: appointmentId }
+        });
+
+        res.json({ message: 'Avería eliminada correctamente.' });
+
+    } catch (error) {
+        console.error('Error deleting issue:', error);
+        res.status(500).json({ message: 'Error eliminando avería.' });
+    }
+};
+
+// 7. Update Issue (Pending Only)
+exports.updateIssue = async (req, res) => {
+    const { appointmentId } = req.params;
+    const { teamId, date, description } = req.body;
+
+    try {
+        const appointment = await prisma.appointment.findUnique({
+            where: { id: appointmentId }
+        });
+
+        if (!appointment) return res.status(404).json({ message: 'Cita no encontrada.' });
+
+        if (appointment.status === 'COMPLETADO') {
+            return res.status(400).json({ message: 'No se puede modificar una avería completada.' });
+        }
+
+        await prisma.appointment.update({
+            where: { id: appointmentId },
+            data: {
+                assignedTeamId: teamId,
+                assignedDate: new Date(date),
+                comments: {
+                    create: {
+                        content: `ACTUALIZACIÓN AVERÍA: ${description}`,
+                        authorName: 'BackOffice'
+                    }
+                }
+            }
+        });
+
+        res.json({ message: 'Avería actualizada correctamente.' });
+
+    } catch (error) {
+        console.error('Error updating issue:', error);
+        res.status(500).json({ message: 'Error actualizando avería.' });
+    }
+};
