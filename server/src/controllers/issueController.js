@@ -371,7 +371,8 @@ exports.getRepairs = async (req, res) => {
                 },
                 include: {
                     address: { include: { project: true } },
-                    assignedTeam: true
+                    assignedTeam: true,
+                    comments: { orderBy: { createdAt: 'desc' } }
                 },
                 orderBy: { assignedDate: 'asc' }
             });
@@ -385,7 +386,12 @@ exports.getRepairs = async (req, res) => {
                     address: {
                         include: {
                             project: true,
-                            appointment: { include: { assignedTeam: true } }
+                            appointment: {
+                                include: {
+                                    assignedTeam: true,
+                                    comments: { orderBy: { createdAt: 'desc' } }
+                                }
+                            }
                         }
                     },
 
@@ -393,14 +399,6 @@ exports.getRepairs = async (req, res) => {
                 orderBy: { createdAt: 'desc' }, // Newest first
                 take: 100
             });
-
-            // Allow fetching technician name via user lookup if needed, but not direct relation in schema yet?
-            // Schema: technicianId String? // ID of who performed the repair
-            // We should fetch User info manually or include it if relation existed.
-            // Since no direct relation in schema for technicianId -> User, we'll fetch users separately or just use ID for now.
-            // Actually, let's fix schema if we want the name easily?
-            // But user didn't ask for schema change for User relation, just "stored so admin can see".
-            // I'll stick to technicianId for now, admin can probably map it or see it.
         } else {
             // Fetch ALL (Maybe mixed? or just default to pending?)
             // Let's just return both in separate keys or just valid structure.
@@ -412,7 +410,8 @@ exports.getRepairs = async (req, res) => {
                 },
                 include: {
                     address: { include: { project: true } },
-                    assignedTeam: true
+                    assignedTeam: true,
+                    comments: { orderBy: { createdAt: 'desc' } }
                 },
                 orderBy: { assignedDate: 'asc' }
             });
