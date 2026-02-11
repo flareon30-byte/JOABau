@@ -344,7 +344,11 @@ exports.getRepairs = async (req, res) => {
     console.log(`[getRepairs] Received Status: "${status}"`);
 
     // Normalize status
-    if (status) status = status.trim().toUpperCase();
+    if (status) {
+        status = status.trim().toUpperCase();
+        if (status === 'COMPLETADAS' || status === 'COMPLETADO') status = 'COMPLETED';
+        if (status === 'PENDIENTES' || status === 'PENDIENTE') status = 'PENDING';
+    }
 
     try {
         let data = [];
@@ -380,7 +384,7 @@ exports.getRepairs = async (req, res) => {
                 },
                 orderBy: { assignedDate: 'asc' }
             });
-        } else if (status === 'COMPLETED' || status === 'COMPLETADAS') {
+        } else if (status === 'COMPLETED') {
             // Fetch COMPLETED REPAIRS from Repair table
             data = await prisma.repair.findMany({
                 where: {
