@@ -478,21 +478,22 @@ const IssuesPage = () => {
                                             </div>
                                         </div>
 
-                                        {/* Appointment Info (Only 1 per address in schema) */}
+                                        {/* Appointment & Activation Info */}
                                         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
                                             <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 pb-2 border-b border-slate-50">
-                                                <History className="text-orange-500" size={20} /> Cita / Protocolo
+                                                <History className="text-orange-500" size={20} /> Historial Cita / Activación
                                             </h3>
-                                            <div className="space-y-2 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                                                {result.appointment ? (
-                                                    <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-50 rounded-lg text-sm gap-2">
+                                            <div className="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                                {/* Appointment Section */}
+                                                {result.appointment && (
+                                                    <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-50 rounded-lg text-sm gap-2 border-l-4 border-blue-400">
                                                         <div className="flex items-center gap-3">
                                                             <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
                                                                 {result.appointment.assignedDate ? new Date(result.appointment.assignedDate).getDate() : '?'}
                                                             </div>
                                                             <div>
                                                                 <p className="font-medium text-slate-800">
-                                                                    {result.appointment.assignedDate ? new Date(result.appointment.assignedDate).toLocaleDateString() : 'Sin Fecha'}
+                                                                    CITA: {result.appointment.assignedDate ? new Date(result.appointment.assignedDate).toLocaleDateString() : 'Sin Fecha'}
                                                                 </p>
                                                                 <p className="text-xs text-slate-500">
                                                                     {result.appointment.timeSlot || 'Todo el día'}
@@ -505,14 +506,36 @@ const IssuesPage = () => {
                                                             </span>
                                                             <StatusBadge status={result.appointment.status} />
                                                         </div>
-                                                        {result.appointment.scheduledBy && (
-                                                            <div className="text-xs text-slate-400 md:text-right">
-                                                                Por: {result.appointment.scheduledBy.username}
-                                                            </div>
-                                                        )}
                                                     </div>
-                                                ) : (
-                                                    <p className="text-sm text-slate-400 italic">No hay citas registradas para esta dirección.</p>
+                                                )}
+
+                                                {/* Activation Section (Closed) */}
+                                                {result.activationInfo && (
+                                                    <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-green-50 rounded-lg text-sm gap-2 border-l-4 border-green-500">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                                                <CheckCircle size={14} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-green-900">
+                                                                    ACTIVACIÓN: {result.activationInfo.activationDate ? new Date(result.activationInfo.activationDate).toLocaleDateString() : new Date(result.activationInfo.createdAt).toLocaleDateString()}
+                                                                </p>
+                                                                <p className="text-xs text-green-700">
+                                                                    Tipo: {result.activationInfo.contractType || result.activationInfo.activationType || 'Estándar'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="bg-white px-2 py-1 rounded border border-green-100 text-xs font-mono text-green-700">
+                                                                {result.activationInfo.assignedTeam?.name || result.activationInfo.technicianName || 'Técnico'}
+                                                            </span>
+                                                            <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">COMPLETADO</span>
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {!result.appointment && !result.activationInfo && (
+                                                    <p className="text-sm text-slate-400 italic">No hay historial registrado para esta dirección.</p>
                                                 )}
                                             </div>
                                         </div>

@@ -40,7 +40,11 @@ exports.searchAddressHistory = async (req, res) => {
                         scheduledBy: true
                     }
                 },
-                activationInfo: true
+                activationInfo: {
+                    include: {
+                        assignedTeam: true
+                    }
+                }
             },
             take: 20
         });
