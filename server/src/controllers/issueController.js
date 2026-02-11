@@ -469,19 +469,37 @@ exports.updateIssue = async (req, res) => {
             return res.status(400).json({ message: 'No se puede modificar una avería completada.' });
         }
 
+        // Update basic info
         await prisma.appointment.update({
             where: { id: appointmentId },
             data: {
                 assignedTeamId: teamId,
-                assignedDate: new Date(date),
-                comments: {
-                    create: {
-                        content: `ACTUALIZACIÓN AVERÍA: ${description}`,
-                        authorName: 'BackOffice'
-                    }
-                }
+                assignedDate: new Date(date)
             }
         });
+
+        // Update Comment (Description)
+        // Find existing comment
+        const existingComment = await prisma.comment.findFirst({
+            where: { appointmentId: appointmentId },
+            orderBy: { createdAt: 'desc' } // Get the latest one if multiple exist
+        });
+
+        if (existingComment) {
+            await prisma.comment.update({
+                where: { id: existingComment.id },
+                data: { content: description }
+            });
+        } else if (description) {
+            // Create if none exists (e.g. older data)
+            await prisma.comment.create({
+                data: {
+                    content: description,
+                    authorName: 'BackOffice',
+                    appointmentId: appointmentId
+                }
+            });
+        }
 
         res.json({ message: 'Avería actualizada correctamente.' });
 
