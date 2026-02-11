@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X } from 'lucide-react';
+import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X, Grid } from 'lucide-react';
+import CalendarView from '../components/CalendarView';
 
 const IssuesPage = () => {
     // ... existing state
@@ -36,6 +37,8 @@ const IssuesPage = () => {
     });
 
     const [teams, setTeams] = useState([]);
+    const [scheduledAppointments, setScheduledAppointments] = useState([]);
+    const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
     // ... existing useEffect and handlers ...
     useEffect(() => {
@@ -164,6 +167,31 @@ const IssuesPage = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const openCalendar = async () => {
+        setIsCalendarOpen(true);
+        try {
+            const res = await api.get('/api/appointments/scheduled');
+            setScheduledAppointments(res.data);
+        } catch (error) {
+            console.error("Error fetching scheduled appointments", error);
+        }
+    };
+
+    const handleDateSelect = (day, hour) => {
+        const selectedDate = new Date(day);
+        // If hour is provided, we can use it, but the input is date-only (YYYY-MM-DD).
+        // Since the requirement is just "Fecha Cita" (Date), we extract the YYYY-MM-DD part.
+        // Adjust for timezone to ensure we get the correct clicking date
+        const offset = selectedDate.getTimezoneOffset();
+        const adjustedDate = new Date(selectedDate.getTime() - (offset * 60 * 1000));
+
+        setClaimData({
+            ...claimData,
+            date: adjustedDate.toISOString().split('T')[0]
+        });
+        setIsCalendarOpen(false);
     };
 
     const StatusBadge = ({ status }) => {
@@ -564,14 +592,24 @@ const IssuesPage = () => {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Cita *</label>
-                                        <input
-                                            type="date"
-                                            name="date"
-                                            value={claimData.date}
-                                            onChange={handleClaimDataChange}
-                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
-                                            required
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="date"
+                                                name="date"
+                                                value={claimData.date}
+                                                onChange={handleClaimDataChange}
+                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                                required
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={openCalendar}
+                                                className="bg-blue-50 text-blue-600 hover:bg-blue-100 p-3 rounded-lg border border-blue-200 transition-colors"
+                                                title="Ver disponibilidad"
+                                            >
+                                                <Calendar size={20} />
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -605,6 +643,33 @@ const IssuesPage = () => {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Calendar Availability Modal */}
+            {isCalendarOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 backdrop-blur-sm animate-in fade-in">
+                    <div className="bg-white rounded-2xl w-full max-w-5xl h-[80vh] shadow-2xl flex flex-col">
+                        <div className="p-4 border-b border-slate-200 flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">Calendario de Disponibilidad</h3>
+                                <p className="text-sm text-slate-500">Selecciona una fecha libre para asignar la avería.</p>
+                            </div>
+                            <button onClick={() => setIsCalendarOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-hidden p-4 bg-slate-50">
+                            <div className="mb-4 bg-blue-50 p-3 rounded-lg text-blue-700 text-sm flex items-center gap-2">
+                                <CheckCircle size={16} />
+                                Haz clic en una casilla para seleccionar esa fecha automáticamente.
+                            </div>
+                            <CalendarView
+                                appointments={scheduledAppointments}
+                                onSlotClick={handleDateSelect}
+                            />
+                        </div>
                     </div>
                 </div>
             )}
