@@ -654,8 +654,8 @@ const IssuesPage = () => {
                                     Pendientes
                                 </button>
                                 <button
-                                    onClick={() => setRepairsFilter('COMPLETADO')}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${repairsFilter === 'COMPLETADO' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    onClick={() => setRepairsFilter('COMPLETED')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${repairsFilter === 'COMPLETED' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     Completadas
                                 </button>
@@ -741,7 +741,7 @@ const IssuesPage = () => {
                                                             <FileText size={14} /> Ver Informe
                                                         </button>
                                                     )}
-                                                    {!isRepairObj && repairsFilter !== 'COMPLETADO' && (
+                                                    {!isRepairObj && repairsFilter !== 'COMPLETED' && (
                                                         <div className="flex items-center gap-2">
                                                             <button
                                                                 onClick={() => openEditModal(item)}
