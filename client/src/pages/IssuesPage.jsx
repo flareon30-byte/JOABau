@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X, Grid } from 'lucide-react';
+import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X, Grid, List, ChevronRight, Filter } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 
 const IssuesPage = () => {
@@ -40,7 +40,30 @@ const IssuesPage = () => {
     const [scheduledAppointments, setScheduledAppointments] = useState([]);
     const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
+    // Repairs Management State
+    const [repairsList, setRepairsList] = useState([]);
+    const [repairsFilter, setRepairsFilter] = useState('PENDING'); // PENDING | COMPLETED | ALL
+    const [selectedRepair, setSelectedRepair] = useState(null); // For viewing details
+    const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+
     // ... existing useEffect and handlers ...
+    useEffect(() => {
+        if (activeTab === 'manage') {
+            fetchRepairs();
+        }
+    }, [activeTab, repairsFilter]);
+
+    const fetchRepairs = async () => {
+        setLoading(true);
+        try {
+            const res = await api.get(`/api/issues/repairs?status=${repairsFilter}`);
+            setRepairsList(res.data);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            setLoading(false);
+        }
+    };
     useEffect(() => {
         // Fetch teams for assignment
         const fetchTeams = async () => {
@@ -224,6 +247,12 @@ const IssuesPage = () => {
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'create' ? 'bg-joa-blue text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                     >
                         <Plus size={16} /> Nueva Avería Manual
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('manage')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'manage' ? 'bg-joa-blue text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        <List size={16} /> Gestión de Averías
                     </button>
                 </div>
             </div>
@@ -538,6 +567,217 @@ const IssuesPage = () => {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {/* MANAGE TAB */}
+            {activeTab === 'manage' && (
+                <div className="space-y-6 animate-in fade-in">
+                    {/* Filters */}
+                    <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                        <div className="flex items-center gap-4">
+                            <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
+                                <Filter size={16} /> Estado:
+                            </span>
+                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                <button
+                                    onClick={() => setRepairsFilter('PENDING')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${repairsFilter === 'PENDING' ? 'bg-white text-yellow-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Pendientes
+                                </button>
+                                <button
+                                    onClick={() => setRepairsFilter('COMPLETADO')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${repairsFilter === 'COMPLETADO' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Completadas
+                                </button>
+                                <button
+                                    onClick={() => setRepairsFilter('ALL')}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${repairsFilter === 'ALL' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Todas
+                                </button>
+                            </div>
+                        </div>
+                        <button onClick={fetchRepairs} className="text-slate-400 hover:text-joa-blue transition-colors">
+                            <History size={20} />
+                        </button>
+                    </div>
+
+                    {/* Table */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        {loading && repairsList.length === 0 ? (
+                            <div className="p-12 text-center text-slate-400">Cargando reclamaciones...</div>
+                        ) : repairsList.length === 0 ? (
+                            <div className="p-12 text-center text-slate-400">No hay reclamaciones en este estado.</div>
+                        ) : (
+                            <table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                                    <tr>
+                                        <th className="p-4">Fecha Cita / Solicitud</th>
+                                        <th className="p-4">Dirección</th>
+                                        <th className="p-4">Problema Reportado</th>
+                                        <th className="p-4">Equipo Asignado</th>
+                                        <th className="p-4">Estado</th>
+                                        {repairsFilter === 'COMPLETADO' && <th className="p-4">Acciones</th>}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
+                                    {repairsList.map((item) => {
+                                        // "item" structure depends on endpoint.
+                                        // PENDING: Appointment object
+                                        // COMPLETED: Repair object (includes address)
+                                        const isRepairObj = item.addressId && item.technicianId; // Simple check for Repair model
+                                        const address = item.address;
+                                        const date = isRepairObj ? item.updatedAt : item.assignedDate;
+                                        const status = isRepairObj ? 'COMPLETADO' : item.status;
+                                        // Problem description: For pending, it's in comments usually or created note.
+                                        // For Completed Repair, it's item.description (solution), but we might want the original problem too.
+                                        // The original problem is in the Appointment which might be linked or hard to reach if completed.
+                                        // But usually we just show what we have.
+
+                                        // If it's an Appointment (Pending)
+                                        const problemDesc = !isRepairObj
+                                            ? (item.comments && item.comments.length > 0 ? item.comments[0].content : 'Sin descripción')
+                                            : 'Ver Detalle'; // Since Repair Object has "Solution Description", original problem is in Address history or Appointment.
+
+                                        return (
+                                            <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="p-4">
+                                                    <div className="font-bold text-slate-700">
+                                                        {new Date(date).toLocaleDateString()}
+                                                    </div>
+                                                    <div className="text-xs text-slate-400">
+                                                        {new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                    </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="font-bold text-slate-800">{address.street} {address.number}</div>
+                                                    <div className="text-xs text-slate-500">{address.city}</div>
+                                                    <div className="text-[10px] text-slate-400 mt-1 uppercase bg-slate-100 inline-block px-1 rounded">{address.project?.name}</div>
+                                                </td>
+                                                <td className="p-4 max-w-xs truncate" title={problemDesc}>
+                                                    {isRepairObj ? (
+                                                        <span className="text-green-600 font-medium italic">✔ Resuelta</span>
+                                                    ) : (
+                                                        <span className="text-red-500">{problemDesc}</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4">
+                                                    {!isRepairObj ? (
+                                                        item.assignedTeam ? <span className="flex items-center gap-1"><User size={14} /> {item.assignedTeam.name}</span> : <span className="text-red-300">Sin Asignar</span>
+                                                    ) : (
+                                                        // Repair object doesn't have team relation directly included in my controller yet, or maybe deeper.
+                                                        // But valid point. I'll just show "Técnico ID" or skip.
+                                                        // Wait, in controller I included: appointment: { include: { assignedTeam: true } } inside address.
+                                                        address.appointment?.assignedTeam?.name || 'Técnico'
+                                                    )}
+                                                </td>
+                                                <td className="p-4">
+                                                    <StatusBadge status={status} />
+                                                </td>
+                                                {repairsFilter === 'COMPLETADO' && (
+                                                    <td className="p-4">
+                                                        <button
+                                                            onClick={() => { setSelectedRepair(item); setDetailsModalOpen(true); }}
+                                                            className="text-blue-600 hover:text-blue-800 font-bold text-xs flex items-center gap-1 border border-blue-200 px-2 py-1.5 rounded hover:bg-blue-50 transition-colors"
+                                                        >
+                                                            <FileText size={14} /> Ver Informe
+                                                        </button>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* REPAIR DETAILS MODAL */}
+            {detailsModalOpen && selectedRepair && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[70] animate-in fade-in">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <CheckCircle className="text-green-500" />
+                                    Informe de Reparación
+                                </h3>
+                                <p className="text-sm text-slate-500">
+                                    {selectedRepair.address.street} {selectedRepair.address.number}, {selectedRepair.address.city}
+                                </p>
+                            </div>
+                            <button onClick={() => setDetailsModalOpen(false)} className="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full shadow-sm hover:shadow transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto space-y-6">
+                            {/* Solution Description */}
+                            <div className="bg-green-50 p-4 rounded-xl border border-green-100">
+                                <h4 className="font-bold text-green-800 mb-2 border-b border-green-200 pb-1">Solución Técnica Aplicada</h4>
+                                <p className="text-slate-700 whitespace-pre-wrap">{selectedRepair.description}</p>
+                            </div>
+
+                            {/* Date Info */}
+                            <div className="flex gap-4 text-sm text-slate-500">
+                                <div className="flex items-center gap-2">
+                                    <Calendar size={16} /> Fecha: {new Date(selectedRepair.createdAt).toLocaleDateString()}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Clock size={16} /> Hora: {new Date(selectedRepair.createdAt).toLocaleTimeString()}
+                                </div>
+                            </div>
+
+                            {/* Photos */}
+                            <div>
+                                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <Image size={18} className="text-blue-500" /> Evidencia Fotográfica
+                                </h4>
+                                {selectedRepair.photos && selectedRepair.photos.length > 0 ? (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {selectedRepair.photos.map((photo, i) => (
+                                            <a
+                                                key={i}
+                                                href={`http://localhost:3000/${photo}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block aspect-square rounded-lg overflow-hidden border border-slate-200 hover:border-blue-500 transition-colors relative group"
+                                            >
+                                                <img
+                                                    src={`http://localhost:3000/${photo}`}
+                                                    alt={`Evidencia ${i + 1}`}
+                                                    className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                                />
+                                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                            </a>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-400 italic text-sm">No se adjuntaron fotos.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="p-4 border-t border-slate-100 bg-slate-50 text-right">
+                            <button
+                                onClick={() => setDetailsModalOpen(false)}
+                                className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors text-sm font-bold"
+                            >
+                                Cerrar Informe
+                            </button>
+                            <button
+                                onClick={() => window.print()}
+                                className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-bold ml-3"
+                            >
+                                Imprimir / PDF
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 

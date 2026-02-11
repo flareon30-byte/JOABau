@@ -106,6 +106,7 @@ model Address {
   orderStatus      String? @default("geplant") // Column C from Excel
 
   notifications Notification[]
+  repairs       Repair[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -274,4 +275,17 @@ model FusionWork {
   createdById String?
 
   createdAt DateTime @default(now())
+}
+
+model Repair {
+  id           String   @id @default(uuid())
+  addressId    String
+  address      Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  description  String
+  photos       String[]
+  
+  technicianId String? // ID of who performed the repair
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

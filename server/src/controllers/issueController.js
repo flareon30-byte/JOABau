@@ -110,24 +110,39 @@ exports.createManualIssue = async (req, res) => {
 
         // D. Create Notification for the assigned team
         if (teamId) {
-            const team = await prisma.team.findUnique({
+            const teamWithMembers = await prisma.team.findUnique({
                 where: { id: teamId },
-                select: { department: true }
+                include: { users: true }
             });
 
-            let targetRole = 'ACTIVATOR';
-            if (team && team.department === 'BLOWING') targetRole = 'BLOWER';
-            if (team && team.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
-
-            await prisma.notification.create({
-                data: {
+            if (teamWithMembers && teamWithMembers.users.length > 0) {
+                const notifications = teamWithMembers.users.map(user => ({
                     type: 'REPAIR_ASSIGNED',
                     message: `Nueva avería asignada: ${street} ${number} - ${description || 'Sin detalles'}`,
                     createdById: userId,
                     addressId: address.id,
-                    targetRole: targetRole
-                }
-            });
+                    userId: user.id
+                }));
+
+                await prisma.notification.createMany({
+                    data: notifications
+                });
+            } else {
+                // Fallback if no users in team
+                let targetRole = 'ACTIVATOR';
+                if (teamWithMembers && teamWithMembers.department === 'BLOWING') targetRole = 'BLOWER';
+                if (teamWithMembers && teamWithMembers.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
+
+                await prisma.notification.create({
+                    data: {
+                        type: 'REPAIR_ASSIGNED',
+                        message: `Nueva avería asignada: ${street} ${number} - ${description || 'Sin detalles'} (Sin usuarios)`,
+                        createdById: userId,
+                        addressId: address.id,
+                        targetRole: targetRole
+                    }
+                });
+            }
         }
 
         res.json({ message: 'Avería creada correctamente', address, appointment });
@@ -205,31 +220,194 @@ exports.createFromExisting = async (req, res) => {
             }
         });
 
-        // Determine Target Role based on Team Department
-        const team = await prisma.team.findUnique({
+        // Notify Team Members Specifically
+        const teamWithMembers = await prisma.team.findUnique({
             where: { id: teamId },
-            select: { department: true }
+            include: { users: true }
         });
 
-        let targetRole = 'ACTIVATOR'; // Default
-        if (team && team.department === 'BLOWING') targetRole = 'BLOWER';
-        if (team && team.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
-
-        // Add Notification
-        await prisma.notification.create({
-            data: {
+        if (teamWithMembers && teamWithMembers.users.length > 0) {
+            // Create notification for each member
+            const notifications = teamWithMembers.users.map(user => ({
                 type: 'REPAIR_ASSIGNED',
-                message: `URGENTE RECLAMACIÓN: ${address.street} ${address.number} - ${description}`,
+                message: `URGENTE RECLAMACIÓN: ${address.street} ${address.number}\n${description}`,
                 createdById: userId,
                 addressId: addressId,
-                targetRole: targetRole
-            }
-        });
+                userId: user.id // Specific user
+            }));
+
+            await prisma.notification.createMany({
+                data: notifications
+            });
+        } else {
+            // Fallback to Role if no members found (unlikely but safe)
+            let targetRole = 'ACTIVATOR';
+            if (teamWithMembers && teamWithMembers.department === 'BLOWING') targetRole = 'BLOWER';
+            if (teamWithMembers && teamWithMembers.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
+
+            await prisma.notification.create({
+                data: {
+                    type: 'REPAIR_ASSIGNED',
+                    message: `URGENTE RECLAMACIÓN: ${address.street} ${address.number} - ${description} (Sin usuarios en equipo)`,
+                    createdById: userId,
+                    addressId: addressId,
+                    targetRole: targetRole
+                }
+            });
+        }
 
         res.json({ message: 'Reclamación creada y asignada exitosamente.', appointment });
 
     } catch (error) {
         console.error('Error creating issue from existing:', error);
         res.status(500).json({ message: 'Error al crear reclamación.' });
+    }
+};
+
+// 4. Submit Repair (Technician View)
+exports.submitRepair = async (req, res) => {
+    const { addressId } = req.params;
+    const { description } = req.body;
+    const userId = req.userId;
+
+    // Photos handling from multer
+    // req.files is array of files
+    const photos = req.files ? req.files.map(f => f.path.replace(/\\/g, '/')) : [];
+
+    if (!description) {
+        return res.status(400).json({ message: 'La descripción de la reparación es obligatoria.' });
+    }
+
+    try {
+        const result = await prisma.$transaction(async (prisma) => {
+            // 1. Create Repair Record
+            const repair = await prisma.repair.create({
+                data: {
+                    addressId,
+                    description,
+                    photos,
+                    technicianId: userId
+                }
+            });
+
+            // 2. Update Appointment Status to COMPLETED
+            await prisma.appointment.update({
+                where: { addressId },
+                data: {
+                    status: 'COMPLETADO',
+                    contactHistory: {
+                        push: `${new Date().toLocaleString()}: Reparación completada por técnico.`
+                    }
+                }
+            });
+
+            // 3. Notify Admins/BackOffice (Optional but good)
+            const address = await prisma.address.findUnique({ where: { id: addressId } });
+            await prisma.notification.create({
+                data: {
+                    type: 'REPAIR_COMPLETED',
+                    message: `Reparación completada: ${address.street} - ${description}`,
+                    addressId,
+                    targetRole: 'BACK_OFFICE', // or ADMIN
+                    createdById: userId
+                }
+            });
+
+            return repair;
+        });
+
+        res.json({ message: 'Reparación guardada correctamente.', result });
+
+    } catch (error) {
+        console.error('Error submitting repair:', error);
+        res.status(500).json({ message: 'Error al guardar la reparación.' });
+    }
+};
+
+// 5. Get All Repairs (Admin/BackOffice View)
+exports.getRepairs = async (req, res) => {
+    const { status, startDate, endDate } = req.query;
+
+    try {
+        let data = [];
+
+        // Date Filtering Helper
+        const dateFilter = (startDate && endDate) ? {
+            assignedDate: { // For Appointments
+                gte: new Date(startDate),
+                lte: new Date(endDate)
+            }
+        } : {};
+
+        const repairDateFilter = (startDate && endDate) ? {
+            createdAt: { // For Repairs
+                gte: new Date(startDate),
+                lte: new Date(endDate)
+            }
+        } : {};
+
+
+        if (status === 'PENDING') {
+            // Fetch PENDING REPAIRS from Appointments table
+            data = await prisma.appointment.findMany({
+                where: {
+                    type: 'REPAIR',
+                    status: { not: 'COMPLETADO' },
+                    ...dateFilter
+                },
+                include: {
+                    address: { include: { project: true } },
+                    assignedTeam: true
+                },
+                orderBy: { assignedDate: 'asc' }
+            });
+        } else if (status === 'COMPLETED') {
+            // Fetch COMPLETED REPAIRS from Repair table
+            data = await prisma.repair.findMany({
+                where: {
+                    ...repairDateFilter
+                },
+                include: {
+                    address: {
+                        include: {
+                            project: true,
+                            appointment: { include: { assignedTeam: true } }
+                        }
+                    },
+
+                },
+                orderBy: { createdAt: 'desc' }, // Newest first
+                take: 100
+            });
+
+            // Allow fetching technician name via user lookup if needed, but not direct relation in schema yet?
+            // Schema: technicianId String? // ID of who performed the repair
+            // We should fetch User info manually or include it if relation existed.
+            // Since no direct relation in schema for technicianId -> User, we'll fetch users separately or just use ID for now.
+            // Actually, let's fix schema if we want the name easily?
+            // But user didn't ask for schema change for User relation, just "stored so admin can see".
+            // I'll stick to technicianId for now, admin can probably map it or see it.
+        } else {
+            // Fetch ALL (Maybe mixed? or just default to pending?)
+            // Let's just return both in separate keys or just valid structure.
+            // If no status, maybe just return Pending by default.
+            data = await prisma.appointment.findMany({
+                where: {
+                    type: 'REPAIR',
+                    status: { not: 'COMPLETADO' },
+                },
+                include: {
+                    address: { include: { project: true } },
+                    assignedTeam: true
+                },
+                orderBy: { assignedDate: 'asc' }
+            });
+        }
+
+        res.json(data);
+
+    } catch (error) {
+        console.error('Error fetching repairs:', error);
+        res.status(500).json({ message: 'Error obteniendo reparaciones' });
     }
 };

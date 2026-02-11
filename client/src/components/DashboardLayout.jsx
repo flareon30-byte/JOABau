@@ -4,6 +4,24 @@ import api from '../api/axios';
 import { LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, Folder, Zap, ChevronRight, Settings, Lock, ClipboardList, Bell, DollarSign, Wallet, AlertTriangle } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 
+// Notification Sound URL (Short subtle beep)
+const BEEP_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+
+const Toast = ({ message, onClose }) => (
+    <div className="fixed top-24 right-4 z-[100] bg-white border-l-4 border-joa-blue shadow-2xl p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-right w-80">
+        <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+            <Bell size={20} />
+        </div>
+        <div className="flex-1">
+            <h4 className="font-bold text-slate-800 text-sm">Nueva Notificación</h4>
+            <p className="text-xs text-slate-600 mt-1 line-clamp-3">{message}</p>
+        </div>
+        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+            <X size={16} />
+        </button>
+    </div>
+);
+
 const DashboardLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -11,6 +29,8 @@ const DashboardLayout = () => {
     // Notifications State
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [toast, setToast] = useState(null);
+    const prevUnreadCountRef = React.useRef(0);
 
     const location = useLocation();
     const navigate = useNavigate();
@@ -20,7 +40,35 @@ const DashboardLayout = () => {
     const fetchNotifications = async () => {
         try {
             const res = await api.get('/api/notifications');
-            setNotifications(res.data);
+            const newNotifications = res.data;
+            const newUnreadCount = newNotifications.filter(n => !n.isRead).length;
+
+            // Detect new unread notifications
+            if (newUnreadCount > prevUnreadCountRef.current) {
+                // Play sound
+                try {
+                    const audio = new Audio(BEEP_URL);
+                    audio.volume = 0.5;
+                    audio.play().catch(e => console.warn("Audio play prevented", e));
+                } catch (e) {
+                    console.error("Audio error", e);
+                }
+
+                // Show toast for the latest one
+                const latest = newNotifications[0];
+                setToast({
+                    id: Date.now(),
+                    message: latest.message,
+                    data: latest
+                });
+
+                // Auto hide after 5s
+                setTimeout(() => setToast(null), 5000);
+            }
+
+            setNotifications(newNotifications);
+            prevUnreadCountRef.current = newUnreadCount;
+
         } catch (error) {
             console.error('Error fetching notifications');
         }
@@ -292,6 +340,14 @@ const DashboardLayout = () => {
             </main>
 
             <ChangePasswordModal isOpen={isPasswordModalOpen} onClose={() => setIsPasswordModalOpen(false)} />
+
+            {/* Toast Notification */}
+            {toast && (
+                <Toast
+                    message={toast.message}
+                    onClose={() => setToast(null)}
+                />
+            )}
         </div>
     );
 };

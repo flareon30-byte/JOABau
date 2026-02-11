@@ -325,7 +325,13 @@ const ActivationPage = () => {
                         {filteredAppointments.map(app => (
                             <div
                                 key={app.id}
-                                onClick={() => setSelectedAppointment(app)}
+                                onClick={() => {
+                                    if (app.type === 'REPAIR') {
+                                        navigate(`/repair/${app.id}/complete`);
+                                    } else {
+                                        setSelectedAppointment(app);
+                                    }
+                                }}
                                 className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer hover:shadow-md transition-all ${app.status === 'COMPLETADO'
                                     ? 'border-green-500 bg-green-50'
                                     : 'border-slate-200 hover:border-green-400'
@@ -335,6 +341,7 @@ const ActivationPage = () => {
                                     <div className="flex items-center gap-2 text-blue-600 font-bold">
                                         <Calendar size={18} />
                                         {new Date(app.assignedDate).toLocaleDateString()} {new Date(app.assignedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {app.type === 'REPAIR' && <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full border border-red-200 ml-2">AVERÍA</span>}
                                     </div>
                                     {app.status === 'COMPLETADO' && (
                                         <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">

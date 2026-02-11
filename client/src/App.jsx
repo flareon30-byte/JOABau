@@ -19,6 +19,7 @@ import ProtocolDepartment from './pages/ProtocolDepartment';
 import IssuesPage from './pages/IssuesPage';
 import MyEarningsPage from './pages/MyEarningsPage';
 import BillingDebug from './pages/BillingDebug';
+import RepairCompletionPage from './pages/RepairCompletionPage';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/activation/:id/complete" element={<ActivationPageV2 />} />
+        <Route path="/repair/:id/complete" element={<RepairCompletionPage />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
           <Route path="users" element={<UserManagement />} />
