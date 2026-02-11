@@ -64,6 +64,40 @@ const IssuesPage = () => {
             setLoading(false);
         }
     };
+
+    // Live Search Effect
+    useEffect(() => {
+        const query = searchParams.query;
+        if (!query || query.length < 3) {
+            setSearchResult(null);
+            setHasSearched(false);
+            return;
+        }
+
+        const timeoutId = setTimeout(async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const res = await api.get('/api/issues/search', {
+                    params: { query }
+                });
+                setSearchResult(res.data);
+                setHasSearched(true);
+            } catch (err) {
+                console.error("Search error", err);
+                // Don't show error for live search generally, just no results
+                // But if 404, empty list is fine.
+                if (err.response && err.response.status === 404) {
+                    setSearchResult([]);
+                    setHasSearched(true);
+                }
+            } finally {
+                setLoading(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(timeoutId);
+    }, [searchParams.query]);
     useEffect(() => {
         // Fetch teams for assignment
         const fetchTeams = async () => {
@@ -141,11 +175,15 @@ const IssuesPage = () => {
     };
 
     const prefillManualFromSearch = () => {
+        const query = searchParams.query || '';
+        // Try to parse basic "Street Number"
+        const match = query.match(/^(.+?)\s+(\d+[a-zA-Z]*)$/);
+
         setManualIssue({
             ...manualIssue,
-            city: searchParams.city,
-            street: searchParams.street,
-            number: searchParams.number
+            city: 'Berlin', // Default or leave empty
+            street: match ? match[1].trim() : query,
+            number: match ? match[2].trim() : ''
         });
         setActiveTab('create');
     };
@@ -273,69 +311,48 @@ const IssuesPage = () => {
 
             {activeTab === 'search' && (
                 <div className="space-y-6">
-                    {/* Search Form */}
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                        <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 items-end">
-                            <div className="flex-1 w-full">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Ciudad</label>
-                                <input
-                                    type="text"
-                                    name="city"
-                                    value={searchParams.city}
-                                    onChange={handleSearchChange}
-                                    placeholder="Ej. Berlin"
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue focus:border-transparent"
-                                />
+                    {/* Modern Search Bar */}
+                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-4">
+                        <h2 className="text-2xl font-bold text-slate-800">Búsqueda Rápida de Direcciones</h2>
+                        <p className="text-slate-500 max-w-lg">Escribe la calle y número para ver el historial o registrar incidencias.</p>
+
+                        <div className="relative w-full max-w-2xl">
+                            <input
+                                type="text"
+                                placeholder="Ej. Hauptstrasse 123..."
+                                value={searchParams.query || ''}
+                                onChange={(e) => {
+                                    setSearchParams({ ...searchParams, query: e.target.value });
+                                    // Trigger search logic (debounced ideally, but here direct for simplicity or use effect)
+                                }}
+                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-lg focus:outline-none focus:ring-4 focus:ring-joa-blue/20 transition-all shadow-inner"
+                                autoFocus
+                            />
+                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                {loading ? (
+                                    <div className="animate-spin h-5 w-5 border-2 border-slate-400 border-t-transparent rounded-full"></div>
+                                ) : (
+                                    <Search size={24} />
+                                )}
                             </div>
-                            <div className="flex-[2] w-full">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Calle (Obligatorio)</label>
-                                <input
-                                    type="text"
-                                    name="street"
-                                    value={searchParams.street}
-                                    onChange={handleSearchChange}
-                                    placeholder="Ej. Hauptstrasse"
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue focus:border-transparent"
-                                    required
-                                />
-                            </div>
-                            <div className="w-full md:w-32">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Número</label>
-                                <input
-                                    type="text"
-                                    name="number"
-                                    value={searchParams.number}
-                                    onChange={handleSearchChange}
-                                    placeholder="123"
-                                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue focus:border-transparent"
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                disabled={loading}
-                                className="bg-joa-blue hover:bg-blue-600 text-white p-2.5 rounded-lg transition-colors flex items-center gap-2 h-[46px] px-6"
-                            >
-                                {loading ? 'Buscando...' : <><Search size={18} /> Buscar</>}
-                            </button>
-                        </form>
+                        </div>
                     </div>
 
                     {/* Results */}
                     {hasSearched && (!searchResult || searchResult.length === 0) && (
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center space-y-4">
-                            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-slate-400">
+                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center space-y-4 animate-in fade-in zoom-in-95">
+                            <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto text-orange-500 mb-4">
                                 <Search size={32} />
                             </div>
-                            <h3 className="text-lg font-bold text-slate-800">Dirección no encontrada</h3>
+                            <h3 className="text-lg font-bold text-slate-800">No encontramos esa dirección</h3>
                             <p className="text-slate-500 max-w-md mx-auto">
-                                No tenemos registros de esta dirección en nuestra base de datos.
                                 ¿Deseas registrar una incidencia para esta dirección externa?
                             </p>
                             <button
                                 onClick={prefillManualFromSearch}
-                                className="bg-joa-blue text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors inline-flex items-center gap-2"
+                                className="bg-joa-blue text-white px-8 py-3 rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-blue-200 inline-flex items-center gap-2 font-bold"
                             >
-                                <Plus size={18} /> Crear Avería para esta Dirección
+                                <Plus size={18} /> Crear Avería para "{searchParams.query}"
                             </button>
                         </div>
                     )}

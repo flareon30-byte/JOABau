@@ -2,20 +2,34 @@ const prisma = require('../prisma');
 
 // 1. Search for Address History
 exports.searchAddressHistory = async (req, res) => {
-    const { city, street, number } = req.query;
+    const { city, street, number, query } = req.query;
 
-    if (!street) {
-        return res.status(400).json({ message: 'La calle es obligatoria para buscar.' });
+    // Smart Search Logic
+    let searchStreet = street;
+    let searchNumber = number;
+
+    if (query && !street) {
+        // Try to extract street and number from query (e.g., "Hauptstrasse 12")
+        // Regex to find trailing numbers
+        const match = query.match(/^(.+?)\s+(\d+[a-zA-Z]*)$/);
+        if (match) {
+            searchStreet = match[1].trim();
+            searchNumber = match[2].trim();
+        } else {
+            searchStreet = query.trim();
+        }
+    }
+
+    if (!searchStreet) {
+        return res.status(400).json({ message: 'Indique una calle para buscar.' });
     }
 
     try {
-        // Fuzzy search
         const addresses = await prisma.address.findMany({
             where: {
-                street: { contains: street, mode: 'insensitive' },
-                // Optional filters if provided
+                street: { contains: searchStreet, mode: 'insensitive' },
                 ...(city ? { city: { contains: city, mode: 'insensitive' } } : {}),
-                ...(number ? { number: { contains: number, mode: 'insensitive' } } : {})
+                ...(searchNumber ? { number: { contains: searchNumber, mode: 'insensitive' } } : {})
             },
             include: {
                 project: true,
@@ -26,9 +40,9 @@ exports.searchAddressHistory = async (req, res) => {
                         scheduledBy: true
                     }
                 },
-                activationInfo: true // This contains closure photos/docs
+                activationInfo: true
             },
-            take: 10 // Limit results
+            take: 20
         });
 
         res.json(addresses);
