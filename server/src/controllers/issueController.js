@@ -380,7 +380,7 @@ exports.getRepairs = async (req, res) => {
                 },
                 orderBy: { assignedDate: 'asc' }
             });
-        } else if (status === 'COMPLETED') {
+        } else if (status === 'COMPLETED' || status === 'COMPLETADAS') {
             // Fetch COMPLETED REPAIRS from Repair table
             data = await prisma.repair.findMany({
                 where: {
@@ -404,21 +404,8 @@ exports.getRepairs = async (req, res) => {
                 take: 100
             });
         } else {
-            // Fetch ALL (Maybe mixed? or just default to pending?)
-            // Let's just return both in separate keys or just valid structure.
-            // If no status, maybe just return Pending by default.
-            data = await prisma.appointment.findMany({
-                where: {
-                    type: 'REPAIR',
-                    status: { not: 'COMPLETADO' },
-                },
-                include: {
-                    address: { include: { project: true } },
-                    assignedTeam: true,
-                    comments: { orderBy: { createdAt: 'desc' } }
-                },
-                orderBy: { assignedDate: 'asc' }
-            });
+            // Unrecognized status or ALL -> return empty for now to debug/avoid confusion
+            data = [];
         }
 
         res.json(data);
