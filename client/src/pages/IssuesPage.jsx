@@ -534,7 +534,32 @@ const IssuesPage = () => {
                                                     </div>
                                                 )}
 
-                                                {!result.appointment && !result.activationInfo && (
+                                                {/* Repairs History */}
+                                                {result.repairs && result.repairs.length > 0 && result.repairs.map((repair) => (
+                                                    <div key={repair.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-purple-50 rounded-lg text-sm gap-2 border-l-4 border-purple-500 mt-2">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                                                <AlertTriangle size={14} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-purple-900">
+                                                                    REPARACIÓN: {new Date(repair.createdAt).toLocaleDateString()}
+                                                                </p>
+                                                                <p className="text-xs text-purple-700 max-w-[200px] truncate" title={repair.description || 'Sin descripción'}>
+                                                                    {repair.description || 'Reparación completada'}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="bg-white px-2 py-1 rounded border border-purple-100 text-xs font-mono text-purple-700">
+                                                                {repair.assignedTeam?.name || 'BackOffice'}
+                                                            </span>
+                                                            <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">COMPLETADO</span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+
+                                                {!result.appointment && !result.activationInfo && (!result.repairs || result.repairs.length === 0) && (
                                                     <p className="text-sm text-slate-400 italic">No hay historial registrado para esta dirección.</p>
                                                 )}
                                             </div>
