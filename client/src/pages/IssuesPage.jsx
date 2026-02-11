@@ -56,7 +56,10 @@ const IssuesPage = () => {
     const fetchRepairs = async () => {
         setLoading(true);
         try {
-            const res = await api.get(`/api/issues/repairs?status=${repairsFilter}`);
+            console.log("Fetching repairs with status:", repairsFilter);
+            const res = await api.get('/api/issues/repairs', {
+                params: { status: repairsFilter }
+            });
             setRepairsList(res.data);
         } catch (err) {
             console.error(err);

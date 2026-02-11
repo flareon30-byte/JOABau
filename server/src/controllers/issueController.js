@@ -340,7 +340,11 @@ exports.submitRepair = async (req, res) => {
 
 // 5. Get All Repairs (Admin/BackOffice View)
 exports.getRepairs = async (req, res) => {
-    const { status, startDate, endDate } = req.query;
+    let { status, startDate, endDate } = req.query;
+    console.log(`[getRepairs] Received Status: "${status}"`);
+
+    // Normalize status
+    if (status) status = status.trim().toUpperCase();
 
     try {
         let data = [];
