@@ -1,4 +1,5 @@
-// ... imports
+import React, { useState, useEffect } from 'react';
+import api from '../api/axios';
 import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X } from 'lucide-react';
 
 const IssuesPage = () => {
