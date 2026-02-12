@@ -11,7 +11,7 @@ exports.searchAddressHistory = async (req, res) => {
     if (query && !street) {
         // Try to extract street and number from query (e.g., "Hauptstrasse 12")
         // Regex to find trailing numbers
-        const match = query.match(/^(.+?)\s+(\d+[a-zA-Z]*)$/);
+        const match = query.trim().match(/^(.+?)\s+(\d+[a-zA-Z]*)$/);
         if (match) {
             searchStreet = match[1].trim();
             searchNumber = match[2].trim();
@@ -42,7 +42,6 @@ exports.searchAddressHistory = async (req, res) => {
                 },
                 activationInfo: true,
                 repairs: {
-                    include: { assignedTeam: true },
                     orderBy: { createdAt: 'desc' }
                 }
             },
