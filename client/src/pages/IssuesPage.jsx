@@ -88,11 +88,13 @@ const IssuesPage = () => {
                 setHasSearched(true);
             } catch (err) {
                 console.error("Search error", err);
-                // Don't show error for live search generally, just no results
-                // But if 404, empty list is fine.
                 if (err.response && err.response.status === 404) {
                     setSearchResult([]);
                     setHasSearched(true);
+                } else {
+                    // Show error for other statuses (500, 403, 401, etc.)
+                    setError("Error en la búsqueda: " + (err.response?.data?.message || "Error de conexión o sesión expirada"));
+                    setSearchResult(null);
                 }
             } finally {
                 setLoading(false);
