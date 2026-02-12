@@ -40,6 +40,7 @@ exports.updateSettings = async (req, res) => {
         mduPoints,
         spPoints,
         taPoints,
+        repairPrice, // Added repairPrice
         financials
     } = req.body;
 
@@ -66,6 +67,7 @@ exports.updateSettings = async (req, res) => {
             mduPoints: safeFloat(mduPoints),
             spPoints: safeFloat(spPoints),
             taPoints: safeFloat(taPoints),
+            repairPrice: safeFloat(repairPrice), // Save repairPrice
             financials: financials // Save the complex JSON config
         };
 
