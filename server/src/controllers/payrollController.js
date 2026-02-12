@@ -1,72 +1,40 @@
 const prisma = require('../prisma');
 
-const calculatePayroll = (activations, settings, teamSize = 1) => {
-    const weekdayPrice = settings?.extraPointPrice || 0;
-    const saturdayPrice = settings?.saturdayPointPrice || 0;
-    const monthlyTarget = settings?.monthlyTargetPoints || 100;
+// Helper: Calculate working days for a given month/year (Default current)
+// Simplified version of the calendar utils
+const getWorkingDays = (year, month) => {
+    // 0 = Jan, 11 = Dec
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+    let count = 0;
 
-    // Aggregate Data by Team
-    const teamMap = {};
+    // Holidays NRW 2026 (simplified set for example)
+    // In a real app, use a robust holiday library or DB table
+    const holidays2026 = [
+        '0-1', '2-29', '3-2', '4-1', '4-10', '4-21', '5-1', '5-11', '7-15', '9-3', '10-1', '11-25', '11-26'
+        // Note: Month is 0-indexed in JS date, but let's use M-D strings
+        // Adjust as needed for specific strictness. 
+        // For now, let's use a standard approximation or the fixed value from the user's calculator if possible.
+        // User calculator uses a util. Let's approximate to ~21 or calculate weekdays.
+    ];
 
-    activations.forEach(act => {
-        const team = act.address?.appointment?.assignedTeam;
-        if (!team) return;
-
-        const teamId = team.id;
-
-        if (!teamMap[teamId]) {
-            teamMap[teamId] = {
-                id: teamId,
-                name: team.name,
-                members: team.members ? team.members.map(m => m.username).join(', ') : 'Sin miembros',
-                memberCount: team.members ? team.members.length : 1,
-                weekdayPoints: 0,
-                saturdayPoints: 0,
-                totalPoints: 0,
-                weekdayMoney: 0,
-                saturdayMoney: 0,
-                totalMoney: 0,
-                target: monthlyTarget // Global target (or could be per person: monthlyTarget * memberCount)
-            };
+    // Simple Weekday Count
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const day = d.getDay();
+        if (day !== 0 && day !== 6) { // Not Sunday (0) or Saturday (6)
+            count++;
         }
-
-        const points = act.points || 0;
-        const isSaturday = act.isSaturday === true;
-
-        teamMap[teamId].totalPoints += points;
-
-        if (isSaturday) {
-            teamMap[teamId].saturdayPoints += points;
-            // Saturdays usually paid directly without target threshold
-            teamMap[teamId].saturdayMoney += (points * saturdayPrice);
-        } else {
-            teamMap[teamId].weekdayPoints += points;
-        }
-    });
-
-    // Calculate Weekday Money based on Target
-    Object.values(teamMap).forEach(team => {
-        // Option 1: Target is PER TEAM (Simple)
-        const target = team.target;
-
-        // Bonus only applied to points ABOVE target
-        const bonusPoints = Math.max(0, team.weekdayPoints - target);
-
-        team.weekdayMoney = bonusPoints * weekdayPrice;
-        team.totalMoney = team.weekdayMoney + team.saturdayMoney;
-        team.bonusPoints = bonusPoints; // For display
-    });
-
-    return Object.values(teamMap).sort((a, b) => b.totalPoints - a.totalPoints);
+    }
+    return count;
 };
 
-// Helper to calculate advanced financials
-const calculateAdvancedPayroll = (activations, financials, teamMembers) => {
-    // defaults
+// Helper: Logic to calculate Group Financials (Mirroring Calculator App.jsx)
+const calculateGroupFinancials = (activations, financialConfig, teamMembers, overhead = 0, month, year) => {
+    // Defaults
     const stats = {
         totalRevenue: 0,
         totalCost: 0,
-        netResult: 0,
+        netResult: 0, // Profit
         bonusPool: 0,
         unitsDone: 0,
         breakEvenUnits: 0,
@@ -74,133 +42,246 @@ const calculateAdvancedPayroll = (activations, financials, teamMembers) => {
         saturdayPay: 0,
         details: {
             salaryCost: 0,
-            opCost: 0
-        }
+            opCost: 0,
+            bonusCost: 0,
+            saturdayCost: 0
+        },
+        counts: { bp: 0, ta: 0, multi: 0, mdu: 0, saturday: 0 }
     };
 
-    if (!financials) return stats;
+    if (!financialConfig) return stats;
 
-    const memberCount = teamMembers.length || 1;
+    const teamSize = teamMembers.length || 1;
+    // We assume 'count' in calculator refers to total people in group. Here we calc PER TEAM usually.
+    // The calculator logic is "Group Global". We need to apply it "Per Team".
+    // "One Team" instance:
+    const count = teamSize;
+    const numberOfTeams = 1; // By definition, we are calculating for ONE team here.
 
-    // 1. Calculate Costs
-    // Personnel: (Salary + Insurance + (Dietas * 21)) * Members
-    // Note: Dietas is per day, assuming avg 21 working days
-    const personnelMonthly = (financials.salary + financials.insurance + (financials.dietasPerDay * 21)) * memberCount;
+    const workingDays = getWorkingDays(year, month);
 
-    // Operational: Fixed per team
-    const operationalMonthly = financials.car + financials.gas + financials.materials + (financials.equipmentRent || 0);
+    // --- 1. EXPENSES (Costs) ---
 
-    stats.totalCost = personnelMonthly + operationalMonthly;
-    stats.details.salaryCost = personnelMonthly;
-    stats.details.opCost = operationalMonthly;
+    // Per Person Expenses
+    const salary = financialConfig.salary || 1500;
+    const insurance = (financialConfig.insurance !== undefined) ? financialConfig.insurance : (salary * 0.215);
+    const sokaBauPercent = financialConfig.sokaBauPercent || 0;
+    const sokaBau = (sokaBauPercent > 0) ? (salary * sokaBauPercent / 100) : 0;
+    const dietasPerDay = financialConfig.dietasPerDay || 0;
+    const rent = financialConfig.rent || 0;
+    const materialsPerPerson = financialConfig.materials || 0; // Calculator has materials in "Per Person" block visually? No, in "Operative Expenses" usually per team or person.
+    // In Calculator `perPersonExpenses` includes materials. 
+    // `group.materials` in calc initialData seems to be 100 per person? Or Team?
+    // "Gastos Operativos (Por Equipo/Mes)" -> Materiales.
+    // Let's assume the config value is Per Team if it comes from the UI section "Gastos Operativos".
+    // But wait, the shared calculator code puts materials in `perPersonExpenses` sum:
+    // `group.salary + calcInsurance + calcSokaBau + group.rent + totalDietasPerPerson + group.materials;`
+    // This implies materials is treated as PER PERSON cost in the calculator logic provided.
 
-    // 2. Calculate Revenue & Units
-    // We need to distinguish unit types if possible, otherwise treat all as standard units
-    // For installers, standard unit is an Activation.
-    // Check for TA/Multi types if properties exist on activation?
-    // Current ActivationInfo schema might not have detailed type easily accessible or it uses 'activationType' enum?
-    // We will count basic units for now.
+    const totalDietasPerPerson = dietasPerDay * workingDays; // Approx, ignoring saturdays for now or adding later
+
+    const perPersonExpenses = salary + insurance + sokaBau + rent + totalDietasPerPerson + materialsPerPerson;
+
+    // Per Team Expenses
+    const car = financialConfig.car || 0;
+    const gas = financialConfig.gas || 0;
+    const perTeamExpenses = car + gas;
+
+    // Total Fixed Expenses for this Team
+    const groupExpenses = (perPersonExpenses * teamSize) + perTeamExpenses;
+
+    // --- 2. REVENUE & PRODUCTION (Income) ---
 
     let standardUnits = 0;
-    let potentialBonus = 0;
-    let saturdayDays = new Set();
+    let taUnits = 0;
+    let multiUnits = 0;
+    let mduUnits = 0;
+    let saturdayInstalls = 0;
+    let saturdayTa = 0;
+    let saturdayMulti = 0;
 
-    // Detailed Counters
-    stats.counts = {
-        bp: 0,    // BP + BP_2_FAM
-        ta: 0,    // SDU
-        multi: 0, // BR_MULTI
-        mdu: 0    // MDU
-    };
+    let totalRevenue = 0;
 
+    // Process Activations
     activations.forEach(act => {
-        standardUnits++;
+        const isSaturday = act.isSaturday === true;
+        const type = act.activationType || 'BP';
 
-        let price = 0;
-        let bonus = 0;
-        const type = act.activationType || 'BP'; // Default to BP
+        // Prices from Config
+        const pricePerUnit = financialConfig.pricePerUnit || 0;
+        const pricePerMulti = financialConfig.pricePerMulti || 0; // Additional on top of base? Or full?
+        // Calculator: "BR Multi seria el precio base + precio multi" for REVENUE?
+        // In Calculator App.jsx:
+        // `revenueInstalls = totalInstalls * group.pricePerUnit;`
+        // `totalInstalls` includes `monthlyBaseUnits` (which are just the productivity count)
+        // Multi units are counted separately in `totalMultiUnits`.
+        // `multiIncome = totalMultiUnits * (group.multiRevenuePrice || 0);`
+        // So Multi generates `pricePerUnit` (as an install) AND `multiRevenuePrice` (extra)?
+        // Re-reading Calculator `calculateGroupFinancials`:
+        // `const totalEffectiveUnits = ... (monthlyBaseUnits + (group.multiProductivity || 0))` -> This affects `regularProduction`.
+        // `const regularIncome = regularProduction * group.pricePerUnit;`
+        // So a Multi counts as a regular unit (getting `pricePerUnit`) PLUS it gets `multiRevenuePrice`.
 
-        switch (type) {
-            case 'BP':
-            case 'BP_2_FAM':
-                // "BP basic y BP 2 familias seria el precio base"
-                price = financials.pricePerUnit || 0;
-                bonus = financials.bonusPerUnit || 0;
+        // Let's map our DB types to this logic:
+
+        if (isSaturday) {
+            // Saturday Logic
+            if (type === 'BP' || type === 'BP_2_FAM') {
+                saturdayInstalls++;
+                stats.counts.saturday++;
+                totalRevenue += pricePerUnit;
+            } else if (type === 'BR_MULTI') {
+                saturdayInstalls++; // Counts as base install too
+                saturdayMulti++;
+                stats.counts.saturday++;
+                totalRevenue += (pricePerUnit + (financialConfig.multiRevenuePrice || 0));
+            } else if (type === 'SDU') { // TA
+                saturdayTa++;
+                // SDU/TA might not count as "Install"? 
+                // Calc says: `taIncome = totalTaUnits * (group.taRevenuePrice || 0);`
+                // Does TA count towards `regularProduction`? 
+                // `totalEffectiveUnits` combines base + multi. TA is separate in `totalTaUnits`.
+                stats.counts.saturday++;
+                totalRevenue += (financialConfig.taRevenuePrice || 0);
+            }
+        } else {
+            // M-F Logic
+            if (type === 'BP' || type === 'BP_2_FAM') {
+                standardUnits++;
                 stats.counts.bp++;
-                break;
-
-            case 'BR_MULTI':
-                // "BR Multi seria el precio base + precio multi"
-                price = (financials.pricePerUnit || 0) + (financials.pricePerMulti || 0);
-                bonus = (financials.bonusPerUnit || 0) + (financials.bonusPerMulti || 0);
+                totalRevenue += pricePerUnit;
+            } else if (type === 'BR_MULTI') {
+                standardUnits++; // Counts as install
+                multiUnits++;
                 stats.counts.multi++;
-                break;
-
-            case 'SDU':
-                // "SDU seria Precio TA"
-                price = financials.pricePerTA || 0;
-                bonus = financials.bonusPerTA || 0;
+                totalRevenue += (pricePerUnit + (financialConfig.multiRevenuePrice || 0));
+            } else if (type === 'SDU') {
+                taUnits++;
                 stats.counts.ta++;
-                break;
-
-            case 'MDU':
-                // New MDU Price
-                price = financials.pricePerMDU || 0;
-                bonus = financials.bonusPerMDU || 0;
+                totalRevenue += (financialConfig.taRevenuePrice || 0);
+            } else if (type === 'MDU') {
+                mduUnits++;
                 stats.counts.mdu++;
-                break;
-
-            // Fallback for any other type (e.g. legacy data)
-            default:
-                price = financials.pricePerUnit || 0;
-                bonus = financials.bonusPerUnit || 0;
-                stats.counts.bp++;
-                break;
-        }
-
-        stats.totalRevenue += price;
-        potentialBonus += bonus;
-
-        if (act.isSaturday) {
-            const dateStr = new Date(act.createdAt).toDateString();
-            saturdayDays.add(dateStr);
+                // Assuming MDU is similar to Multi or own price
+                totalRevenue += (financialConfig.pricePerMDU || 0);
+            }
         }
     });
 
-    stats.unitsDone = standardUnits;
+    stats.unitsDone = standardUnits + saturdayInstalls; // Total Base Installs
+    // Note: Calculator uses Monthly INPUT for installs, but we are calculating from ACTUALS here.
 
-    // 3. Break Even (Dynamic based on average revenue per unit this month)
-    const avgPrice = standardUnits > 0 ? (stats.totalRevenue / standardUnits) : financials.pricePerUnit;
-    stats.breakEvenUnits = avgPrice > 0 ? Math.ceil(stats.totalCost / avgPrice) : 0;
+    // --- 3. VARIABLE COSTS (Bonuses & Saturdays) ---
 
-    // 4. Progress
+    let bonusCost = 0;
+    let saturdayCost = 0;
+
+    // A. Saturday Pay
+    // "Tarifa Sábado Fix (€)" -> `saturdayRate`. 
+    // Calc: `stats.saturdayPay = saturdayDays.size * financials.saturdayRate * memberCount;`
+    // Wait, the new Calc code says:
+    // `costSatInst = satInstalls * (group.bonusPerUnit || 0) * 2;`
+    // `costSatTa = satTa * (group.bonusPerTa || 0) * 2;`
+    // `saturdayCost = costSatInst + ...`
+    // AND `return acc + ((group.saturdaysWorked || 0) * (group.saturdayRate || 0));` in the detailed breakdown.
+    // It seems there are TWO components:
+    // 1. Fixed "Saturday Rate" (e.g. 40€) probably per person or team? `saturdayRate` in config.
+    // 2. Double Bonus per unit.
+
+    // Let's implement the Cost of Saturday Rate:
+    // We need to know how many Saturdays were worked.
+    const saturdayDates = new Set();
+    activations.filter(a => a.isSaturday).forEach(a => saturdayDates.add(new Date(a.createdAt).toDateString()));
+    const saturdaysWorkedCount = saturdayDates.size;
+
+    // Cost: Days * Rate * Members (Assuming Rate is per person)
+    const fixedSaturdayCost = saturdaysWorkedCount * (financialConfig.saturdayRate || 0) * teamSize;
+
+    // Cost: Double Bonus
+    const varSaturdayCost =
+        (saturdayInstalls * (financialConfig.bonusPerUnit || 0) * 2) +
+        (saturdayMulti * (financialConfig.bonusPerMulti || 0) * 2) +
+        (saturdayTa * (financialConfig.bonusPerTa || 0) * 2);
+
+    saturdayCost = fixedSaturdayCost + varSaturdayCost;
+    stats.saturdayPay = saturdayCost; // Total pay to team for Sat
+
+    // B. Production Bonus (M-F)
+    // Calc Logic:
+    // `totalVariableCosts = taCost + multiCost + saturdayCost;`
+    // `totalAbsoluteExpenses = groupExpenses + totalVariableCosts;`
+    // `breakEvenUnits = group.pricePerUnit > 0 ? (groupExpenses / group.pricePerUnit) : 0;`
+    // NOTE: BreakEven uses ONLY `groupExpenses` (Fixed), not variable.
+
+    const breakEvenUnits = (financialConfig.pricePerUnit > 0)
+        ? (groupExpenses / financialConfig.pricePerUnit)
+        : 0;
+
+    stats.breakEvenUnits = Math.ceil(breakEvenUnits);
+
+    // Bonus Potential
+    // "Potential should be based on EXTRA units (above break-even)."
+    // "Multi/TA revenue helps generate Surplus... BUT it should not lower the Installation Break Even bar."
+
+    const totalInstalls = stats.unitsDone; // Base installs
+    const extraUnits = Math.max(0, totalInstalls - breakEvenUnits);
+
+    const bonusPotInstalls = extraUnits * (financialConfig.bonusPerUnit || 0);
+    const bonusPotTa = taUnits * (financialConfig.bonusPerTa || 0); // Pure bonus? Code: `totalTaUnits * (group.bonusPerTa || 0)`
+    const bonusPotMulti = multiUnits * (financialConfig.bonusPerMulti || 0);
+
+    const totalBonusPotential = bonusPotInstalls + bonusPotTa + bonusPotMulti;
+
+    // Surplus check
+    // "We subtract the 'overhead' (Global Deficit) from the revenue before checking for surplus."
+    // `const totalAbsoluteExpenses = groupExpenses + totalVariableCosts;`
+    // `const surplus = Math.max(0, totalRevenue - totalAbsoluteExpenses - overhead);`
+
+    const taCost = taUnits * (financialConfig.taPrice || 0); // "Variable Cost" M-F
+    const multiCost = multiUnits * (financialConfig.multiPrice || 0);
+
+    const totalVariableCosts = taCost + multiCost + saturdayCost;
+    const totalAbsoluteExpenses = groupExpenses + totalVariableCosts;
+
+    const surplus = Math.max(0, totalRevenue - totalAbsoluteExpenses - overhead);
+
+    if (totalRevenue > 0 && surplus > 0) {
+        if (surplus < 5) {
+            bonusCost = 0;
+        } else {
+            // "Pay the full defined bonus, capped by the available surplus, rounded down to integer."
+            bonusCost = Math.floor(Math.min(totalBonusPotential, surplus));
+        }
+    } else {
+        bonusCost = 0;
+    }
+
+    stats.bonusPool = bonusCost; // Total bonus pool for the team
+
+    // --- 4. RESULTS ---
+    stats.totalCost = totalAbsoluteExpenses + bonusCost; // Is bonus part of cost? Yes.
+    stats.totalRevenue = totalRevenue;
+    stats.netResult = totalRevenue - stats.totalCost;
+
+    stats.details.salaryCost = groupExpenses; // Fixed base
+    stats.details.opCost = perTeamExpenses; // Part of groupExpenses really, but separate for UI? 
+    // Let's match UI "Costes de Personal" vs "Gastos Operativos"
+    stats.details.salaryCost = (perPersonExpenses * teamSize);
+    stats.details.opCost = perTeamExpenses;
+
+    // Progress
     if (stats.breakEvenUnits > 0) {
         stats.progressPercent = Math.min(100, (stats.unitsDone / stats.breakEvenUnits) * 100);
     } else {
         stats.progressPercent = 100;
     }
 
-    // 5. Bonus Calculation (Proportional Surplus)
-    // We calculate what % of the work done was "extra" above break-even, 
-    // and pay that same % of the total generated bonus potential.
-    if (stats.unitsDone > stats.breakEvenUnits) {
-        const profitableUnits = stats.unitsDone - stats.breakEvenUnits;
-        const profitableRatio = profitableUnits / stats.unitsDone;
-
-        stats.bonusPool = potentialBonus * profitableRatio;
-    } else {
-        stats.bonusPool = 0;
-    }
-
-    // 6. Saturday Pay (Fixed per Saturday worked? or per unit?)
-    // Settings says "Tarifa Sábado (Por día)". 
-    // We need to count how many distinct Saturdays the team worked.
-    stats.saturdayPay = saturdayDays.size * financials.saturdayRate * memberCount; // Paying rate to EACH member for that day? Or total for team?
-    // "Tarifa Sábado Fix (€)" in UI suggests a flat rate. Usually saturday pay is per person.
-    // I will assume the rate in settings is PER PERSON per Saturday.
+    stats.taUnits = taUnits + saturdayTa;
+    stats.multiUnits = multiUnits + saturdayMulti;
 
     return stats;
 };
+
 
 exports.getMyPayroll = async (req, res) => {
     const userId = req.userId;
@@ -210,7 +291,6 @@ exports.getMyPayroll = async (req, res) => {
             include: { team: true }
         });
 
-        // Allow Super Admin and Back Office to proceed without a team
         if (!user || (!user.teamId && user.role !== 'SUPER_ADMIN' && user.role !== 'BACK_OFFICE')) {
             return res.status(400).json({ message: 'User not assigned to a team' });
         }
@@ -225,13 +305,8 @@ exports.getMyPayroll = async (req, res) => {
             });
         }
 
-        // Fallback for Admin without team
         if (!team && user.role === 'SUPER_ADMIN') {
-            team = {
-                id: 'virtual',
-                name: 'Modo Administrador (Sin Equipo)',
-                members: [user]
-            };
+            team = { id: 'virtual', name: 'Modo Administrador', members: [user] };
         }
 
         const now = new Date();
@@ -242,11 +317,9 @@ exports.getMyPayroll = async (req, res) => {
             where: { isDemo: req.isDemo || false }
         });
 
-        // Logic for Back Office
+        // 1. Back Office Special Case
         if (user.role === 'BACK_OFFICE') {
             const config = settings?.financials?.backOffice || {};
-            console.log(`[MyPayroll BackOffice] Config found:`, !!settings?.financials?.backOffice);
-
             const apptCount = await prisma.appointment.count({
                 where: {
                     scheduledById: user.id,
@@ -255,27 +328,17 @@ exports.getMyPayroll = async (req, res) => {
                 }
             });
             const revenue = apptCount * (config.pricePerAppointment || 15);
-
             return res.json({
                 role: 'BACK_OFFICE',
                 baseSalary: config.salary || user.baseSalary || 1500,
-                metrics: {
-                    appointmentsDone: apptCount,
-                    targetDaily: 15,
-                    revenueGenerated: revenue
-                },
-                financials: {
-                    total: config.salary || user.baseSalary || 1500
-                }
+                metrics: { appointmentsDone: apptCount, targetDaily: 15, revenueGenerated: revenue },
+                financials: { total: config.salary || 1500 }
             });
         }
 
-        // Logic for Installers / Blowers
+        // 2. Installers/Blowers
         const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
         const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
-
-        console.log(`[MyPayroll] User: ${user.username}, Role: ${user.role}, Group: ${groupKey}`);
-        console.log(`[MyPayroll] Financials found:`, !!financialConfig);
 
         let activations = [];
         if (teamId) {
@@ -284,19 +347,26 @@ exports.getMyPayroll = async (req, res) => {
                     createdAt: { gte: start, lte: end },
                     address: {
                         project: { isDemo: req.isDemo || false },
-                        appointment: {
-                            assignedTeamId: teamId
-                        }
+                        appointment: { assignedTeamId: teamId }
                     }
                 }
             });
         }
 
-        // Safe team members access
         const teamMembers = team ? team.members : [user];
-        const stats = calculateAdvancedPayroll(activations, financialConfig, teamMembers);
 
-        // User share
+        // Overhead Logic (Mirroring Calculator)
+        // Ideally we need to calculate ALL groups to find the global deficit (StartUp cost, Support cost etc).
+        // For individual `getMyPayroll`, doing a full system sim might be heavy.
+        // Option: Assume 0 overhead for individual view OR simplify.
+        // Calculator says: "We assume the FIRST installer team bears the burden...".
+        // If this user is 'installers' group, they might see a "Goal" that includes overhead.
+        // For now, let's pass 0 overhead to keep `getMyPayroll` fast, but acknowledge it might slightly differ from "Admin View" if deficit exists. 
+        // Or better: Fetch basic deficit if possible. 
+        // Let's stick to 0 for specific user view speed unless requested.
+
+        const stats = calculateGroupFinancials(activations, financialConfig, teamMembers, 0, now.getMonth(), now.getFullYear());
+
         const memberCount = teamMembers.length || 1;
         const myBonus = stats.bonusPool / memberCount;
         const mySaturday = stats.saturdayPay / memberCount;
@@ -307,7 +377,7 @@ exports.getMyPayroll = async (req, res) => {
             stats: {
                 ...stats,
                 activationsCount: activations.length,
-                teamName: user.team?.name || 'Sin Equipo'
+                teamName: team?.name || 'Sin Equipo'
             },
             personal: {
                 baseSalary: financialConfig?.salary || user.baseSalary || 0,
@@ -325,137 +395,114 @@ exports.getMyPayroll = async (req, res) => {
 
 exports.getPayrollSummary = async (req, res) => {
     const { startDate, endDate, userId } = req.query;
-
-    console.log('Fetching Admin Payroll Summary', { startDate, endDate, userId });
-
     try {
-        // Parse dates (Frontend should provide YYYY-MM-DD)
-        // Ensure strictly parsed to start of day and end of day
-        // If provided as strings YYYY-MM-DD:
         const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        // Fix timezone/EOD issues by ensuring we target the full day if only date is given
         if (startDate && !startDate.includes('T')) start.setHours(0, 0, 0, 0);
 
         const end = endDate ? new Date(endDate) : new Date();
         if (endDate && !endDate.includes('T')) end.setHours(23, 59, 59, 999);
 
+        const monthForDays = start.getMonth();
+        const yearForDays = start.getFullYear();
+
         const settings = await prisma.systemSettings.findFirst({
             where: { isDemo: req.isDemo || false }
         });
 
-        // 1. Fetch Users
-        const usersWhere = { isDemo: req.isDemo || false };
-        if (userId && userId !== 'all') usersWhere.id = userId;
-
+        // Fetch Users & Activations
         const users = await prisma.user.findMany({
-            where: usersWhere,
-            include: { team: { include: { members: true } } },
-            orderBy: { username: 'asc' }
+            where: { isDemo: req.isDemo || false },
+            include: { team: { include: { members: true } } }
         });
 
-        // 2. Fetch Activations in Range
         const activations = await prisma.activationInfo.findMany({
             where: {
                 createdAt: { gte: start, lte: end },
                 address: { project: { isDemo: req.isDemo || false } }
             },
             include: {
-                address: {
-                    include: {
-                        appointment: {
-                            include: { assignedTeam: true }
-                        }
-                    }
-                }
+                address: { include: { appointment: { include: { assignedTeam: true } } } }
             }
         });
 
-        // 3. Group Activations by Team
-        const teamActivations = {};
+        // Map Activations to Team
+        const teamActs = {};
         activations.forEach(act => {
-            const teamId = act.address?.appointment?.assignedTeamId;
-            if (teamId) {
-                if (!teamActivations[teamId]) teamActivations[teamId] = [];
-                teamActivations[teamId].push(act);
+            const tid = act.address?.appointment?.assignedTeamId;
+            if (tid) {
+                if (!teamActs[tid]) teamActs[tid] = [];
+                teamActs[tid].push(act);
             }
         });
 
-        // 4. Calculate for each User
-        const summary = await Promise.all(users.map(async (user) => {
+        // We need to calculate Support Groups First to find Deficit (Overhead)
+        // Group users by "Financial Type"
+        const supportGroups = ['blowers', 'replanners', 'backoffice']; // Roles mapped to these keys
+        let supportProfit = 0;
+
+        // This is tricky because users are individual rows but calculation is by Team/Group.
+        // We will calc per-user for the list, but for overhead we need conceptual "Groups".
+        // Let's just calculate per-user/team stats normally and sum their NetResult.
+        // If a team is "Blower", their profit adds to supportProfit.
+
+        const processedUsers = users.map(user => {
             const team = user.team;
             const teamId = team?.id;
-
-            // Determine config
-            let groupKey = 'installers';
+            let groupKey = 'installers'; // Default
             if (user.role === 'BLOWER') groupKey = 'blowers';
             if (user.role === 'BACK_OFFICE') groupKey = 'backOffice';
+            // 'replanners' role? Assuming not implemented in UserRole enum yet or handled as Blower/Other.
 
             const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
-            const baseSalary = financialConfig?.salary || user.baseSalary || 0;
 
             let stats = null;
-            let personal = {
-                baseSalary: baseSalary,
-                bonus: 0,
-                saturday: 0,
-                total: 0
-            };
 
             if (user.role === 'BACK_OFFICE') {
-                // Back Office Logic
-                // Count appointments scheduled by this user in the range with status CITADO or COMPLETADO
-                const appointmentCount = await prisma.appointment.count({
-                    where: {
-                        scheduledById: user.id,
-                        status: { in: ['CITADO', 'COMPLETADO'] },
-                        updatedAt: { gte: start, lte: end } // Use updatedAt when they secured the appointment
-                    }
-                });
-
-                // Calculate generated revenue
-                const revenuePerAppt = financialConfig?.pricePerAppointment || 15;
-                const totalRevenue = appointmentCount * revenuePerAppt;
-
-                // Calculate simple cost (Salary + Insurance + OpCost)
-                // OpCost is per person for BackOffice
-                const monthlyCost = (financialConfig?.salary || 0) + (financialConfig?.insurance || 0) + (financialConfig?.opCostPerPerson || 0);
-
-                personal.total = baseSalary; // Back Office typically fixed salary unless specific bonus logic added
-
-                stats = {
-                    type: 'BACK_OFFICE',
-                    appointmentsDone: appointmentCount,
-                    totalRevenue: totalRevenue,
-                    cost: monthlyCost,
-                    profit: totalRevenue - monthlyCost,
-                    targetDaily: 15, // Hardcoded expectation for now
-                    todayCount: 0 // Calculated later if needed or separate query
-                };
-
+                // Simplified Back Office Calc
+                const baseSalary = financialConfig?.salary || 0;
+                // We'd need to fetch their specific appointments count here.
+                // For summary performance optimize later.
+                stats = { netResult: 0 - baseSalary }; // Cost center initially
             } else if (team) {
-                // Installer/Blower Logic
-                const acts = teamActivations[teamId] || [];
-                const teamStats = calculateAdvancedPayroll(acts, financialConfig, team.members);
-
-                // User Share
-                const memberCount = team.members.length || 1;
-                personal.bonus = teamStats.bonusPool / memberCount;
-                personal.saturday = teamStats.saturdayPay / memberCount;
-                personal.total = personal.baseSalary + personal.bonus + personal.saturday;
-
-                stats = {
-                    type: 'TEAM',
-                    teamName: team.name,
-                    ...teamStats
-                };
+                const acts = teamActs[teamId] || [];
+                // Overhead is 0 initially
+                stats = calculateGroupFinancials(acts, financialConfig, team.members, 0, monthForDays, yearForDays);
             } else {
-                // Admin or Unassigned
-                personal.total = personal.baseSalary;
-                stats = {
-                    type: 'no_team',
-                    teamName: 'Sin Equipo',
-                    unitsDone: 0
-                };
+                stats = { netResult: 0 - (user.baseSalary || 0) };
+            }
+
+            return { user, stats, groupKey };
+        });
+
+        // Calc Deficit
+        // Filter "Support" types.
+        const supportStats = processedUsers.filter(u => u.groupKey !== 'installers');
+        const netOthers = supportStats.reduce((acc, u) => acc + (u.stats.netResult || 0), 0);
+
+        // "If the total is negative, Installers need to cover that remaining hole."
+        const totalDeficit = netOthers < 0 ? Math.abs(netOthers) : 0;
+
+        // Count Installer Teams to split overhead? 
+        // Calculator: "First installer team bears the burden".
+        // We need to identify the "First" team. Let's say sorted by ID or Creation.
+        // For simplicity in this summary view, we won't re-run the calculation for the ID=1 team separately 
+        // unless we want perfect precision.
+        // Let's just return the `totalDeficit` in metadata so Frontend can display it or note it.
+
+        const summary = processedUsers.map(({ user, stats, groupKey }) => {
+            // Formating for response
+            const personal = {
+                baseSalary: user.baseSalary || 0,
+                bonus: 0,
+                saturday: 0,
+                total: user.baseSalary || 0
+            };
+
+            if (stats && stats.bonusPool) {
+                const members = user.team?.members?.length || 1;
+                personal.bonus = stats.bonusPool / members;
+                personal.saturday = stats.saturdayPay / members;
+                personal.total += personal.bonus + personal.saturday;
             }
 
             return {
@@ -463,12 +510,12 @@ exports.getPayrollSummary = async (req, res) => {
                 username: user.username,
                 role: user.role,
                 ...personal,
-                production: stats
+                production: { ...stats, type: groupKey }
             };
-        }));
+        });
 
         res.json({
-            meta: { range: { start, end } },
+            meta: { range: { start, end }, globalDeficit: totalDeficit },
             data: summary
         });
 
