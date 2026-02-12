@@ -317,7 +317,7 @@ exports.getMyPayroll = async (req, res) => {
             where: { isDemo: req.isDemo || false }
         });
 
-        // 1. Back Office Special Case
+        // 1. Back Office Special Case (Individual view, no overhead calc needed for them usually)
         if (user.role === 'BACK_OFFICE') {
             const config = settings?.financials?.backOffice || {};
             const apptCount = await prisma.appointment.count({
@@ -336,7 +336,7 @@ exports.getMyPayroll = async (req, res) => {
             });
         }
 
-        // 2. Installers/Blowers
+        // 2. Installers/Blowers Logic
         const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
         const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
 
@@ -355,17 +355,111 @@ exports.getMyPayroll = async (req, res) => {
 
         const teamMembers = team ? team.members : [user];
 
-        // Overhead Logic (Mirroring Calculator)
-        // Ideally we need to calculate ALL groups to find the global deficit (StartUp cost, Support cost etc).
-        // For individual `getMyPayroll`, doing a full system sim might be heavy.
-        // Option: Assume 0 overhead for individual view OR simplify.
-        // Calculator says: "We assume the FIRST installer team bears the burden...".
-        // If this user is 'installers' group, they might see a "Goal" that includes overhead.
-        // For now, let's pass 0 overhead to keep `getMyPayroll` fast, but acknowledge it might slightly differ from "Admin View" if deficit exists. 
-        // Or better: Fetch basic deficit if possible. 
-        // Let's stick to 0 for specific user view speed unless requested.
+        // --- OVERHEAD CALCULATION (Global Deficit) ---
+        // To match calculator, we must check if other departments (Blowers, Back Office, Support) are in deficit.
+        // We need to fetch ALL users/teams to calc this global state.
+        // For performance, we could cache this, but for now we calc on fly.
 
-        const stats = calculateGroupFinancials(activations, financialConfig, teamMembers, 0, now.getMonth(), now.getFullYear());
+        let overheadToCover = 0;
+
+        // Only "Installers" cover the overhead in the calculator logic.
+        if (groupKey === 'installers') {
+            // Fetch all users to calculate deficit of Support Groups
+            const allUsers = await prisma.user.findMany({
+                where: {
+                    isDemo: req.isDemo || false,
+                    NOT: { teamId: teamId } // Exclude current team from "Other Groups"
+                },
+                include: { team: { include: { members: true } } }
+            });
+
+            // We need activations for everyone to calculate their Net Result
+            const allActivations = await prisma.activationInfo.findMany({
+                where: {
+                    createdAt: { gte: start, lte: end },
+                    address: { project: { isDemo: req.isDemo || false } }
+                },
+                include: { address: { include: { appointment: true } } }
+            });
+
+            // Map acts to teams
+            const actsByTeam = {};
+            allActivations.forEach(a => {
+                const tid = a.address?.appointment?.assignedTeamId;
+                if (tid) {
+                    if (!actsByTeam[tid]) actsByTeam[tid] = [];
+                    actsByTeam[tid].push(a);
+                }
+            });
+
+            let totalSupportProfit = 0;
+
+            // Iterate over "Support" (Non-Installer) entities to sum their Net Result
+            // We can iterate by unique Teams to avoid double counting users
+            const processedTeams = new Set();
+
+            for (const u of allUsers) {
+                // Determine Role/Group
+                let gKey = 'installers';
+                if (u.role === 'BLOWER') gKey = 'blowers';
+                if (u.role === 'BACK_OFFICE') gKey = 'backOffice';
+
+                // If it's another installer team, they don't count as "Support Deficit" usually?
+                // Calculator: "Calculate Global Deficit from [Blowers, Replanners, Backoffice]".
+                // "If positive, it's 0 deficit. If negative, installers fill it."
+
+                const isSupportGroup = ['blowers', 'backOffice'].includes(gKey); // Add replanners if role exists
+
+                if (isSupportGroup) {
+                    const fConfig = settings?.financials ? settings.financials[gKey] : null;
+                    let netResult = 0;
+
+                    if (gKey === 'backOffice') {
+                        // Simplified cost for BO
+                        const boSalary = fConfig?.salary || u.baseSalary || 1500;
+                        // Ideally fetching their revenue too, but let's assume worst case (cost only) or simple estimate if heavy query.
+                        // Let's do cost only to be safe/conservative/fast, or fetch revenue if critical.
+                        // Calculator: "Backoffice Profit = Revenue - Cost".
+                        // fetching revenue for ONE user is fast.
+                        const boAppts = await prisma.appointment.count({
+                            where: { scheduledById: u.id, status: { in: ['CITADO', 'COMPLETADO'] }, updatedAt: { gte: start, lte: end } }
+                        });
+                        const boRev = boAppts * (fConfig?.pricePerAppointment || 15);
+                        const boCost = boSalary + (fConfig?.insurance || 0) + (fConfig?.opCostPerPerson || 0); // Approx
+                        netResult = boRev - boCost;
+
+                        totalSupportProfit += netResult;
+
+                    } else if (u.teamId && !processedTeams.has(u.teamId)) {
+                        // Blower/Other Team
+                        processedTeams.add(u.teamId);
+                        const tActs = actsByTeam[u.teamId] || [];
+                        const tMembers = u.team.members || [u];
+                        const tStats = calculateGroupFinancials(tActs, fConfig, tMembers, 0, now.getMonth(), now.getFullYear());
+                        netResult = tStats.netResult;
+                        totalSupportProfit += netResult;
+                    } else if (!u.teamId) {
+                        // Unassigned Blower? Cost without revenue
+                        const salary = fConfig?.salary || u.baseSalary || 1500;
+                        netResult = -salary;
+                        totalSupportProfit += netResult;
+                    }
+                }
+            }
+
+            // If Total Support Profit is negative, that is the overhead/deficit to cover
+            if (totalSupportProfit < 0) {
+                overheadToCover = Math.abs(totalSupportProfit);
+            }
+
+            // OPTIONAL: Split among multiple installer teams? 
+            // Calculator: "First installer team bears burden".
+            // We apply simpler logic for now: Apply FULL deficit to this viewer if they are an installer.
+            // This ensures they see the target "to save the company".
+            // If multiple installer teams view it, they all see the same big target, which motivates.
+        }
+
+        const stats = calculateGroupFinancials(activations, financialConfig, teamMembers, overheadToCover, now.getMonth(), now.getFullYear());
 
         const memberCount = teamMembers.length || 1;
         const myBonus = stats.bonusPool / memberCount;
@@ -377,7 +471,8 @@ exports.getMyPayroll = async (req, res) => {
             stats: {
                 ...stats,
                 activationsCount: activations.length,
-                teamName: team?.name || 'Sin Equipo'
+                teamName: team?.name || 'Sin Equipo',
+                overheadApplied: overheadToCover // Inform frontend
             },
             personal: {
                 baseSalary: financialConfig?.salary || user.baseSalary || 0,
