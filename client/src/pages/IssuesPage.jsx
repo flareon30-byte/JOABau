@@ -71,16 +71,19 @@ const IssuesPage = () => {
     // Live Search Effect
     useEffect(() => {
         const query = searchParams.query;
-        if (!query || query.length < 3) {
-            setSearchResult(null);
-            setHasSearched(false);
+
+        // Optimización: Si hay query pero es muy corta, no buscar aún
+        if (query && query.length < 3) {
+            // No limpiar resultados si estamos escribiendo, solo no buscar nuevo
             return;
         }
 
-        const timeoutId = setTimeout(async () => {
-            setLoading(true);
-            setError(null);
+        setLoading(true);
+        setError(null);
+
+        const fetchData = async () => {
             try {
+                // If query is empty, the backend now returns "Latest Completed Activations"
                 const res = await api.get('/api/issues/search', {
                     params: { query }
                 });
@@ -92,14 +95,14 @@ const IssuesPage = () => {
                     setSearchResult([]);
                     setHasSearched(true);
                 } else {
-                    // Show error for other statuses (500, 403, 401, etc.)
-                    setError("Error en la búsqueda: " + (err.response?.data?.message || "Error de conexión o sesión expirada"));
-                    setSearchResult(null);
+                    setError("Error al cargar datos: " + (err.response?.data?.message || "Error de conexión"));
                 }
             } finally {
                 setLoading(false);
             }
-        }, 500);
+        };
+
+        const timeoutId = setTimeout(fetchData, 500); // 500ms debounce
 
         return () => clearTimeout(timeoutId);
     }, [searchParams.query]);
@@ -366,211 +369,127 @@ const IssuesPage = () => {
 
             {activeTab === 'search' && (
                 <div className="space-y-6">
-                    {/* Modern Search Bar */}
-                    <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center space-y-4">
-                        <h2 className="text-2xl font-bold text-slate-800">Búsqueda Rápida de Direcciones</h2>
-                        <p className="text-slate-500 max-w-lg">Escribe la calle y número para ver el historial o registrar incidencias.</p>
-
-                        <div className="relative w-full max-w-2xl">
+                    {/* Search Bar Filter */}
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex-1 w-full relative">
                             <input
                                 type="text"
-                                placeholder="Ej. Hauptstrasse 123..."
+                                placeholder="Filtrar por calle, número o ciudad..."
                                 value={searchParams.query || ''}
                                 onChange={(e) => {
                                     setSearchParams({ ...searchParams, query: e.target.value });
-                                    // Trigger search logic (debounced ideally, but here direct for simplicity or use effect)
                                 }}
-                                className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-xl text-lg focus:outline-none focus:ring-4 focus:ring-joa-blue/20 transition-all shadow-inner"
-                                autoFocus
+                                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-joa-blue/50 transition-all shadow-sm"
                             />
-                            <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                                {loading ? (
-                                    <div className="animate-spin h-5 w-5 border-2 border-slate-400 border-t-transparent rounded-full"></div>
-                                ) : (
-                                    <Search size={24} />
-                                )}
-                            </div>
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                        </div>
+                        <div className="text-sm text-slate-500 font-medium whitespace-nowrap">
+                            {loading ? (
+                                <span className="flex items-center gap-2 text-joa-blue"><div className="animate-spin h-4 w-4 border-2 border-joa-blue border-t-transparent rounded-full"></div> Buscando...</span>
+                            ) : (
+                                <span>{searchResult?.length || 0} Resultados</span>
+                            )}
                         </div>
                     </div>
 
-                    {/* Results */}
-                    {hasSearched && (!searchResult || searchResult.length === 0) && (
-                        <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 text-center space-y-4 animate-in fade-in zoom-in-95">
-                            <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center mx-auto text-orange-500 mb-4">
-                                <Search size={32} />
+                    {/* Results List */}
+                    <div className="space-y-4 animate-in fade-in">
+                        {(!searchResult || searchResult.length === 0) && !loading && (
+                            <div className="bg-white p-12 rounded-2xl shadow-sm border border-slate-100 text-center space-y-4">
+                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 mb-4">
+                                    <Search size={32} />
+                                </div>
+                                <h3 className="text-lg font-bold text-slate-700">No hay resultados</h3>
+                                <p className="text-slate-500 max-w-md mx-auto">
+                                    No encontramos direcciones completadas con ese criterio.
+                                </p>
+                                <button
+                                    onClick={prefillManualFromSearch}
+                                    className="mt-4 bg-joa-blue text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-all shadow-md inline-flex items-center gap-2"
+                                >
+                                    <Plus size={16} /> Registrar Avería Externa Manual
+                                </button>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-800">No encontramos esa dirección</h3>
-                            <p className="text-slate-500 max-w-md mx-auto">
-                                ¿Deseas registrar una incidencia para esta dirección externa?
-                            </p>
-                            <button
-                                onClick={prefillManualFromSearch}
-                                className="bg-joa-blue text-white px-8 py-3 rounded-xl hover:bg-blue-600 transition-all shadow-lg shadow-blue-200 inline-flex items-center gap-2 font-bold"
-                            >
-                                <Plus size={18} /> Crear Avería para "{searchParams.query}"
-                            </button>
-                        </div>
-                    )}
+                        )}
 
-                    {searchResult && searchResult.length > 0 && (
-                        <div className="space-y-6 animate-in fade-in zoom-in-95">
-                            {searchResult.map((result) => (
-                                <div key={result.id} className="space-y-6 border-b border-slate-200 pb-8 last:border-0 last:pb-0">
-                                    {/* Address Header */}
-                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-start justify-between">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                                    {result.project?.name || 'Proyecto Desconocido'}
-                                                </span>
+                        {searchResult && searchResult.map((result) => (
+                            <div key={result.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+                                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+                                    {/* Info Principal */}
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <span className="text-xs font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded">
+                                                {result.project?.name || 'Proyecto Desconocido'}
+                                            </span>
+                                            {result.nvt && (
                                                 <span className="text-xs font-bold uppercase text-slate-500 bg-slate-100 px-2 py-1 rounded">
-                                                    NVT: {result.nvt || 'N/A'}
+                                                    NVT: {result.nvt}
                                                 </span>
-                                            </div>
-                                            <h2 className="text-2xl font-bold text-slate-800 flex items-baseline gap-2">
-                                                {result.street} {result.number}
-                                                <span className="text-lg font-normal text-slate-500">{result.city}</span>
-                                            </h2>
+                                            )}
                                         </div>
-                                        {/* Create Claim Button */}
+                                        <h2 className="text-xl font-bold text-slate-800 flex items-baseline gap-2">
+                                            {result.street} {result.number}
+                                            <span className="text-base font-normal text-slate-500">, {result.city}</span>
+                                        </h2>
+
+                                        {/* Status Indicators */}
+                                        <div className="flex flex-wrap gap-4 mt-3">
+                                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                <Network className={result.sopladoStatus === 'OK' ? "text-green-500" : "text-slate-400"} size={16} />
+                                                Soplado: <span className="font-medium">{result.sopladoStatus || 'Pendiente'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm text-slate-600">
+                                                <CheckCircle className={result.activationInfo ? "text-green-500" : "text-slate-400"} size={16} />
+                                                Activación: <span className="font-medium">{result.activationInfo ? 'Completada' : 'Pendiente'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex flex-col gap-2 min-w-[180px]">
                                         <button
                                             onClick={() => openClaimModal(result)}
-                                            className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-4 py-2 rounded-lg transition-colors flex items-center gap-2 font-medium border border-red-100"
+                                            className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium border border-red-100 w-full"
                                         >
                                             <AlertTriangle size={16} />
                                             Crear Reclamación
                                         </button>
                                     </div>
-
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                        {/* Soplado Info */}
-                                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                                            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 pb-2 border-b border-slate-50">
-                                                <Network className="text-purple-500" size={20} /> Estado de Soplado
-                                            </h3>
-                                            <div className="space-y-3">
-                                                <div className="flex justify-between">
-                                                    <span className="text-slate-500 text-sm">Estado:</span>
-                                                    <StatusBadge status={result.sopladoStatus || 'Pendiente'} />
-                                                </div>
-                                                {result.sopladoInfo ? (
-                                                    <div className="bg-slate-50 p-3 rounded-lg text-sm space-y-1">
-                                                        <div className="flex justify-between">
-                                                            <span className="text-slate-500">Metros:</span>
-                                                            <span className="font-medium">{result.sopladoInfo.meters}m</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span className="text-slate-500">TK:</span>
-                                                            <span className="font-medium">{result.sopladoInfo.tk}</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span className="text-slate-500">Color Tubo:</span>
-                                                            <span className="font-medium">{result.sopladoInfo.tubeColor}</span>
-                                                        </div>
-                                                        <div className="flex justify-between">
-                                                            <span className="text-slate-500">Fecha:</span>
-                                                            <span className="font-medium">
-                                                                {result.sopladoInfo.createdAt ? new Date(result.sopladoInfo.createdAt).toLocaleDateString() : '-'}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <p className="text-sm text-slate-400 italic">Sin información de soplado.</p>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        {/* Appointment & Activation Info */}
-                                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 lg:col-span-2">
-                                            <h3 className="font-bold text-slate-800 flex items-center gap-2 mb-4 pb-2 border-b border-slate-50">
-                                                <History className="text-orange-500" size={20} /> Historial Cita / Activación
-                                            </h3>
-                                            <div className="space-y-4 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
-                                                {/* Appointment Section */}
-                                                {result.appointment && (
-                                                    <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-slate-50 rounded-lg text-sm gap-2 border-l-4 border-blue-400">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
-                                                                {result.appointment.assignedDate ? new Date(result.appointment.assignedDate).getDate() : '?'}
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-medium text-slate-800">
-                                                                    CITA: {result.appointment.assignedDate ? new Date(result.appointment.assignedDate).toLocaleDateString() : 'Sin Fecha'}
-                                                                </p>
-                                                                <p className="text-xs text-slate-500">
-                                                                    {result.appointment.timeSlot || 'Todo el día'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="bg-white px-2 py-1 rounded border border-slate-200 text-xs font-mono text-slate-600">
-                                                                {result.appointment.assignedTeam?.name || 'Sin Equipo'}
-                                                            </span>
-                                                            <StatusBadge status={result.appointment.status} />
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Activation Section (Closed) */}
-                                                {result.activationInfo && (
-                                                    <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-green-50 rounded-lg text-sm gap-2 border-l-4 border-green-500">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-bold text-xs shrink-0">
-                                                                <CheckCircle size={14} />
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-medium text-green-900">
-                                                                    ACTIVACIÓN: {result.activationInfo.activationDate ? new Date(result.activationInfo.activationDate).toLocaleDateString() : new Date(result.activationInfo.createdAt).toLocaleDateString()}
-                                                                </p>
-                                                                <p className="text-xs text-green-700">
-                                                                    Tipo: {result.activationInfo.contractType || result.activationInfo.activationType || 'Estándar'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="bg-white px-2 py-1 rounded border border-green-100 text-xs font-mono text-green-700">
-                                                                {result.activationInfo.assignedTeam?.name || result.activationInfo.technicianName || 'Técnico'}
-                                                            </span>
-                                                            <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">COMPLETADO</span>
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Repairs History */}
-                                                {result.repairs && result.repairs.length > 0 && result.repairs.map((repair) => (
-                                                    <div key={repair.id} className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-purple-50 rounded-lg text-sm gap-2 border-l-4 border-purple-500 mt-2">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold text-xs shrink-0">
-                                                                <AlertTriangle size={14} />
-                                                            </div>
-                                                            <div>
-                                                                <p className="font-medium text-purple-900">
-                                                                    REPARACIÓN: {new Date(repair.createdAt).toLocaleDateString()}
-                                                                </p>
-                                                                <p className="text-xs text-purple-700 max-w-[200px] truncate" title={repair.description || 'Sin descripción'}>
-                                                                    {repair.description || 'Reparación completada'}
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="bg-white px-2 py-1 rounded border border-purple-100 text-xs font-mono text-purple-700">
-                                                                {repair.assignedTeam?.name || 'BackOffice'}
-                                                            </span>
-                                                            <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">COMPLETADO</span>
-                                                        </div>
-                                                    </div>
-                                                ))}
-
-                                                {!result.appointment && !result.activationInfo && (!result.repairs || result.repairs.length === 0) && (
-                                                    <p className="text-sm text-slate-400 italic">No hay historial registrado para esta dirección.</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
-                            ))}
-                        </div>
-                    )}
+
+                                {/* Expanded History (Optional or Inline) */}
+                                {(result.repairs?.length > 0 || result.appointment || result.activationInfo) && (
+                                    <div className="mt-6 pt-4 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        {result.activationInfo && (
+                                            <div className="bg-green-50/50 p-3 rounded-lg border border-green-100 text-sm">
+                                                <div className="font-bold text-green-800 flex items-center gap-2 mb-1">
+                                                    <CheckCircle size={14} /> Activación Exitosa
+                                                </div>
+                                                <p className="text-green-700">
+                                                    Fecha: {new Date(result.activationInfo.createdAt).toLocaleDateString()}
+                                                </p>
+                                                <p className="text-green-600 text-xs text-ellipsis overflow-hidden">
+                                                    Técnico: {result.activationInfo.assignedTeam?.name || 'Técnico'}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {result.repairs?.map(repair => (
+                                            <div key={repair.id} className="bg-purple-50/50 p-3 rounded-lg border border-purple-100 text-sm">
+                                                <div className="font-bold text-purple-800 flex items-center gap-2 mb-1">
+                                                    <AlertTriangle size={14} /> Reparación Realizada
+                                                </div>
+                                                <p className="text-purple-700">
+                                                    {new Date(repair.createdAt).toLocaleDateString()}
+                                                </p>
+                                                <p className="italic text-purple-600 text-xs truncate">{repair.description}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 

@@ -20,17 +20,24 @@ exports.searchAddressHistory = async (req, res) => {
         }
     }
 
-    if (!searchStreet) {
-        return res.status(400).json({ message: 'Indique una calle para buscar.' });
-    }
-
     try {
-        const addresses = await prisma.address.findMany({
-            where: {
+        let whereClause = {};
+
+        if (searchStreet) {
+            whereClause = {
                 street: { contains: searchStreet, mode: 'insensitive' },
                 ...(city ? { city: { contains: city, mode: 'insensitive' } } : {}),
                 ...(searchNumber ? { number: { contains: searchNumber, mode: 'insensitive' } } : {})
-            },
+            };
+        } else {
+            // Default: Show latest completed activations
+            whereClause = {
+                activationInfo: { isNot: null }
+            };
+        }
+
+        const addresses = await prisma.address.findMany({
+            where: whereClause,
             include: {
                 project: true,
                 sopladoInfo: true,
@@ -45,7 +52,8 @@ exports.searchAddressHistory = async (req, res) => {
                     orderBy: { createdAt: 'desc' }
                 }
             },
-            take: 20
+            orderBy: searchStreet ? undefined : { updatedAt: 'desc' }, // Order by recent if default list
+            take: 50
         });
 
         res.json(addresses);
