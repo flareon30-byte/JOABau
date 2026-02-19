@@ -64,10 +64,13 @@ exports.submitActivation = async (req, res) => {
         taCount,
         homeIds,
         description,
-        isMDU,
+        isMDU, // Frontend might send this for "MDU" checkbox additional to type? Or is it implied?
         // New fields
         klsId,
-        pdfPath // Might be passed from frontend if generated but not uploaded
+        pdfPath,
+        // New Logic Fields
+        mduInstalled, // Explicit checkbox from frontend
+        isRepair      // Explicit checkbox from frontend
     } = req.body;
 
     // req.files is now an object { photos: [], signedPdf: [] }
@@ -113,49 +116,74 @@ exports.submitActivation = async (req, res) => {
         const famCount = parseInt(familiesCount);
         const spCount = parseInt(spInstalled || 0);
         const taCountInt = parseInt(taCount || 0);
-        const mdu = isMDU === 'true';
+        const isMduBool = mduInstalled === 'true' || mduInstalled === true;
+        const isRepairBool = isRepair === 'true' || isRepair === true;
 
-        // Fetch System Settings for Point Values
+        // Fetch System Settings for Financials & Points
         const settings = await prisma.systemSettings.findFirst();
 
-        // Default points if settings not found
+        // --- FINANCIAL CALCULATION (Snapshot) ---
+        // Get installer financials or defaults
+        const fin = settings?.financials?.installers || {};
+
+        // 1. Base Price (Installation)
+        // Usually `pricePerUnit` (e.g. 60)
+        let basePrice = parseFloat(fin.pricePerUnit || 60);
+
+        // 2. SP Price
+        // User said: "75 euros cada SP"
+        const pricePerSP = parseFloat(fin.pricePerSP || 75); // We might need to add this to settings later
+        const totalSpPrice = spCount * pricePerSP;
+
+        // 3. TA / MDU / Multi Prices
+        // User said: "TA (SDU o MDU) ... 50 euros por unidad"
+        // But we have `pricePerTA`, `pricePerMulti`, `pricePerMDU` in settings.
+        // Let's use the explicit `taCount` and `mduInstalled` logic.
+
+        let taPriceTotal = 0;
+        const pricePerTA = parseFloat(fin.pricePerTA || 25);
+        if (taCountInt > 0) {
+            taPriceTotal = taCountInt * pricePerTA;
+        }
+
+        let mduPriceTotal = 0;
+        const pricePerMDU = parseFloat(fin.pricePerMDU || 50);
+        if (isMduBool) {
+            // If "MDU" item is checked, we add its price. 
+            // Quantity? Usually 1 per activation if it's an "MDU" add-on.
+            mduPriceTotal = pricePerMDU;
+        }
+
+        // 4. Repair Price
+        let repairPriceTotal = 0;
+        const priceRepair = parseFloat(settings?.repairPrice || 45);
+        if (isRepairBool) {
+            repairPriceTotal = priceRepair;
+        }
+
+        // --- POINTS CALCULATION (Legacy/Bonus) ---
         const pointsConfig = {
             'BP': settings?.bpPoints || 10,
             'BP_2_FAM': settings?.bp2FamPoints || 15,
             'BR_MULTI': settings?.brMultiPoints || 20,
             'SDU': settings?.sduPoints || 25,
             'MDU': settings?.mduPoints || 30,
-            'SP': settings?.spPoints || 5,
-            'TA': settings?.sduPoints || 25
+            'SP': settings?.spPoints || 5, // Legacy points for SP
+            'TA': settings?.sduPoints || 25 // Legacy points for TA
         };
 
-        // Points Calculation
         let points = 0;
+        if (pointsConfig[activationType]) points += pointsConfig[activationType];
+        if (spCount > 0) points += (spCount * pointsConfig['SP']);
 
-        // Base points based on activation type
-        if (pointsConfig[activationType]) {
-            points += pointsConfig[activationType];
-        }
-
-        // Add points for SPs installed
-        if (spCount > 0) {
-            points += (spCount * pointsConfig['SP']);
-        }
-
-        // Add points for TAs installed
-        // Add points for TAs installed
+        // TA Points logic
         const taInstalledBool = taInstalled === 'true' || taInstalled === true;
-        const finalTaCount = parseInt(taCount || 0) > 0 ? parseInt(taCount || 0) : (taInstalledBool ? 1 : 0);
-
+        const finalTaCount = taCountInt > 0 ? taCountInt : (taInstalledBool ? 1 : 0);
         if (finalTaCount > 0) {
-            // Determine TA Point Value based on Activation Type
-            let taPointValue = pointsConfig['SDU']; // Default
-            if (activationType === 'BP') {
-                taPointValue = pointsConfig['SDU'];
-            } else if (['BP_2_FAM', 'BR_MULTI'].includes(activationType)) {
+            let taPointValue = pointsConfig['SDU'];
+            if (['BP_2_FAM', 'BR_MULTI'].includes(activationType)) {
                 taPointValue = pointsConfig['MDU'];
             }
-
             points += (finalTaCount * taPointValue);
         }
 
@@ -169,20 +197,34 @@ exports.submitActivation = async (req, res) => {
                 familiesCount: famCount,
                 apPorts: parseInt(apPorts || 0),
                 hasMoreClients: hasMoreClients === 'true',
+
                 spInstalled: spCount,
-                taInstalled: taInstalled === 'true' || taCountInt > 0,
+                taInstalled: taInstalledBool || taCountInt > 0,
                 taCount: taCountInt,
+                mduInstalled: isMduBool,
+                isRepair: isRepairBool,
+
                 homeIds: homeIdsArray,
                 description,
+
+                // Legacy
                 points,
                 isSaturday,
-                pdfPath, // Save generated PDF path
-                photos: allPhotos // Set the photos list directly
+
+                // Financial Snapshot
+                basePrice,
+                spPrice: totalSpPrice,
+                taPrice: taPriceTotal,
+                mduPrice: mduPriceTotal,
+                repairPrice: repairPriceTotal,
+
+                pdfPath,
+                photos: allPhotos
             };
 
             const activation = await prisma.activationInfo.upsert({
                 where: { addressId },
-                update: data, // Update with full data including new photo list
+                update: data,
                 create: {
                     addressId,
                     ...data
@@ -195,7 +237,7 @@ exports.submitActivation = async (req, res) => {
                 data: { status: 'COMPLETADO' }
             });
 
-            // 3. Update Address OrderStatus to remove from Soplado list
+            // 3. Update Address OrderStatus
             await prisma.address.update({
                 where: { id: addressId },
                 data: { orderStatus: 'Installiert' }

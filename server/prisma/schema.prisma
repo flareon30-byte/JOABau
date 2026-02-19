@@ -207,17 +207,28 @@ model ActivationInfo {
   familiesCount  Int
   apPorts        Int
   hasMoreClients Boolean
-  spInstalled    Int
+  spInstalled    Int      @default(0)
   taInstalled    Boolean
-  taCount        Int            @default(0)
+  taCount        Int      @default(0)
+  mduInstalled   Boolean  @default(false)
+  isRepair       Boolean  @default(false)
+
   homeIds        String[]
   description    String?
 
   photos  String[]
   pdfPath String?
 
-  points     Float
-  isSaturday Boolean @default(false) // Track if it was a Saturday activation
+  points     Float // Legacy points
+  
+  // New Financial Fields (Snapshot)
+  basePrice   Float @default(0.0)
+  spPrice     Float @default(0.0)
+  taPrice     Float @default(0.0)
+  mduPrice    Float @default(0.0)
+  repairPrice Float @default(0.0)
+
+  isSaturday Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

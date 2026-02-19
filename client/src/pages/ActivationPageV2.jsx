@@ -23,6 +23,8 @@ const ActivationPageV2 = () => {
         taInstalled: false,
         taCount: '',
         spInstalled: '',
+        mduInstalled: false, // New
+        isRepair: false,     // New
         homeId: '',
         klsId: '',
         description: ''
@@ -60,6 +62,8 @@ const ActivationPageV2 = () => {
                             spInstalled: info.spInstalled || '',
                             taInstalled: info.taInstalled || false,
                             taCount: info.taCount || '',
+                            mduInstalled: info.mduInstalled || false,
+                            isRepair: info.isRepair || false,
                             homeId: info.homeIds && info.homeIds.length > 0 ? info.homeIds[0] : '',
                             klsId: info.klsId || found.address.klsId || '',
                             description: info.description || ''
@@ -290,6 +294,8 @@ const ActivationPageV2 = () => {
         data.append('taInstalled', formData.taInstalled);
         data.append('taCount', formData.taCount);
         data.append('spInstalled', formData.spInstalled);
+        data.append('mduInstalled', formData.mduInstalled); // New
+        data.append('isRepair', formData.isRepair);         // New
         data.append('homeIds', JSON.stringify([formData.homeId])); // Sending as array
         data.append('klsId', formData.klsId);
         data.append('description', formData.description);
@@ -344,10 +350,10 @@ const ActivationPageV2 = () => {
 
                 {/* Technical Details */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                    <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2">Detalles Técnicos</h3>
+                    <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2">Detalles Técnicos y Facturación</h3>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de Activación</label>
+                        <label className="block text-sm font-medium text-slate-600 mb-1">Tipo de Activación (Base)</label>
                         <select
                             name="activationType"
                             value={formData.activationType}
@@ -403,37 +409,40 @@ const ActivationPageV2 = () => {
                                 </label>
                             </div>
 
-                            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                <input
-                                    type="checkbox"
-                                    name="taInstalled"
-                                    checked={formData.taInstalled}
-                                    onChange={handleInputChange}
-                                    id="taCheck"
-                                    className="w-5 h-5 text-joa-blue rounded focus:ring-joa-blue"
-                                />
-                                <label htmlFor="taCheck" className="text-sm font-medium text-slate-700 flex-1">
-                                    ¿Se instaló TA?
-                                </label>
+                            {/* ITEM: TA / SDU */}
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                    <input
+                                        type="checkbox"
+                                        name="taInstalled"
+                                        checked={formData.taInstalled}
+                                        onChange={handleInputChange}
+                                        id="taCheck"
+                                        className="w-5 h-5 text-joa-blue rounded focus:ring-joa-blue"
+                                    />
+                                    <label htmlFor="taCheck" className="text-sm font-medium text-slate-700 flex-1">
+                                        ¿Se instaló TA / SDU?
+                                    </label>
+                                </div>
+                                {formData.taInstalled && (
+                                    <div className="pl-4 border-l-2 border-slate-200 animate-fadeIn">
+                                        <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Cantidad de TA</label>
+                                        <input
+                                            type="number"
+                                            name="taCount"
+                                            value={formData.taCount}
+                                            onChange={handleInputChange}
+                                            placeholder="1"
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
-                            {formData.taInstalled && (
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad de TA</label>
-                                    <input
-                                        type="number"
-                                        name="taCount"
-                                        value={formData.taCount}
-                                        onChange={handleInputChange}
-                                        placeholder="0"
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
-                                    />
-                                </div>
-                            )}
-
+                            {/* ITEM: SP */}
                             {formData.activationType !== 'BP_2_FAM' && (
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad de SP</label>
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">Cantidad de SP Instalados</label>
                                     <input
                                         type="number"
                                         name="spInstalled"
@@ -444,6 +453,36 @@ const ActivationPageV2 = () => {
                                     />
                                 </div>
                             )}
+
+                            {/* ITEM: MDU Extra */}
+                            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                <input
+                                    type="checkbox"
+                                    name="mduInstalled"
+                                    checked={formData.mduInstalled}
+                                    onChange={handleInputChange}
+                                    id="mduCheck"
+                                    className="w-5 h-5 text-joa-blue rounded focus:ring-joa-blue"
+                                />
+                                <label htmlFor="mduCheck" className="text-sm font-medium text-slate-700 flex-1">
+                                    ¿Se instaló MDU / Multi Extra?
+                                </label>
+                            </div>
+
+                            {/* ITEM: Avería */}
+                            <div className="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-200">
+                                <input
+                                    type="checkbox"
+                                    name="isRepair"
+                                    checked={formData.isRepair}
+                                    onChange={handleInputChange}
+                                    id="repairCheck"
+                                    className="w-5 h-5 text-red-600 rounded focus:ring-red-600"
+                                />
+                                <label htmlFor="repairCheck" className="text-sm font-medium text-red-700 flex-1">
+                                    ¿Es una Avería Facturable?
+                                </label>
+                            </div>
                         </>
                     )}
                 </div>
