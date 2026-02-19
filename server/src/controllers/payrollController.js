@@ -107,63 +107,79 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
         const isSaturday = act.isSaturday === true;
         const type = act.activationType || 'BP';
 
-        // Prices from Config
-        const pricePerUnit = financialConfig.pricePerUnit || 0;
-        const pricePerMulti = financialConfig.pricePerMulti || 0; // Additional on top of base? Or full?
-        // Calculator: "BR Multi seria el precio base + precio multi" for REVENUE?
-        // In Calculator App.jsx:
-        // `revenueInstalls = totalInstalls * group.pricePerUnit;`
-        // `totalInstalls` includes `monthlyBaseUnits` (which are just the productivity count)
-        // Multi units are counted separately in `totalMultiUnits`.
-        // `multiIncome = totalMultiUnits * (group.multiRevenuePrice || 0);`
-        // So Multi generates `pricePerUnit` (as an install) AND `multiRevenuePrice` (extra)?
-        // Re-reading Calculator `calculateGroupFinancials`:
-        // `const totalEffectiveUnits = ... (monthlyBaseUnits + (group.multiProductivity || 0))` -> This affects `regularProduction`.
-        // `const regularIncome = regularProduction * group.pricePerUnit;`
-        // So a Multi counts as a regular unit (getting `pricePerUnit`) PLUS it gets `multiRevenuePrice`.
+        // --- 1. REVENUE CALCULATION ---
+        // New Model: Use snapshot prices if available
+        const snapshotRevenue = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
 
-        // Let's map our DB types to this logic:
+        if (snapshotRevenue > 0) {
+            totalRevenue += snapshotRevenue;
+        } else {
+            // Legacy Model: Use Config Prices
+            const pricePerUnit = financialConfig.pricePerUnit || 0;
+            const multiRevenue = financialConfig.multiRevenuePrice || 0; // Extra for Multi (if used in old logic)
+            const taRevenue = financialConfig.taRevenuePrice || 0;
+            const mduRevenue = financialConfig.pricePerMDU || 0;
 
-        if (isSaturday) {
-            // Saturday Logic
             if (type === 'BP' || type === 'BP_2_FAM') {
-                saturdayInstalls++;
-                stats.counts.saturday++;
                 totalRevenue += pricePerUnit;
             } else if (type === 'BR_MULTI') {
-                saturdayInstalls++; // Counts as base install too
+                // Assuming legacy BR_MULTI was Base + Multi Extra
+                totalRevenue += (pricePerUnit + multiRevenue);
+            } else if (type === 'SDU') {
+                totalRevenue += taRevenue;
+            } else if (type === 'MDU') {
+                totalRevenue += mduRevenue;
+            }
+        }
+
+        // --- 2. STATS & BONUS COUNTERS ---
+        // We track these regardless of revenue source to ensure Bonus Logic works
+
+        if (isSaturday) {
+            stats.counts.saturday++;
+
+            if (type === 'BP' || type === 'BP_2_FAM') {
+                saturdayInstalls++;
+                stats.counts.bp++;
+            } else if (type === 'BR_MULTI') {
+                saturdayInstalls++;
                 saturdayMulti++;
-                stats.counts.saturday++;
-                totalRevenue += (pricePerUnit + (financialConfig.multiRevenuePrice || 0));
-            } else if (type === 'SDU') { // TA
+                stats.counts.multi++;
+            } else if (type === 'SDU') {
                 saturdayTa++;
-                // SDU/TA might not count as "Install"? 
-                // Calc says: `taIncome = totalTaUnits * (group.taRevenuePrice || 0);`
-                // Does TA count towards `regularProduction`? 
-                // `totalEffectiveUnits` combines base + multi. TA is separate in `totalTaUnits`.
-                stats.counts.saturday++;
-                totalRevenue += (financialConfig.taRevenuePrice || 0);
+                stats.counts.ta++;
+            }
+
+            // New Fields Tracking for Saturday
+            if (act.taCount > 0 && type !== 'SDU') {
+                saturdayTa += act.taCount;
+                stats.counts.ta += act.taCount;
             }
         } else {
-            // M-F Logic
+            // M-F
             if (type === 'BP' || type === 'BP_2_FAM') {
                 standardUnits++;
                 stats.counts.bp++;
-                totalRevenue += pricePerUnit;
             } else if (type === 'BR_MULTI') {
-                standardUnits++; // Counts as install
+                standardUnits++;
                 multiUnits++;
                 stats.counts.multi++;
-                totalRevenue += (pricePerUnit + (financialConfig.multiRevenuePrice || 0));
             } else if (type === 'SDU') {
                 taUnits++;
                 stats.counts.ta++;
-                totalRevenue += (financialConfig.taRevenuePrice || 0);
             } else if (type === 'MDU') {
                 mduUnits++;
                 stats.counts.mdu++;
-                // Assuming MDU is similar to Multi or own price
-                totalRevenue += (financialConfig.pricePerMDU || 0);
+            }
+
+            // New Fields Tracking for M-F
+            if (act.taCount > 0 && type !== 'SDU') {
+                taUnits += act.taCount;
+                stats.counts.ta += act.taCount;
+            }
+            if (act.mduInstalled && type !== 'MDU') {
+                mduUnits++;
+                stats.counts.mdu++;
             }
         }
     });
