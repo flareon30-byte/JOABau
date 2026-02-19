@@ -357,7 +357,7 @@ exports.getMyPayroll = async (req, res) => {
         const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
 
         let activations = [];
-        if (teamId) {
+        if (teamId && teamId !== 'virtual') {
             activations = await prisma.activationInfo.findMany({
                 where: {
                     createdAt: { gte: start, lte: end },

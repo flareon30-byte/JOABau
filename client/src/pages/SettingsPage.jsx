@@ -299,7 +299,7 @@ const SettingsPage = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
                 <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
                     <Briefcase className="text-joa-blue" />
-                    Configuración de Rentabilidad
+                    Configuración de Rentabilidad (Actualizado)
                 </h2>
 
                 {message && (
