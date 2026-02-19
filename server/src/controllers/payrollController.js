@@ -489,7 +489,7 @@ exports.getMyPayroll = async (req, res) => {
 };
 
 exports.getPayrollSummary = async (req, res) => {
-    const { startDate, endDate, userId } = req.query;
+    const { startDate, endDate } = req.query; // Removed userId as it's for all
     try {
         const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         if (startDate && !startDate.includes('T')) start.setHours(0, 0, 0, 0);
@@ -543,69 +543,96 @@ exports.getPayrollSummary = async (req, res) => {
         const processedUsers = users.map(user => {
             const team = user.team;
             const teamId = team?.id;
+
+            // Determine Role/Group Key
             let groupKey = 'installers'; // Default
             if (user.role === 'BLOWER') groupKey = 'blowers';
             if (user.role === 'BACK_OFFICE') groupKey = 'backOffice';
-            // 'replanners' role? Assuming not implemented in UserRole enum yet or handled as Blower/Other.
 
+            // Fetch Config
             const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
 
             let stats = null;
 
             if (user.role === 'BACK_OFFICE') {
                 // Simplified Back Office Calc
-                const baseSalary = financialConfig?.salary || 0;
-                // We'd need to fetch their specific appointments count here.
-                // For summary performance optimize later.
+                const baseSalary = financialConfig?.salary || user.baseSalary || 1500;
                 stats = { netResult: 0 - baseSalary }; // Cost center initially
             } else if (team) {
                 const acts = teamActs[teamId] || [];
-                // Overhead is 0 initially
+                // Calculate stats for the TEAM (shared)
+                // We pass 0 overhead here initially, we might adjust later if we want perfect per-row deficit display
                 stats = calculateGroupFinancials(acts, financialConfig, team.members, 0, monthForDays, yearForDays);
             } else {
-                stats = { netResult: 0 - (user.baseSalary || 0) };
+                // Unassigned or Virtual
+                const baseSalary = financialConfig?.salary || user.baseSalary || 1500;
+                stats = { netResult: 0 - baseSalary };
             }
 
-            return { user, stats, groupKey };
+            return { user, stats, groupKey, financialConfig };
         });
 
-        // Calc Deficit
-        // Filter "Support" types.
-        const supportStats = processedUsers.filter(u => u.groupKey !== 'installers');
-        const netOthers = supportStats.reduce((acc, u) => acc + (u.stats.netResult || 0), 0);
+        // Calc Deficit (Global)
+        // Filter "Support" types to sum their Net Result. 
+        // Note: This logic sums per USER if they are processed individually, 
+        // but if they are in a TEAM, `stats` is calculated per TEAM effectively (repeated for members). 
+        // We need to be careful not to double count team stats if iterating users.
+        // Actually `processedUsers` maps 1:1 to users. 
+        // `stats` for team members serves as their "share" view or identical team view.
+        // For deficit calc, we should sum UNIQUE teams + independent users.
+
+        const uniqueTeamsProcessed = new Set();
+        let netOthers = 0;
+
+        processedUsers.forEach(item => {
+            if (item.groupKey !== 'installers') {
+                if (item.user.teamId) {
+                    if (!uniqueTeamsProcessed.has(item.user.teamId)) {
+                        uniqueTeamsProcessed.add(item.user.teamId);
+                        netOthers += (item.stats.netResult || 0);
+                    }
+                } else {
+                    netOthers += (item.stats.netResult || 0);
+                }
+            }
+        });
 
         // "If the total is negative, Installers need to cover that remaining hole."
         const totalDeficit = netOthers < 0 ? Math.abs(netOthers) : 0;
 
-        // Count Installer Teams to split overhead? 
-        // Calculator: "First installer team bears the burden".
-        // We need to identify the "First" team. Let's say sorted by ID or Creation.
-        // For simplicity in this summary view, we won't re-run the calculation for the ID=1 team separately 
-        // unless we want perfect precision.
-        // Let's just return the `totalDeficit` in metadata so Frontend can display it or note it.
+        const summary = processedUsers.map(({ user, stats, groupKey, financialConfig }) => {
+            // Determine Base Salary
+            // Priority: Config Salary -> User Base Salary -> Default 1500
+            const configSalary = financialConfig ? parseFloat(financialConfig.salary) : null;
+            const finalBaseSalary = (configSalary !== null && !isNaN(configSalary)) ? configSalary : (user.baseSalary || 1500);
 
-        const summary = processedUsers.map(({ user, stats, groupKey }) => {
-            // Formating for response
-            const personal = {
-                baseSalary: user.baseSalary || 0,
-                bonus: 0,
-                saturday: 0,
-                total: user.baseSalary || 0
-            };
+            // Formating directly for frontend table
+            const members = user.team?.members?.length || 1;
 
-            if (stats && stats.bonusPool) {
-                const members = user.team?.members?.length || 1;
-                personal.bonus = stats.bonusPool / members;
-                personal.saturday = stats.saturdayPay / members;
-                personal.total += personal.bonus + personal.saturday;
-            }
+            // Per-person bonus share
+            const shareBonus = (stats && stats.bonusPool) ? (stats.bonusPool / members) : 0;
+            const shareSaturday = (stats && stats.saturdayPay) ? (stats.saturdayPay / members) : 0;
+
+            const total = finalBaseSalary + shareBonus + shareSaturday;
 
             return {
                 id: user.id,
                 username: user.username,
                 role: user.role,
-                ...personal,
-                production: { ...stats, type: groupKey }
+
+                // Financials (Top Level for Table)
+                baseSalary: finalBaseSalary,
+                bonus: shareBonus,
+                saturday: shareSaturday,
+                total: total,
+
+                // Production & Details
+                production: {
+                    ...stats,
+                    type: groupKey,
+                    teamName: user.team?.name || 'Sin Equipo',
+                    appointmentsDone: stats?.appointmentsDone || 0
+                }
             };
         });
 
@@ -615,7 +642,7 @@ exports.getPayrollSummary = async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Error Admin Payroll:', error);
-        res.status(500).json({ message: 'Error fetching payroll data' });
+        console.error('Error getting payroll summary:', error);
+        res.status(500).json({ message: 'Error fetching payroll summary' });
     }
 };
