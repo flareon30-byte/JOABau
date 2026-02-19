@@ -19,6 +19,7 @@ const BlowingDepartment = () => {
         photos: []
     });
     const [submitting, setSubmitting] = useState(false);
+    const [selectedIds, setSelectedIds] = useState([]);
 
     useEffect(() => {
         fetchProjects();
@@ -86,32 +87,50 @@ const BlowingDepartment = () => {
         }
     };
 
-    const handleQuickToggle = async (address, e) => {
-        e.stopPropagation(); // Prevent opening detail view
+    useEffect(() => {
+        if (selectedProject) {
+            setSelectedIds([]); // Reset selection on project change
+        }
+    }, [selectedProject, searchTerm]);
 
-        const currentStatus = address.sopladoStatus;
-        const isOk = currentStatus === 'OK';
+    const handleSelectionToggle = (id, e) => {
+        e.stopPropagation();
+        setSelectedIds(prev => {
+            if (prev.includes(id)) return prev.filter(i => i !== id);
+            return [...prev, id];
+        });
+    };
 
-        // If current is OK, we toggle to PENDIENTE (revert)
-        // If current is PENDIENTE/NULL/FALLIDO, we toggle to OK
-        const newStatus = isOk ? 'PENDIENTE' : 'OK';
+    const handleSelectAll = () => {
+        if (selectedIds.length === addresses.length) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(addresses.map(a => a.id));
+        }
+    };
 
-        const confirmMsg = isOk
-            ? '¿Revertir a PENDIENTE? Se eliminarán los datos de soplado.'
-            : '¿Marcar como SOPLADO OK? Se usarán valores por defecto (0m, N/A).';
+    const handleBulkAction = async (targetStatus) => {
+        if (selectedIds.length === 0) return;
+
+        const confirmMsg = targetStatus === 'OK'
+            ? `¿Marcar ${selectedIds.length} direcciones como OK?`
+            : `¿Marcar ${selectedIds.length} direcciones como PENDIENTE?`;
 
         if (window.confirm(confirmMsg)) {
             try {
-                const res = await api.post(`/api/soplado/toggle-status/${address.id}`, { status: newStatus });
+                await api.post('/api/soplado/bulk-update', {
+                    addressIds: selectedIds,
+                    status: targetStatus
+                });
 
-                // Optimistic update
-                if (res.status === 200) {
-                    setAddresses(prev => prev.map(a =>
-                        a.id === address.id ? { ...a, sopladoStatus: newStatus } : a
-                    ));
-                }
+                // Optimistic Update
+                setAddresses(prev => prev.map(a =>
+                    selectedIds.includes(a.id) ? { ...a, sopladoStatus: targetStatus } : a
+                ));
+                setSelectedIds([]); // Clear selection
+
             } catch (error) {
-                console.error('Error toggling status:', error);
+                console.error('Error in bulk action:', error);
                 alert('Error al actualizar estado');
             }
         }
@@ -141,7 +160,7 @@ const BlowingDepartment = () => {
     // View: Address Selection
     if (!selectedAddress) {
         return (
-            <div className="space-y-6">
+            <div className="space-y-6 pb-24">
                 <div className="flex items-center gap-4">
                     <button onClick={() => setSelectedProject(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                         <ArrowLeft size={24} className="text-slate-600" />
@@ -161,29 +180,44 @@ const BlowingDepartment = () => {
                 </div>
 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    {/* Header with Select All */}
+                    <div className="p-4 border-b border-slate-100 flex items-center gap-4 bg-slate-50">
+                        <div
+                            onClick={handleSelectAll}
+                            className={`w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer transition-all ${selectedIds.length > 0 && selectedIds.length === addresses.length
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : 'bg-white border-slate-300'
+                                }`}
+                        >
+                            {selectedIds.length > 0 && selectedIds.length === addresses.length && <CheckCircle size={14} />}
+                        </div>
+                        <span className="text-sm font-bold text-slate-600">
+                            {selectedIds.length > 0 ? `${selectedIds.length} Seleccionados` : 'Seleccionar Todos'}
+                        </span>
+                    </div>
+
                     {addresses.length === 0 ? (
                         <div className="p-8 text-center text-slate-500">No se encontraron direcciones</div>
                     ) : (
                         <div className="divide-y divide-slate-100">
                             {addresses.map(address => {
-                                const isOk = address.sopladoStatus === 'OK';
+                                const isSelected = selectedIds.includes(address.id);
                                 return (
                                     <div
                                         key={address.id}
                                         onClick={() => setSelectedAddress(address)}
-                                        className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors flex justify-between items-center ${isOk ? 'bg-green-50/30' : ''}`}
+                                        className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors flex justify-between items-center ${isSelected ? 'bg-blue-50/50' : ''}`}
                                     >
                                         <div className="flex items-center gap-4">
-                                            {/* Quick Toggle Checkbox */}
+                                            {/* Selection Checkbox */}
                                             <div
-                                                onClick={(e) => handleQuickToggle(address, e)}
-                                                className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all shadow-sm ${isOk
-                                                        ? 'bg-green-500 border-green-500 text-white hover:bg-green-600'
-                                                        : 'bg-white border-slate-300 text-transparent hover:border-blue-400 hover:text-blue-200'
+                                                onClick={(e) => handleSelectionToggle(address.id, e)}
+                                                className={`w-6 h-6 rounded border-2 flex items-center justify-center transition-all ${isSelected
+                                                    ? 'bg-blue-600 border-blue-600 text-white'
+                                                    : 'bg-white border-slate-300 hover:border-blue-400'
                                                     }`}
-                                                title={isOk ? "Marcar como Pendiente" : "Marcar como OK"}
                                             >
-                                                <CheckCircle size={18} className={isOk ? "" : "opacity-0 hover:opacity-100"} />
+                                                {isSelected && <CheckCircle size={14} />}
                                             </div>
 
                                             <div>
@@ -203,6 +237,27 @@ const BlowingDepartment = () => {
                         </div>
                     )}
                 </div>
+
+                {/* Floating Bulk Action Bar */}
+                {selectedIds.length > 0 && (
+                    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-white px-6 py-4 rounded-2xl shadow-2xl border border-slate-200 flex items-center gap-4 z-50 animate-in slide-in-from-bottom-4 fade-in">
+                        <span className="font-bold text-slate-700 mr-2">{selectedIds.length} seleccionados</span>
+
+                        <button
+                            onClick={() => handleBulkAction('OK')}
+                            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm transition-colors flex items-center gap-2"
+                        >
+                            <CheckCircle size={18} /> Marcar OK
+                        </button>
+
+                        <button
+                            onClick={() => handleBulkAction('PENDIENTE')}
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-medium transition-colors"
+                        >
+                            Marcar Pendiente
+                        </button>
+                    </div>
+                )}
             </div>
         );
     }

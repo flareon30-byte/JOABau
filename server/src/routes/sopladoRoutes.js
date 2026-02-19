@@ -28,4 +28,7 @@ router.post('/report/:addressId', upload.array('photos', 5), sopladoController.s
 // Quick Toggle Status
 router.post('/toggle-status/:addressId', sopladoController.toggleSopladoStatus);
 
+// Bulk Update
+router.post('/bulk-update', sopladoController.bulkUpdateSopladoStatus);
+
 module.exports = router;

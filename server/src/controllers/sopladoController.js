@@ -205,3 +205,69 @@ exports.toggleSopladoStatus = async (req, res) => {
         res.status(500).json({ message: 'Error updating status' });
     }
 };
+// Bulk Update Status
+exports.bulkUpdateSopladoStatus = async (req, res) => {
+    const { addressIds, status } = req.body; // status: 'OK', 'PENDIENTE', 'FALLIDO'
+
+    if (!addressIds || !Array.isArray(addressIds) || addressIds.length === 0) {
+        return res.status(400).json({ message: 'No addresses provided' });
+    }
+
+    try {
+        await prisma.$transaction(async (prisma) => {
+            for (const id of addressIds) {
+                // 1. Find address to get location info
+                const target = await prisma.address.findUnique({ where: { id } });
+                if (!target) continue;
+
+                // 2. Find all related (same project, street, number) to ensure consistent update for location
+                const related = await prisma.address.findMany({
+                    where: {
+                        projectId: target.projectId,
+                        street: { equals: target.street, mode: 'insensitive' },
+                        number: { equals: target.number, mode: 'insensitive' }
+                    },
+                    select: { id: true }
+                });
+                const idsToUpdate = related.map(r => r.id);
+
+                // 3. Update Address Status
+                const newStatus = status === 'PENDIENTE' ? 'PENDIENTE' : status;
+                await prisma.address.updateMany({
+                    where: { id: { in: idsToUpdate } },
+                    data: { sopladoStatus: newStatus }
+                });
+
+                // 4. Update/Delete Info
+                if (status === 'OK' || status === 'FALLIDO') {
+                    const dummyData = {
+                        meters: 0,
+                        tk: 'N/A',
+                        tubeColor: 'N/A',
+                        failureReason: null,
+                        photos: []
+                    };
+
+                    // Upsert individually
+                    for (const rid of idsToUpdate) {
+                        await prisma.sopladoInfo.upsert({
+                            where: { addressId: rid },
+                            update: dummyData,
+                            create: { addressId: rid, ...dummyData }
+                        });
+                    }
+                } else if (status === 'PENDIENTE') {
+                    await prisma.sopladoInfo.deleteMany({
+                        where: { addressId: { in: idsToUpdate } }
+                    });
+                }
+            }
+        });
+
+        res.json({ message: 'Bulk update successful', count: addressIds.length });
+
+    } catch (error) {
+        console.error('Error in bulk update:', error);
+        res.status(500).json({ message: 'Error updating statuses' });
+    }
+};
