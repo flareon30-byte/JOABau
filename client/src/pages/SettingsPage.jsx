@@ -231,6 +231,10 @@ const SettingsPage = () => {
                                 {groupKey === 'installers' && (
                                     <>
                                         <div>
+                                            <label className="block text-xs font-bold text-blue-600 uppercase">Precio SP (Splice Point)</label>
+                                            <input type="number" step="0.01" value={data.pricePerSP || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerSP', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
+                                        </div>
+                                        <div>
                                             <label className="block text-xs font-bold text-blue-600 uppercase">Precio TA (SDU)</label>
                                             <input type="number" step="0.01" value={data.pricePerTA || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerTA', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
                                         </div>
