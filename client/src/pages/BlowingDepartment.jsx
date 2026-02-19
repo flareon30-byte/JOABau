@@ -86,6 +86,37 @@ const BlowingDepartment = () => {
         }
     };
 
+    const handleQuickToggle = async (address, e) => {
+        e.stopPropagation(); // Prevent opening detail view
+
+        const currentStatus = address.sopladoStatus;
+        const isOk = currentStatus === 'OK';
+
+        // If current is OK, we toggle to PENDIENTE (revert)
+        // If current is PENDIENTE/NULL/FALLIDO, we toggle to OK
+        const newStatus = isOk ? 'PENDIENTE' : 'OK';
+
+        const confirmMsg = isOk
+            ? '¿Revertir a PENDIENTE? Se eliminarán los datos de soplado.'
+            : '¿Marcar como SOPLADO OK? Se usarán valores por defecto (0m, N/A).';
+
+        if (window.confirm(confirmMsg)) {
+            try {
+                const res = await api.post(`/api/soplado/toggle-status/${address.id}`, { status: newStatus });
+
+                // Optimistic update
+                if (res.status === 200) {
+                    setAddresses(prev => prev.map(a =>
+                        a.id === address.id ? { ...a, sopladoStatus: newStatus } : a
+                    ));
+                }
+            } catch (error) {
+                console.error('Error toggling status:', error);
+                alert('Error al actualizar estado');
+            }
+        }
+    };
+
     // View: Project Selection
     if (!selectedProject) {
         return (
@@ -134,23 +165,41 @@ const BlowingDepartment = () => {
                         <div className="p-8 text-center text-slate-500">No se encontraron direcciones</div>
                     ) : (
                         <div className="divide-y divide-slate-100">
-                            {addresses.map(address => (
-                                <div
-                                    key={address.id}
-                                    onClick={() => setSelectedAddress(address)}
-                                    className="p-4 hover:bg-slate-50 cursor-pointer transition-colors flex justify-between items-center"
-                                >
-                                    <div>
-                                        <div className="font-medium text-slate-800">{address.street} {address.number}</div>
-                                        <div className="text-sm text-slate-500">NVT: {address.nvt || 'N/A'}</div>
+                            {addresses.map(address => {
+                                const isOk = address.sopladoStatus === 'OK';
+                                return (
+                                    <div
+                                        key={address.id}
+                                        onClick={() => setSelectedAddress(address)}
+                                        className={`p-4 hover:bg-slate-50 cursor-pointer transition-colors flex justify-between items-center ${isOk ? 'bg-green-50/30' : ''}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            {/* Quick Toggle Checkbox */}
+                                            <div
+                                                onClick={(e) => handleQuickToggle(address, e)}
+                                                className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center transition-all shadow-sm ${isOk
+                                                        ? 'bg-green-500 border-green-500 text-white hover:bg-green-600'
+                                                        : 'bg-white border-slate-300 text-transparent hover:border-blue-400 hover:text-blue-200'
+                                                    }`}
+                                                title={isOk ? "Marcar como Pendiente" : "Marcar como OK"}
+                                            >
+                                                <CheckCircle size={18} className={isOk ? "" : "opacity-0 hover:opacity-100"} />
+                                            </div>
+
+                                            <div>
+                                                <div className="font-medium text-slate-800">{address.street} {address.number}</div>
+                                                <div className="text-sm text-slate-500">NVT: {address.nvt || 'N/A'}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-col items-end gap-1">
+                                            {address.sopladoStatus === 'OK' && <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">OK</span>}
+                                            {address.sopladoStatus === 'FALLIDO' && <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">FALLIDO</span>}
+                                            {(!address.sopladoStatus || address.sopladoStatus === 'PENDIENTE') && <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs">PENDIENTE</span>}
+                                        </div>
                                     </div>
-                                    <div>
-                                        {address.sopladoStatus === 'OK' && <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">OK</span>}
-                                        {address.sopladoStatus === 'FALLIDO' && <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">FALLIDO</span>}
-                                        {!address.sopladoStatus && <span className="px-3 py-1 bg-slate-100 text-slate-500 rounded-full text-xs">PENDIENTE</span>}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>

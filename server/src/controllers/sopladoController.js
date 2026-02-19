@@ -127,3 +127,81 @@ exports.submitSopladoReport = async (req, res) => {
         res.status(500).json({ message: 'Error submitting report' });
     }
 };
+
+// Toggle Status (Quick Action)
+exports.toggleSopladoStatus = async (req, res) => {
+    const { addressId } = req.params;
+    const { status } = req.body; // 'OK', 'PENDIENTE', 'FALLIDO'
+
+    try {
+        const targetAddress = await prisma.address.findUnique({
+            where: { id: addressId }
+        });
+
+        if (!targetAddress) {
+            return res.status(404).json({ message: 'Address not found' });
+        }
+
+        // Apply to ALL addresses at this location (same street/number logic)
+        const relatedAddresses = await prisma.address.findMany({
+            where: {
+                projectId: targetAddress.projectId,
+                street: { equals: targetAddress.street, mode: 'insensitive' },
+                number: { equals: targetAddress.number, mode: 'insensitive' }
+            },
+            select: { id: true }
+        });
+        const relatedIds = relatedAddresses.map(a => a.id);
+
+        console.log(`Toggling status to ${status} for ${relatedIds.length} addresses. IDs: ${relatedIds.join(', ')}`);
+
+        await prisma.$transaction(async (prisma) => {
+            // 1. Update Status for Address
+            // If status is PENDIENTE, we clear it (or set to PENDIENTE explicit enum)
+            // Enum is OK, FALLIDO, PENDIENTE.
+            const newStatus = status === 'PENDIENTE' ? 'PENDIENTE' : status;
+
+            await prisma.address.updateMany({
+                where: { id: { in: relatedIds } },
+                data: { sopladoStatus: newStatus }
+            });
+
+            // 2. Manage SopladoInfo
+            if (status === 'OK' || status === 'FALLIDO') {
+                // Upsert with dummy data
+                const dummyData = {
+                    meters: 0,
+                    tk: 'N/A',
+                    tubeColor: 'N/A',
+                    failureReason: null,
+                    photos: []
+                };
+
+                // We promise.all the upserts
+                const upsertPromises = relatedIds.map(id =>
+                    prisma.sopladoInfo.upsert({
+                        where: { addressId: id },
+                        update: dummyData, // Overwrite with dummy if quick toggle is used
+                        create: {
+                            addressId: id,
+                            ...dummyData
+                        }
+                    })
+                );
+                await Promise.all(upsertPromises);
+
+            } else if (status === 'PENDIENTE') {
+                // Remove Info to revert state cleanly
+                await prisma.sopladoInfo.deleteMany({
+                    where: { addressId: { in: relatedIds } }
+                });
+            }
+        });
+
+        res.json({ message: 'Status updated successfully', status, count: relatedIds.length });
+
+    } catch (error) {
+        console.error('Error toggling soplado status:', error);
+        res.status(500).json({ message: 'Error updating status' });
+    }
+};
