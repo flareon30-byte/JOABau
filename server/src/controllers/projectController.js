@@ -92,7 +92,13 @@ exports.importProject = async (req, res) => {
         const addressesToProcess = data.map(row => {
             const nvt = findCol(row, ['NVT', 'nvt', 'KVz', 'kvz', 'Verteiler', 'verteiler', 'Caja', 'caja']);
             const street = findCol(row, ['CALLE', 'calle', 'Street', 'street', 'DIRECCION', 'direccion', 'STRASSE', 'strasse', 'Address', 'address', 'Anschrift', 'anschrift', 'Str.', 'str.', 'Straße', 'straße', 'Lage', 'lage', 'Weg', 'weg']) || 'Sin calle';
-            const number = findCol(row, ['NUMERO', 'numero', 'Number', 'number', 'Hausnummer', 'hausnummer', 'No', 'no', 'Nr', 'nr', 'Nr.', 'nr.']);
+            let number = findCol(row, ['NUMERO', 'numero', 'Number', 'number', 'Hausnummer', 'hausnummer', 'No', 'no', 'Nr', 'nr', 'Nr.', 'nr.']);
+            const numberSuffix = findCol(row, ['Hausnummer Zusatz', 'Zusatz', 'hausnummer zusatz', 'zusatz', 'Suffix', 'suffix']);
+
+            if (number && numberSuffix) {
+                number = `${number} ${numberSuffix}`;
+            }
+
             const clientName = findCol(row, ['NOMBRE', 'nombre', 'Name', 'name', 'Cliente', 'cliente', 'Client', 'client', 'Kunde', 'kunde']);
             const city = findCol(row, ['CIUDAD', 'ciudad', 'City', 'city', 'Ort', 'ort', 'Stadt', 'stadt', 'Town', 'town', 'Poblacion', 'poblacion']);
             const klsId = findCol(row, ['KLS', 'kls', 'KLS-ID', 'kls-id', 'KLS ID', 'kls id', 'KLS-Id', 'Kls-Id', 'P']);
