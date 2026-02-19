@@ -15,7 +15,6 @@ async function seed() {
             materials: 150,
             pricePerUnit: 250, // Updated base price
             pricePerTA: 50,
-            pricePerMulti: 100,
             pricePerMDU: 50,
             pricePerSP: 75,    // NEW field
             bonusPerUnit: 20,

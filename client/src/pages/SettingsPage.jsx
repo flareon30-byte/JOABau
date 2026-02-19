@@ -239,10 +239,6 @@ const SettingsPage = () => {
                                             <input type="number" step="0.01" value={data.pricePerTA || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerTA', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
                                         </div>
                                         <div>
-                                            <label className="block text-xs font-bold text-blue-600 uppercase">Precio Multi (BR)</label>
-                                            <input type="number" step="0.01" value={data.pricePerMulti || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerMulti', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
-                                        </div>
-                                        <div>
                                             <label className="block text-xs font-bold text-blue-600 uppercase">Precio MDU</label>
                                             <input type="number" step="0.01" value={data.pricePerMDU || 0} onChange={(e) => handleFinancialChange(groupKey, 'pricePerMDU', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg" />
                                         </div>
