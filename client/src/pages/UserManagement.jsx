@@ -51,7 +51,7 @@ const UserManagement = () => {
             setIsModalOpen(false);
         } catch (error) {
             console.error('Error saving user:', error);
-            alert('Error al guardar usuario');
+            alert('Error al guardar usuario: ' + (error.response?.data?.details || error.message));
         }
     };
 
