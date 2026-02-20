@@ -1,8 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Calendar, Plus, Clock, CheckCircle, XCircle, Trash2, Info } from 'lucide-react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+const calculateBusinessDays = (start, end) => {
+    let count = 0;
+    const curDate = new Date(start);
+    const endDate = new Date(end);
+    while (curDate <= endDate) {
+        const dayOfWeek = curDate.getDay();
+        if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+        curDate.setDate(curDate.getDate() + 1);
+    }
+    return count;
+};
 
 const VacationPage = () => {
     const [stats, setStats] = useState({ total: 0, used: 0, remaining: 0 });
@@ -18,7 +27,7 @@ const VacationPage = () => {
 
     const fetchVacations = async () => {
         try {
-            const res = await axios.get(`${API_URL}/vacations/my`, { withCredentials: true });
+            const res = await api.get('/api/vacations/my');
             setRequests(res.data.requests);
             setStats(res.data.stats);
         } catch (error) {
@@ -35,7 +44,7 @@ const VacationPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
-            await axios.post(`${API_URL}/vacations/request`, formData, { withCredentials: true });
+            await api.post('/api/vacations/request', formData);
             setShowModal(false);
             setFormData({ startDate: '', endDate: '', type: 'VACATION', reason: '' });
             fetchVacations();
@@ -136,7 +145,7 @@ const VacationPage = () => {
                                             {request.type === 'VACATION' ? 'Vacaciones' : 'Día Libre'}
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">
-                                            -
+                                            {calculateBusinessDays(request.startDate, request.endDate)}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusStyle(request.status)}`}>

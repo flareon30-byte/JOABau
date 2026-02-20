@@ -1,8 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axios';
 import { Calendar as CalendarIcon, Clock, CheckCircle, XCircle, User, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 const AdminVacationPage = () => {
     const [requests, setRequests] = useState([]);
@@ -12,7 +9,7 @@ const AdminVacationPage = () => {
 
     const fetchAllRequests = async () => {
         try {
-            const res = await axios.get(`${API_URL}/vacations/all`, { withCredentials: true });
+            const res = await api.get('/api/vacations/all');
             setRequests(res.data);
         } catch (error) {
             console.error('Error fetching all requests:', error);
@@ -27,7 +24,7 @@ const AdminVacationPage = () => {
 
     const handleUpdateStatus = async (id, status, comment = '') => {
         try {
-            await axios.put(`${API_URL}/vacations/${id}/status`, { status, managerComment: comment }, { withCredentials: true });
+            await api.put(`/api/vacations/${id}/status`, { status, managerComment: comment });
             fetchAllRequests();
         } catch (error) {
             alert('Error al actualizar el estado.');
