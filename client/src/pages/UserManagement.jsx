@@ -6,7 +6,7 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState(null); // For editing
-    const [formData, setFormData] = useState({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '' });
+    const [formData, setFormData] = useState({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', vacationDaysTotal: 30 });
 
     const fetchUsers = async () => {
         try {
@@ -29,11 +29,12 @@ const UserManagement = () => {
                 password: '',
                 role: user.role,
                 teamId: user.teamId || '',
-                phone: user.phone || ''
+                phone: user.phone || '',
+                vacationDaysTotal: user.vacationDaysTotal || 30
             });
         } else {
             setCurrentUser(null);
-            setFormData({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '' });
+            setFormData({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', vacationDaysTotal: 30 });
         }
         setIsModalOpen(true);
     };
@@ -178,6 +179,16 @@ const UserManagement = () => {
                                     <option value="BLOWER">Soplador</option>
                                     <option value="PROTOCOL_MANAGER">Gestor de Protocolos</option>
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Días de Vacaciones Totales</label>
+                                <input
+                                    type="number"
+                                    value={formData.vacationDaysTotal}
+                                    onChange={(e) => setFormData({ ...formData, vacationDaysTotal: parseInt(e.target.value) })}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    required
+                                />
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
                                 <button

@@ -34,9 +34,40 @@ model User {
   scheduledAppointments Appointment[] @relation("ScheduledBy")
   phone                 String?
   baseSalary            Float         @default(1500.0) // Sueldo Base para nóminas
+  vacationDaysTotal     Int           @default(30)
   isDemo                Boolean       @default(false)
+  
+  vacationRequests      VacationRequest[]
+  
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
+}
+
+enum VacationStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum VacationType {
+  VACATION
+  DAY_OFF
+}
+
+model VacationRequest {
+  id             String         @id @default(uuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  startDate      DateTime
+  endDate        DateTime
+  type           VacationType   @default(VACATION)
+  status         VacationStatus @default(PENDING)
+  reason         String?
+  managerComment String?
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
 }
 
 model Team {
