@@ -62,6 +62,12 @@ exports.getMyVacations = async (req, res) => {
             select: { vacationDaysTotal: true }
         });
 
+        if (!user) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        const totalDays = user.vacationDaysTotal ?? 30;
+
         // Calculate days used
         const approvedRequests = requests.filter(r => r.status === 'APPROVED');
         let daysUsed = 0;
@@ -72,14 +78,14 @@ exports.getMyVacations = async (req, res) => {
         res.json({
             requests,
             stats: {
-                total: user.vacationDaysTotal,
+                total: totalDays,
                 used: daysUsed,
-                remaining: user.vacationDaysTotal - daysUsed
+                remaining: totalDays - daysUsed
             }
         });
     } catch (error) {
         console.error('Error fetching my vacations:', error);
-        res.status(500).json({ message: 'Error al obtener vacaciones' });
+        res.status(500).json({ message: 'Error al obtener vacaciones', details: error.message });
     }
 };
 

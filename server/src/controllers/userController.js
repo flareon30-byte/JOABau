@@ -33,7 +33,7 @@ exports.createUser = async (req, res) => {
                 role,
                 teamId: teamId || null,
                 phone: phone || null,
-                vacationDaysTotal: parseInt(vacationDaysTotal) || 30,
+                vacationDaysTotal: (vacationDaysTotal !== undefined && vacationDaysTotal !== '') ? parseInt(vacationDaysTotal) : 30,
                 isDemo: req.isDemo || false
             }
         });
@@ -54,7 +54,7 @@ exports.updateUser = async (req, res) => {
             role,
             teamId: teamId || null,
             phone: phone || null,
-            vacationDaysTotal: parseInt(vacationDaysTotal) || 30
+            vacationDaysTotal: (vacationDaysTotal !== undefined && vacationDaysTotal !== '') ? parseInt(vacationDaysTotal) : 30
         };
         if (password) {
             data.password = await bcrypt.hash(password, 10);
