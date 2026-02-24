@@ -134,7 +134,6 @@ const DashboardHome = () => {
     const [payroll, setPayroll] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
-    const [showMoney, setShowMoney] = useState(false);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'completed'
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFilter, setDateFilter] = useState('today'); // 'today' | 'tomorrow' | 'next3' | 'week' | 'all'
@@ -216,13 +215,10 @@ const DashboardHome = () => {
                 : (isCompleted && matchesSearch);
         });
 
-        const progress = Math.min((stats.regularPoints / stats.target) * 100, 100);
-        const bonusPoints = Math.max(0, stats.regularPoints - stats.target);
-        const bonusMoney = bonusPoints * stats.extraPrice;
+        const progress = Math.min((stats.regularEarnings / stats.target) * 100, 100);
+        const bonusMoney = Math.max(0, stats.regularEarnings - stats.target);
 
-        const saturdayPoints = stats.saturdayPoints;
-        const saturdayMoney = saturdayPoints * stats.saturdayPrice;
-
+        const saturdayMoney = stats.saturdayEarnings;
 
 
         return (
@@ -234,17 +230,8 @@ const DashboardHome = () => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <h2 className="text-3xl font-bold mb-2">Hola, {user.username?.split('.')[0]}! 👋</h2>
-                                <p className="text-slate-300 mb-6">Resumen de tu actividad mensual.</p>
+                                <p className="text-slate-300 mb-6">Resumen de tu rendimiento económico.</p>
                             </div>
-                            {stats.isBonusMode && (
-                                <button
-                                    onClick={() => setShowMoney(!showMoney)}
-                                    className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-xl transition-all flex items-center gap-2 font-medium"
-                                >
-                                    {showMoney ? <Target size={18} /> : <DollarSign size={18} />}
-                                    Ver en {showMoney ? 'Puntos' : 'Euros'}
-                                </button>
-                            )}
                         </div>
 
                         {stats.isBonusMode ? (
@@ -252,15 +239,21 @@ const DashboardHome = () => {
                                 <Star className="text-yellow-400 fill-yellow-400" />
                                 <div>
                                     <p className="font-bold text-green-400">¡Modo Paga Extra Activado!</p>
-                                    <p className="text-xs text-green-200">Has superado el objetivo mensual. Cada punto nuevo suma extra.</p>
+                                    <p className="text-xs text-green-200">Has superado tus gastos mensuales. Cada nuevo trabajo genera beneficios adicionales.</p>
                                 </div>
                             </div>
                         ) : (
                             <div className="bg-white/10 border border-white/20 p-4 rounded-xl flex items-center gap-3">
                                 <AlertCircle className="text-slate-300" />
                                 <div>
-                                    <p className="font-bold text-white">Progreso hacia el Bonus</p>
-                                    <p className="text-xs text-slate-300">Faltan {stats.target - stats.regularPoints} puntos para activar la paga extra.</p>
+                                    <p className="font-bold text-white">Progreso de Gastos Cubiertos</p>
+                                    <div className="w-full max-w-sm h-2 bg-white/20 rounded-full mt-2 mb-1">
+                                        <div
+                                            className="h-full bg-joa-cyan rounded-full transition-all duration-1000"
+                                            style={{ width: `${progress}%` }}
+                                        ></div>
+                                    </div>
+                                    <p className="text-xs text-slate-300">Faltan {money(stats.target - stats.regularEarnings)} para cubrir tus gastos y cobrar extras.</p>
                                 </div>
                             </div>
                         )}
@@ -319,9 +312,9 @@ const DashboardHome = () => {
                             <h4 className="text-2xl font-bold text-slate-800">{stats.saturdayActivations || 0}</h4>
                         </div>
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-50">
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Rendimiento Extra</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Ganancia Extra</p>
                             <h4 className="text-2xl font-bold text-orange-600">
-                                {showMoney ? money(saturdayMoney) : `${saturdayPoints || 0} Pts`}
+                                {money(saturdayMoney)}
                             </h4>
                         </div>
                         <div className="col-span-2 bg-gradient-to-br from-orange-500 to-orange-600 p-4 rounded-2xl shadow-lg flex items-center justify-between text-white">
@@ -489,7 +482,7 @@ const DashboardHome = () => {
                                 <tr>
                                     <th className="p-4 pl-6">Equipo</th>
                                     <th className="p-4">Activaciones</th>
-                                    <th className="p-4">Puntos Totales</th>
+                                    <th className="p-4">Producción Total</th>
                                     <th className="p-4">Estado</th>
                                 </tr>
                             </thead>
@@ -515,14 +508,13 @@ const DashboardHome = () => {
                                                 </span>
                                             </td>
                                             <td className="p-4">
-                                                <span className="font-bold text-slate-800">{team.points}</span>
-                                                <span className="text-slate-400 text-xs ml-1">pts</span>
+                                                <span className="font-bold text-slate-800">{money(team.earnings)}</span>
                                             </td>
                                             <td className="p-4">
                                                 <div className="w-full max-w-[100px] h-1.5 bg-slate-100 rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full bg-gradient-to-r from-joa-blue to-joa-cyan"
-                                                        style={{ width: `${Math.min((team.points / 1000) * 100, 100)}%` }}
+                                                        style={{ width: `${Math.min((team.earnings / 12000) * 100, 100)}%` }}
                                                     ></div>
                                                 </div>
                                             </td>

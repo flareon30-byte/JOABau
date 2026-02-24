@@ -85,9 +85,10 @@ exports.getPayrollStats = async (req, res) => {
             if (team) {
                 // Team Stats
                 if (!teamStats[team.id]) {
-                    teamStats[team.id] = { name: team.name, points: 0, activations: 0 };
+                    teamStats[team.id] = { name: team.name, earnings: 0, activations: 0 };
                 }
-                teamStats[team.id].points += act.points;
+                const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+                teamStats[team.id].earnings += actTotal;
                 teamStats[team.id].activations += 1;
 
                 // User Stats (Split points equally or assign full to both? Usually shared or per team)
@@ -167,8 +168,8 @@ exports.getActivatorDashboard = async (req, res) => {
             }
         });
 
-        let regularPoints = 0;
-        let saturdayPoints = 0;
+        let regularEarnings = 0;
+        let saturdayEarnings = 0;
         let regularActivations = 0;
         let saturdayActivations = 0;
 
@@ -191,55 +192,52 @@ exports.getActivatorDashboard = async (req, res) => {
             } else if (type === 'MDU') {
                 counts.mdu++;
             } else if (type === 'BR_MULTI') {
-                // BR Multi is usually a BP with many SPs
                 counts.bp++;
             }
 
-            // 2. Add Extras (only if they are NOT the base type already)
+            // 2. Add Extras
             if (act.spInstalled > 0) {
                 counts.sp += act.spInstalled;
             }
-
-            // If it's a BP but they installed a TA, add to TA count
-            // If it's an SDU, it's already counted as a TA above. 
-            // We only count taCount > 0 if it's NOT an SDU type (rare) or if they added MORE TAs.
             if ((type !== 'SDU') && (act.taInstalled || (act.taCount && act.taCount > 0))) {
                 counts.ta += (act.taCount || 1);
             }
-
             if (type !== 'MDU' && act.mduInstalled) {
                 counts.mdu++;
             }
 
-            // Saturday stats
+            // 3. Financial Calculation (Sum of all prices on this record)
+            const totalOnRecord = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+
+            // 4. Split by Saturday / Regular
             if (act.isSaturday) {
-                saturdayPoints += act.points;
+                saturdayEarnings += totalOnRecord;
                 saturdayActivations++;
             } else {
-                regularPoints += act.points;
+                regularEarnings += totalOnRecord;
                 regularActivations++;
             }
         });
 
         // 4. Get Settings
         const settings = await prisma.systemSettings.findFirst() || {
-            monthlyTargetPoints: 100,
-            extraPointPrice: 0,
-            saturdayPointPrice: 0
+            monthlyTargetPoints: 100, // Fallback
+            financials: {}
         };
+
+        const fin = settings.financials?.installers || {};
+        const targetExpenses = (fin.salary || 0) + (fin.insurance || 0) + (fin.car || 0) + (fin.gas || 0) + (fin.materials || 0) + (fin.equipmentRent || 0);
 
         res.json({
             appointments,
             stats: {
-                regularPoints,
-                saturdayPoints,
+                regularEarnings,
+                saturdayEarnings,
                 regularActivations,
                 saturdayActivations,
-                counts, // New detailed counts
-                target: settings.monthlyTargetPoints,
-                extraPrice: settings.extraPointPrice,
-                saturdayPrice: settings.saturdayPointPrice,
-                isBonusMode: regularPoints >= settings.monthlyTargetPoints
+                counts,
+                target: targetExpenses > 0 ? targetExpenses : (settings.monthlyTargetPoints || 100),
+                isBonusMode: regularEarnings >= (targetExpenses > 0 ? targetExpenses : (settings.monthlyTargetPoints || 100))
             }
         });
 
