@@ -245,7 +245,6 @@ const ActivationPage = () => {
         });
 
         data.append('existingPhotos', JSON.stringify(existingPaths));
-        data.append('existingPhotos', JSON.stringify(existingPaths));
         if (pdfPath) {
             data.append('pdfPath', pdfPath);
         }

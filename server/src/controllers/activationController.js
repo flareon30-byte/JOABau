@@ -70,7 +70,8 @@ exports.submitActivation = async (req, res) => {
         pdfPath,
         // New Logic Fields
         mduInstalled, // Explicit checkbox from frontend
-        isRepair      // Explicit checkbox from frontend
+        isRepair,     // Explicit checkbox from frontend
+        homeId        // Support singular for frontend compatibility
     } = req.body;
 
     // req.files is now an object { photos: [], signedPdf: [] }
@@ -103,15 +104,23 @@ exports.submitActivation = async (req, res) => {
 
         // Parse existingPhotos safely
         let keptPhotos = [];
-        try {
-            if (req.body.existingPhotos) {
-                keptPhotos = JSON.parse(req.body.existingPhotos);
+
+        if (req.body.existingPhotos) {
+            const rawVal = Array.isArray(req.body.existingPhotos) ? req.body.existingPhotos[0] : req.body.existingPhotos;
+            try {
+                keptPhotos = JSON.parse(rawVal);
+            } catch (e) {
+                console.error("Error parsing existingPhotos JSON:", rawVal);
+                keptPhotos = [];
             }
-        } catch (e) {
-            console.error('Error parsing existing photos', e);
         }
 
         const allPhotos = [...keptPhotos, ...photoPaths];
+
+        // Ensure homeIdsArray is populated even if sent as single homeId
+        if (homeIdsArray.length === 0 && homeId) {
+            homeIdsArray = [homeId];
+        }
 
         const famCount = parseInt(familiesCount);
         const spCount = parseInt(spInstalled || 0);
