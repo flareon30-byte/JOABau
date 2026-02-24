@@ -216,7 +216,7 @@ const BillingPage = () => {
                 // Add Checkbox column header if activation tab
                 columns = [
                     <div key="chk" className="flex items-center"><input type="checkbox" checked={data.length > 0 && selectedIds.length === data.length} onChange={() => toggleSelectAll(data)} className="w-4 h-4 rounded border-slate-300" /></div>,
-                    'Fecha', 'Proyecto', 'Dirección', 'Cliente', 'Tipo', 'Fotos', 'PDF', 'Acciones'
+                    'Fecha', 'Proyecto', 'Dirección', 'Cliente', 'Detalles', 'Fotos', 'PDF', 'Comentarios', 'Acciones'
                 ];
                 emptyMsg = "No hay activaciones";
                 break;
@@ -282,9 +282,16 @@ const BillingPage = () => {
                                         </td>
                                         <td className="p-4">{new Date(row.createdAt).toLocaleDateString()}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.address?.project?.name}</td>
-                                        <td className="p-4">{row.address?.street} {row.address?.number}</td>
+                                        <td className="p-4">{row.address?.street} {row.address?.number} <div className="text-[10px] text-blue-600 font-bold">ID: {row.homeIds?.[0] || '-'}</div></td>
                                         <td className="p-4">{row.address?.clientName || 'Sin Nombre'}</td>
-                                        <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold">{row.activationType}</span></td>
+                                        <td className="p-4">
+                                            <div className="flex flex-col gap-1">
+                                                <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold w-fit">{row.activationType}</span>
+                                                <div className="text-[10px] text-slate-500 font-medium">
+                                                    TA:{row.taInstalled ? row.taCount : 0} | SP:{row.spInstalled} {row.mduInstalled ? '| MDU' : ''}
+                                                </div>
+                                            </div>
+                                        </td>
 
                                         {/* Photos Column - Clickable for Modal */}
                                         <td className="p-4">
@@ -331,6 +338,11 @@ const BillingPage = () => {
                                                     );
                                                 })()}
                                             </td>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="text-xs text-slate-500 italic truncate max-w-[120px]" title={row.description}>
+                                                {row.description || '-'}
+                                            </div>
                                         </td>
                                     </>
                                 )}

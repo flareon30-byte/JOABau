@@ -68,7 +68,7 @@ const ActivationsHistoryPage = () => {
     const exportToCSV = () => {
         if (activations.length === 0) return;
 
-        const headers = ['Fecha', 'Dirección', 'Proyecto', 'Equipo', 'Técnico', 'Tipo', 'Puertos AP', 'TA', 'SP', 'Home IDs', 'Puntos', 'Descripción'];
+        const headers = ['Fecha', 'Dirección', 'Proyecto', 'Equipo', 'Técnico', 'Tipo', 'Detalles', 'Home IDs', 'Comentarios', 'Puntos'];
         const rows = activations.map(act => [
             new Date(act.createdAt).toLocaleDateString(),
             `${act.address.street} ${act.address.number}`,
@@ -76,12 +76,10 @@ const ActivationsHistoryPage = () => {
             act.address.appointment?.assignedTeam?.name || 'N/A',
             act.address.appointment?.assignedTeam?.members?.map(m => m.username).join(', ') || 'N/A',
             act.activationType,
-            act.apPorts,
-            act.taInstalled ? `Sí (${act.taCount})` : 'No',
-            act.spInstalled,
+            `AP:${act.apPorts} TA:${act.taInstalled ? act.taCount : 0} SP:${act.spInstalled}`,
             act.homeIds.join(', '),
-            act.points,
-            act.description || ''
+            act.description || '',
+            act.points
         ]);
 
         const csvContent = "data:text/csv;charset=utf-8,"
@@ -345,16 +343,17 @@ const ActivationsHistoryPage = () => {
                                 <th className="p-4">Fecha</th>
                                 <th className="p-4">Dirección</th>
                                 <th className="p-4">Equipo</th>
-                                <th className="p-4">Detalles Técnicos</th>
+                                <th className="p-4">Detalles</th>
+                                <th className="p-4">Comentarios</th>
                                 <th className="p-4">Puntos</th>
                                 <th className="p-4 text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
-                                <tr><td colSpan="6" className="p-8 text-center">Cargando...</td></tr>
+                                <tr><td colSpan="7" className="p-8 text-center">Cargando...</td></tr>
                             ) : activations.length === 0 ? (
-                                <tr><td colSpan="6" className="p-8 text-center text-slate-400">No se encontraron activaciones.</td></tr>
+                                <tr><td colSpan="7" className="p-8 text-center text-slate-400">No se encontraron activaciones.</td></tr>
                             ) : (
                                 activations.map(act => (
                                     <tr key={act.id} className="hover:bg-slate-50">
@@ -373,10 +372,14 @@ const ActivationsHistoryPage = () => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-xs space-y-1">
-                                            <div><span className="font-bold">AP:</span> {act.apPorts} puertos</div>
-                                            <div><span className="font-bold">TA:</span> {act.taInstalled ? `Sí (${act.taCount})` : 'No'}</div>
-                                            <div><span className="font-bold">SP:</span> {act.spInstalled}</div>
-                                            <div><span className="font-bold">HomeIDs:</span> {act.homeIds.join(', ')}</div>
+                                            <div><span className="font-bold">AP:</span> {act.apPorts} | <span className="font-bold">SP:</span> {act.spInstalled}</div>
+                                            <div><span className="font-bold">TA:</span> {act.taInstalled ? `Sí (${act.taCount})` : 'No'} {act.mduInstalled ? ' + MDU' : ''}</div>
+                                            <div className="text-[10px] text-blue-600 font-bold truncate max-w-[120px]">ID: {act.homeIds.join(', ')}</div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="text-xs text-slate-500 italic max-w-[150px] truncate" title={act.description}>
+                                                {act.description || '-'}
+                                            </div>
                                         </td>
                                         <td className="p-4 font-bold text-joa-blue">{act.points}</td>
                                         <td className="p-4 text-right">

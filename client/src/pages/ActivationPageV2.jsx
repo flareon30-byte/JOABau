@@ -161,14 +161,14 @@ const ActivationPageV2 = () => {
                     ctx.drawImage(img, 0, 0, width, height);
 
                     // Watermark Settings
-                    const fontSize = Math.max(24, Math.floor(img.height * 0.03)); // Responsive font size
+                    const fontSize = Math.max(24, Math.floor(height * 0.03));
                     const padding = fontSize;
                     const lineHeight = fontSize * 1.5;
                     const bottomBarHeight = lineHeight * 3 + padding * 2;
 
                     // Draw semi-transparent background
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                    ctx.fillRect(0, img.height - bottomBarHeight, img.width, bottomBarHeight);
+                    ctx.fillRect(0, height - bottomBarHeight, width, bottomBarHeight);
 
                     // Draw Text
                     ctx.fillStyle = 'white';
@@ -177,14 +177,14 @@ const ActivationPageV2 = () => {
 
                     const dateStr = new Date().toLocaleString('es-ES');
                     const techName = user.username?.split('@')[0] || 'Técnico';
-                    const addressStr = appointment ? `${appointment.address.street} ${appointment.address.number}, ${appointment.address.project.name}` : 'Dirección desconocida';
+                    const addressStr = appointment ? `${appointment.address.street} ${appointment.address.number}, ${appointment.address.project.name}` : 'Dirección';
 
                     const textX = padding;
-                    let textY = img.height - padding - lineHeight * 2;
+                    let textY = height - padding - lineHeight * 2;
 
                     ctx.fillText(`📅 ${dateStr}`, textX, textY);
                     textY += lineHeight;
-                    ctx.fillText(`👤 ${techName}`, textX, textY);
+                    ctx.fillText(`👤 ${techName}`, textX, techY);
                     textY += lineHeight;
                     ctx.fillText(`📍 ${addressStr}`, textX, textY);
 
@@ -307,6 +307,7 @@ const ActivationPageV2 = () => {
         // Ensure numeric fields are valid
         data.append('familiesCount', parseInt(formData.familiesCount) || 1);
         data.append('apPorts', parseInt(formData.apPorts) || 2);
+        data.append('hasMoreClients', formData.hasMoreClients ? 'true' : 'false');
         data.append('taCount', parseInt(formData.taCount) || 0);
         data.append('spInstalled', parseInt(formData.spInstalled) || 0);
 
