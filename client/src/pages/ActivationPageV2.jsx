@@ -132,79 +132,89 @@ const ActivationPageV2 = () => {
 
     const processPhoto = async (file) => {
         return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.crossOrigin = "anonymous";
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ctx = canvas.getContext('2d');
+            // Safety timeout to prevent infinite spinning
+            const timeout = setTimeout(() => {
+                reject(new Error("Timeout processing photo"));
+            }, 15000);
 
-                    // Resize logic
-                    const MAX_DIM = 2000;
-                    let width = img.width;
-                    let height = img.height;
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
 
-                    if (width > height) {
-                        if (width > MAX_DIM) {
-                            height *= MAX_DIM / width;
-                            width = MAX_DIM;
-                        }
-                    } else {
-                        if (height > MAX_DIM) {
-                            width *= MAX_DIM / height;
-                            height = MAX_DIM;
-                        }
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                // Resize logic: 1600px is plenty for documentation and safer for memory
+                const MAX_DIM = 1600;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_DIM) {
+                        height *= MAX_DIM / width;
+                        width = MAX_DIM;
                     }
+                } else {
+                    if (height > MAX_DIM) {
+                        width *= MAX_DIM / height;
+                        height = MAX_DIM;
+                    }
+                }
 
-                    canvas.width = width;
-                    canvas.height = height;
-                    ctx.drawImage(img, 0, 0, width, height);
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
 
-                    // Watermark
-                    const fontSize = Math.max(24, Math.floor(height * 0.03));
-                    const padding = fontSize;
-                    const lineHeight = fontSize * 1.5;
-                    const bottomBarHeight = lineHeight * 3 + padding * 2;
+                // Watermark
+                const fontSize = Math.max(20, Math.floor(height * 0.035));
+                const padding = fontSize;
+                const lineHeight = fontSize * 1.4;
+                const bottomBarHeight = lineHeight * 3 + padding * 2;
 
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                    ctx.fillRect(0, height - bottomBarHeight, width, bottomBarHeight);
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+                ctx.fillRect(0, height - bottomBarHeight, width, bottomBarHeight);
 
-                    ctx.fillStyle = 'white';
-                    ctx.font = `bold ${fontSize}px Arial`;
-                    ctx.textBaseline = 'bottom';
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.textBaseline = 'bottom';
 
-                    const dateStr = new Date().toLocaleString('es-ES');
-                    const techName = user.username?.split('@')[0] || 'Técnico';
-                    const addressStr = appointment ? `${appointment.address.street} ${appointment.address.number}, ${appointment.address.project.name}` : 'Dirección';
+                const dateStr = new Date().toLocaleString('es-ES');
+                const techName = user.username?.split('@')[0] || 'Técnico';
+                const addressStr = appointment ? `${appointment.address.street} ${appointment.address.number}` : 'Dirección';
 
-                    const textX = padding;
-                    let textY = height - padding - lineHeight * 2;
+                const textX = padding;
+                let textY = height - padding - lineHeight * 2;
 
-                    ctx.fillText(`📅 ${dateStr}`, textX, textY);
-                    textY += lineHeight;
-                    ctx.fillText(`👤 ${techName}`, textX, techY);
-                    textY += lineHeight;
-                    ctx.fillText(`📍 ${addressStr}`, textX, textY);
+                ctx.fillText(`📅 ${dateStr}`, textX, textY);
+                textY += lineHeight;
+                ctx.fillText(`👤 ${techName}`, textX, textY);
+                textY += lineHeight;
+                ctx.fillText(`📍 ${addressStr}`, textX, textY);
 
-                    // Final Blob
-                    canvas.toBlob((blob) => {
-                        if (blob) {
-                            resolve({
-                                blob,
-                                preview: canvas.toDataURL('image/jpeg', 0.6),
-                                name: file.name
-                            });
-                        } else {
-                            reject(new Error("Canvas toBlob failed"));
-                        }
-                    }, 'image/jpeg', 0.6);
-                };
-                img.onerror = () => reject(new Error("Image load failed"));
-                img.src = e.target.result;
+                // Final Blob
+                canvas.toBlob((blob) => {
+                    clearTimeout(timeout);
+                    URL.revokeObjectURL(objectUrl); // Clean up original
+
+                    if (blob) {
+                        resolve({
+                            blob,
+                            preview: URL.createObjectURL(blob), // Fast preview
+                            name: file.name
+                        });
+                    } else {
+                        reject(new Error("Canvas toBlob failed"));
+                    }
+                }, 'image/jpeg', 0.6);
             };
-            reader.onerror = () => reject(new Error("FileReader failed"));
-            reader.readAsDataURL(file);
+
+            img.onerror = () => {
+                clearTimeout(timeout);
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error("Image load failed"));
+            };
+
+            img.src = objectUrl;
         });
     };
 
@@ -214,10 +224,12 @@ const ActivationPageV2 = () => {
             const newPhotos = [];
             try {
                 for (let i = 0; i < e.target.files.length; i++) {
+                    console.log(`Processing photo ${i + 1}/${e.target.files.length}`);
                     const processed = await processPhoto(e.target.files[i]);
                     newPhotos.push(processed);
                 }
                 setPhotos(prev => [...prev, ...newPhotos]);
+                console.log("All photos processed successfully");
             } catch (error) {
                 console.error("Photo processing error:", error);
                 alert("Error al procesar algunas fotos. Inténtalo de nuevo.");
@@ -228,9 +240,25 @@ const ActivationPageV2 = () => {
     };
 
     const removePhoto = (index) => {
+        const photo = photos[index];
+        // Revoke the blob URL to free memory
+        if (photo.preview && photo.preview.startsWith('blob:')) {
+            URL.revokeObjectURL(photo.preview);
+        }
         setPhotos(prev => prev.filter((_, i) => i !== index));
         if (viewingPhotoIndex === index) setViewingPhotoIndex(null);
     };
+
+    // Cleanup blob URLs on unmount
+    useEffect(() => {
+        return () => {
+            photos.forEach(p => {
+                if (p.preview && p.preview.startsWith('blob:')) {
+                    URL.revokeObjectURL(p.preview);
+                }
+            });
+        };
+    }, []);
 
     const handleSignatureSave = async () => {
         if (!signaturePadRef.current || signaturePadRef.current.isEmpty()) {
