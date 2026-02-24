@@ -151,15 +151,23 @@ exports.submitActivation = async (req, res) => {
 
         let points = 0;
         if (pointsConfig[activationType]) points += pointsConfig[activationType];
+
+        // Add SP points (usually extras)
         if (spCount > 0) points += (spCount * pointsConfig['SP']);
 
         const finalTaCount = taCountInt > 0 ? taCountInt : (taInstalledBool ? 1 : 0);
-        if (finalTaCount > 0) {
-            let taPointValue = pointsConfig['SDU'];
+        // Only add TA points as EXTRA if the base type is NOT SDU
+        if (activationType !== 'SDU' && finalTaCount > 0) {
+            let taPointValue = pointsConfig['TA'] || pointsConfig['SDU'];
             if (['BP_2_FAM', 'BR_MULTI'].includes(activationType)) {
                 taPointValue = pointsConfig['MDU'];
             }
             points += (finalTaCount * taPointValue);
+        }
+
+        // Only add MDU points as EXTRA if the base type is NOT MDU
+        if (activationType !== 'MDU' && isMduBool) {
+            points += pointsConfig['MDU'];
         }
 
         const isSaturday = new Date().getDay() === 6;

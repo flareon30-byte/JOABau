@@ -183,23 +183,31 @@ exports.getActivatorDashboard = async (req, res) => {
         activations.forEach(act => {
             const type = act.activationType || 'BP';
 
-            // Base Production Counts
-            if (type === 'BP_2_FAM') {
-                counts.bp += 2;
-            } else {
+            // 1. Determine Base Type for counts
+            if (type === 'BP' || type === 'BP_2_FAM') {
+                counts.bp += (type === 'BP_2_FAM' ? 2 : 1);
+            } else if (type === 'SDU') {
+                counts.ta++;
+            } else if (type === 'MDU') {
+                counts.mdu++;
+            } else if (type === 'BR_MULTI') {
+                // BR Multi is usually a BP with many SPs
                 counts.bp++;
             }
 
-            // Additional Component Counts (TA/SP/MDU) - Counted regardless of activation type
+            // 2. Add Extras (only if they are NOT the base type already)
             if (act.spInstalled > 0) {
                 counts.sp += act.spInstalled;
             }
 
-            if (act.taInstalled || (act.taCount && act.taCount > 0)) {
+            // If it's a BP but they installed a TA, add to TA count
+            // If it's an SDU, it's already counted as a TA above. 
+            // We only count taCount > 0 if it's NOT an SDU type (rare) or if they added MORE TAs.
+            if ((type !== 'SDU') && (act.taInstalled || (act.taCount && act.taCount > 0))) {
                 counts.ta += (act.taCount || 1);
             }
 
-            if (act.mduInstalled) {
+            if (type !== 'MDU' && act.mduInstalled) {
                 counts.mdu++;
             }
 
