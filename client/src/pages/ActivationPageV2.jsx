@@ -128,16 +128,19 @@ const ActivationPageV2 = () => {
         }));
     };
 
+    const [processingPhotos, setProcessingPhotos] = useState(false);
+
     const processPhoto = async (file) => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
+                img.crossOrigin = "anonymous";
                 img.onload = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
-                    // Resize to a maximum dimension to avoid massive files
+                    // Resize logic
                     const MAX_DIM = 2000;
                     let width = img.width;
                     let height = img.height;
@@ -156,21 +159,17 @@ const ActivationPageV2 = () => {
 
                     canvas.width = width;
                     canvas.height = height;
-
-                    // Draw image
                     ctx.drawImage(img, 0, 0, width, height);
 
-                    // Watermark Settings
+                    // Watermark
                     const fontSize = Math.max(24, Math.floor(height * 0.03));
                     const padding = fontSize;
                     const lineHeight = fontSize * 1.5;
                     const bottomBarHeight = lineHeight * 3 + padding * 2;
 
-                    // Draw semi-transparent background
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
                     ctx.fillRect(0, height - bottomBarHeight, width, bottomBarHeight);
 
-                    // Draw Text
                     ctx.fillStyle = 'white';
                     ctx.font = `bold ${fontSize}px Arial`;
                     ctx.textBaseline = 'bottom';
@@ -188,29 +187,43 @@ const ActivationPageV2 = () => {
                     textY += lineHeight;
                     ctx.fillText(`📍 ${addressStr}`, textX, textY);
 
-                    // Convert to Blob
+                    // Final Blob
                     canvas.toBlob((blob) => {
-                        resolve({
-                            blob,
-                            preview: canvas.toDataURL('image/jpeg', 0.7),
-                            name: file.name
-                        });
+                        if (blob) {
+                            resolve({
+                                blob,
+                                preview: canvas.toDataURL('image/jpeg', 0.6),
+                                name: file.name
+                            });
+                        } else {
+                            reject(new Error("Canvas toBlob failed"));
+                        }
                     }, 'image/jpeg', 0.6);
                 };
+                img.onerror = () => reject(new Error("Image load failed"));
                 img.src = e.target.result;
             };
+            reader.onerror = () => reject(new Error("FileReader failed"));
             reader.readAsDataURL(file);
         });
     };
 
     const handlePhotoSelect = async (e) => {
         if (e.target.files && e.target.files.length > 0) {
+            setProcessingPhotos(true);
             const newPhotos = [];
-            for (let i = 0; i < e.target.files.length; i++) {
-                const processed = await processPhoto(e.target.files[i]);
-                newPhotos.push(processed);
+            try {
+                for (let i = 0; i < e.target.files.length; i++) {
+                    const processed = await processPhoto(e.target.files[i]);
+                    newPhotos.push(processed);
+                }
+                setPhotos(prev => [...prev, ...newPhotos]);
+            } catch (error) {
+                console.error("Photo processing error:", error);
+                alert("Error al procesar algunas fotos. Inténtalo de nuevo.");
+            } finally {
+                setProcessingPhotos(false);
             }
-            setPhotos(prev => [...prev, ...newPhotos]);
         }
     };
 
@@ -674,10 +687,17 @@ const ActivationPageV2 = () => {
                         <button
                             type="button"
                             onClick={() => fileInputRef.current?.click()}
-                            className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-joa-blue hover:text-joa-blue transition-colors bg-slate-50"
+                            disabled={processingPhotos}
+                            className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-joa-blue hover:text-joa-blue transition-colors bg-slate-50 disabled:opacity-50"
                         >
-                            <Camera size={24} className="mb-1" />
-                            <span className="text-xs font-medium">Añadir Foto</span>
+                            {processingPhotos ? (
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-joa-blue"></div>
+                            ) : (
+                                <>
+                                    <Camera size={24} className="mb-1" />
+                                    <span className="text-xs font-medium">Añadir Foto</span>
+                                </>
+                            )}
                         </button>
                     </div>
 

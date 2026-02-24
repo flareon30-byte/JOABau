@@ -183,27 +183,27 @@ exports.getActivatorDashboard = async (req, res) => {
         activations.forEach(act => {
             const type = act.activationType || 'BP';
 
-            if (type === 'BR_MULTI') {
-                // BR Multi is a complex activation: BP + SPs + (TA or MDU)
-                counts.bp++;
-                counts.sp += (act.spInstalled || 0);
-
-                if (act.taInstalled || (act.taCount && act.taCount > 0)) {
-                    counts.ta++;
-                } else if (act.mduInstalled) {
-                    counts.mdu++;
-                }
-            } else if (type === 'BP' || type === 'BP_2_FAM') {
-                counts.bp++;
-            } else if (type === 'SDU') {
-                counts.ta++;
-            } else if (type === 'MDU') {
-                counts.mdu++;
+            // Base Production Counts
+            if (type === 'BP_2_FAM') {
+                counts.bp += 2;
             } else {
                 counts.bp++;
             }
 
-            // Existing Points Logic (Keep for backward compatibility mostly, but dashboard will prioritize counts now)
+            // Additional Component Counts (TA/SP/MDU) - Counted regardless of activation type
+            if (act.spInstalled > 0) {
+                counts.sp += act.spInstalled;
+            }
+
+            if (act.taInstalled || (act.taCount && act.taCount > 0)) {
+                counts.ta += (act.taCount || 1);
+            }
+
+            if (act.mduInstalled) {
+                counts.mdu++;
+            }
+
+            // Saturday stats
             if (act.isSaturday) {
                 saturdayPoints += act.points;
                 saturdayActivations++;
