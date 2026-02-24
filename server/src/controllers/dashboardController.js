@@ -176,29 +176,31 @@ exports.getActivatorDashboard = async (req, res) => {
         const counts = {
             bp: 0,
             ta: 0,
-            multi: 0,
+            sp: 0,
             mdu: 0
         };
 
         activations.forEach(act => {
-            // Calculate Type Counts
             const type = act.activationType || 'BP';
-            switch (type) {
-                case 'BP':
-                case 'BP_2_FAM':
-                    counts.bp++;
-                    break;
-                case 'SDU': // TA
+
+            if (type === 'BR_MULTI') {
+                // BR Multi is a complex activation: BP + SPs + (TA or MDU)
+                counts.bp++;
+                counts.sp += (act.spInstalled || 0);
+
+                if (act.taInstalled || (act.taCount && act.taCount > 0)) {
                     counts.ta++;
-                    break;
-                case 'BR_MULTI': // MULTI
-                    counts.multi++;
-                    break;
-                case 'MDU':
+                } else if (act.mduInstalled) {
                     counts.mdu++;
-                    break;
-                default:
-                    counts.bp++;
+                }
+            } else if (type === 'BP' || type === 'BP_2_FAM') {
+                counts.bp++;
+            } else if (type === 'SDU') {
+                counts.ta++;
+            } else if (type === 'MDU') {
+                counts.mdu++;
+            } else {
+                counts.bp++;
             }
 
             // Existing Points Logic (Keep for backward compatibility mostly, but dashboard will prioritize counts now)

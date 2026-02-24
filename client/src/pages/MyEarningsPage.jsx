@@ -351,8 +351,8 @@ const MyEarningsPage = () => {
                         <p className="text-2xl font-bold text-slate-700">{stats?.counts?.ta || 0}</p>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
-                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">Multi (BR)</p>
-                        <p className="text-2xl font-bold text-slate-700">{stats?.counts?.multi || 0}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase mb-1">SP Instalados</p>
+                        <p className="text-2xl font-bold text-slate-700">{stats?.counts?.sp || 0}</p>
                     </div>
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-1">MDU</p>

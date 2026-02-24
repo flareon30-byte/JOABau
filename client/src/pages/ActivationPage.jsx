@@ -24,6 +24,7 @@ const ActivationPage = () => {
         hasMoreClients: false,
         spInstalled: 0,
         taInstalled: false,
+        mduInstalled: false,
         homeId: '',
         klsId: '',
         description: ''
@@ -55,6 +56,7 @@ const ActivationPage = () => {
                     hasMoreClients: info.hasMoreClients || false,
                     spInstalled: info.spInstalled || 0,
                     taInstalled: info.taInstalled || false,
+                    mduInstalled: info.mduInstalled || false,
                     homeId: info.homeIds && info.homeIds.length > 0 ? info.homeIds[0] : '',
                     klsId: info.klsId || selectedAppointment.address.klsId || '',
                     description: info.description || ''
@@ -82,6 +84,7 @@ const ActivationPage = () => {
                     hasMoreClients: false,
                     spInstalled: 0,
                     taInstalled: false,
+                    mduInstalled: false,
                     homeId: '',
                     klsId: selectedAppointment.address.klsId || '',
                     description: ''
@@ -386,11 +389,11 @@ const ActivationPage = () => {
                         <select
                             value={formData.activationType}
                             onChange={(e) => setFormData({ ...formData, activationType: e.target.value })}
-                            className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none"
+                            className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none font-bold text-slate-700"
                         >
                             <option value="BP">BP (Básico)</option>
                             <option value="BP_2_FAM">BP 2 Familias</option>
-                            <option value="BR_MULTI">BR Multi</option>
+                            <option value="BR_MULTI">SP (BR Multi)</option>
                             <option value="SDU">SDU</option>
                             <option value="MDU">MDU</option>
                         </select>
@@ -443,43 +446,88 @@ const ActivationPage = () => {
                         {!formData.klsId && <p className="text-xs text-red-500 mt-1">Error: KLS ID no encontrado en la ficha.</p>}
                     </div>
 
-                    {!['SDU', 'MDU'].includes(formData.activationType) && (
-                        <>
-                            <div className="space-y-3">
-                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.hasMoreClients}
-                                        onChange={(e) => setFormData({ ...formData, hasMoreClients: e.target.checked })}
-                                        className="w-5 h-5 text-green-600 rounded"
-                                    />
-                                    <span className="text-slate-700">¿Hay más clientes potenciales?</span>
-                                </label>
-
-                                <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                                    <input
-                                        type="checkbox"
-                                        checked={formData.taInstalled}
-                                        onChange={(e) => setFormData({ ...formData, taInstalled: e.target.checked })}
-                                        className="w-5 h-5 text-green-600 rounded"
-                                    />
-                                    <span className="text-slate-700">¿TA Instalado?</span>
-                                </label>
+                    {formData.activationType === 'BR_MULTI' ? (
+                        <div className="p-5 bg-purple-50 rounded-2xl border border-purple-100 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2">
+                            <div className="flex items-center justify-between">
+                                <h4 className="font-bold text-purple-700 text-sm uppercase tracking-wider">Desglose Multi (3 Partes)</h4>
+                                <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-bold">BP Incluido</span>
                             </div>
 
-                            {formData.activationType !== 'BP_2_FAM' && (
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">SP Instalados</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={formData.spInstalled}
-                                        onChange={(e) => setFormData({ ...formData, spInstalled: e.target.value })}
-                                        className="w-full border border-slate-300 rounded-lg p-3 outline-none"
-                                    />
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Cantidad de SP instaladas</label>
+                                <input
+                                    type="number"
+                                    min="1"
+                                    required
+                                    value={formData.spInstalled}
+                                    onChange={(e) => setFormData({ ...formData, spInstalled: parseInt(e.target.value) || 0 })}
+                                    className="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-purple-400 bg-white"
+                                />
+                                <p className="text-[10px] text-slate-500 mt-2 italic">Estas son las SP que se cobrarán al cliente.</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Equipo de Red Adicional</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, taInstalled: true, mduInstalled: false })}
+                                        className={`p-3 rounded-xl border font-bold text-sm transition-all ${formData.taInstalled ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200 scale-[1.02]' : 'bg-white border-slate-200 text-slate-600 hover:border-purple-200'}`}
+                                    >
+                                        Incluye TA
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setFormData({ ...formData, mduInstalled: true, taInstalled: false })}
+                                        className={`p-3 rounded-xl border font-bold text-sm transition-all ${formData.mduInstalled ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200 scale-[1.02]' : 'bg-white border-slate-200 text-slate-600 hover:border-purple-200'}`}
+                                    >
+                                        Incluye MDU
+                                    </button>
                                 </div>
-                            )}
-                        </>
+                                {(!formData.taInstalled && !formData.mduInstalled) && (
+                                    <p className="text-[10px] text-red-500 mt-2 font-medium animate-pulse">Debes indicar si has instalado una TA o una MDU.</p>
+                                )}
+                            </div>
+                        </div>
+                    ) : (
+                        !['SDU', 'MDU'].includes(formData.activationType) && (
+                            <>
+                                <div className="space-y-3">
+                                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.hasMoreClients}
+                                            onChange={(e) => setFormData({ ...formData, hasMoreClients: e.target.checked })}
+                                            className="w-5 h-5 text-green-600 rounded"
+                                        />
+                                        <span className="text-slate-700">¿Hay más clientes potenciales?</span>
+                                    </label>
+
+                                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.taInstalled}
+                                            onChange={(e) => setFormData({ ...formData, taInstalled: e.target.checked })}
+                                            className="w-5 h-5 text-green-600 rounded"
+                                        />
+                                        <span className="text-slate-700 font-medium">¿TA Instalado?</span>
+                                    </label>
+                                </div>
+
+                                {formData.activationType !== 'BP_2_FAM' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">SP Instalados</label>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={formData.spInstalled}
+                                            onChange={(e) => setFormData({ ...formData, spInstalled: e.target.value })}
+                                            className="w-full border border-slate-300 rounded-lg p-3 outline-none"
+                                        />
+                                    </div>
+                                )}
+                            </>
+                        )
                     )}
 
                     {/* Technician Comments */}

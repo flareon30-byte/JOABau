@@ -138,6 +138,7 @@ const DashboardHome = () => {
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'completed'
     const [searchQuery, setSearchQuery] = useState('');
     const [dateFilter, setDateFilter] = useState('today'); // 'today' | 'tomorrow' | 'next3' | 'week' | 'all'
+    const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val || 0);
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const isActivator = ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER'].includes(user.role);
@@ -288,10 +289,10 @@ const DashboardHome = () => {
 
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
                         <div className="p-3 bg-purple-50 text-purple-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                            <span className="font-extrabold text-xs">MUL</span>
+                            <span className="font-extrabold text-xs">SP</span>
                         </div>
-                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.multi || 0}</h3>
-                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">Multi / BR</p>
+                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.sp || 0}</h3>
+                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">Activaciones SP</p>
                     </div>
 
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
@@ -300,6 +301,36 @@ const DashboardHome = () => {
                         </div>
                         <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.mdu || 0}</h3>
                         <p className="text-xs text-slate-400 font-bold uppercase mt-2">MDU</p>
+                    </div>
+                </div>
+
+                {/* Saturday Section */}
+                <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <Calendar className="text-orange-600" size={20} />
+                            <h3 className="font-bold text-slate-800">Producción de Sábados (Extra)</h3>
+                        </div>
+                        <span className="bg-orange-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-orange-200">Bonus Directo</span>
+                    </div>
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-50">
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Total Activaciones</p>
+                            <h4 className="text-2xl font-bold text-slate-800">{stats.saturdayActivations || 0}</h4>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-50">
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Rendimiento Extra</p>
+                            <h4 className="text-2xl font-bold text-orange-600">
+                                {showMoney ? money(saturdayMoney) : `${saturdayPoints || 0} Pts`}
+                            </h4>
+                        </div>
+                        <div className="col-span-2 bg-gradient-to-br from-orange-500 to-orange-600 p-4 rounded-2xl shadow-lg flex items-center justify-between text-white">
+                            <div>
+                                <p className="text-orange-100 text-[10px] font-bold uppercase mb-1">Ganancia Neta Estimada</p>
+                                <h4 className="text-2xl font-bold">{money(saturdayMoney)}</h4>
+                            </div>
+                            <TrendingUp className="opacity-20" size={40} />
+                        </div>
                     </div>
                 </div>
 

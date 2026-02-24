@@ -46,7 +46,7 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
             bonusCost: 0,
             saturdayCost: 0
         },
-        counts: { bp: 0, ta: 0, multi: 0, mdu: 0, saturday: 0 }
+        counts: { bp: 0, ta: 0, sp: 0, mdu: 0, saturday: 0 }
     };
 
     if (!financialConfig) return stats;
@@ -94,11 +94,12 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
 
     let standardUnits = 0;
     let taUnits = 0;
-    let multiUnits = 0;
+    let spUnits = 0;
     let mduUnits = 0;
     let saturdayInstalls = 0;
     let saturdayTa = 0;
-    let saturdayMulti = 0;
+    let saturdaySp = 0;
+    let saturdayMdu = 0;
 
     let totalRevenue = 0;
 
@@ -138,32 +139,57 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
         if (isSaturday) {
             stats.counts.saturday++;
 
-            if (type === 'BP' || type === 'BP_2_FAM') {
+            if (type === 'BR_MULTI') {
                 saturdayInstalls++;
                 stats.counts.bp++;
-            } else if (type === 'BR_MULTI') {
+
+                const sps = (act.spInstalled || 0);
+                saturdaySp += sps;
+                stats.counts.sp += sps;
+
+                if (act.taInstalled || (act.taCount && act.taCount > 0)) {
+                    saturdayTa++;
+                    stats.counts.ta++;
+                } else if (act.mduInstalled) {
+                    saturdayMdu++;
+                    stats.counts.mdu++;
+                }
+            } else if (type === 'BP' || type === 'BP_2_FAM') {
                 saturdayInstalls++;
-                saturdayMulti++;
-                stats.counts.multi++;
+                stats.counts.bp++;
             } else if (type === 'SDU') {
                 saturdayTa++;
                 stats.counts.ta++;
+            } else if (type === 'MDU') {
+                saturdayMdu++;
+                stats.counts.mdu++;
             }
 
-            // New Fields Tracking for Saturday
-            if (act.taCount > 0 && type !== 'SDU') {
+            // New Fields Tracking for Saturday (Legacy support)
+            if (act.taCount > 0 && type !== 'SDU' && type !== 'BR_MULTI') {
                 saturdayTa += act.taCount;
                 stats.counts.ta += act.taCount;
             }
         } else {
             // M-F
-            if (type === 'BP' || type === 'BP_2_FAM') {
+            if (type === 'BR_MULTI') {
+                standardUnits++; // This is BP
+                stats.counts.bp++;
+
+                const sps = (act.spInstalled || 0);
+                spUnits += sps;
+                stats.counts.sp += sps;
+
+                if (act.taInstalled || (act.taCount && act.taCount > 0)) {
+                    taUnits++;
+                    stats.counts.ta++;
+                } else if (act.mduInstalled) {
+                    mduUnits++;
+                    stats.counts.mdu++;
+                }
+            } else if (type === 'BP' || type === 'BP_2_FAM') {
                 standardUnits++;
                 stats.counts.bp++;
-            } else if (type === 'BR_MULTI') {
-                standardUnits++;
-                multiUnits++;
-                stats.counts.multi++;
             } else if (type === 'SDU') {
                 taUnits++;
                 stats.counts.ta++;
@@ -172,12 +198,12 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
                 stats.counts.mdu++;
             }
 
-            // New Fields Tracking for M-F
-            if (act.taCount > 0 && type !== 'SDU') {
+            // New Fields Tracking for M-F (Legacy support)
+            if (act.taCount > 0 && type !== 'SDU' && type !== 'BR_MULTI') {
                 taUnits += act.taCount;
                 stats.counts.ta += act.taCount;
             }
-            if (act.mduInstalled && type !== 'MDU') {
+            if (act.mduInstalled && type !== 'MDU' && type !== 'BR_MULTI') {
                 mduUnits++;
                 stats.counts.mdu++;
             }
@@ -216,7 +242,7 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
     // Cost: Double Bonus
     const varSaturdayCost =
         (saturdayInstalls * (financialConfig.bonusPerUnit || 0) * 2) +
-        (saturdayMulti * (financialConfig.bonusPerMulti || 0) * 2) +
+        (saturdaySp * (financialConfig.bonusPerMulti || 0) * 2) +
         (saturdayTa * (financialConfig.bonusPerTa || 0) * 2);
 
     saturdayCost = fixedSaturdayCost + varSaturdayCost;
@@ -243,10 +269,10 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
     const extraUnits = Math.max(0, totalInstalls - breakEvenUnits);
 
     const bonusPotInstalls = extraUnits * (financialConfig.bonusPerUnit || 0);
-    const bonusPotTa = taUnits * (financialConfig.bonusPerTa || 0); // Pure bonus? Code: `totalTaUnits * (group.bonusPerTa || 0)`
-    const bonusPotMulti = multiUnits * (financialConfig.bonusPerMulti || 0);
+    const bonusPotTa = taUnits * (financialConfig.bonusPerTa || 0);
+    const bonusPotSp = spUnits * (financialConfig.bonusPerMulti || 0);
 
-    const totalBonusPotential = bonusPotInstalls + bonusPotTa + bonusPotMulti;
+    const totalBonusPotential = bonusPotInstalls + bonusPotTa + bonusPotSp;
 
     // Surplus check
     // "We subtract the 'overhead' (Global Deficit) from the revenue before checking for surplus."
@@ -254,9 +280,9 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
     // `const surplus = Math.max(0, totalRevenue - totalAbsoluteExpenses - overhead);`
 
     const taCost = taUnits * (financialConfig.taPrice || 0); // "Variable Cost" M-F
-    const multiCost = multiUnits * (financialConfig.multiPrice || 0);
+    const spCost = spUnits * (financialConfig.multiPrice || 0);
 
-    const totalVariableCosts = taCost + multiCost + saturdayCost;
+    const totalVariableCosts = taCost + spCost + saturdayCost;
     const totalAbsoluteExpenses = groupExpenses + totalVariableCosts;
 
     const surplus = Math.max(0, totalRevenue - totalAbsoluteExpenses - overhead);
@@ -293,7 +319,7 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
     }
 
     stats.taUnits = taUnits + saturdayTa;
-    stats.multiUnits = multiUnits + saturdayMulti;
+    stats.spUnits = spUnits + saturdaySp;
 
     return stats;
 };
