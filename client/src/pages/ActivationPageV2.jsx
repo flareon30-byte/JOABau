@@ -288,15 +288,16 @@ const ActivationPageV2 = () => {
 
         const data = new FormData();
         data.append('activationType', formData.activationType);
-        data.append('familiesCount', formData.familiesCount);
-        data.append('apPorts', formData.apPorts);
-        data.append('hasMoreClients', formData.hasMoreClients);
+        // Ensure numeric fields are valid
+        data.append('familiesCount', parseInt(formData.familiesCount) || 1);
+        data.append('apPorts', parseInt(formData.apPorts) || 2);
+        data.append('taCount', parseInt(formData.taCount) || 0);
+        data.append('spInstalled', parseInt(formData.spInstalled) || 0);
+
         data.append('taInstalled', formData.taInstalled);
-        data.append('taCount', formData.taCount);
-        data.append('spInstalled', formData.spInstalled);
-        data.append('mduInstalled', formData.mduInstalled); // New
-        data.append('isRepair', formData.isRepair);         // New
-        data.append('homeIds', JSON.stringify([formData.homeId])); // Sending as array
+        data.append('mduInstalled', formData.mduInstalled);
+        data.append('isRepair', formData.isRepair);
+        data.append('homeIds', JSON.stringify([formData.homeId]));
         data.append('klsId', formData.klsId);
         data.append('description', formData.description);
 
@@ -314,17 +315,17 @@ const ActivationPageV2 = () => {
             }
         });
 
-        // Send list of existing photos that were KEPT
         data.append('existingPhotos', JSON.stringify(existingPaths));
 
         try {
             await api.post(`/api/activations/report/${appointment.addressId}`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            navigate('/dashboard'); // Return to dashboard
+            navigate('/dashboard');
         } catch (error) {
             console.error('Error submitting activation:', error);
-            alert('Error al guardar la activación. Inténtalo de nuevo.');
+            const serverMsg = error.response?.data?.message || error.message;
+            alert('Error al guardar la activación: ' + serverMsg);
         } finally {
             setSubmitting(false);
         }
