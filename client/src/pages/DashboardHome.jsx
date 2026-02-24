@@ -253,7 +253,12 @@ const DashboardHome = () => {
                                             style={{ width: `${progress}%` }}
                                         ></div>
                                     </div>
-                                    <p className="text-xs text-slate-300">Faltan {money(stats.target - stats.regularEarnings)} para cubrir tus gastos y cobrar extras.</p>
+                                    <p className="text-xs text-slate-300">
+                                        {stats.regularEarnings !== null
+                                            ? `Faltan ${money(stats.target - stats.regularEarnings)} para cubrir tus gastos y cobrar extras.`
+                                            : `Progreso actual: ${Math.round(progress)}%. Sigue así para llegar al objetivo.`
+                                        }
+                                    </p>
                                 </div>
                             </div>
                         )}

@@ -508,13 +508,22 @@ exports.getMyPayroll = async (req, res) => {
         const mySaturday = stats.saturdayPay / memberCount;
         const myTotal = (financialConfig?.salary || user.baseSalary) + myBonus + mySaturday;
 
+        const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user.role);
+
+        // PRIVACY FILTER
+        const filteredStats = { ...stats };
+        if (!isAdmin) {
+            delete filteredStats.totalRevenue;
+            delete filteredStats.netResult;
+            delete filteredStats.overheadApplied;
+        }
+
         res.json({
             financials: financialConfig,
             stats: {
-                ...stats,
+                ...filteredStats,
                 activationsCount: activations.length,
-                teamName: team?.name || 'Sin Equipo',
-                overheadApplied: overheadToCover // Inform frontend
+                teamName: team?.name || 'Sin Equipo'
             },
             personal: {
                 baseSalary: financialConfig?.salary || user.baseSalary || 0,

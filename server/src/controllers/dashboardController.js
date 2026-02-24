@@ -228,11 +228,14 @@ exports.getActivatorDashboard = async (req, res) => {
         const fin = settings.financials?.installers || {};
         const targetExpenses = (fin.salary || 0) + (fin.insurance || 0) + (fin.car || 0) + (fin.gas || 0) + (fin.materials || 0) + (fin.equipmentRent || 0);
 
+        // PRIVACY: Only show 'earnings' if user is Admin, otherwise just show progress towards target
+        const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.userRole);
+
         res.json({
             appointments,
             stats: {
-                regularEarnings,
-                saturdayEarnings,
+                regularEarnings: isAdmin ? regularEarnings : null,
+                saturdayEarnings: isAdmin ? saturdayEarnings : null,
                 regularActivations,
                 saturdayActivations,
                 counts,
