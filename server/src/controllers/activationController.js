@@ -122,9 +122,10 @@ exports.submitActivation = async (req, res) => {
             homeIdsArray = [homeId];
         }
 
-        const famCount = parseInt(familiesCount);
-        const spCount = parseInt(spInstalled || 0);
-        const taCountInt = parseInt(taCount || 0);
+        const famCount = parseInt(familiesCount) || 1;
+        const spCount = parseInt(spInstalled) || 0;
+        const taCountInt = parseInt(taCount) || 0;
+        const apPortsInt = parseInt(apPorts) || 1;
         const isMduBool = mduInstalled === 'true' || mduInstalled === true;
         const isRepairBool = isRepair === 'true' || isRepair === true;
 
@@ -204,7 +205,7 @@ exports.submitActivation = async (req, res) => {
             const data = {
                 activationType,
                 familiesCount: famCount,
-                apPorts: parseInt(apPorts || 0),
+                apPorts: apPortsInt,
                 hasMoreClients: hasMoreClients === 'true',
 
                 spInstalled: spCount,
