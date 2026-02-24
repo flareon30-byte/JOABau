@@ -377,7 +377,9 @@ exports.exportBillingExcel = async (req, res) => {
             NVT: i.address.nvt,
             Cliente: i.address.clientName,
             Tipo: i.activationType,
-            Puntos: i.points,
+            TA: (i.taInstalled || i.taCount > 0) ? (i.taCount || 1) : 0,
+            SP: i.spInstalled || 0,
+            MDU: i.mduInstalled ? 1 : 0,
             Familiares: i.familiesCount,
             Fotos: i.photos.length
         }));
