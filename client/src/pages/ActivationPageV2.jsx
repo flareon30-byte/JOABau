@@ -137,12 +137,28 @@ const ActivationPageV2 = () => {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
-                    // Set canvas size to image size
-                    canvas.width = img.width;
-                    canvas.height = img.height;
+                    // Resize to a maximum dimension to avoid massive files
+                    const MAX_DIM = 2000;
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > MAX_DIM) {
+                            height *= MAX_DIM / width;
+                            width = MAX_DIM;
+                        }
+                    } else {
+                        if (height > MAX_DIM) {
+                            width *= MAX_DIM / height;
+                            height = MAX_DIM;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
 
                     // Draw image
-                    ctx.drawImage(img, 0, 0);
+                    ctx.drawImage(img, 0, 0, width, height);
 
                     // Watermark Settings
                     const fontSize = Math.max(24, Math.floor(img.height * 0.03)); // Responsive font size
@@ -179,7 +195,7 @@ const ActivationPageV2 = () => {
                             preview: canvas.toDataURL('image/jpeg', 0.7),
                             name: file.name
                         });
-                    }, 'image/jpeg', 0.8);
+                    }, 'image/jpeg', 0.6);
                 };
                 img.src = e.target.result;
             };
