@@ -22,6 +22,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-supersecretkey}
     volumes:
       - ./server/uploads:/app/uploads
+      - ./server/backups:/app/backups
     depends_on:
       - postgres
     ports:

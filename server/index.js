@@ -16,6 +16,7 @@ const activationRoutes = require('./src/routes/activationRoutes');
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const payrollRoutes = require('./src/routes/payrollRoutes');
 const settingsRoutes = require('./src/routes/settingsRoutes');
+const { initBackupJob } = require('./src/services/backupService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -70,4 +71,5 @@ app.get(/(.*)/, (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
+    initBackupJob(); // Start automated backups (Sundays 03:00)
 });
