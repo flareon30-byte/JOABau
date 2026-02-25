@@ -314,10 +314,17 @@ const MyEarningsPage = () => {
                         <span className="text-xs font-bold text-slate-400 uppercase">Coste Total Equipo</span>
                         <span className="font-bold text-red-400">-{money(stats?.totalCost)}</span>
                     </div>
-                    <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-400 uppercase">Facturación Actual</span>
-                        <span className="font-bold text-blue-600">{money(stats?.totalRevenue)}</span>
-                    </div>
+                    {['ADMIN', 'SUPER_ADMIN'].includes(user.role) ? (
+                        <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-slate-400 uppercase">Facturación Actual</span>
+                            <span className="font-bold text-blue-600">{money(stats?.totalRevenue)}</span>
+                        </div>
+                    ) : (
+                        <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-slate-400 uppercase">Rendimiento</span>
+                            <span className="font-bold text-blue-600">{progressPercent.toFixed(1)}%</span>
+                        </div>
+                    )}
                 </div>
             </div>
 
