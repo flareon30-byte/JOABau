@@ -123,12 +123,23 @@ exports.getActivatorDashboard = async (req, res) => {
         // 1. Get User's Team
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: { teamId: true }
+            select: {
+                teamId: true,
+                team: {
+                    include: {
+                        _count: {
+                            select: { members: true }
+                        }
+                    }
+                }
+            }
         });
 
-        if (!user.teamId) {
+        if (!user || !user.teamId) {
             return res.json({ message: 'User not assigned to a team', appointments: [], stats: {} });
         }
+
+        const teamSize = user.team?._count?.members || 1;
 
         // 2. Get Team Appointments (Calendar)
         const today = new Date();
@@ -226,7 +237,14 @@ exports.getActivatorDashboard = async (req, res) => {
         };
 
         const fin = settings.financials?.installers || {};
-        const targetExpenses = (fin.salary || 0) + (fin.insurance || 0) + (fin.car || 0) + (fin.gas || 0) + (fin.materials || 0) + (fin.equipmentRent || 0);
+
+        // Use 21 days as standard for budget target to match calculator
+        const workingDays = 21;
+        const perPersonTotal = (fin.salary || 0) + (fin.insurance || 0) + (fin.materials || 0) + ((fin.dietasPerDay || 0) * workingDays);
+        const teamTotal = (fin.car || 0) + (fin.gas || 0) + (fin.equipmentRent || 0);
+
+        const targetExpenses = (perPersonTotal * teamSize) + teamTotal;
+        const breakEvenUnits = Math.ceil(targetExpenses / (fin.pricePerUnit || 250));
 
         // PRIVACY: Only show 'earnings' if user is Admin, otherwise just show progress towards target
         const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.userRole);
@@ -240,6 +258,7 @@ exports.getActivatorDashboard = async (req, res) => {
                 saturdayActivations,
                 counts,
                 target: targetExpenses > 0 ? targetExpenses : (settings.monthlyTargetPoints || 100),
+                breakEvenUnits,
                 isBonusMode: regularEarnings >= (targetExpenses > 0 ? targetExpenses : (settings.monthlyTargetPoints || 100))
             }
         });

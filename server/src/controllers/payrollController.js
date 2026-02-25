@@ -58,7 +58,8 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
     const count = teamSize;
     const numberOfTeams = 1; // By definition, we are calculating for ONE team here.
 
-    const workingDays = getWorkingDays(year, month);
+    // Use a fixed 21 days for budget-based target calculations to match the user's calculator
+    const workingDays = 21;
 
     // --- 1. EXPENSES (Costs) ---
 
@@ -85,7 +86,8 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
     // Per Team Expenses
     const car = financialConfig.car || 0;
     const gas = financialConfig.gas || 0;
-    const perTeamExpenses = car + gas;
+    const equipRent = financialConfig.equipmentRent || 0;
+    const perTeamExpenses = car + gas + equipRent;
 
     // Total Fixed Expenses for this Team
     const groupExpenses = (perPersonExpenses * teamSize) + perTeamExpenses;
