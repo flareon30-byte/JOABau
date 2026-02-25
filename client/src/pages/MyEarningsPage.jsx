@@ -142,23 +142,8 @@ const MyEarningsPage = () => {
     }
 
     // Safely derived values for simulator
-    const calculateProjectedTotal = (extraUnits) => {
-        const unitsDone = stats?.unitsDone || 0;
-        const breakEven = stats?.breakEvenUnits || 0;
-        const totalUnits = unitsDone + parseFloat(extraUnits || 0);
-
-        const extraAboveBE = Math.max(0, totalUnits - breakEven);
-
-        // Team Bonus Pool
-        const bonusPerUnit = financials?.bonusPerUnit || 0;
-        const projectedBonusPool = extraAboveBE * bonusPerUnit;
-
-        return projectedBonusPool;
-    };
-
-    const projectedTeamBonus = calculateProjectedTotal(simExtraUnits);
-    const currentTeamBonus = stats?.bonusPool || 0;
-    const teamBonusDiff = projectedTeamBonus - currentTeamBonus;
+    const teamBonusPerExtraUnit = financials?.bonusPerUnit || 0;
+    const additionalBonusPotential = simExtraUnits * teamBonusPerExtraUnit;
 
     // Progress
     const unitsDone = stats?.unitsDone || 0;
@@ -375,7 +360,7 @@ const MyEarningsPage = () => {
                         <input
                             type="range"
                             min="0"
-                            max="50"
+                            max="100"
                             step="1"
                             value={simExtraUnits}
                             onChange={(e) => setSimExtraUnits(parseInt(e.target.value))}
@@ -383,15 +368,15 @@ const MyEarningsPage = () => {
                         />
                         <div className="flex justify-between text-xs text-slate-400 mt-2 font-medium">
                             <span>0</span>
-                            <span>+25</span>
                             <span>+50</span>
+                            <span>+100</span>
                         </div>
                     </div>
 
                     <div className="text-center bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
                         <p className="text-slate-500 text-sm font-medium mb-1">El Bonus del Equipo aumentaría en:</p>
                         <p className="text-4xl font-bold text-joa-blue transition-all duration-300">
-                            +{money(teamBonusDiff)}
+                            +{money(additionalBonusPotential)}
                         </p>
                         <p className="text-xs text-blue-400 mt-2">
                             A repartir entre todos los miembros
