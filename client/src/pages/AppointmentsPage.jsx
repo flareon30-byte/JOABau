@@ -151,6 +151,18 @@ const AppointmentsPage = () => {
         }
     };
 
+    const handleResetOrder = async (addressId) => {
+        if (!window.confirm('¿Deseas devolver esta dirección a la lista de pendientes? Se reiniciará a estado "geplant".')) return;
+
+        try {
+            await api.put(`/api/appointments/address/${addressId}/order-status`, { status: 'geplant' });
+            fetchData();
+        } catch (err) {
+            console.error(err);
+            alert('Error al restaurar el estado de la dirección');
+        }
+    };
+
     const openContactModal = (address) => {
         setSelectedAddress(address);
         setIsContactModalOpen(true);
@@ -548,6 +560,7 @@ const AppointmentsPage = () => {
                                 <th className="p-4">Cliente</th>
                                 <th className="p-4">Proyecto</th>
                                 <th className="p-4">Estado (Causa)</th>
+                                <th className="p-4 text-right">Acciones</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -564,11 +577,20 @@ const AppointmentsPage = () => {
                                     </td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded-full text-xs font-bold ${address.orderStatus === 'CERRADA'
-                                                ? 'bg-green-100 text-green-700'
-                                                : 'bg-orange-100 text-orange-700'
+                                            ? 'bg-green-100 text-green-700'
+                                            : 'bg-orange-100 text-orange-700'
                                             }`}>
                                             {address.orderStatus}
                                         </span>
+                                    </td>
+                                    <td className="p-4 text-right">
+                                        <button
+                                            onClick={() => handleResetOrder(address.id)}
+                                            className="px-3 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-colors"
+                                            title="Devolver a lista de Pendientes"
+                                        >
+                                            Restaurar
+                                        </button>
                                     </td>
                                 </tr>
                             ))}
