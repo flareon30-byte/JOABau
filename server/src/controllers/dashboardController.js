@@ -8,6 +8,7 @@ exports.getDashboardStats = async (req, res) => {
                 where: {
                     sopladoStatus: 'OK',
                     project: { isDemo: req.isDemo || false }, // Filter by Demo
+                    orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
                     AND: [
                         { clientName: { not: { startsWith: '***' } } }
                     ],
