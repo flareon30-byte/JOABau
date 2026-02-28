@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText } from 'lucide-react';
+import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 
 const AppointmentsPage = () => {
@@ -128,6 +128,22 @@ const AppointmentsPage = () => {
         } catch (err) {
             console.error(err);
             alert('Error al actualizar protocolo');
+        }
+    };
+
+    const handleOrderStatusUpdate = async (addressId, newStatus) => {
+        let msg = newStatus === 'DERIVADA'
+            ? '¿Seguro que deseas derivar esta dirección a la empresa colaboradora? Desaparecerá de las pendientes.'
+            : '¿Seguro que deseas marcar esta orden como CERRADA? Significa que la empresa colaboradora ya la ha terminado. Desaparecerá de las pendientes.';
+
+        if (!window.confirm(msg)) return;
+
+        try {
+            await api.put(`/api/appointments/address/${addressId}/order-status`, { status: newStatus });
+            fetchData();
+        } catch (err) {
+            console.error(err);
+            alert(`Error al cambiar el estado a ${newStatus}`);
         }
     };
 
@@ -333,19 +349,37 @@ const AppointmentsPage = () => {
                                 </div>
                             )}
 
-                            <div className="flex gap-3 mt-4">
-                                <button
-                                    onClick={() => openContactModal(address)}
-                                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"
-                                >
-                                    <Phone size={18} /> Contactar
-                                </button>
-                                <button
-                                    onClick={() => openScheduleModal(address)}
-                                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors"
-                                >
-                                    <Calendar size={18} /> Agendar
-                                </button>
+                            <div className="flex flex-col gap-3 mt-4">
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => openContactModal(address)}
+                                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm font-semibold"
+                                    >
+                                        <Phone size={16} /> Contactar
+                                    </button>
+                                    <button
+                                        onClick={() => openScheduleModal(address)}
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm font-semibold shadow-sm"
+                                    >
+                                        <Calendar size={16} /> Agendar
+                                    </button>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => handleOrderStatusUpdate(address.id, 'DERIVADA')}
+                                        className="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
+                                        title="Avisar a la empresa colaboradora para que envíen responsable"
+                                    >
+                                        <Send size={14} /> Derivar
+                                    </button>
+                                    <button
+                                        onClick={() => handleOrderStatusUpdate(address.id, 'CERRADA')}
+                                        className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
+                                        title="Marcar como terminada por la empresa colaboradora"
+                                    >
+                                        <CheckSquare size={14} /> Orden Cerrada
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -375,19 +409,37 @@ const AppointmentsPage = () => {
                                 </div>
                             </div>
 
-                            <div className="flex gap-3 mt-4">
-                                <button
-                                    onClick={() => openContactModal(address)}
-                                    className="flex-1 bg-white hover:bg-slate-50 text-slate-700 py-2 rounded-lg flex items-center justify-center gap-2 border border-slate-200 transition-colors"
-                                >
-                                    <Phone size={18} /> Contactar
-                                </button>
-                                <button
-                                    onClick={() => openScheduleModal(address, null, 'PROTOCOL')}
-                                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm"
-                                >
-                                    <Calendar size={18} /> Agendar Protocolo
-                                </button>
+                            <div className="flex flex-col gap-3 mt-4">
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => openContactModal(address)}
+                                        className="flex-1 bg-white hover:bg-slate-50 text-slate-700 py-2 rounded-lg flex items-center justify-center gap-2 border border-slate-200 transition-colors text-sm font-semibold"
+                                    >
+                                        <Phone size={16} /> Contactar
+                                    </button>
+                                    <button
+                                        onClick={() => openScheduleModal(address, null, 'PROTOCOL')}
+                                        className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm text-sm font-semibold"
+                                    >
+                                        <Calendar size={16} /> Agendar Protocolo
+                                    </button>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => handleOrderStatusUpdate(address.id, 'DERIVADA')}
+                                        className="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
+                                        title="Avisar a la empresa colaboradora para que envíen responsable"
+                                    >
+                                        <Send size={14} /> Derivar
+                                    </button>
+                                    <button
+                                        onClick={() => handleOrderStatusUpdate(address.id, 'CERRADA')}
+                                        className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
+                                        title="Marcar como terminada por la empresa colaboradora"
+                                    >
+                                        <CheckSquare size={14} /> Orden Cerrada
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}

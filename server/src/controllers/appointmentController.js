@@ -9,6 +9,7 @@ exports.getPendingAppointments = async (req, res) => {
                     { clientName: { not: { startsWith: '***' } } },
                     { sopladoStatus: 'OK' },
                     { project: { isDemo: req.isDemo || false } },
+                    { orderStatus: { notIn: ['CERRADA', 'DERIVADA'] } },
                     {
                         OR: [
                             { appointment: { is: null } },
@@ -281,5 +282,21 @@ exports.deleteAppointment = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error eliminando cita' });
+    }
+};
+
+// Update order status (for Derivar / Cerrar)
+exports.updateOrderStatus = async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+    try {
+        const address = await prisma.address.update({
+            where: { id },
+            data: { orderStatus: status }
+        });
+        res.json(address);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error updating order status' });
     }
 };

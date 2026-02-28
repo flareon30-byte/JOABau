@@ -23,5 +23,6 @@ router.put('/:id/status', checkRole(operationalRoles), appointmentController.upd
 router.put('/protocol-status/:addressId', checkRole(['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN']), appointmentController.updateProtocolStatus);
 router.post('/:id/recite', checkRole(operationalRoles), appointmentController.reciteAppointment);
 router.delete('/:id', checkRole(allowedRoles), appointmentController.deleteAppointment);
+router.put('/address/:id/order-status', checkRole(allowedRoles), appointmentController.updateOrderStatus);
 
 module.exports = router;
