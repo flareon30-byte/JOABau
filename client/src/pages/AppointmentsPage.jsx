@@ -8,6 +8,7 @@ const AppointmentsPage = () => {
     const [searchParams] = useSearchParams();
     const [pendingAddresses, setPendingAddresses] = useState([]);
     const [scheduledAppointments, setScheduledAppointments] = useState([]);
+    const [escalatedAddresses, setEscalatedAddresses] = useState([]);
     const [teams, setTeams] = useState([]);
     const [view, setView] = useState('pending'); // 'pending' or 'scheduled'
     const [scheduledViewMode, setScheduledViewMode] = useState('list'); // 'list' or 'calendar'
@@ -35,16 +36,19 @@ const AppointmentsPage = () => {
 
     const fetchData = async () => {
         try {
-            const [pendingRes, scheduledRes] = await Promise.all([
+            const [pendingRes, scheduledRes, escalatedRes] = await Promise.all([
                 api.get('/api/appointments/pending'),
-                api.get('/api/appointments/scheduled')
+                api.get('/api/appointments/scheduled'),
+                api.get('/api/appointments/escalated')
             ]);
             setPendingAddresses(pendingRes.data || []);
             setScheduledAppointments(scheduledRes.data || []);
+            setEscalatedAddresses(escalatedRes.data || []);
         } catch (error) {
             console.error('Error fetching appointments:', error);
             setPendingAddresses([]);
             setScheduledAppointments([]);
+            setEscalatedAddresses([]);
         }
     };
 
@@ -225,6 +229,7 @@ const AppointmentsPage = () => {
     );
 
     const filteredScheduled = filterAppointments(scheduledAppointments);
+    const filteredEscalated = filterAppointments(escalatedAddresses);
 
     return (
         <div className="space-y-6">
@@ -251,6 +256,13 @@ const AppointmentsPage = () => {
                             }`}
                     >
                         Agendadas ({filteredScheduled.length})
+                    </button>
+                    <button
+                        onClick={() => setView('escalated')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${view === 'escalated' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+                            }`}
+                    >
+                        Archivo ({filteredEscalated.length})
                     </button>
                 </div>
             </div>
@@ -523,6 +535,49 @@ const AppointmentsPage = () => {
                         </div>
                     ) : (
                         <CalendarView appointments={filteredScheduled} />
+                    )}
+                </div>
+            )}
+
+            {view === 'escalated' && (
+                <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <table className="w-full text-left text-sm text-slate-600">
+                        <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200">
+                            <tr>
+                                <th className="p-4">Dirección</th>
+                                <th className="p-4">Cliente</th>
+                                <th className="p-4">Proyecto</th>
+                                <th className="p-4">Estado (Causa)</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filteredEscalated.map(address => (
+                                <tr key={address.id} className="hover:bg-slate-50">
+                                    <td className="p-4">
+                                        <div className="font-bold text-slate-800">{address.street} {address.number}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        <div className="text-slate-600">{address.clientName || 'N/A'}</div>
+                                    </td>
+                                    <td className="p-4">
+                                        {address.project?.name || 'Otro'}
+                                    </td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${address.orderStatus === 'CERRADA'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-orange-100 text-orange-700'
+                                            }`}>
+                                            {address.orderStatus}
+                                        </span>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                    {filteredEscalated.length === 0 && (
+                        <div className="text-center py-12 text-slate-400">
+                            No hay direcciones archivadas.
+                        </div>
                     )}
                 </div>
             )}

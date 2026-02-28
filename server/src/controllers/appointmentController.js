@@ -36,6 +36,33 @@ exports.getPendingAppointments = async (req, res) => {
     }
 };
 
+// Get escalated/derived/closed addresses
+exports.getEscalatedAppointments = async (req, res) => {
+    try {
+        const addresses = await prisma.address.findMany({
+            where: {
+                AND: [
+                    { project: { isDemo: req.isDemo || false } },
+                    { orderStatus: { in: ['CERRADA', 'DERIVADA'] } }
+                ]
+            },
+            include: {
+                project: true,
+                appointment: {
+                    include: {
+                        comments: true
+                    }
+                }
+            },
+            orderBy: { updatedAt: 'desc' }
+        });
+        res.json(addresses);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching escalated appointments' });
+    }
+};
+
 // Log a contact attempt
 exports.logContactAttempt = async (req, res) => {
     const { addressId } = req.params;

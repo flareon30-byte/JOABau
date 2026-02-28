@@ -14,6 +14,7 @@ const repairController = require('../controllers/repairController');
 
 router.get('/pending', checkRole(allowedRoles), appointmentController.getPendingAppointments);
 router.get('/scheduled', checkRole(allowedRoles), appointmentController.getScheduledAppointments);
+router.get('/escalated', checkRole(allowedRoles), appointmentController.getEscalatedAppointments);
 router.post('/log-contact/:addressId', checkRole(allowedRoles), appointmentController.logContactAttempt);
 router.post('/schedule/:addressId', checkRole(allowedRoles), appointmentController.scheduleAppointment);
 router.post('/repair/:addressId', checkRole(allowedRoles), repairController.createRepairAppointment); // New Endpoint for Repairs
