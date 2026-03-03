@@ -20,7 +20,19 @@ router.post('/schedule/:addressId', checkRole(allowedRoles), appointmentControll
 router.post('/repair/:addressId', checkRole(allowedRoles), repairController.createRepairAppointment); // New Endpoint for Repairs
 
 const operationalRoles = ['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN', 'PROTOCOL_MANAGER', 'ACTIVATOR', 'BLOWER'];
-const upload = require('../middleware/uploadMiddleware');
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/')
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+        const ext = file.originalname.split('.').pop();
+        cb(null, file.fieldname + '-' + uniqueSuffix + '.' + ext)
+    }
+});
+const upload = multer({ storage: storage });
 
 router.put('/:id/status', checkRole(operationalRoles), appointmentController.updateStatus);
 router.put('/protocol-status/:addressId', checkRole(['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN']), appointmentController.updateProtocolStatus);
