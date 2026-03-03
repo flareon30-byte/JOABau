@@ -247,6 +247,7 @@ exports.reciteAppointment = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
     const userId = req.userId;
+    const photos = req.files ? req.files.map(f => `/uploads/${f.filename}`) : [];
 
     try {
         const user = await prisma.user.findUnique({
@@ -260,7 +261,11 @@ exports.reciteAppointment = async (req, res) => {
             data: {
                 status: 'RECITAR',
                 comments: {
-                    create: { content: `[RECITAR] Solicitud de recita: ${reason}`, authorName }
+                    create: {
+                        content: `[RECITAR/DERIVAR] Solicitud: ${reason}`,
+                        authorName,
+                        photos
+                    }
                 }
             }
         });

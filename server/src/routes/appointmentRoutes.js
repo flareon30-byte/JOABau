@@ -20,9 +20,11 @@ router.post('/schedule/:addressId', checkRole(allowedRoles), appointmentControll
 router.post('/repair/:addressId', checkRole(allowedRoles), repairController.createRepairAppointment); // New Endpoint for Repairs
 
 const operationalRoles = ['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN', 'PROTOCOL_MANAGER', 'ACTIVATOR', 'BLOWER'];
+const upload = require('../middleware/uploadMiddleware');
+
 router.put('/:id/status', checkRole(operationalRoles), appointmentController.updateStatus);
 router.put('/protocol-status/:addressId', checkRole(['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN']), appointmentController.updateProtocolStatus);
-router.post('/:id/recite', checkRole(operationalRoles), appointmentController.reciteAppointment);
+router.post('/:id/recite', checkRole(operationalRoles), upload.array('photos', 5), appointmentController.reciteAppointment);
 router.delete('/:id', checkRole(allowedRoles), appointmentController.deleteAppointment);
 router.put('/address/:id/order-status', checkRole(allowedRoles), appointmentController.updateOrderStatus);
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target, Camera, Trash2 } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, colorClass, subtext }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group">
@@ -21,16 +21,43 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
     const [reciteReason, setReciteReason] = useState('');
     const [isReciting, setIsReciting] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [photos, setPhotos] = useState([]);
 
     if (!appointment) return null;
+
+    const handlePhotoSelect = (e) => {
+        if (e.target.files) {
+            const newPhotos = Array.from(e.target.files).map(file => ({
+                file,
+                preview: URL.createObjectURL(file)
+            }));
+            setPhotos(prev => [...prev, ...newPhotos]);
+        }
+    };
+
+    const removePhoto = (index) => {
+        setPhotos(prev => {
+            const newPhotos = [...prev];
+            URL.revokeObjectURL(newPhotos[index].preview);
+            newPhotos.splice(index, 1);
+            return newPhotos;
+        });
+    };
 
     const handleRecite = async () => {
         if (!reciteReason) return alert('Por favor, indica el motivo.');
         setLoading(true);
         try {
-            await api.post(`/api/appointments/${appointment.id}/recite`, {
-                reason: reciteReason
+            const formData = new FormData();
+            formData.append('reason', reciteReason);
+            photos.forEach(p => {
+                formData.append('photos', p.file);
             });
+
+            await api.post(`/api/appointments/${appointment.id}/recite`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
             if (onUpdate) onUpdate();
             onClose();
         } catch (error) {
@@ -48,19 +75,47 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
                     <X size={24} />
                 </button>
                 <h3 className="text-xl font-bold text-slate-800 mb-1">
-                    {isReciting ? 'Solicitar Recita' : `${appointment.address.street} ${appointment.address.number}`}
+                    {isReciting ? 'Solicitar Recita o Derivar' : `${appointment.address.street} ${appointment.address.number}`}
                 </h3>
                 <p className="text-slate-500 text-sm mb-6">{appointment.address.project.name}</p>
 
                 {isReciting ? (
                     <div className="space-y-4">
-                        <p className="text-sm text-slate-600">Por favor, explica el motivo. Esto enviará una notificación al Back Office.</p>
+                        <p className="text-sm text-slate-600">Por favor, explica detalladamente el motivo. Esto enviará una notificación al Back Office y cambiará el estado.</p>
                         <textarea
                             value={reciteReason}
                             onChange={(e) => setReciteReason(e.target.value)}
-                            placeholder="Motivo de la recita..."
-                            className="w-full border border-slate-300 rounded-lg p-3 h-32 focus:ring-2 focus:ring-joa-blue outline-none resize-none"
+                            placeholder="Motivo (ej: Cliente no está, 3 familias en vez de 1, etc.)..."
+                            className="w-full border border-slate-300 rounded-lg p-3 h-24 focus:ring-2 focus:ring-joa-blue outline-none resize-none"
                         />
+
+                        <div>
+                            <div className="flex justify-between items-center mb-2">
+                                <label className="text-sm font-bold text-slate-700">Fotos (Opcional)</label>
+                                <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-semibold flex items-center gap-2 transition-colors">
+                                    <Camera size={16} /> Añadir
+                                    <input type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoSelect} />
+                                </label>
+                            </div>
+
+                            {photos.length > 0 && (
+                                <div className="grid grid-cols-4 gap-2 mt-3">
+                                    {photos.map((photo, idx) => (
+                                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-slate-200 group">
+                                            <img src={photo.preview} alt={`Preview ${idx}`} className="w-full h-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => removePhoto(idx)}
+                                                className="absolute top-1 right-1 bg-white/90 p-1 rounded-md text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setIsReciting(false)}
@@ -102,7 +157,7 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
                                     onClick={() => setIsReciting(true)}
                                     className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-colors"
                                 >
-                                    Recitar
+                                    Recitar o Derivar
                                 </button>
                             )}
                             <button
