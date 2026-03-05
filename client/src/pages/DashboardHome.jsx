@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target, Camera, Trash2 } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target, Camera, Trash2, Navigation } from 'lucide-react';
 
 const StatCard = ({ title, value, icon: Icon, colorClass, subtext }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group">
@@ -44,6 +44,16 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
         });
     };
 
+    const openMap = (type) => {
+        if (!appointment) return;
+        const query = encodeURIComponent(`${appointment.address.street} ${appointment.address.number || ''}, ${appointment.address.city || ''}`);
+        if (type === 'waze') {
+            window.open(`https://waze.com/ul?q=${query}`, '_blank');
+        } else {
+            window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+        }
+    };
+
     const handleRecite = async () => {
         if (!reciteReason) return alert('Por favor, indica el motivo.');
         setLoading(true);
@@ -74,10 +84,24 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
                 <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
                     <X size={24} />
                 </button>
-                <h3 className="text-xl font-bold text-slate-800 mb-1">
-                    {isReciting ? 'Solicitar Recita o Derivar' : `${appointment.address.street} ${appointment.address.number}`}
-                </h3>
-                <p className="text-slate-500 text-sm mb-6">{appointment.address.project.name}</p>
+                <div className="flex justify-between items-start mb-1 pr-8">
+                    <h3 className="text-xl font-bold text-slate-800">
+                        {isReciting ? 'Solicitar Recita o Derivar' : `${appointment.address.street} ${appointment.address.number}`}
+                    </h3>
+                </div>
+                <div className="flex justify-between items-center mb-6">
+                    <p className="text-slate-500 text-sm">{appointment.address.project.name}</p>
+                    {!isReciting && (
+                        <div className="flex gap-2">
+                            <button onClick={() => openMap('gmaps')} className="flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-xs font-bold transition-colors" title="Abrir en Google Maps">
+                                <MapPin size={14} /> Maps
+                            </button>
+                            <button onClick={() => openMap('waze')} className="flex items-center gap-1 px-3 py-1.5 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-100 text-xs font-bold transition-colors" title="Abrir en Waze">
+                                <Navigation size={14} /> Waze
+                            </button>
+                        </div>
+                    )}
+                </div>
 
                 {isReciting ? (
                     <div className="space-y-4">
