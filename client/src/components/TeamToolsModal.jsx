@@ -43,14 +43,13 @@ const TeamToolsModal = ({ team, onClose }) => {
         }
 
         try {
-            await api.post(`/api/tools/team/${team.id}`, formData, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
+            await api.post(`/api/tools/team/${team.id}`, formData);
             setNewTool({ name: '', serialNumber: '', status: 'ACTIVE', photos: [] });
             setPhotoPreview(null);
             fetchTools();
         } catch (error) {
-            alert('Error adding tool');
+            console.error(error);
+            alert('Error adding tool: ' + (error.response?.data?.message || error.message));
         }
     };
 
