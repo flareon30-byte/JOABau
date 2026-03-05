@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import api from '../api/axios';
-import { Camera, Trash2, PenTool, X, Upload } from 'lucide-react';
+import { Camera, Trash2, PenTool, X, Upload, Loader2, ScanLine } from 'lucide-react';
+import Tesseract from 'tesseract.js';
 
 const TeamToolsModal = ({ team, onClose }) => {
     const [tools, setTools] = useState([]);
@@ -8,6 +9,8 @@ const TeamToolsModal = ({ team, onClose }) => {
     const [newTool, setNewTool] = useState({ name: '', serialNumber: '', status: 'ACTIVE', photos: [] });
     const fileInputRef = useRef(null);
     const [photoPreview, setPhotoPreview] = useState(null);
+    const [isScanning, setIsScanning] = useState(false);
+    const [scanProgress, setScanProgress] = useState('');
 
     const fetchTools = async () => {
         try {
@@ -24,11 +27,98 @@ const TeamToolsModal = ({ team, onClose }) => {
         fetchTools();
     }, [team.id]);
 
-    const handlePhotoChange = (e) => {
+    const compressImage = (file) => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const max_size = 1200;
+                    if (width > height && width > max_size) {
+                        height *= max_size / width;
+                        width = max_size;
+                    } else if (height > max_size) {
+                        width *= max_size / height;
+                        height = max_size;
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    canvas.toBlob((blob) => {
+                        const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                            type: 'image/jpeg',
+                            lastModified: Date.now(),
+                        });
+                        resolve(newFile);
+                    }, 'image/jpeg', 0.82);
+                };
+                img.onerror = (error) => reject(error);
+            };
+            reader.onerror = (error) => reject(error);
+        });
+    };
+
+    const handlePhotoChange = async (e) => {
         const file = e.target.files[0];
-        if (file) {
-            setNewTool({ ...newTool, photos: [file] });
+        if (!file) return;
+
+        try {
+            setScanProgress('Comprimiendo foto...');
+            setIsScanning(true);
+            const compressedFile = await compressImage(file);
+
+            setNewTool(prev => ({ ...prev, photos: [compressedFile] }));
+            setPhotoPreview(URL.createObjectURL(compressedFile));
+
+            setScanProgress('Escaneando número de serie (OCR)...');
+            Tesseract.recognize(
+                compressedFile,
+                'eng',
+                {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            setScanProgress(`Escaneando... ${Math.round(m.progress * 100)}%`);
+                        }
+                    }
+                }
+            ).then(({ data: { text } }) => {
+                const snMatch = text.match(/(?:S\/N|SN|Serial(?: Number)?|No\.?)[ \.:#]*([A-Z0-9\-\_]{5,20})/i);
+
+                let foundSr = '';
+                if (snMatch && snMatch[1]) {
+                    foundSr = snMatch[1].toUpperCase();
+                } else {
+                    const matches = text.match(/[A-Z0-9]{6,25}/g);
+                    if (matches) {
+                        foundSr = matches.reduce((a, b) => a.length > b.length ? a : b).toUpperCase();
+                    }
+                }
+
+                if (foundSr) {
+                    setNewTool(prev => ({ ...prev, serialNumber: foundSr }));
+                    setScanProgress(`¡Número detectado! S/N: ${foundSr}`);
+                    setTimeout(() => setIsScanning(false), 3000);
+                } else {
+                    setScanProgress('No se pudo reconocer un S/N. Por favor, revísalo.');
+                    setTimeout(() => setIsScanning(false), 4000);
+                }
+            }).catch(e => {
+                console.error("OCR error:", e);
+                setScanProgress('Error en el OCR. Por favor, introdúzcalo manualmente.');
+                setTimeout(() => setIsScanning(false), 4000);
+            });
+
+        } catch (error) {
+            console.error('Image compression error:', error);
+            setNewTool(prev => ({ ...prev, photos: [file] }));
             setPhotoPreview(URL.createObjectURL(file));
+            setIsScanning(false);
         }
     };
 
@@ -128,7 +218,7 @@ const TeamToolsModal = ({ team, onClose }) => {
                                     </button>
                                 </div>
                                 <p className="text-xs text-slate-400 mt-1">
-                                    💡 Haz una foto a la etiqueta para guardar el número de serie.
+                                    💡 Haz una foto a la etiqueta para extraer el número de serie automáticamente.
                                 </p>
                             </div>
 
@@ -145,15 +235,31 @@ const TeamToolsModal = ({ team, onClose }) => {
                             {/* Photo Preview */}
                             {photoPreview && (
                                 <div className="mt-2 relative group rounded-lg overflow-hidden border border-slate-200">
-                                    <img src={photoPreview} alt="Preview" className="w-full h-40 object-cover" />
+                                    <img src={photoPreview} alt="Preview" className={`w-full h-40 object-cover transition-all ${isScanning ? 'opacity-40 blur-sm scale-105' : ''}`} />
+
+                                    {isScanning && (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-800 bg-white/60 backdrop-blur-sm z-10 transition-all">
+                                            <ScanLine size={32} className="mb-2 text-blue-600 animate-pulse" />
+                                            <p className="text-sm font-bold text-blue-800 text-center px-4 animate-pulse">{scanProgress}</p>
+                                        </div>
+                                    )}
+
                                     <button
                                         type="button"
-                                        onClick={() => { setPhotoPreview(null); setNewTool({ ...newTool, photos: [] }) }}
-                                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                        disabled={isScanning}
+                                        onClick={() => { setPhotoPreview(null); setNewTool(prev => ({ ...prev, photos: [] })) }}
+                                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity z-20 disabled:hidden"
                                     >
                                         <X size={16} />
                                     </button>
                                 </div>
+                            )}
+
+                            {scanProgress && !isScanning && scanProgress.includes('No se pudo') && (
+                                <p className="text-xs text-orange-600 mt-1 font-medium">{scanProgress}</p>
+                            )}
+                            {scanProgress && !isScanning && scanProgress.includes('detectado') && (
+                                <p className="text-xs text-green-600 mt-1 font-bold">{scanProgress}</p>
                             )}
 
                             <div>
@@ -171,9 +277,11 @@ const TeamToolsModal = ({ team, onClose }) => {
 
                             <button
                                 type="submit"
-                                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                                disabled={isScanning}
+                                className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 disabled:cursor-not-allowed text-white py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
                             >
-                                <Upload size={18} /> Guardar Item
+                                {isScanning ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+                                {isScanning ? 'Procesando...' : 'Guardar Item'}
                             </button>
                         </form>
                     </div>
