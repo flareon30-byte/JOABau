@@ -277,10 +277,6 @@ const SettingsPage = () => {
                                         </div>
                                     </>
                                 )}
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase">Tarifa Sábado Fix (Por día/persona)</label>
-                                    <input type="number" value={data.saturdayRate} onChange={(e) => handleFinancialChange(groupKey, 'saturdayRate', e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500" />
-                                </div>
                                 {groupKey === 'blowers' && (
                                     <div>
                                         <label className="block text-xs font-bold text-green-700 uppercase">Bonus Sábado (Por Vivienda Soplada)</label>
