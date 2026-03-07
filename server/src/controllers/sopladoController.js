@@ -61,6 +61,13 @@ exports.submitSopladoReport = async (req, res) => {
 
     try {
         const photoPaths = files ? files.map(f => f.path) : [];
+        const isSaturday = new Date().getDay() === 6;
+
+        let teamId = null;
+        if (req.userId) {
+            const user = await prisma.user.findUnique({ where: { id: req.userId } });
+            teamId = user?.teamId || null;
+        }
 
         // 1. Get the target address details to identify the physical location
         const targetAddress = await prisma.address.findUnique({
@@ -100,7 +107,9 @@ exports.submitSopladoReport = async (req, res) => {
                 tk: tk || '',
                 tubeColor: tubeColor || '',
                 failureReason: status === 'FALLIDO' ? failureReason : null,
-                photos: photoPaths
+                photos: photoPaths,
+                teamId: teamId,
+                isSaturday: isSaturday
             };
 
             // We must upsert one by one because sopladoInfo is 1:1 unique on addressId
@@ -142,6 +151,13 @@ exports.toggleSopladoStatus = async (req, res) => {
             return res.status(404).json({ message: 'Address not found' });
         }
 
+        const isSaturday = new Date().getDay() === 6;
+        let teamId = null;
+        if (req.userId) {
+            const user = await prisma.user.findUnique({ where: { id: req.userId } });
+            teamId = user?.teamId || null;
+        }
+
         // Apply to ALL addresses at this location (same street/number logic)
         const relatedAddresses = await prisma.address.findMany({
             where: {
@@ -174,7 +190,9 @@ exports.toggleSopladoStatus = async (req, res) => {
                     tk: 'N/A',
                     tubeColor: 'N/A',
                     failureReason: null,
-                    photos: []
+                    photos: [],
+                    teamId: teamId,
+                    isSaturday: isSaturday
                 };
 
                 // We promise.all the upserts
@@ -220,6 +238,13 @@ exports.bulkUpdateSopladoStatus = async (req, res) => {
                 const target = await prisma.address.findUnique({ where: { id } });
                 if (!target) continue;
 
+                const isSaturday = new Date().getDay() === 6;
+                let teamId = null;
+                if (req.userId) {
+                    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+                    teamId = user?.teamId || null;
+                }
+
                 // 2. Find all related (same project, street, number) to ensure consistent update for location
                 const related = await prisma.address.findMany({
                     where: {
@@ -245,7 +270,9 @@ exports.bulkUpdateSopladoStatus = async (req, res) => {
                         tk: 'N/A',
                         tubeColor: 'N/A',
                         failureReason: null,
-                        photos: []
+                        photos: [],
+                        teamId: teamId,
+                        isSaturday: isSaturday
                     };
 
                     // Upsert individually

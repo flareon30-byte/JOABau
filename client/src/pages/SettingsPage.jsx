@@ -36,9 +36,10 @@ const SettingsPage = () => {
             gas: 300,
             equipmentRent: 0,
             materials: 50,
-            pricePerUnit: 0.40,
-            bonusPerUnit: 0.05,
-            saturdayRate: 40
+            pricePerUnit: 15, // Vivienda Soplada
+            bonusPerUnit: 3,
+            saturdayRate: 0,
+            saturdayBonusPerUnit: 5
         },
         backOffice: {
             salary: 1500,
@@ -225,7 +226,7 @@ const SettingsPage = () => {
                             <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2"><DollarSign size={18} /> Facturación (Cliente)</h4>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-blue-600 uppercase">Precio Base ({groupKey === 'installers' ? 'Instalación' : 'Metro'})</label>
+                                    <label className="block text-xs font-bold text-blue-600 uppercase">Precio Base ({groupKey === 'installers' ? 'Instalación' : 'Vivienda Soplada'})</label>
                                     <input type="number" step="0.01" value={data.pricePerUnit} onChange={(e) => handleFinancialChange(groupKey, 'pricePerUnit', e.target.value)} className="w-full p-2 border border-blue-200 rounded-lg focus:ring-2 focus:ring-blue-500" />
                                 </div>
                                 {groupKey === 'installers' && (
@@ -256,7 +257,7 @@ const SettingsPage = () => {
                             <h4 className="font-bold text-green-800 mb-4 flex items-center gap-2"><DollarSign size={18} /> Bonus y Extras (Técnico)</h4>
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-green-600 uppercase">Bonus Base ({groupKey === 'installers' ? 'Instalación' : 'Metro'})</label>
+                                    <label className="block text-xs font-bold text-green-600 uppercase">Bonus Base ({groupKey === 'installers' ? 'Instalación' : 'Vivienda Soplada'})</label>
                                     <input type="number" step="0.01" value={data.bonusPerUnit} onChange={(e) => handleFinancialChange(groupKey, 'bonusPerUnit', e.target.value)} className="w-full p-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500" />
                                     <p className="text-[10px] text-green-700 mt-1">* Se paga si se supera el Break-even</p>
                                 </div>
@@ -277,9 +278,16 @@ const SettingsPage = () => {
                                     </>
                                 )}
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase">Tarifa Sábado (Por día)</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase">Tarifa Sábado Fix (Por día/persona)</label>
                                     <input type="number" value={data.saturdayRate} onChange={(e) => handleFinancialChange(groupKey, 'saturdayRate', e.target.value)} className="w-full p-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-slate-500" />
                                 </div>
+                                {groupKey === 'blowers' && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-green-700 uppercase">Bonus Sábado (Por Vivienda Soplada)</label>
+                                        <input type="number" step="0.01" value={data.saturdayBonusPerUnit || 0} onChange={(e) => handleFinancialChange(groupKey, 'saturdayBonusPerUnit', e.target.value)} className="w-full p-2 border border-green-200 rounded-lg focus:ring-2 focus:ring-green-500" />
+                                        <p className="text-[10px] text-green-700 mt-1">* Bono cobrado por unidad el sábado.</p>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

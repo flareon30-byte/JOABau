@@ -241,9 +241,13 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
     // Cost: Days * Rate * Members (Assuming Rate is per person)
     const fixedSaturdayCost = saturdaysWorkedCount * (financialConfig.saturdayRate || 0) * teamSize;
 
-    // Cost: Double Bonus
+    // Cost: Bonus
+    const baseSatBonus = financialConfig.saturdayBonusPerUnit !== undefined
+        ? financialConfig.saturdayBonusPerUnit
+        : (financialConfig.bonusPerUnit || 0) * 2;
+
     const varSaturdayCost =
-        (saturdayInstalls * (financialConfig.bonusPerUnit || 0) * 2) +
+        (saturdayInstalls * baseSatBonus) +
         (saturdaySp * (financialConfig.bonusPerMulti || 0) * 2) +
         (saturdayTa * (financialConfig.bonusPerTa || 0) * 2);
 
@@ -265,9 +269,9 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
 
     // Bonus Potential
     // "Potential should be based on EXTRA units (above break-even)."
-    // "Multi/TA revenue helps generate Surplus... BUT it should not lower the Installation Break Even bar."
+    // Saturday units are excluded from M-F break even and paid directly.
 
-    const totalInstalls = stats.unitsDone; // Base installs
+    const totalInstalls = standardUnits; // M-F only
     const extraUnits = Math.max(0, totalInstalls - breakEvenUnits);
 
     const bonusPotInstalls = extraUnits * (financialConfig.bonusPerUnit || 0);
@@ -315,7 +319,9 @@ const calculateGroupFinancials = (activations, financialConfig, teamMembers, ove
 
     // Progress
     if (stats.breakEvenUnits > 0) {
-        stats.progressPercent = Math.min(100, (stats.unitsDone / stats.breakEvenUnits) * 100);
+        // Exclude saturdayInstalls from the UI progress bar to show purely M-F effort
+        const baseUnitsDone = stats.unitsDone - saturdayInstalls;
+        stats.progressPercent = Math.min(100, (baseUnitsDone / stats.breakEvenUnits) * 100);
     } else {
         stats.progressPercent = 100;
     }
@@ -386,15 +392,31 @@ exports.getMyPayroll = async (req, res) => {
 
         let activations = [];
         if (teamId && teamId !== 'virtual') {
-            activations = await prisma.activationInfo.findMany({
-                where: {
-                    createdAt: { gte: start, lte: end },
-                    address: {
-                        project: { isDemo: req.isDemo || false },
-                        appointment: { assignedTeamId: teamId }
+            if (groupKey === 'blowers') {
+                const soplados = await prisma.sopladoInfo.findMany({
+                    where: {
+                        createdAt: { gte: start, lte: end },
+                        teamId: teamId,
+                        address: { project: { isDemo: req.isDemo || false } }
                     }
-                }
-            });
+                });
+                activations = soplados.map(s => ({
+                    isSaturday: s.isSaturday,
+                    activationType: 'BP',
+                    createdAt: s.createdAt,
+                    basePrice: 0
+                }));
+            } else {
+                activations = await prisma.activationInfo.findMany({
+                    where: {
+                        createdAt: { gte: start, lte: end },
+                        address: {
+                            project: { isDemo: req.isDemo || false },
+                            appointment: { assignedTeamId: teamId }
+                        }
+                    }
+                });
+            }
         }
 
         const teamMembers = team ? team.members : [user];
@@ -426,6 +448,13 @@ exports.getMyPayroll = async (req, res) => {
                 include: { address: { include: { appointment: true } } }
             });
 
+            const allSoplados = await prisma.sopladoInfo.findMany({
+                where: {
+                    createdAt: { gte: start, lte: end },
+                    address: { project: { isDemo: req.isDemo || false } }
+                }
+            });
+
             // Map acts to teams
             const actsByTeam = {};
             allActivations.forEach(a => {
@@ -433,6 +462,18 @@ exports.getMyPayroll = async (req, res) => {
                 if (tid) {
                     if (!actsByTeam[tid]) actsByTeam[tid] = [];
                     actsByTeam[tid].push(a);
+                }
+            });
+            allSoplados.forEach(s => {
+                const tid = s.teamId;
+                if (tid) {
+                    if (!actsByTeam[tid]) actsByTeam[tid] = [];
+                    actsByTeam[tid].push({
+                        isSaturday: s.isSaturday,
+                        activationType: 'BP',
+                        createdAt: s.createdAt,
+                        basePrice: 0
+                    });
                 }
             });
 
@@ -573,6 +614,13 @@ exports.getPayrollSummary = async (req, res) => {
             }
         });
 
+        const soplados = await prisma.sopladoInfo.findMany({
+            where: {
+                createdAt: { gte: start, lte: end },
+                address: { project: { isDemo: req.isDemo || false } }
+            }
+        });
+
         // Map Activations to Team
         const teamActs = {};
         activations.forEach(act => {
@@ -580,6 +628,18 @@ exports.getPayrollSummary = async (req, res) => {
             if (tid) {
                 if (!teamActs[tid]) teamActs[tid] = [];
                 teamActs[tid].push(act);
+            }
+        });
+        soplados.forEach(s => {
+            const tid = s.teamId;
+            if (tid) {
+                if (!teamActs[tid]) teamActs[tid] = [];
+                teamActs[tid].push({
+                    isSaturday: s.isSaturday,
+                    activationType: 'BP',
+                    createdAt: s.createdAt,
+                    basePrice: 0
+                });
             }
         });
 

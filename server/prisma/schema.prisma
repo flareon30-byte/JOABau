@@ -78,6 +78,7 @@ model Team {
   members      User[]
   appointments Appointment[]
   tools        Tool[]
+  soplados     SopladoInfo[] @relation("BlowingTeam")
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
@@ -156,6 +157,11 @@ model SopladoInfo {
   meters    Float
   tk        String
   tubeColor String
+
+  teamId    String?
+  team      Team?   @relation("BlowingTeam", fields: [teamId], references: [id], onDelete: SetNull)
+
+  isSaturday Boolean @default(false)
 
   // Si fallido
   failureReason String?
