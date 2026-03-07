@@ -300,6 +300,8 @@ const DashboardHome = () => {
         const saturdayMoney = stats.saturdayEarnings;
 
 
+        const isBlower = stats.role === 'BLOWER';
+
         return (
             <div className="space-y-8">
                 {/* Welcome & Status */}
@@ -309,7 +311,9 @@ const DashboardHome = () => {
                         <div className="flex justify-between items-start">
                             <div>
                                 <h2 className="text-3xl font-bold mb-2">Hola, {user.username?.split('.')[0]}! 👋</h2>
-                                <p className="text-slate-300 mb-6">Resumen de tu rendimiento económico.</p>
+                                <p className="text-slate-300 mb-6">
+                                    {isBlower ? 'Panel de Soplado - Resumen de rendimiento.' : 'Resumen de tu rendimiento económico.'}
+                                </p>
                             </div>
                         </div>
 
@@ -318,7 +322,9 @@ const DashboardHome = () => {
                                 <Star className="text-yellow-400 fill-yellow-400" />
                                 <div>
                                     <p className="font-bold text-green-400">¡Modo Paga Extra Activado!</p>
-                                    <p className="text-xs text-green-200">Has superado tus gastos mensuales. Cada nuevo trabajo genera beneficios adicionales.</p>
+                                    <p className="text-xs text-green-200">
+                                        Has superado los gastos de tu equipo. ¡Cada vivienda soplada ahora genera un bonus directo!
+                                    </p>
                                 </div>
                             </div>
                         ) : (
@@ -335,7 +341,7 @@ const DashboardHome = () => {
                                     <p className="text-xs text-slate-300">
                                         {stats.regularEarnings !== null
                                             ? `Faltan ${money(stats.target - stats.regularEarnings)} (${stats.breakEvenUnits} unid. aprox) para cubrir gastos.`
-                                            : `Progreso actual: ${Math.round(progress)}%. Objetivo: ${stats.breakEvenUnits} unidades.`
+                                            : `Progreso actual: ${Math.round(progress)}%. Objetivo: ${stats.breakEvenUnits} viviendas.`
                                         }
                                     </p>
                                 </div>
@@ -344,42 +350,69 @@ const DashboardHome = () => {
                     </div>
                 </div>
 
-                {/* Stats Grid */}
-                {/* Stats Grid - Production Breakdown */}
-                <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-2">Resumen de Producción (Mes Actual)</h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                        <div className="p-3 bg-blue-50 text-blue-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                            <span className="font-extrabold text-xs">BP</span>
+                {/* Stats Section */}
+                {isBlower ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
+                            <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:scale-110 transition-transform">
+                                <Target size={32} />
+                            </div>
+                            <div>
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Viviendas Sopladas</p>
+                                <h3 className="text-3xl font-bold text-slate-800">{stats.counts?.viviendas || 0}</h3>
+                                <p className="text-[10px] text-slate-400 mt-1">Producción mensual acumulada</p>
+                            </div>
                         </div>
-                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.bp || 0}</h3>
-                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">Básicas</p>
-                    </div>
 
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                        <div className="p-3 bg-green-50 text-green-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                            <span className="font-extrabold text-xs">TA</span>
+                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
+                            <div className="p-4 bg-green-50 text-green-600 rounded-2xl group-hover:scale-110 transition-transform">
+                                <DollarSign size={32} />
+                            </div>
+                            <div>
+                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Bonus Generado</p>
+                                <h3 className="text-3xl font-bold text-green-600">{money(bonusMoney)}</h3>
+                                <p className="text-[10px] text-slate-400 mt-1">Ganancia extra tras cubrir gastos</p>
+                            </div>
                         </div>
-                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.ta || 0}</h3>
-                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">SDU / TA</p>
                     </div>
+                ) : (
+                    <>
+                        <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-2">Resumen de Producción (Mes Actual)</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
+                                <div className="p-3 bg-blue-50 text-blue-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                    <span className="font-extrabold text-xs">BP</span>
+                                </div>
+                                <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.bp || 0}</h3>
+                                <p className="text-xs text-slate-400 font-bold uppercase mt-2">Básicas</p>
+                            </div>
 
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                        <div className="p-3 bg-purple-50 text-purple-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                            <span className="font-extrabold text-xs">SP</span>
-                        </div>
-                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.sp || 0}</h3>
-                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">Activaciones SP</p>
-                    </div>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
+                                <div className="p-3 bg-green-50 text-green-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                    <span className="font-extrabold text-xs">TA</span>
+                                </div>
+                                <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.ta || 0}</h3>
+                                <p className="text-xs text-slate-400 font-bold uppercase mt-2">SDU / TA</p>
+                            </div>
 
-                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                        <div className="p-3 bg-orange-50 text-orange-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                            <span className="font-extrabold text-xs">MDU</span>
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
+                                <div className="p-3 bg-purple-50 text-purple-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                    <span className="font-extrabold text-xs">SP</span>
+                                </div>
+                                <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.sp || 0}</h3>
+                                <p className="text-xs text-slate-400 font-bold uppercase mt-2">Activaciones SP</p>
+                            </div>
+
+                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
+                                <div className="p-3 bg-orange-50 text-orange-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                    <span className="font-extrabold text-xs">MDU</span>
+                                </div>
+                                <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.mdu || 0}</h3>
+                                <p className="text-xs text-slate-400 font-bold uppercase mt-2">MDU</p>
+                            </div>
                         </div>
-                        <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.mdu || 0}</h3>
-                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">MDU</p>
-                    </div>
-                </div>
+                    </>
+                )}
 
                 {/* Saturday Section */}
                 <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -392,18 +425,20 @@ const DashboardHome = () => {
                     </div>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-50">
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Total Activaciones</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">
+                                {isBlower ? 'Soplados Sábado' : 'Total Activaciones'}
+                            </p>
                             <h4 className="text-2xl font-bold text-slate-800">{stats.saturdayActivations || 0}</h4>
                         </div>
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-50">
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Ganancia Extra</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Ganancia Extra Sábado</p>
                             <h4 className="text-2xl font-bold text-orange-600">
                                 {money(saturdayMoney)}
                             </h4>
                         </div>
                         <div className="col-span-2 bg-gradient-to-br from-orange-500 to-orange-600 p-4 rounded-2xl shadow-lg flex items-center justify-between text-white">
                             <div>
-                                <p className="text-orange-100 text-[10px] font-bold uppercase mb-1">Ganancia Neta Estimada</p>
+                                <p className="text-orange-100 text-[10px] font-bold uppercase mb-1">Ganancia Neta Estimada Sábados</p>
                                 <h4 className="text-2xl font-bold">{money(saturdayMoney)}</h4>
                             </div>
                             <TrendingUp className="opacity-20" size={40} />

@@ -166,19 +166,36 @@ exports.getActivatorDashboard = async (req, res) => {
         const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
         const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-        const activations = await prisma.activationInfo.findMany({
-            where: {
-                createdAt: {
-                    gte: startOfMonth,
-                    lte: endDate
-                },
-                address: {
-                    appointment: {
-                        assignedTeamId: user.teamId
+        let performanceData = [];
+        const isBlower = req.userRole === 'BLOWER';
+
+        if (isBlower) {
+            // Fetch SopladoInfo for blowers
+            performanceData = await prisma.sopladoInfo.findMany({
+                where: {
+                    createdAt: {
+                        gte: startOfMonth,
+                        lte: endDate
+                    },
+                    teamId: user.teamId
+                }
+            });
+        } else {
+            // Fetch ActivationInfo for activators/others
+            performanceData = await prisma.activationInfo.findMany({
+                where: {
+                    createdAt: {
+                        gte: startOfMonth,
+                        lte: endDate
+                    },
+                    address: {
+                        appointment: {
+                            assignedTeamId: user.teamId
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         let regularEarnings = 0;
         let saturdayEarnings = 0;
@@ -190,54 +207,72 @@ exports.getActivatorDashboard = async (req, res) => {
             bp: 0,
             ta: 0,
             sp: 0,
-            mdu: 0
+            mdu: 0,
+            viviendas: 0 // New field for blowers
         };
-
-        activations.forEach(act => {
-            const type = act.activationType || 'BP';
-
-            // 1. Determine Base Type for counts
-            if (type === 'BP' || type === 'BP_2_FAM') {
-                counts.bp += (type === 'BP_2_FAM' ? 2 : 1);
-            } else if (type === 'SDU') {
-                counts.ta++;
-            } else if (type === 'MDU') {
-                counts.mdu++;
-            } else if (type === 'BR_MULTI') {
-                counts.bp++;
-            }
-
-            // 2. Add Extras
-            if (act.spInstalled > 0) {
-                counts.sp += act.spInstalled;
-            }
-            if ((type !== 'SDU') && (act.taInstalled || (act.taCount && act.taCount > 0))) {
-                counts.ta += (act.taCount || 1);
-            }
-            if (type !== 'MDU' && act.mduInstalled) {
-                counts.mdu++;
-            }
-
-            // 3. Financial Calculation (Sum of all prices on this record)
-            const totalOnRecord = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
-
-            // 4. Split by Saturday / Regular
-            if (act.isSaturday) {
-                saturdayEarnings += totalOnRecord;
-                saturdayActivations++;
-            } else {
-                regularEarnings += totalOnRecord;
-                regularActivations++;
-            }
-        });
 
         // 4. Get Settings
         const settings = await prisma.systemSettings.findFirst() || {
-            monthlyTargetPoints: 100, // Fallback
+            monthlyTargetPoints: 100,
             financials: {}
         };
 
-        const fin = settings.financials?.installers || {};
+        const groupKey = isBlower ? 'blowers' : 'installers';
+        const fin = settings.financials?.[groupKey] || {};
+
+        if (isBlower) {
+            performanceData.forEach(sop => {
+                const totalOnRecord = (fin.pricePerUnit || 10); // Price per dwelling blown
+                const saturdaysPrice = (fin.pricePerSaturdayUnit || fin.pricePerUnit || 15);
+
+                if (sop.isSaturday) {
+                    saturdayEarnings += saturdaysPrice;
+                    saturdayActivations++;
+                } else {
+                    regularEarnings += totalOnRecord;
+                    regularActivations++;
+                }
+                counts.viviendas++;
+            });
+        } else {
+            performanceData.forEach(act => {
+                const type = act.activationType || 'BP';
+
+                // 1. Determine Base Type for counts
+                if (type === 'BP' || type === 'BP_2_FAM') {
+                    counts.bp += (type === 'BP_2_FAM' ? 2 : 1);
+                } else if (type === 'SDU') {
+                    counts.ta++;
+                } else if (type === 'MDU') {
+                    counts.mdu++;
+                } else if (type === 'BR_MULTI') {
+                    counts.bp++;
+                }
+
+                // 2. Add Extras
+                if (act.spInstalled > 0) {
+                    counts.sp += act.spInstalled;
+                }
+                if ((type !== 'SDU') && (act.taInstalled || (act.taCount && act.taCount > 0))) {
+                    counts.ta += (act.taCount || 1);
+                }
+                if (type !== 'MDU' && act.mduInstalled) {
+                    counts.mdu++;
+                }
+
+                // 3. Financial Calculation (Sum of all prices on this record)
+                const totalOnRecord = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+
+                // 4. Split by Saturday / Regular
+                if (act.isSaturday) {
+                    saturdayEarnings += totalOnRecord;
+                    saturdayActivations++;
+                } else {
+                    regularEarnings += totalOnRecord;
+                    regularActivations++;
+                }
+            });
+        }
 
         // Use 21 days as standard for budget target to match calculator
         const workingDays = 21;
@@ -245,7 +280,7 @@ exports.getActivatorDashboard = async (req, res) => {
         const teamTotal = (fin.car || 0) + (fin.gas || 0) + (fin.equipmentRent || 0);
 
         const targetExpenses = (perPersonTotal * teamSize) + teamTotal;
-        const breakEvenUnits = Math.ceil(targetExpenses / (fin.pricePerUnit || 250));
+        const breakEvenUnits = Math.ceil(targetExpenses / (fin.pricePerUnit || (isBlower ? 10 : 250)));
 
         // PRIVACY: Only show 'earnings' if user is Admin, otherwise just show progress towards target
         const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.userRole);
@@ -260,7 +295,8 @@ exports.getActivatorDashboard = async (req, res) => {
                 counts,
                 target: targetExpenses > 0 ? targetExpenses : (settings.monthlyTargetPoints || 100),
                 breakEvenUnits,
-                isBonusMode: regularEarnings >= (targetExpenses > 0 ? targetExpenses : (settings.monthlyTargetPoints || 100))
+                isBonusMode: regularEarnings >= (targetExpenses > 0 ? targetExpenses : (settings.monthlyTargetPoints || 100)),
+                role: req.userRole // Send role back for UI switching
             }
         });
 
