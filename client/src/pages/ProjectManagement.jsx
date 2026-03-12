@@ -38,10 +38,10 @@ const ProjectManagement = () => {
                 data.append('file', formData.file);
                 data.append('importType', importType);
 
-                await api.post('/api/projects/import', data, {
+                const response = await api.post('/api/projects/import', data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
-                alert('Proyecto importado correctamente');
+                alert(response.data.message || 'Proyecto importado correctamente');
             } else {
                 await api.post('/api/projects', { name: formData.name });
             }
