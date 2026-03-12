@@ -107,15 +107,16 @@ exports.importProject = async (req, res) => {
             return {
                 projectId: project.id,
                 nvt: nvt ? String(nvt).trim() : null,
-                street: String(street).trim(),
+                street: street ? String(street).trim() : null,
                 number: number ? String(number).trim() : null,
                 clientName: clientName ? String(clientName).trim() : null,
                 city: city ? String(city).trim() : null,
                 klsId: klsId ? String(klsId).trim() : null,
                 status: status ? String(status).trim() : 'geplant'
             };
-        });
+        }).filter(addr => addr.street && addr.street !== 'Sin calle'); // Skip rows that are empty or have no street
 
+        const excelRowCount = addressesToProcess.length;
         const isProtocol = importType === 'protocol';
         let createdCount = 0;
         let updatedCount = 0;
@@ -217,11 +218,12 @@ exports.importProject = async (req, res) => {
 
         res.json({ 
             message: `Importación finalizada (${isProtocol ? 'Protocolo' : 'Estándar'}).\n` +
+                     `- Filas válidas detectadas en Excel: ${excelRowCount}\n` +
                      `- Creadas nuevas: ${createdCount}\n` +
                      `- Actualizadas: ${updatedCount}\n` +
                      `- Eliminadas (sin trabajo): ${deletedCount}\n` +
                      `- Conservadas (con nuestro trabajo): ${keptWithWorkCount}\n` +
-                     `- Direcciones que faltaban en el Excel: ${missingInExcelCount}`
+                     `- Direcciones de la App que NO estaban en el Excel: ${missingInExcelCount}`
         });
 
     } catch (error) {
