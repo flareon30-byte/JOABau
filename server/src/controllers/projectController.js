@@ -178,26 +178,26 @@ exports.importProject = async (req, res) => {
         });
 
         let deletedCount = 0;
-        let keptCount = 0;
+        let keptWithWorkCount = 0;
+        let missingInExcelCount = 0;
 
         for (const dbAddr of existingAddresses) {
-            // Check if dbAddr exists in the new Excel file
+            // Robust matching: trim and case-insensitive
             const isInNewFile = addressesToProcess.some(newData => 
-                newData.street.toLowerCase() === dbAddr.street.toLowerCase() &&
-                (newData.number || '').toLowerCase() === (dbAddr.number || '').toLowerCase()
+                newData.street.trim().toLowerCase() === dbAddr.street.trim().toLowerCase() &&
+                (newData.number || '').trim().toLowerCase() === (dbAddr.number || '').trim().toLowerCase()
             );
 
             if (!isInNewFile) {
-                // Missing in Excel!
+                missingInExcelCount++;
                 // Did we do any work on it?
                 const hasWork = dbAddr.activationInfo || dbAddr.sopladoInfo || dbAddr.fusionInfo;
                 
                 if (hasWork) {
                     // It has work; keep it to preserve billing/history
-                    keptCount++;
+                    keptWithWorkCount++;
                 } else {
                     // No work was done by us, and it disappeared from the Excel. Delete it.
-                    // First ensure any appointments/comments are deleted nicely
                     const appointments = await prisma.appointment.findMany({
                         where: { addressId: dbAddr.id },
                         select: { id: true }
@@ -209,14 +209,20 @@ exports.importProject = async (req, res) => {
                         await prisma.appointment.deleteMany({ where: { id: { in: appointmentIds } } });
                     }
                     
-                    // Delete the address
                     await prisma.address.delete({ where: { id: dbAddr.id } });
                     deletedCount++;
                 }
             }
         }
 
-        res.json({ message: `Import successful (${isProtocol ? 'Protocol' : 'Standard'}). Created: ${createdCount}, Updated: ${updatedCount}. Deleted: ${deletedCount} pending addresses (Kept ${keptCount} with our work).` });
+        res.json({ 
+            message: `Importación finalizada (${isProtocol ? 'Protocolo' : 'Estándar'}).\n` +
+                     `- Creadas nuevas: ${createdCount}\n` +
+                     `- Actualizadas: ${updatedCount}\n` +
+                     `- Eliminadas (sin trabajo): ${deletedCount}\n` +
+                     `- Conservadas (con nuestro trabajo): ${keptWithWorkCount}\n` +
+                     `- Direcciones que faltaban en el Excel: ${missingInExcelCount}`
+        });
 
     } catch (error) {
         console.error(error);
