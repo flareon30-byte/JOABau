@@ -186,18 +186,19 @@ const BillingPage = () => {
         const getFileUrl = (path) => {
             if (!path) return '';
 
-            // Fix backslashes for all paths
-            let cleanPath = path.replace(/\\/g, '/');
+            // 1. Remove any query strings that might be stored in the DB by mistake
+            let cleanPath = path.split('?')[0];
 
-            // Remove leading slash to ensure we append correctly to BASE_URL (which might be empty or end in /)
+            // 2. Fix backslashes
+            cleanPath = cleanPath.replace(/\\/g, '/');
+
+            // 3. Remove leading slash
             if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
 
-            // For legacy data check: if path starts with 'tmp/', it's broken old data.
-            // We can't fix the file missing, but we can try to link it relative just in case.
+            // 4. EncodeURI to handle spaces and special chars in filenames
+            const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
 
-            // If BASE_URL is empty (production), the result is '/path/to/file' (via root)
-            // If BASE_URL is localhost:5000, result is 'http://localhost:5000/path/to/file'
-            return `${BASE_URL ? BASE_URL + '/' : '/'}${cleanPath}`;
+            return `${BASE_URL ? BASE_URL + '/' : '/'}${encodedPath}`;
         };
 
         switch (activeTab) {
@@ -310,34 +311,33 @@ const BillingPage = () => {
 
                                         {/* PDF Status / Link with Dynamic URL */}
                                         <td className="p-4">
-                                            <td className="p-4">
-                                                {(() => {
-                                                    if (!row.pdfPath) return <span className="text-slate-300">-</span>;
+                                            {(() => {
+                                                if (!row.pdfPath) return <span className="text-slate-300">-</span>;
 
-                                                    // Check for broken/legacy paths (e.g. /tmp/ or C:\)
-                                                    const isLegacy = row.pdfPath.includes('/tmp/') || row.pdfPath.match(/^[a-zA-Z]:/);
+                                                // Check for broken/legacy paths
+                                                const pathStr = String(row.pdfPath);
+                                                const isLegacy = pathStr.includes('/tmp/') || pathStr.match(/^[a-zA-Z]:/);
 
-                                                    if (isLegacy) {
-                                                        return (
-                                                            <span className="text-slate-400 text-xs flex items-center gap-1 cursor-not-allowed" title="Archivo antiguo no disponible">
-                                                                <FileText size={14} /> Expired
-                                                            </span>
-                                                        );
-                                                    }
-
+                                                if (isLegacy) {
                                                     return (
-                                                        <a
-                                                            href={getFileUrl(row.pdfPath)}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="text-red-500 hover:text-red-700 flex items-center gap-1 font-semibold"
-                                                            title="Ver PDF"
-                                                        >
-                                                            <FileText size={18} /> PDF
-                                                        </a>
+                                                        <span className="text-slate-400 text-xs flex items-center gap-1 cursor-not-allowed" title="Archivo antiguo no disponible">
+                                                            <FileText size={14} /> Expired
+                                                        </span>
                                                     );
-                                                })()}
-                                            </td>
+                                                }
+
+                                                return (
+                                                    <a
+                                                        href={getFileUrl(row.pdfPath)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-red-500 hover:text-red-700 flex items-center gap-1 font-semibold"
+                                                        title="Ver PDF"
+                                                    >
+                                                        <FileText size={18} /> PDF
+                                                    </a>
+                                                );
+                                            })()}
                                         </td>
                                         <td className="p-4">
                                             <div className="text-xs text-slate-500 italic truncate max-w-[120px]" title={row.description}>

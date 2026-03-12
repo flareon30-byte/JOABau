@@ -199,7 +199,7 @@ exports.submitActivation = async (req, res) => {
                 taPrice: taPriceTotal,
                 mduPrice: mduPriceTotal,
                 repairPrice: repairPriceTotal,
-                pdfPath,
+                pdfPath: pdfPath ? pdfPath.split('?')[0] : null, // Clean query string before saving to DB
                 photos: allPhotos
             };
 
@@ -445,9 +445,10 @@ exports.generatePdf = async (req, res) => {
         const outPath = path.join(outDir, fileName);
         fs.writeFileSync(outPath, pdfBytes);
 
-        // Return public path (add timestamp query to prevent caching)
-        res.json({ success: true, path: `uploads/pdfs/${fileName}?t=${Date.now()}` });
-        console.log('--- END PDF GENERATION SUCCESS ---');
+        // Return public path (with timestamp for frontend display cache busting only)
+        const publicPath = `uploads/pdfs/${fileName}`;
+        res.json({ success: true, path: `${publicPath}?t=${Date.now()}` });
+        console.log('--- END PDF GENERATION SUCCESS --- Saved to:', outPath);
 
     } catch (error) {
         console.error('--- PDF GENERATION ERROR ---');
