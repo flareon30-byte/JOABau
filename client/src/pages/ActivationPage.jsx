@@ -597,7 +597,12 @@ const ActivationPage = () => {
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={() => window.open(`${BASE_URL}/${pdfPath}`, '_blank')}
+                                    onClick={() => {
+                                        const cleanPath = pdfPath.split('?')[0];
+                                        const encoded = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+                                        const timestamp = pdfPath.includes('?t=') ? `?t=${pdfPath.split('?t=')[1]}` : '';
+                                        window.open(`${BASE_URL}/${encoded}${timestamp}`, '_blank');
+                                    }}
                                     className="w-full py-3 bg-white border-2 border-green-500 text-green-700 font-bold rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-green-50"
                                 >
                                     <FileText size={18} />
