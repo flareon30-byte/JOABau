@@ -167,7 +167,56 @@ exports.importProject = async (req, res) => {
             }
         }
 
-        res.json({ message: `Import successful (${isProtocol ? 'Protocol' : 'Standard'}). Created: ${createdCount}, Updated: ${updatedCount} addresses.` });
+        // --- NEW LOGIC: Delete addresses no longer in the Excel unless we worked on them ---
+        const existingAddresses = await prisma.address.findMany({
+            where: { projectId: project.id },
+            include: {
+                activationInfo: true,
+                sopladoInfo: true,
+                fusionInfo: true
+            }
+        });
+
+        let deletedCount = 0;
+        let keptCount = 0;
+
+        for (const dbAddr of existingAddresses) {
+            // Check if dbAddr exists in the new Excel file
+            const isInNewFile = addressesToProcess.some(newData => 
+                newData.street.toLowerCase() === dbAddr.street.toLowerCase() &&
+                (newData.number || '').toLowerCase() === (dbAddr.number || '').toLowerCase()
+            );
+
+            if (!isInNewFile) {
+                // Missing in Excel!
+                // Did we do any work on it?
+                const hasWork = dbAddr.activationInfo || dbAddr.sopladoInfo || dbAddr.fusionInfo;
+                
+                if (hasWork) {
+                    // It has work; keep it to preserve billing/history
+                    keptCount++;
+                } else {
+                    // No work was done by us, and it disappeared from the Excel. Delete it.
+                    // First ensure any appointments/comments are deleted nicely
+                    const appointments = await prisma.appointment.findMany({
+                        where: { addressId: dbAddr.id },
+                        select: { id: true }
+                    });
+                    const appointmentIds = appointments.map(a => a.id);
+
+                    if (appointmentIds.length > 0) {
+                        await prisma.comment.deleteMany({ where: { appointmentId: { in: appointmentIds } } });
+                        await prisma.appointment.deleteMany({ where: { id: { in: appointmentIds } } });
+                    }
+                    
+                    // Delete the address
+                    await prisma.address.delete({ where: { id: dbAddr.id } });
+                    deletedCount++;
+                }
+            }
+        }
+
+        res.json({ message: `Import successful (${isProtocol ? 'Protocol' : 'Standard'}). Created: ${createdCount}, Updated: ${updatedCount}. Deleted: ${deletedCount} pending addresses (Kept ${keptCount} with our work).` });
 
     } catch (error) {
         console.error(error);
