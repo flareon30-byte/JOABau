@@ -114,7 +114,13 @@ exports.importProject = async (req, res) => {
                 klsId: klsId ? String(klsId).trim() : null,
                 status: status ? String(status).trim() : 'geplant'
             };
-        }).filter(addr => addr.street && addr.street !== 'Sin calle'); // Skip rows that are empty or have no street
+        }).filter(addr => {
+            if (!addr.street || addr.street === 'Sin calle') return false;
+            
+            const s = (addr.status || '').toLowerCase();
+            // Solo importamos las que estén realmente pendientes
+            return s.includes('installation') || s.includes('geplant');
+        });
 
         const excelRowCount = addressesToProcess.length;
         const isProtocol = importType === 'protocol';
