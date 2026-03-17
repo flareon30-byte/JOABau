@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Plus, Clock, CheckCircle, Search, AlertCircle, X } from 'lucide-react';
+import { Package, Plus, Clock, CheckCircle, Search, AlertCircle, X, Trash2 } from 'lucide-react';
 import api from '../api/axios';
 
 const MaterialOrdersPage = () => {
@@ -67,6 +67,17 @@ const MaterialOrdersPage = () => {
         } catch (error) {
             console.error('Error updating status:', error);
             alert('Hubo un error al actualizar el estado.');
+        }
+    };
+
+    const handleDeleteOrder = async (id) => {
+        if (!window.confirm('¿Estás seguro de que deseas eliminar este pedido?')) return;
+        try {
+            await api.delete(`/api/material-orders/${id}`);
+            setOrders(orders.filter(o => o.id !== id));
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            alert('Hubo un error al eliminar el pedido.');
         }
     };
 
@@ -172,15 +183,24 @@ const MaterialOrdersPage = () => {
                                         </td>
                                         {isSuperAdmin && (
                                             <td className="p-4 text-right">
-                                                <select
-                                                    value={order.status}
-                                                    onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
-                                                    className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-joa-blue focus:border-joa-blue p-2 cursor-pointer"
-                                                >
-                                                    <option value="PENDIENTE">PENDIENTE</option>
-                                                    <option value="REALIZADO">REALIZADO</option>
-                                                    <option value="EN_ALMACEN">YA EN ALMACÉN</option>
-                                                </select>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <select
+                                                        value={order.status}
+                                                        onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
+                                                        className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-joa-blue focus:border-joa-blue p-2 cursor-pointer"
+                                                    >
+                                                        <option value="PENDIENTE">PENDIENTE</option>
+                                                        <option value="REALIZADO">REALIZADO</option>
+                                                        <option value="EN_ALMACEN">YA EN ALMACÉN</option>
+                                                    </select>
+                                                    <button
+                                                        onClick={() => handleDeleteOrder(order.id)}
+                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Eliminar pedido"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         )}
                                     </tr>
