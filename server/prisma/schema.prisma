@@ -38,6 +38,7 @@ model User {
   isDemo                Boolean       @default(false)
   
   vacationRequests      VacationRequest[]
+  materialOrders        MaterialOrder[]
   
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
@@ -337,4 +338,22 @@ model Repair {
 
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+enum MaterialOrderStatus {
+  PENDIENTE
+  REALIZADO
+  EN_ALMACEN
+}
+
+model MaterialOrder {
+  id                  String              @id @default(uuid())
+  userId              String
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialDescription String
+  timeRemaining       String
+  status              MaterialOrderStatus @default(PENDIENTE)
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
 }

@@ -22,6 +22,7 @@ import BillingDebug from './pages/BillingDebug';
 import RepairCompletionPage from './pages/RepairCompletionPage';
 import VacationPage from './pages/VacationPage';
 import AdminVacationPage from './pages/AdminVacationPage';
+import MaterialOrdersPage from './pages/MaterialOrdersPage';
 
 function App() {
   return (
@@ -43,6 +44,7 @@ function App() {
           <Route path="billing" element={<BillingPage />} />
           <Route path="payroll" element={<PayrollPage />} />
           <Route path="my-earnings" element={<MyEarningsPage />} />
+          <Route path="material-orders" element={<MaterialOrdersPage />} />
           <Route path="vacations" element={<VacationPage />} />
           <Route path="vacations-admin" element={<AdminVacationPage />} />
           <Route path="issues" element={<IssuesPage />} />

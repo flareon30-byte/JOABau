@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, Folder, Zap, ChevronRight, Settings, Lock, ClipboardList, Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun } from 'lucide-react';
+import { LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, Folder, Zap, ChevronRight, Settings, Lock, ClipboardList, Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 
 // Notification Sound URL (Short subtle beep)
@@ -123,6 +123,7 @@ const DashboardLayout = () => {
         { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
         { icon: Sun, label: 'Vacaciones Personal', path: '/dashboard/vacations-admin', roles: ['SUPER_ADMIN', 'ADMIN'] },
         { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER', 'SUPER_ADMIN'] },
+        { icon: Package, label: 'Pedidos de Material', path: '/dashboard/material-orders' },
         { icon: Umbrella, label: 'Mis Vacaciones', path: '/dashboard/vacations' },
         { icon: Settings, label: 'Configuración', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
     ];
