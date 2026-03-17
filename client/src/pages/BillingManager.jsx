@@ -409,9 +409,12 @@ const BillingPage = () => {
 
         const getUrl = (path) => {
             if (!path) return '';
-            let cleanPath = path.replace(/\\/g, '/');
+            let cleanPath = path.split('?')[0].replace(/\\/g, '/');
             if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
-            return `${BASE_URL ? BASE_URL + '/' : '/'}${cleanPath}`;
+            
+            // Encode each segment of the path
+            const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+            return `${BASE_URL ? BASE_URL + '/' : '/'}${encodedPath}`;
         };
 
         return (
@@ -439,7 +442,17 @@ const BillingPage = () => {
                                                 src={getUrl(photo)}
                                                 alt={`Evidencia ${idx}`}
                                                 className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                                onClick={() => window.open(getUrl(photo), '_blank')}
+                                                onClick={() => {
+                                                    const url = getUrl(photo);
+                                                    const a = document.createElement('a');
+                                                    a.href = url;
+                                                    a.target = '_blank';
+                                                    // For images, we try to open, but if it's PWA it might still be tricky. 
+                                                    // Download is the safest fallback if window.open is blocked/blank.
+                                                    document.body.appendChild(a);
+                                                    a.click();
+                                                    document.body.removeChild(a);
+                                                }}
                                             />
                                         );
                                     })()}

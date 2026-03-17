@@ -118,8 +118,14 @@ const ActivationsHistoryPage = () => {
         if (exportFiltersForm.endDate) params.append('endDate', exportFiltersForm.endDate);
         if (exportFiltersForm.projectId) params.append('projectId', exportFiltersForm.projectId);
 
-        // Trigger download
-        window.open(`${BASE_URL}/api/activations/export-photos?${params.toString()}`, '_blank');
+        // Trigger download via anchor click instead of window.open (fixes PWA blank screen)
+        const url = `${BASE_URL}/api/activations/export-photos?${params.toString()}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
         setIsExportModalOpen(false);
     };
 
@@ -448,10 +454,19 @@ const ActivationsHistoryPage = () => {
                                 selectedActivation.photos.map((photo, i) => (
                                     <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
                                         <img
-                                            src={`${BASE_URL}/${photo}`}
+                                            src={`${BASE_URL}/${photo.split('/').map(segment => encodeURIComponent(segment)).join('/')}`}
                                             alt={`Foto ${i + 1}`}
                                             className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                            onClick={() => window.open(`${BASE_URL}/${photo}`, '_blank')}
+                                            onClick={() => {
+                                                const encoded = photo.split('/').map(segment => encodeURIComponent(segment)).join('/');
+                                                const url = `${BASE_URL || window.location.origin}/${encoded}`;
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.target = '_blank';
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                            }}
                                         />
                                     </div>
                                 ))

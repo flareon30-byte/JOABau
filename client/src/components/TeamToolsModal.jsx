@@ -156,10 +156,10 @@ const TeamToolsModal = ({ team, onClose }) => {
 
     const getPhotoUrl = (path) => {
         if (!path) return null;
-        // Fix path slashes
-        const normalized = path.replace(/\\/g, '/');
-        // If it's stored as 'uploads/file.jpg', prepending / gets us /uploads/file.jpg which works via static serve
-        return `/${normalized}`;
+        // Fix path slashes and encode segments
+        const cleanPath = path.replace(/\\/g, '/');
+        const encoded = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+        return `/${encoded}`;
     };
 
     return (
@@ -313,8 +313,16 @@ const TeamToolsModal = ({ team, onClose }) => {
                                                 <img
                                                     src={getPhotoUrl(tool.photos[0])}
                                                     alt={tool.name}
-                                                    className="w-full h-full object-cover"
-                                                    onClick={() => window.open(getPhotoUrl(tool.photos[0]), '_blank')}
+                                                    className="w-full h-full object-cover cursor-pointer"
+                                                    onClick={() => {
+                                                        const url = getPhotoUrl(tool.photos[0]);
+                                                        const a = document.createElement('a');
+                                                        a.href = url;
+                                                        a.target = '_blank';
+                                                        document.body.appendChild(a);
+                                                        a.click();
+                                                        document.body.removeChild(a);
+                                                    }}
                                                 />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-slate-300">
