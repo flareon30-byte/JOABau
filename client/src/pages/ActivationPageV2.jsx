@@ -97,6 +97,17 @@ const ActivationPageV2 = () => {
         fetchAppointment();
     }, [id]);
 
+    // PRE-REQUEST GPS PERMISSION on page load to avoid silent failures
+    useEffect(() => {
+        if ("geolocation" in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                () => console.log("GPS Permission Granted"),
+                (err) => console.warn("GPS Permission Denied or Error:", err.message),
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        }
+    }, []);
+
     // Initialize Signature Pad when modal opens
     useEffect(() => {
         if (isSigning !== 'NONE' && canvasRef.current) {
