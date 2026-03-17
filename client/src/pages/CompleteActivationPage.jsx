@@ -157,7 +157,7 @@ const CompleteActivationPage = () => {
 
                     const dateStr = new Date().toLocaleString('es-ES');
                     const techName = user.username?.split('@')[0] || 'Técnico';
-                    const addressStr = appointment ? `${appointment.address.street} ${appointment.address.number}, ${appointment.address.project.name}` : 'Dirección desconocida';
+                    const addressStr = appointment ? `${appointment.address.street} ${appointment.address.number}, ${appointment.address.city ? appointment.address.city + ', ' : ''}${appointment.address.project.name}` : 'Dirección desconocida';
 
                     const textX = padding;
                     let textY = img.height - padding - lineHeight * 2;

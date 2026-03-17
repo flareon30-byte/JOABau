@@ -192,7 +192,7 @@ const ActivationPageV2 = () => {
 
                 const dateStr = new Date().toLocaleString('es-ES');
                 const techName = user.username?.split('@')[0] || 'Técnico';
-                const addressStr = appointment ? `${appointment.address.street} ${appointment.address.number}` : 'Dirección';
+                const addressStr = appointment ? `${appointment.address.street} ${appointment.address.number}${appointment.address.city ? ', ' + appointment.address.city : ''}` : 'Dirección';
 
                 const textX = padding;
                 let textY = height - padding - lineHeight * 2;

@@ -156,7 +156,7 @@ const ActivationPage = () => {
                 const dateStr = new Date().toLocaleString('es-ES');
                 const userObj = JSON.parse(localStorage.getItem('user') || '{}');
                 const techName = userObj.username?.split('@')[0] || 'Técnico';
-                const addressStr = selectedAppointment ? `${selectedAppointment.address.street} ${selectedAppointment.address.number}` : 'Dirección';
+                const addressStr = selectedAppointment ? `${selectedAppointment.address.street} ${selectedAppointment.address.number}${selectedAppointment.address.city ? ', ' + selectedAppointment.address.city : ''}` : 'Dirección';
 
                 let textY = height - padding - lineHeight * 2;
                 ctx.fillText(`📅 ${dateStr}`, padding, textY);
