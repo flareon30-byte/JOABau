@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { CheckCircle, Camera, ArrowLeft, Calendar, MapPin, Trash2, X, FileText, PenTool } from 'lucide-react';
 import SignaturePad from 'signature_pad';
+import piexif from 'piexifjs';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
@@ -104,14 +105,121 @@ const ActivationPage = () => {
         }
     };
 
-    const handleFileChange = (e) => {
-        const newFiles = Array.from(e.target.files);
-        const newPhotos = newFiles.map(file => ({
-            blob: file,
-            preview: URL.createObjectURL(file),
-            isExisting: false
-        }));
-        setPhotos([...photos, ...newPhotos]);
+    const [processingPhotos, setProcessingPhotos] = useState(false);
+
+    const processPhoto = async (file, gpsCoords = null) => {
+        return new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => reject(new Error("Timeout processing photo")), 15000);
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+                const MAX_DIM = 1600;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_DIM) { height *= MAX_DIM / width; width = MAX_DIM; }
+                } else {
+                    if (height > MAX_DIM) { width *= MAX_DIM / height; height = MAX_DIM; }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Watermark logic
+                const fontSize = Math.max(20, Math.floor(height * 0.035));
+                const padding = fontSize;
+                const lineHeight = fontSize * 1.4;
+                const bottomBarHeight = lineHeight * 3 + padding * 2;
+
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
+                ctx.fillRect(0, height - bottomBarHeight, width, bottomBarHeight);
+                ctx.fillStyle = 'white';
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.textBaseline = 'bottom';
+
+                const dateStr = new Date().toLocaleString('es-ES');
+                const userObj = JSON.parse(localStorage.getItem('user') || '{}');
+                const techName = userObj.username?.split('@')[0] || 'Técnico';
+                const addressStr = selectedAppointment ? `${selectedAppointment.address.street} ${selectedAppointment.address.number}` : 'Dirección';
+
+                let textY = height - padding - lineHeight * 2;
+                ctx.fillText(`📅 ${dateStr}`, padding, textY);
+                textY += lineHeight;
+                ctx.fillText(`👤 ${techName}`, padding, textY);
+                textY += lineHeight;
+                ctx.fillText(`📍 ${addressStr}`, padding, textY);
+
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                let finalBlob = null;
+
+                try {
+                    let processedDataUrl = dataUrl;
+                    if (gpsCoords) {
+                        const toRational = (decimal) => {
+                            const abs = Math.abs(decimal);
+                            const degrees = Math.floor(abs);
+                            const minutesDecimal = (abs - degrees) * 60;
+                            const minutes = Math.floor(minutesDecimal);
+                            const seconds = Math.round((minutesDecimal - minutes) * 60 * 100);
+                            return [[degrees, 1], [minutes, 1], [seconds, 100]];
+                        };
+                        const gps = {};
+                        gps[piexif.GPSIFD.GPSLatitudeRef] = gpsCoords.lat >= 0 ? 'N' : 'S';
+                        gps[piexif.GPSIFD.GPSLatitude] = toRational(gpsCoords.lat);
+                        gps[piexif.GPSIFD.GPSLongitudeRef] = gpsCoords.lng >= 0 ? 'E' : 'W';
+                        gps[piexif.GPSIFD.GPSLongitude] = toRational(gpsCoords.lng);
+                        const exifObj = {"0th": {}, "Exif": {}, "GPS": gps};
+                        processedDataUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
+                    }
+                    const byteString = atob(processedDataUrl.split(',')[1]);
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                    finalBlob = new Blob([ab], {type: 'image/jpeg'});
+                } catch (e) {
+                    console.error("EXIF error", e);
+                    const byteString = atob(dataUrl.split(',')[1]);
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                    finalBlob = new Blob([ab], {type: 'image/jpeg'});
+                }
+
+                clearTimeout(timeout);
+                URL.revokeObjectURL(objectUrl);
+                resolve({ blob: finalBlob, preview: URL.createObjectURL(finalBlob), isExisting: false, name: file.name });
+            };
+            img.onerror = () => { clearTimeout(timeout); URL.revokeObjectURL(objectUrl); reject(new Error("Img load fail")); };
+            img.src = objectUrl;
+        });
+    };
+
+    const handleFileChange = async (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setProcessingPhotos(true);
+            let gpsCoords = null;
+            try {
+                const pos = await new Promise((res, rej) => {
+                    navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 5000 });
+                });
+                gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+            } catch (err) { console.warn("GPS fail", err); }
+
+            const newPhotos = [];
+            for (let i = 0; i < e.target.files.length; i++) {
+                try {
+                    const processed = await processPhoto(e.target.files[i], gpsCoords);
+                    newPhotos.push(processed);
+                } catch (err) { console.error(err); }
+            }
+            setPhotos([...photos, ...newPhotos]);
+            setProcessingPhotos(false);
+        }
     };
 
     const removePhoto = (index) => {
@@ -572,7 +680,9 @@ const ActivationPage = () => {
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                                 />
                                 <Camera className="text-slate-400 mb-2" size={24} />
-                                <span className="text-xs text-slate-500 font-medium">Añadir Foto</span>
+                                <span className="text-xs text-slate-500 font-medium">
+                                    {processingPhotos ? 'Procesando...' : 'Añadir Foto'}
+                                </span>
                             </div>
                         </div>
                     </div>

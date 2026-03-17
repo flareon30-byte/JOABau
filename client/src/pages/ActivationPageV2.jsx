@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool } from 'lucide-react';
 import SignaturePad from 'signature_pad';
+import piexif from 'piexifjs';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
@@ -130,7 +131,7 @@ const ActivationPageV2 = () => {
 
     const [processingPhotos, setProcessingPhotos] = useState(false);
 
-    const processPhoto = async (file) => {
+    const processPhoto = async (file, gpsCoords = null) => {
         return new Promise((resolve, reject) => {
             // Safety timeout to prevent infinite spinning
             const timeout = setTimeout(() => {
@@ -191,21 +192,72 @@ const ActivationPageV2 = () => {
                 textY += lineHeight;
                 ctx.fillText(`📍 ${addressStr}`, textX, textY);
 
-                // Final Blob
-                canvas.toBlob((blob) => {
-                    clearTimeout(timeout);
-                    URL.revokeObjectURL(objectUrl); // Clean up original
+                // Final JPEG Data URL
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+                let finalBlob = null;
 
-                    if (blob) {
-                        resolve({
-                            blob,
-                            preview: URL.createObjectURL(blob), // Fast preview
-                            name: file.name
-                        });
-                    } else {
-                        reject(new Error("Canvas toBlob failed"));
+                try {
+                    // Embed GPS if available
+                    let processedDataUrl = dataUrl;
+                    if (gpsCoords) {
+                        const zeroth = {};
+                        const exif = {};
+                        const gps = {};
+                        
+                        // Convert decimal degrees to EXIF rational format [degrees, minutes, seconds]
+                        const toRational = (decimal) => {
+                            const abs = Math.abs(decimal);
+                            const degrees = Math.floor(abs);
+                            const minutesDecimal = (abs - degrees) * 60;
+                            const minutes = Math.floor(minutesDecimal);
+                            const seconds = Math.round((minutesDecimal - minutes) * 60 * 100);
+                            return [[degrees, 1], [minutes, 1], [seconds, 100]];
+                        };
+
+                        gps[piexif.GPSIFD.GPSLatitudeRef] = gpsCoords.lat >= 0 ? 'N' : 'S';
+                        gps[piexif.GPSIFD.GPSLatitude] = toRational(gpsCoords.lat);
+                        gps[piexif.GPSIFD.GPSLongitudeRef] = gpsCoords.lng >= 0 ? 'E' : 'W';
+                        gps[piexif.GPSIFD.GPSLongitude] = toRational(gpsCoords.lng);
+                        
+                        const exifObj = {"0th": zeroth, "Exif": exif, "GPS": gps};
+                        const exifBytes = piexif.dump(exifObj);
+                        processedDataUrl = piexif.insert(exifBytes, dataUrl);
                     }
-                }, 'image/jpeg', 0.6);
+
+                    // Convert DataURL to Blob
+                    const byteString = atob(processedDataUrl.split(',')[1]);
+                    const mimeString = processedDataUrl.split(',')[0].split(':')[1].split(';')[0];
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) {
+                        ia[i] = byteString.charCodeAt(i);
+                    }
+                    finalBlob = new Blob([ab], {type: mimeString});
+
+                } catch (exifErr) {
+                    console.error("Error embedding EXIF:", exifErr);
+                    // Fallback to standard blob if EXIF fails
+                    const byteString = atob(dataUrl.split(',')[1]);
+                    const ab = new ArrayBuffer(byteString.length);
+                    const ia = new Uint8Array(ab);
+                    for (let i = 0; i < byteString.length; i++) {
+                        ia[i] = byteString.charCodeAt(i);
+                    }
+                    finalBlob = new Blob([ab], {type: 'image/jpeg'});
+                }
+
+                clearTimeout(timeout);
+                URL.revokeObjectURL(objectUrl);
+
+                if (finalBlob) {
+                    resolve({
+                        blob: finalBlob,
+                        preview: URL.createObjectURL(finalBlob),
+                        name: file.name
+                    });
+                } else {
+                    reject(new Error("Photo processing failed"));
+                }
             };
 
             img.onerror = () => {
@@ -221,11 +273,31 @@ const ActivationPageV2 = () => {
     const handlePhotoSelect = async (e) => {
         if (e.target.files && e.target.files.length > 0) {
             setProcessingPhotos(true);
+            
+            // Try to get current GPS location once for all selected photos
+            let gpsCoords = null;
+            try {
+                const pos = await new Promise((res, rej) => {
+                    navigator.geolocation.getCurrentPosition(res, rej, {
+                        enableHighAccuracy: true,
+                        timeout: 5000,
+                        maximumAge: 0
+                    });
+                });
+                gpsCoords = {
+                    lat: pos.coords.latitude,
+                    lng: pos.coords.longitude
+                };
+                console.log("GPS Location acquired:", gpsCoords);
+            } catch (err) {
+                console.warn("Could not get GPS location for photos:", err);
+            }
+
             const newPhotos = [];
             try {
                 for (let i = 0; i < e.target.files.length; i++) {
                     console.log(`Processing photo ${i + 1}/${e.target.files.length}`);
-                    const processed = await processPhoto(e.target.files[i]);
+                    const processed = await processPhoto(e.target.files[i], gpsCoords);
                     newPhotos.push(processed);
                 }
                 setPhotos(prev => [...prev, ...newPhotos]);
