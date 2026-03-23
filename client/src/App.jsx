@@ -23,6 +23,7 @@ import RepairCompletionPage from './pages/RepairCompletionPage';
 import VacationPage from './pages/VacationPage';
 import AdminVacationPage from './pages/AdminVacationPage';
 import MaterialOrdersPage from './pages/MaterialOrdersPage';
+import GnkInstallationForm from './pages/GnkInstallationForm';
 
 function App() {
   return (
@@ -50,6 +51,7 @@ function App() {
           <Route path="issues" element={<IssuesPage />} />
           <Route path="debug" element={<BillingDebug />} />
           <Route path="settings" element={<SettingsPage />} />
+          <Route path="gnk-installation" element={<GnkInstallationForm />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>

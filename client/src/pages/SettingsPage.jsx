@@ -56,6 +56,9 @@ const SettingsPage = () => {
         sduPoints: 25, mduPoints: 30, spPoints: 5, taPoints: 0.5
     });
 
+    const [clients, setClients] = useState([]);
+    const [newClientName, setNewClientName] = useState('');
+
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState(null);
     const [activeTab, setActiveTab] = useState('installers');
@@ -67,6 +70,10 @@ const SettingsPage = () => {
     const fetchSettings = async () => {
         try {
             const res = await api.get('/api/settings');
+            // Fetch clients
+            const clientsRes = await api.get('/api/clients').catch(() => ({ data: [] }));
+            setClients(clientsRes.data);
+
             // Merge existing financials if they exist
             if (res.data.financials) {
                 // Deep merge to ensure backOffice key exists if old config loaded
@@ -107,6 +114,30 @@ const SettingsPage = () => {
         } catch (error) {
             console.error('Settings save error:', error);
             setMessage({ type: 'error', text: 'Error al guardar la configuración' });
+        }
+    };
+
+    const handleCreateClient = async (e) => {
+        e.preventDefault();
+        if (!newClientName) return;
+        try {
+            const res = await api.post('/api/clients', { name: newClientName });
+            setClients([...clients, res.data]);
+            setNewClientName('');
+            setMessage({ type: 'success', text: 'Cliente añadido correctamente' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Error al añadir cliente' });
+        }
+    };
+
+    const handleDeleteClient = async (id) => {
+        if (!window.confirm('¿Seguro que quieres eliminar este cliente?')) return;
+        try {
+            await api.delete(`/api/clients/${id}`);
+            setClients(clients.filter(c => c.id !== id));
+            setMessage({ type: 'success', text: 'Cliente eliminado' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Error al eliminar cliente' });
         }
     };
 
@@ -314,42 +345,101 @@ const SettingsPage = () => {
                 </p>
 
                 {/* Tabs */}
-                <div className="flex gap-2 mb-8 border-b border-slate-200">
+                <div className="flex flex-wrap gap-2 mb-8 border-b border-slate-200">
                     <button
                         onClick={() => setActiveTab('installers')}
-                        className={`px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'installers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'installers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                     >
                         Instaladores (Altas)
                     </button>
                     <button
                         onClick={() => setActiveTab('blowers')}
-                        className={`px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'blowers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'blowers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                     >
                         Soplado
                     </button>
                     <button
                         onClick={() => setActiveTab('backOffice')}
-                        className={`px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'backOffice' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'backOffice' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                     >
                         Back Office
                     </button>
+                    <button
+                        onClick={() => setActiveTab('clients')}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'clients' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Gestión de Clientes
+                    </button>
                 </div>
 
-                <form onSubmit={handleSubmit}>
-                    {activeTab === 'installers' && renderFinancialInputs('installers', 'Configuración de Instaladores')}
-                    {activeTab === 'blowers' && renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
-                    {activeTab === 'backOffice' && renderBackOfficeInputs()}
+                {activeTab !== 'clients' ? (
+                    <form onSubmit={handleSubmit}>
+                        {activeTab === 'installers' && renderFinancialInputs('installers', 'Configuración de Instaladores')}
+                        {activeTab === 'blowers' && renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
+                        {activeTab === 'backOffice' && renderBackOfficeInputs()}
 
-                    <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
-                        <button
-                            type="submit"
-                            className="bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
-                        >
-                            <Save size={20} />
-                            Guardar Toda la Configuración
-                        </button>
+                        <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
+                            <button
+                                type="submit"
+                                className="bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
+                            >
+                                <Save size={20} />
+                                Guardar Toda la Configuración
+                            </button>
+                        </div>
+                    </form>
+                ) : (
+                    <div className="animate-fadeIn space-y-6">
+                        <div className="flex items-center gap-2 mb-4">
+                            <h3 className="text-xl font-bold text-slate-700">Empresas / Clientes Asociados</h3>
+                        </div>
+                        <p className="text-sm text-slate-500 mb-6">Añade los distintos clientes con los que trabajas (ej. Glasfaser plus, G&K, etc.) para que los técnicos puedan seleccionarlos y adaptar su metodología de trabajo.</p>
+
+                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                            <form onSubmit={handleCreateClient} className="flex gap-4">
+                                <input 
+                                    type="text" 
+                                    value={newClientName}
+                                    onChange={(e) => setNewClientName(e.target.value)}
+                                    placeholder="Nombre del nuevo cliente (ej. G&K)" 
+                                    className="flex-1 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none" 
+                                />
+                                <button type="submit" className="bg-joa-blue text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition">
+                                    Añadir Cliente
+                                </button>
+                            </form>
+                        </div>
+
+                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                            <table className="w-full text-left text-sm text-slate-600">
+                                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
+                                    <tr>
+                                        <th className="p-4 pl-6">Nombre de Cliente</th>
+                                        <th className="p-4">Técnicos Activos</th>
+                                        <th className="p-4 w-24">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {clients.length === 0 ? (
+                                        <tr><td colSpan="3" className="p-6 text-center text-slate-400">No hay clientes configurados</td></tr>
+                                    ) : (
+                                        clients.map(client => (
+                                            <tr key={client.id} className="hover:bg-slate-50">
+                                                <td className="p-4 pl-6 font-bold text-slate-800">{client.name}</td>
+                                                <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold">Activo</span></td>
+                                                <td className="p-4">
+                                                    <button onClick={() => handleDeleteClient(client.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors">
+                                                        Eliminar
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </form>
+                )}
 
                 <div className="my-12 border-t border-slate-200"></div>
 

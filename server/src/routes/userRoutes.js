@@ -5,6 +5,10 @@ const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 
 // Protect all routes
 router.use(verifyToken);
+
+// Allow any logged-in user to change their active client
+router.put('/active-client', userController.updateActiveClient);
+
 // Only Admin and Super Admin can manage users
 router.use(checkRole(['ADMIN', 'SUPER_ADMIN']));
 

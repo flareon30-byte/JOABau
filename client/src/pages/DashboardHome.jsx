@@ -211,6 +211,7 @@ const DashboardHome = () => {
     const [stats, setStats] = useState({});
     const [activatorData, setActivatorData] = useState(null);
     const [payroll, setPayroll] = useState([]);
+    const [clients, setClients] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'completed'
@@ -224,6 +225,10 @@ const DashboardHome = () => {
 
     const fetchData = async () => {
         try {
+            // Fetch clients for the dropdown
+            const clientsRes = await api.get('/api/clients').catch(() => ({ data: [] }));
+            setClients(clientsRes.data);
+
             if (isActivator) {
                 const res = await api.get('/api/dashboard/activator');
                 setActivatorData(res.data);
@@ -246,6 +251,25 @@ const DashboardHome = () => {
     useEffect(() => {
         fetchData();
     }, [isActivator, isAdmin]);
+
+    const [updatingClient, setUpdatingClient] = useState(false);
+
+    const handleClientChange = async (e) => {
+        const clientId = e.target.value;
+        setUpdatingClient(true);
+        try {
+            const res = await api.put('/api/users/active-client', { activeClientCompanyId: clientId });
+            // Update local storage user
+            const updatedUser = { ...user, activeClientCompanyId: res.data.activeClientCompanyId, activeClientCompany: res.data.activeClientCompany };
+            localStorage.setItem('user', JSON.stringify(updatedUser));
+            window.location.reload(); // Reload to refresh contexts/dashboard
+        } catch (err) {
+            console.error('Error changing client:', err);
+            alert('Error al cambiar de cliente activo');
+        } finally {
+            setUpdatingClient(false);
+        }
+    };
 
     if (loading) return (
         <div className="flex items-center justify-center h-64">
@@ -308,14 +332,43 @@ const DashboardHome = () => {
                 <div className="bg-gradient-to-r from-joa-dark to-slate-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-joa-cyan/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
                     <div className="relative z-10">
-                        <div className="flex justify-between items-start">
+                        <div className="flex justify-between items-start flex-col md:flex-row gap-4 mb-6">
                             <div>
                                 <h2 className="text-3xl font-bold mb-2">Hola, {user.username?.split('.')[0]}! 👋</h2>
-                                <p className="text-slate-300 mb-6">
+                                <p className="text-slate-300">
                                     {isBlower ? 'Panel de Soplado - Resumen de rendimiento.' : 'Resumen de tu rendimiento económico.'}
                                 </p>
                             </div>
+                            
+                            {/* Client Switcher Selector */}
+                            <div className="bg-white/10 p-3 rounded-xl border border-white/20 backdrop-blur-sm self-stretch md:self-auto flex flex-col justify-center">
+                                <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1 block">Tú Cliente Activo</label>
+                                <select 
+                                    value={user.activeClientCompanyId || ''} 
+                                    onChange={handleClientChange}
+                                    disabled={updatingClient}
+                                    className="bg-transparent text-white border-0 border-b border-white/30 focus:ring-0 px-0 py-1 text-sm font-bold w-full md:w-48 appearance-none cursor-pointer"
+                                >
+                                    <option value="" className="text-slate-800">-- Selecciona Cliente --</option>
+                                    {clients.map(c => (
+                                        <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
+
+                        {/* G&K Specific Button (or logic based on client settings) */}
+                        {user.activeClientCompany && user.activeClientCompany.name.includes("G&K") && (
+                            <div className="mb-6">
+                                <button 
+                                    onClick={() => window.location.href = '/dashboard/gnk-installation'}
+                                    className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-green-500/30 transition-transform hover:scale-105 flex items-center justify-center gap-2"
+                                >
+                                    <MapPin />
+                                    Nueva Ficha de Instalación (G&K)
+                                </button>
+                            </div>
+                        )}
 
                         {stats.isBonusMode ? (
                             <div className="bg-green-500/20 border border-green-500/50 p-4 rounded-xl flex items-center gap-3 animate-pulse">
@@ -556,10 +609,30 @@ const DashboardHome = () => {
             <div className="bg-gradient-to-r from-joa-dark to-slate-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-joa-cyan/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
                 <div className="relative z-10">
-                    <h2 className="text-3xl font-bold mb-2">¡Hola, {user.username?.split('.')[0]}! 👋</h2>
-                    <p className="text-slate-300 max-w-xl">
-                        Bienvenido al panel de control de JOA Technologien.
-                    </p>
+                    <div className="flex justify-between items-start flex-col md:flex-row gap-4">
+                        <div>
+                            <h2 className="text-3xl font-bold mb-2">¡Hola, {user.username?.split('.')[0]}! 👋</h2>
+                            <p className="text-slate-300 max-w-xl mb-6">
+                                Bienvenido al panel de control de JOA Technologien.
+                            </p>
+                        </div>
+
+                        {/* Client Switcher Selector */}
+                        <div className="bg-white/10 p-3 rounded-xl border border-white/20 backdrop-blur-sm self-stretch md:self-auto flex flex-col justify-center mb-6 md:mb-0">
+                            <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1 block">Tú Cliente Activo</label>
+                            <select 
+                                value={user.activeClientCompanyId || ''} 
+                                onChange={handleClientChange}
+                                disabled={updatingClient}
+                                className="bg-transparent text-white border-0 border-b border-white/30 focus:ring-0 px-0 py-1 text-sm font-bold w-full md:w-48 appearance-none cursor-pointer"
+                            >
+                                <option value="" className="text-slate-800">-- Selecciona Cliente --</option>
+                                {clients.map(c => (
+                                    <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
                 </div>
             </div>
 

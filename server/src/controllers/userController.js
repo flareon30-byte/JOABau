@@ -13,6 +13,7 @@ exports.getAllUsers = async (req, res) => {
                 teamId: true,
                 phone: true,
                 vacationDaysTotal: true,
+                activeClientCompanyId: true,
                 createdAt: true
             }
         });
@@ -82,5 +83,24 @@ exports.deleteUser = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
         res.status(500).json({ message: 'Error deleting user' });
+    }
+};
+
+exports.updateActiveClient = async (req, res) => {
+    try {
+        const { activeClientCompanyId } = req.body;
+        // The id comes from req.user (the token)
+        const userId = req.user.id;
+
+        const user = await prisma.user.update({
+            where: { id: userId },
+            data: { activeClientCompanyId: activeClientCompanyId || null },
+            include: { activeClientCompany: true }
+        });
+
+        res.json({ message: 'Active client updated', activeClientCompanyId: user.activeClientCompanyId, activeClientCompany: user.activeClientCompany });
+    } catch (error) {
+        console.error('Error updating active client:', error);
+        res.status(500).json({ message: 'Error updating active client' });
     }
 };

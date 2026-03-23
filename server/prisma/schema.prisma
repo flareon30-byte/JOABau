@@ -39,6 +39,10 @@ model User {
   
   vacationRequests      VacationRequest[]
   materialOrders        MaterialOrder[]
+  simpleInstallations   SimpleInstallation[]
+  
+  activeClientCompanyId String?
+  activeClientCompany   ClientCompany? @relation("ActiveClientCompany", fields: [activeClientCompanyId], references: [id])
   
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
@@ -100,13 +104,15 @@ model Tool {
 }
 
 model Project {
-  id          String       @id @default(uuid())
-  name        String       @unique
-  isDemo      Boolean      @default(false)
-  addresses   Address[]
-  fusionWorks FusionWork[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id              String         @id @default(uuid())
+  name            String         @unique
+  isDemo          Boolean        @default(false)
+  clientCompanyId String?
+  clientCompany   ClientCompany? @relation(fields: [clientCompanyId], references: [id])
+  addresses       Address[]
+  fusionWorks     FusionWork[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 }
 
 model Address {
@@ -132,6 +138,9 @@ model Address {
 
   // Activacion
   activationInfo ActivationInfo?
+
+  // G&K / Simple Workflow
+  simpleInstallation SimpleInstallation?
 
   // New fields for Protocol and Status Logic
   requiresProtocol Boolean @default(false)
@@ -356,4 +365,36 @@ model MaterialOrder {
 
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
+}
+
+model ClientCompany {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  settings  Json?    // Store client-specific financial/bonus/rates config
+  
+  users     User[]   @relation("ActiveClientCompany")
+  projects  Project[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SimpleInstallation {
+  id        String  @id @default(uuid())
+  addressId String  @unique
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  
+  contactName String?
+  comments    String?
+  photos      String[]
+  
+  // Financial tracking metadata based on Active Client settings at the time of creation
+  priceCharged Float @default(0.0)
+  
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

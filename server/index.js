@@ -55,6 +55,8 @@ app.use('/api/tools', require('./src/routes/toolRoutes'));
 app.use('/api/issues', require('./src/routes/issueRoutes'));
 app.use('/api/vacations', require('./src/routes/vacationRoutes'));
 app.use('/api/material-orders', require('./src/routes/materialOrderRoutes'));
+app.use('/api/clients', require('./src/routes/clientCompanyRoutes'));
+app.use('/api/simple-installations', require('./src/routes/simpleInstallationRoutes'));
 
 // Serve static files from React app
 app.use(express.static(path.join(__dirname, '../client/dist')));
