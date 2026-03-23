@@ -84,6 +84,10 @@ model Team {
   appointments Appointment[]
   tools        Tool[]
   soplados     SopladoInfo[] @relation("BlowingTeam")
+  
+  activeClientCompanyId String?
+  activeClientCompany   ClientCompany? @relation(fields: [activeClientCompanyId], references: [id])
+  
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }

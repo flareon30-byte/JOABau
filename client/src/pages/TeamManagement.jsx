@@ -7,19 +7,22 @@ const TeamManagement = () => {
     const [teams, setTeams] = useState([]);
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({ name: '', department: 'BLOWING', memberIds: [] });
+    const [formData, setFormData] = useState({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '' });
 
     // New states
+    const [clients, setClients] = useState([]);
     const [selectedTeam, setSelectedTeam] = useState(null); // For Tools Modal
     const [editingTeam, setEditingTeam] = useState(null);   // For Edit Modal
 
     const fetchData = async () => {
         try {
-            const [teamsRes, usersRes] = await Promise.all([
+            const [teamsRes, usersRes, clientsRes] = await Promise.all([
                 api.get('/api/teams'),
-                api.get('/api/users')
+                api.get('/api/users'),
+                api.get('/api/clients').catch(() => ({ data: [] }))
             ]);
             setTeams(teamsRes.data);
+            setClients(clientsRes.data);
             // Filter users who are not in a team OR are the ones in the team being edited (so they appear in the list)
             setUsers(usersRes.data);
         } catch (error) {
@@ -33,7 +36,7 @@ const TeamManagement = () => {
 
     const openCreateModal = () => {
         setEditingTeam(null);
-        setFormData({ name: '', department: 'BLOWING', memberIds: [] });
+        setFormData({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '' });
         setIsModalOpen(true);
     };
 
@@ -42,7 +45,8 @@ const TeamManagement = () => {
         setFormData({
             name: team.name,
             department: team.department,
-            memberIds: team.members.map(m => m.id)
+            memberIds: team.members.map(m => m.id),
+            activeClientCompanyId: team.activeClientCompanyId || ''
         });
         setIsModalOpen(true);
     };
@@ -67,7 +71,7 @@ const TeamManagement = () => {
             fetchData();
             setIsModalOpen(false);
             setEditingTeam(null);
-            setFormData({ name: '', department: 'BLOWING', memberIds: [] });
+            setFormData({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '' });
         } catch (error) {
             console.error('Error saving team:', error);
             alert(error.response?.data?.message || 'Error al guardar equipo');
@@ -122,9 +126,16 @@ const TeamManagement = () => {
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 <h4 className="font-bold text-slate-800 text-lg">{team.name}</h4>
-                                <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded mt-1 inline-block">
-                                    {team.department}
-                                </span>
+                                <div className="flex gap-2">
+                                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded mt-1 inline-block">
+                                        {team.department}
+                                    </span>
+                                    {team.activeClientCompany && (
+                                        <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-2 py-1 rounded mt-1 inline-block font-bold">
+                                            Cliente: {team.activeClientCompany.name}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <div className="flex gap-1">
                                 <button onClick={() => openEditModal(team)} className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Editar Equipo">
@@ -183,6 +194,19 @@ const TeamManagement = () => {
                                     <option value="ACTIVATION">Activación</option>
                                     <option value="BACK_OFFICE">Back Office</option>
                                     <option value="PROTOCOLS">Protocolos</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Empresa Cliente (Asignación)</label>
+                                <select
+                                    value={formData.activeClientCompanyId}
+                                    onChange={(e) => setFormData({ ...formData, activeClientCompanyId: e.target.value })}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-joa-blue outline-none"
+                                >
+                                    <option value="">-- Sin Cliente Asignado --</option>
+                                    {clients.map(c => (
+                                        <option key={c.id} value={c.id}>{c.name}</option>
+                                    ))}
                                 </select>
                             </div>
                             <div>

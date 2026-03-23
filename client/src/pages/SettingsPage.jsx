@@ -58,10 +58,11 @@ const SettingsPage = () => {
 
     const [clients, setClients] = useState([]);
     const [newClientName, setNewClientName] = useState('');
+    const [selectedClientId, setSelectedClientId] = useState('');
 
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState(null);
-    const [activeTab, setActiveTab] = useState('installers');
+    const [activeTab, setActiveTab] = useState('clients'); // Start on clients now
 
     useEffect(() => {
         fetchSettings();
@@ -73,24 +74,30 @@ const SettingsPage = () => {
             // Fetch clients
             const clientsRes = await api.get('/api/clients').catch(() => ({ data: [] }));
             setClients(clientsRes.data);
-
-            // Merge existing financials if they exist
-            if (res.data.financials) {
-                // Deep merge to avoid undefined errors
-                setFinancials(prev => ({
-                    ...prev,
-                    installers: { ...prev.installers, ...(res.data.financials.installers || {}) },
-                    blowers: { ...prev.blowers, ...(res.data.financials.blowers || {}) },
-                    backOffice: { ...prev.backOffice, ...(res.data.financials.backOffice || {}) }
-                }));
-            }
+            
             setSettings(res.data);
+            
+            // Just defaults here. We only load financials when a client is selected!
+            setLoading(false);
         } catch (error) {
             console.error('Error fetching settings:', error);
-        } finally {
             setLoading(false);
         }
     };
+    
+    // Auto-load financials when jumping to client
+    useEffect(() => {
+        if (!selectedClientId) return;
+        const client = clients.find(c => c.id === selectedClientId);
+        if (client && client.settings) {
+             setFinancials(prev => ({
+                 ...prev,
+                 installers: { ...prev.installers, ...(client.settings.installers || {}) },
+                 blowers: { ...prev.blowers, ...(client.settings.blowers || {}) },
+                 backOffice: { ...prev.backOffice, ...(client.settings.backOffice || {}) }
+             }));
+        }
+    }, [selectedClientId, clients]);
 
     const handleFinancialChange = (group, field, value) => {
         setFinancials(prev => ({
@@ -105,15 +112,27 @@ const SettingsPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setMessage(null);
+        if (!selectedClientId) {
+             setMessage({ type: 'error', text: 'Debes seleccionar un cliente primero' });
+             return;
+        }
+        
         try {
-            await api.put('/api/settings', {
-                ...settings,
-                financials: financials
+            // Update the selected client's settings, instead of the global config.
+            await api.put(`/api/clients/${selectedClientId}`, {
+                name: clients.find(c => c.id === selectedClientId)?.name,
+                isActive: true,
+                settings: financials
             });
-            setMessage({ type: 'success', text: 'Configuración Financiera Avanzada guardada correctamente' });
+            
+            // Also refresh clients list so settings bubble up
+            const clientsRes = await api.get('/api/clients').catch(() => ({ data: [] }));
+            setClients(clientsRes.data);
+            
+            setMessage({ type: 'success', text: 'Configuración Financiera guardada correctamente para el cliente' });
         } catch (error) {
             console.error('Settings save error:', error);
-            setMessage({ type: 'error', text: 'Error al guardar la configuración' });
+            setMessage({ type: 'error', text: 'Error al guardar la configuración del cliente' });
         }
     };
 
@@ -347,47 +366,70 @@ const SettingsPage = () => {
                 {/* Tabs */}
                 <div className="flex flex-wrap gap-2 mb-8 border-b border-slate-200">
                     <button
-                        onClick={() => setActiveTab('installers')}
-                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'installers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                    >
-                        Instaladores (Altas)
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('blowers')}
-                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'blowers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                    >
-                        Soplado
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('backOffice')}
-                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'backOffice' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                    >
-                        Back Office
-                    </button>
-                    <button
                         onClick={() => setActiveTab('clients')}
                         className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'clients' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                     >
                         Gestión de Clientes
                     </button>
+                    <button
+                        onClick={() => setActiveTab('installers')}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'installers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Precios: Instaladores
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('blowers')}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'blowers' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Precios: Soplado
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('backOffice')}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'backOffice' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Costes: Back Office
+                    </button>
                 </div>
+                
+                {/* Client selection banner if configuring prices */}
+                {activeTab !== 'clients' && (
+                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-6">
+                        <label className="block text-sm font-bold text-blue-800 mb-2">Configurando precios para el cliente:</label>
+                        <select 
+                            value={selectedClientId}
+                            onChange={(e) => setSelectedClientId(e.target.value)}
+                            className="w-full md:w-1/2 p-2 border border-blue-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 font-bold bg-white"
+                        >
+                            <option value="">-- Selecciona un cliente primero --</option>
+                            {clients.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
                 {activeTab !== 'clients' ? (
-                    <form onSubmit={handleSubmit}>
-                        {activeTab === 'installers' && renderFinancialInputs('installers', 'Configuración de Instaladores')}
-                        {activeTab === 'blowers' && renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
-                        {activeTab === 'backOffice' && renderBackOfficeInputs()}
+                    selectedClientId ? (
+                        <form onSubmit={handleSubmit}>
+                            {activeTab === 'installers' && renderFinancialInputs('installers', 'Configuración de Instaladores')}
+                            {activeTab === 'blowers' && renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
+                            {activeTab === 'backOffice' && renderBackOfficeInputs()}
 
-                        <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
-                            <button
-                                type="submit"
-                                className="bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
-                            >
-                                <Save size={20} />
-                                Guardar Toda la Configuración
-                            </button>
+                            <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
+                                <button
+                                    type="submit"
+                                    className="bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
+                                >
+                                    <Save size={20} />
+                                    Guardar Precios de este Cliente
+                                </button>
+                            </div>
+                        </form>
+                    ) : (
+                        <div className="p-10 text-center text-slate-400">
+                            Por favor selecciona un cliente en el menú desplegable arriba para ver y configurar sus tablas de precios y nóminas.
                         </div>
-                    </form>
+                    )
                 ) : (
                     <div className="animate-fadeIn space-y-6">
                         <div className="flex items-center gap-2 mb-4">
@@ -428,6 +470,15 @@ const SettingsPage = () => {
                                                 <td className="p-4 pl-6 font-bold text-slate-800">{client.name}</td>
                                                 <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold">Activo</span></td>
                                                 <td className="p-4">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setSelectedClientId(client.id);
+                                                            setActiveTab('installers');
+                                                        }} 
+                                                        className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors font-bold mr-2"
+                                                    >
+                                                        Precios
+                                                    </button>
                                                     <button onClick={() => handleDeleteClient(client.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors">
                                                         Eliminar
                                                     </button>

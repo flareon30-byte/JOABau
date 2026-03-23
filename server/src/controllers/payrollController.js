@@ -338,7 +338,7 @@ exports.getMyPayroll = async (req, res) => {
     try {
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            include: { team: true }
+            include: { team: { include: { activeClientCompany: true } }, activeClientCompany: true }
         });
 
         if (!user || (!user.teamId && user.role !== 'SUPER_ADMIN' && user.role !== 'BACK_OFFICE')) {
@@ -369,7 +369,15 @@ exports.getMyPayroll = async (req, res) => {
 
         // 1. Back Office Special Case (Individual view, no overhead calc needed for them usually)
         if (user.role === 'BACK_OFFICE') {
-            const config = settings?.financials?.backOffice || {};
+            let config = null;
+            if (team?.activeClientCompany?.settings) {
+                config = team.activeClientCompany.settings.backOffice;
+            } else if (user.activeClientCompany?.settings) {
+                config = user.activeClientCompany.settings.backOffice;
+            } else {
+                config = settings?.financials?.backOffice || {};
+            }
+            
             const apptCount = await prisma.appointment.count({
                 where: {
                     scheduledById: user.id,
@@ -388,7 +396,16 @@ exports.getMyPayroll = async (req, res) => {
 
         // 2. Installers/Blowers Logic
         const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
-        const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
+        
+        let financialConfig = null;
+        if (team?.activeClientCompany?.settings) {
+            financialConfig = team.activeClientCompany.settings[groupKey];
+        } else if (user.activeClientCompany?.settings) {
+            financialConfig = user.activeClientCompany.settings[groupKey];
+        }
+        if (!financialConfig && settings?.financials) {
+            financialConfig = settings.financials[groupKey];
+        }
 
         let activations = [];
         if (teamId && teamId !== 'virtual') {
@@ -436,7 +453,7 @@ exports.getMyPayroll = async (req, res) => {
                     isDemo: req.isDemo || false,
                     NOT: { teamId: teamId } // Exclude current team from "Other Groups"
                 },
-                include: { team: { include: { members: true } } }
+                include: { team: { include: { members: true, activeClientCompany: true } }, activeClientCompany: true }
             });
 
             // We need activations for everyone to calculate their Net Result
@@ -496,7 +513,15 @@ exports.getMyPayroll = async (req, res) => {
                 const isSupportGroup = ['blowers', 'backOffice'].includes(gKey); // Add replanners if role exists
 
                 if (isSupportGroup) {
-                    const fConfig = settings?.financials ? settings.financials[gKey] : null;
+                    let fConfig = null;
+                    if (u.team?.activeClientCompany?.settings) {
+                        fConfig = u.team.activeClientCompany.settings[gKey];
+                    } else if (u.activeClientCompany?.settings) {
+                        fConfig = u.activeClientCompany.settings[gKey];
+                    } else if (settings?.financials) {
+                        fConfig = settings.financials[gKey];
+                    }
+                    
                     let netResult = 0;
 
                     if (gKey === 'backOffice') {
@@ -601,7 +626,7 @@ exports.getPayrollSummary = async (req, res) => {
         // Fetch Users & Activations
         const users = await prisma.user.findMany({
             where: { isDemo: req.isDemo || false },
-            include: { team: { include: { members: true } } }
+            include: { team: { include: { members: true, activeClientCompany: true } }, activeClientCompany: true }
         });
 
         const activations = await prisma.activationInfo.findMany({
@@ -662,8 +687,16 @@ exports.getPayrollSummary = async (req, res) => {
             if (user.role === 'BLOWER') groupKey = 'blowers';
             if (user.role === 'BACK_OFFICE') groupKey = 'backOffice';
 
-            // Fetch Config
-            const financialConfig = settings?.financials ? settings.financials[groupKey] : null;
+            // Fetch Config (Per Client Priority)
+            let financialConfig = null;
+            if (team?.activeClientCompany?.settings) {
+                financialConfig = team.activeClientCompany.settings[groupKey];
+            } else if (user.activeClientCompany?.settings) {
+                financialConfig = user.activeClientCompany.settings[groupKey];
+            }
+            if (!financialConfig && settings?.financials) {
+                financialConfig = settings.financials[groupKey];
+            }
 
             let stats = null;
 

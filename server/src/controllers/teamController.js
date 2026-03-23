@@ -8,7 +8,8 @@ exports.getAllTeams = async (req, res) => {
             include: {
                 members: {
                     select: { id: true, username: true, role: true }
-                }
+                },
+                activeClientCompany: true
             }
         });
         res.json(teams);
@@ -18,7 +19,7 @@ exports.getAllTeams = async (req, res) => {
 };
 
 exports.createTeam = async (req, res) => {
-    const { name, department, memberIds } = req.body;
+    const { name, department, memberIds, activeClientCompanyId } = req.body;
 
     try {
         // Enforce Demo Isolation: Cannot mix demo users with real users
@@ -43,13 +44,15 @@ exports.createTeam = async (req, res) => {
             data: {
                 name,
                 department,
+                activeClientCompanyId: activeClientCompanyId || null,
                 isDemo: req.isDemo || false,
                 members: {
                     connect: memberIds.map(id => ({ id }))
                 }
             },
             include: {
-                members: true
+                members: true,
+                activeClientCompany: true
             }
         });
 
@@ -62,7 +65,7 @@ exports.createTeam = async (req, res) => {
 
 exports.updateTeam = async (req, res) => {
     const { id } = req.params;
-    const { name, department, memberIds } = req.body;
+    const { name, department, memberIds, activeClientCompanyId } = req.body;
 
     try {
         // Validation: Verify that new members are not in OTHER teams
@@ -88,12 +91,13 @@ exports.updateTeam = async (req, res) => {
             data: {
                 name,
                 department,
+                activeClientCompanyId: activeClientCompanyId || null,
                 members: {
                     set: [], // Disconnect everyone
                     connect: memberIds.map(uid => ({ id: uid })) // Connect new list
                 }
             },
-            include: { members: true }
+            include: { members: true, activeClientCompany: true }
         });
 
         res.json({ message: 'Team updated', team });
