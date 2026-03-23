@@ -1,11 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const clientCompanyController = require('../controllers/clientCompanyController');
-const { requireRole } = require('../middleware/authMiddleware');
+const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 
-router.get('/', clientCompanyController.getAllClients);
-router.post('/', requireRole(['SUPER_ADMIN']), clientCompanyController.createClient);
-router.put('/:id', requireRole(['SUPER_ADMIN']), clientCompanyController.updateClient);
-router.delete('/:id', requireRole(['SUPER_ADMIN']), clientCompanyController.deleteClient);
+// Get all clients - both admin and general users (for dropdowns) might need this
+router.get('/', verifyToken, clientCompanyController.getAllClients);
+
+// Only admins can create or update
+router.post('/', verifyToken, checkRole(['ADMIN', 'SUPER_ADMIN']), clientCompanyController.createClient);
+router.put('/:id', verifyToken, checkRole(['ADMIN', 'SUPER_ADMIN']), clientCompanyController.updateClient);
+
+// Only super admin can delete
+router.delete('/:id', verifyToken, checkRole(['SUPER_ADMIN']), clientCompanyController.deleteClient);
 
 module.exports = router;

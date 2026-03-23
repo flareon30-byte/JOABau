@@ -89,8 +89,8 @@ exports.deleteUser = async (req, res) => {
 exports.updateActiveClient = async (req, res) => {
     try {
         const { activeClientCompanyId } = req.body;
-        // The id comes from req.user (the token)
-        const userId = req.user.id;
+        // The id comes from req.userId (the token)
+        const userId = req.userId;
 
         const user = await prisma.user.update({
             where: { id: userId },

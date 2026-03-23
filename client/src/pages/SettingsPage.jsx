@@ -76,11 +76,11 @@ const SettingsPage = () => {
 
             // Merge existing financials if they exist
             if (res.data.financials) {
-                // Deep merge to ensure backOffice key exists if old config loaded
+                // Deep merge to avoid undefined errors
                 setFinancials(prev => ({
                     ...prev,
-                    ...res.data.financials,
-                    // Ensure backOffice exists if coming from DB without it
+                    installers: { ...prev.installers, ...(res.data.financials.installers || {}) },
+                    blowers: { ...prev.blowers, ...(res.data.financials.blowers || {}) },
                     backOffice: { ...prev.backOffice, ...(res.data.financials.backOffice || {}) }
                 }));
             }
