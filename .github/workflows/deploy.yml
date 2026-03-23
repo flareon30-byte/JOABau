@@ -15,22 +15,16 @@ jobs:
           username: ${{ secrets.DO_USERNAME }}
           key: ${{ secrets.DO_SSH_KEY }}
           script: |
-            cd /root/Joa-Technologien
+            cd /root/app
             
-            echo "1. Pulling latest code..."
+            echo "1. Descargando codigo de Github..."
             git checkout master
             git pull origin master
             
-            echo "2. Building Frontend..."
-            cd client
-            npm install
-            npm run build
+            echo "2. Reconstruyendo contenedores Docker..."
+            docker compose up -d --build
             
-            echo "3. Updating Backend and Database schema..."
-            cd ../server
-            npm install
-            npx prisma db push
+            echo "3. Actualizando Base de Datos de Prisma..."
+            docker compose exec -T server npx prisma db push
             
-            echo "4. Restarting the PM2 Server..."
-            pm2 restart all
-            echo "DEUPLOYMENT COMPLETED SUCCESSFULY!"
+            echo "DESPLIEGUE FINALIZADO"
