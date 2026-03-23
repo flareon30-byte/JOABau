@@ -1,0 +1,36 @@
+name: Deploy to Digital Ocean
+
+on:
+  push:
+    branches: [ "master" ] # Se ejecutará al hacer git push a la rama master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Digital Ocean Server via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: ${{ secrets.DO_USERNAME }}
+          key: ${{ secrets.DO_SSH_KEY }}
+          script: |
+            cd /root/Joa-Technologien
+            
+            echo "1. Pulling latest code..."
+            git checkout master
+            git pull origin master
+            
+            echo "2. Building Frontend..."
+            cd client
+            npm install
+            npm run build
+            
+            echo "3. Updating Backend and Database schema..."
+            cd ../server
+            npm install
+            npx prisma db push
+            
+            echo "4. Restarting the PM2 Server..."
+            pm2 restart all
+            echo "DEUPLOYMENT COMPLETED SUCCESSFULY!"
