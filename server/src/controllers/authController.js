@@ -34,7 +34,17 @@ exports.login = async (req, res) => {
     const { username, password } = req.body;
 
     try {
-        const user = await prisma.user.findUnique({ where: { username } });
+        const user = await prisma.user.findUnique({ 
+            where: { username },
+            include: {
+                activeClientCompany: true,
+                team: {
+                    include: {
+                        activeClientCompany: true
+                    }
+                }
+            }
+        });
         if (!user) {
             return res.status(400).json({ message: 'Invalid credentials' });
         }
@@ -52,7 +62,22 @@ exports.login = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000 // 1 day
         });
 
-        res.json({ message: 'Logged in successfully', user: { id: user.id, username: user.username, role: user.role, isDemo: user.isDemo } });
+        // If user has a direct client, use that. Otherwise use their team's client.
+        const activeClientCompany = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
+        const activeClientCompanyId = activeClientCompany ? activeClientCompany.id : null;
+
+        res.json({ 
+            message: 'Logged in successfully', 
+            user: { 
+                id: user.id, 
+                username: user.username, 
+                role: user.role, 
+                isDemo: user.isDemo,
+                teamId: user.teamId,
+                activeClientCompanyId,
+                activeClientCompany
+            } 
+        });
     } catch (error) {
         console.error('Login Error Full Details:', error);
         res.status(500).json({ message: 'Server error', error: error.message, stack: error.stack });
