@@ -9,11 +9,14 @@ const BillingPage = () => {
     // 2. Filters State
     const [filters, setFilters] = useState({
         projectId: '',
+        clientCompanyId: '',
         startDate: '',
         endDate: '',
         nvt: '',
         type: ''
     });
+
+    const [clients, setClients] = useState([]);
 
     // 3. Data State
     const [billingData, setBillingData] = useState({
@@ -44,7 +47,15 @@ const BillingPage = () => {
 
     useEffect(() => {
         fetchProjects();
+        fetchClients();
     }, []);
+
+    const fetchClients = async () => {
+        try {
+            const res = await api.get('/api/clients');
+            setClients(res.data);
+        } catch (error) { console.error(error); }
+    };
 
     // Effect to fetch data when filters change
     useEffect(() => {
@@ -71,6 +82,7 @@ const BillingPage = () => {
         try {
             const params = new URLSearchParams();
             if (filters.projectId) params.append('projectId', filters.projectId);
+            if (filters.clientCompanyId) params.append('clientCompanyId', filters.clientCompanyId);
             if (filters.startDate) params.append('startDate', filters.startDate);
             if (filters.endDate) params.append('endDate', filters.endDate);
             if (filters.nvt) params.append('nvt', filters.nvt);
@@ -102,6 +114,7 @@ const BillingPage = () => {
         try {
             const params = new URLSearchParams();
             if (filters.projectId) params.append('projectId', filters.projectId);
+            if (filters.clientCompanyId) params.append('clientCompanyId', filters.clientCompanyId);
             if (filters.startDate) params.append('startDate', filters.startDate);
             if (filters.endDate) params.append('endDate', filters.endDate);
             if (filters.nvt) params.append('nvt', filters.nvt);
@@ -503,13 +516,30 @@ const BillingPage = () => {
                     <div className="relative">
                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                         <select
-                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-sm"
                             value={filters.projectId}
                             onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}
                         >
                             <option value="">Todos los proyectos</option>
                             {projects.map(p => (
                                 <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-bold text-slate-500 uppercase">Empresa Cliente</label>
+                    <div className="relative">
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <select
+                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-sm font-bold"
+                            value={filters.clientCompanyId}
+                            onChange={(e) => setFilters({ ...filters, clientCompanyId: e.target.value })}
+                        >
+                            <option value="">Todos los Clientes</option>
+                            {clients.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
                             ))}
                         </select>
                     </div>
@@ -606,6 +636,33 @@ const BillingPage = () => {
                     {renderTable()}
                 </div>
             </div>
+
+            {/* Totals Summary */}
+            {billingData.totals && filters.clientCompanyId && (
+                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl shadow-lg mt-6 text-white grid grid-cols-2 md:grid-cols-6 gap-4 items-center">
+                    <div className="col-span-2 md:col-span-2">
+                        <p className="text-green-100 text-xs font-bold uppercase tracking-wider mb-1">Total a Facturar Automático</p>
+                        <h3 className="text-4xl font-black">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.euros || 0)}</h3>
+                        <p className="text-xs text-green-100 mt-1 opacity-80">* Calculado según precios del cliente activo</p>
+                    </div>
+                    <div className="bg-white/10 p-3 rounded-xl border border-white/20 text-center">
+                        <p className="text-[10px] uppercase font-bold text-green-200 mb-1">Básicas (BP)</p>
+                        <p className="text-xl font-bold">{billingData.totals.bp}</p>
+                    </div>
+                    <div className="bg-white/10 p-3 rounded-xl border border-white/20 text-center">
+                        <p className="text-[10px] uppercase font-bold text-green-200 mb-1">SDU / TA</p>
+                        <p className="text-xl font-bold">{billingData.totals.ta}</p>
+                    </div>
+                    <div className="bg-white/10 p-3 rounded-xl border border-white/20 text-center">
+                        <p className="text-[10px] uppercase font-bold text-green-200 mb-1">Empalmes SP</p>
+                        <p className="text-xl font-bold">{billingData.totals.sp}</p>
+                    </div>
+                    <div className="bg-white/10 p-3 rounded-xl border border-white/20 text-center">
+                        <p className="text-[10px] uppercase font-bold text-green-200 mb-1">MDU's</p>
+                        <p className="text-xl font-bold">{billingData.totals.mdu}</p>
+                    </div>
+                </div>
+            )}
 
             <PhotoModal />
         </div>

@@ -137,7 +137,7 @@ exports.exportActivationPhotos = async (req, res) => {
 };
 
 exports.getBillingData = async (req, res) => {
-    const { projectId, startDate, endDate, nvt, type } = req.query;
+    const { projectId, startDate, endDate, nvt, type, clientCompanyId } = req.query;
     const isDemo = req.isDemo === true; // Filter by user demo status
 
     const dateFilter = {};
@@ -147,7 +147,9 @@ exports.getBillingData = async (req, res) => {
     // Only apply if at least one date is present, else undefined is fine (fetches all)
     const hasDate = startDate || endDate;
 
-    const projectFilter = projectId ? { projectId } : {};
+    const projectFilter = {};
+    if (projectId) projectFilter.id = projectId;
+    if (clientCompanyId) projectFilter.clientCompanyId = clientCompanyId;
 
     try {
         const results = {
@@ -163,11 +165,10 @@ exports.getBillingData = async (req, res) => {
             where: {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
-                    ...projectFilter,
-                    ...projectFilter,
+                    projectId: projectId || undefined,
                     project: {
-                        isDemo: isDemo
-                        // Removed extra check that was causing issues
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
                     },
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
@@ -182,7 +183,8 @@ exports.getBillingData = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
                 project: {
-                    isDemo: isDemo
+                    isDemo: isDemo,
+                    ...(clientCompanyId ? { clientCompanyId } : {})
                 }, // Filter by Demo
                 ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
             },
@@ -195,9 +197,10 @@ exports.getBillingData = async (req, res) => {
             where: {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
-                    ...projectFilter,
+                    projectId: projectId || undefined,
                     project: {
-                        isDemo: isDemo
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
@@ -214,9 +217,10 @@ exports.getBillingData = async (req, res) => {
                 status: 'COMPLETADO',
                 updatedAt: hasDate ? dateFilter : undefined,
                 address: {
-                    ...projectFilter,
+                    projectId: projectId || undefined,
                     project: {
-                        isDemo: isDemo
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
@@ -232,10 +236,11 @@ exports.getBillingData = async (req, res) => {
                 status: 'COMPLETADO',
                 updatedAt: hasDate ? dateFilter : undefined,
                 address: {
-                    ...projectFilter,
+                    projectId: projectId || undefined,
                     project: {
-                        isDemo: isDemo
-                    }, // Filter by Demo
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
+                    },
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
             },
@@ -246,6 +251,45 @@ exports.getBillingData = async (req, res) => {
             orderBy: { updatedAt: 'desc' }
         });
 
+        // 6. Calculate Totals if client is selected
+        results.totals = { euros: 0, bp: 0, ta: 0, sp: 0, mdu: 0 };
+        if (clientCompanyId) {
+            const client = await prisma.clientCompany.findUnique({ where: { id: clientCompanyId } });
+            if (client && client.settings) {
+                const prices = client.settings;
+                
+                results.activation.forEach(act => {
+                    const t = act.activationType;
+                    if (t === 'BP' || t === 'BP_2_FAM') {
+                        results.totals.bp++;
+                        results.totals.euros += (prices.bpPrice || 0);
+                    } else if (t === 'SDU' || t === 'BR_MULTI') {
+                        let taCount = act.taCount || 1;
+                        if (!act.taInstalled) taCount = 1;
+                        results.totals.ta += taCount;
+                        results.totals.euros += ((prices.taPrice || 0) * taCount);
+
+                        if (act.mduInstalled) {
+                            results.totals.mdu++;
+                            results.totals.euros += (prices.mduPrice || 0);
+                        }
+                    }
+
+                    if (act.spInstalled) {
+                        const spCount = act.spInstalled; // it's an integer
+                        results.totals.sp += spCount;
+                        results.totals.euros += ((prices.spPrice || 0) * spCount);
+                    }
+                });
+
+                // Add soplados assuming standard blower price (or maybe custom config later)
+                // Assuming soplados are also billed at client settings:
+                if (prices.apLPrice) {
+                    results.totals.euros += (results.soplado.length * prices.apLPrice);
+                }
+            }
+        }
+
         res.json(results);
     } catch (error) {
         console.error(error);
@@ -254,7 +298,7 @@ exports.getBillingData = async (req, res) => {
 };
 
 exports.exportBillingExcel = async (req, res) => {
-    const { projectId, startDate, endDate, nvt, type } = req.query;
+    const { projectId, startDate, endDate, nvt, type, clientCompanyId } = req.query;
     const isDemo = req.isDemo === true; // Filter by user demo status
 
     const dateFilter = {};
@@ -262,17 +306,20 @@ exports.exportBillingExcel = async (req, res) => {
     if (endDate) dateFilter.lte = new Date(new Date(endDate).setHours(23, 59, 59, 999));
     const hasDate = startDate || endDate;
 
-    const projectFilter = projectId ? { projectId } : {};
+    const projectFilter = {};
+    if (projectId) projectFilter.id = projectId;
+    if (clientCompanyId) projectFilter.clientCompanyId = clientCompanyId;
 
     try {
         const soplado = await prisma.sopladoInfo.findMany({
             where: {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
-                    ...projectFilter,
+                    projectId: projectId || undefined,
                     project: {
-                        isDemo: isDemo
-                    }, // Filter by Demo
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
+                    },
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
             },
@@ -284,7 +331,8 @@ exports.exportBillingExcel = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
                 project: {
-                    isDemo: isDemo
+                    isDemo: isDemo,
+                    ...(clientCompanyId ? { clientCompanyId } : {})
                 }, // Filter by Demo
                 ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
             },
@@ -295,9 +343,10 @@ exports.exportBillingExcel = async (req, res) => {
             where: {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
-                    ...projectFilter,
+                    projectId: projectId || undefined,
                     project: {
-                        isDemo: isDemo
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
@@ -312,9 +361,10 @@ exports.exportBillingExcel = async (req, res) => {
                 status: 'COMPLETADO',
                 updatedAt: hasDate ? dateFilter : undefined,
                 address: {
-                    ...projectFilter,
+                    projectId: projectId || undefined,
                     project: {
-                        isDemo: isDemo
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
@@ -328,9 +378,10 @@ exports.exportBillingExcel = async (req, res) => {
                 status: 'COMPLETADO',
                 updatedAt: hasDate ? dateFilter : undefined,
                 address: {
-                    ...projectFilter,
+                    projectId: projectId || undefined,
                     project: {
-                        isDemo: isDemo
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }

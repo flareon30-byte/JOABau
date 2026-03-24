@@ -608,12 +608,20 @@ const DashboardHome = () => {
                             </p>
                         </div>
 
-                        {/* Read-only Client Badge */}
+                        {/* Client Switcher Selector for Admin */}
                         <div className="bg-white/10 p-3 rounded-xl border border-white/20 backdrop-blur-sm self-stretch md:self-auto flex flex-col justify-center mb-6 md:mb-0">
-                            <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1 block">Tu Cliente Activo</label>
-                            <div className="text-white text-sm font-bold w-full md:w-48 truncate">
-                                {user.activeClientCompany?.name || 'No asignado'}
-                            </div>
+                            <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1 block">Cliente Analizado</label>
+                            <select 
+                                value={user.activeClientCompanyId || ''} 
+                                onChange={handleClientChange}
+                                disabled={updatingClient}
+                                className="bg-transparent text-white border-0 border-b border-white/30 focus:ring-0 px-0 py-1 text-sm font-bold w-full md:w-48 appearance-none cursor-pointer"
+                            >
+                                <option value="" className="text-slate-800">-- Selecciona Cliente --</option>
+                                {clients.map(c => (
+                                    <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                 </div>
