@@ -46,6 +46,11 @@ exports.createInstallation = async (req, res) => {
             const activeClient = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
             const activeClientId = activeClient ? activeClient.id : null;
             const clientName = activeClient ? activeClient.name : 'General';
+            
+            let billablePrice = 0;
+            if (activeClient && activeClient.settings) {
+                billablePrice = activeClient.settings.ApLPrice || activeClient.settings.apLPrice || 0;
+            }
 
             let dummyProject = await prisma.project.findFirst({
                 where: { name: `Proyectos Varios - ${clientName}` }
@@ -82,7 +87,7 @@ exports.createInstallation = async (req, res) => {
                 photos: photoUrls,
                 createdById: userId,
                 // priceCharged would be computed based on active client settings here if needed
-                priceCharged: 0 // Placeholder, could be from user.activeClientCompany.settings.ApLPrice
+                priceCharged: billablePrice
             }
         });
 

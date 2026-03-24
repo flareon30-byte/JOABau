@@ -2,7 +2,7 @@ const prisma = require('../prisma');
 
 exports.getDashboardStats = async (req, res) => {
     try {
-        const [pendingCount, assignedCount, completedCount] = await Promise.all([
+        const [pendingCount, assignedCount, completedActivationsCount, simpleCount] = await Promise.all([
             // Pending: Soplado OK but no appointment or pending appointment
             prisma.address.count({
                 where: {
@@ -30,13 +30,20 @@ exports.getDashboardStats = async (req, res) => {
                 where: {
                     address: { project: { isDemo: req.isDemo || false } }
                 }
+            }),
+            // Simple: G&K records
+            prisma.simpleInstallation.count({
+                where: {
+                    address: { project: { isDemo: req.isDemo || false } }
+                }
             })
         ]);
 
         res.json({
             pendingAppointments: pendingCount,
             assignedAppointments: assignedCount,
-            completedActivations: completedCount
+            completedActivations: completedActivationsCount + simpleCount, // handle multiple sources
+            simpleCount: simpleCount
         });
     } catch (error) {
         console.error(error);
@@ -208,6 +215,7 @@ exports.getActivatorDashboard = async (req, res) => {
             ta: 0,
             sp: 0,
             mdu: 0,
+            gk: 0, // Added G&K count
             viviendas: 0 // New field for blowers
         };
 
@@ -271,6 +279,20 @@ exports.getActivatorDashboard = async (req, res) => {
                     regularEarnings += totalOnRecord;
                     regularActivations++;
                 }
+            });
+
+            // 5. Get Simple Installations (G&K)
+            const simpleData = await prisma.simpleInstallation.findMany({
+                where: {
+                    createdAt: { gte: startOfMonth, lte: endDate },
+                    createdById: userId
+                }
+            });
+            simpleData.forEach(gk => {
+                counts.gk++;
+                const price = gk.priceCharged || 0;
+                regularEarnings += price;
+                regularActivations++;
             });
         }
 

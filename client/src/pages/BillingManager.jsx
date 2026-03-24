@@ -244,6 +244,11 @@ const BillingPage = () => {
                 columns = ['Fecha', 'Proyecto', 'Dirección', 'NVT', 'Tipo', 'Detalles', 'Acciones'];
                 emptyMsg = "No hay reparaciones facturables completadas";
                 break;
+            case 'simpleInstallation':
+                data = billingData.simpleInstallation;
+                columns = ['Fecha', 'Dirección', 'Visitado', 'Comentarios', 'Fotos', 'Técnico', 'Proyecto', 'Acciones'];
+                emptyMsg = "No hay fichas de G&K / Otros enviadas";
+                break;
             default:
                 break;
         }
@@ -356,6 +361,37 @@ const BillingPage = () => {
                                             <div className="text-xs text-slate-500 italic truncate max-w-[120px]" title={row.description}>
                                                 {row.description || '-'}
                                             </div>
+                                        </td>
+                                    </>
+                                )}
+
+                                {activeTab === 'simpleInstallation' && (
+                                    <>
+                                        <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
+                                        <td className="p-4 text-slate-900 font-bold">
+                                            {row.address.street} {row.address.number || ''}
+                                        </td>
+                                        <td className="p-4 text-slate-500">
+                                            {row.contactName || '-'}
+                                        </td>
+                                        <td className="p-4 text-slate-500 max-w-xs truncate">
+                                            {row.comments || '-'}
+                                        </td>
+                                        <td className="p-4 text-slate-500">
+                                            <div className="flex gap-1 overflow-x-auto max-w-[100px] no-scrollbar">
+                                                {row.photos?.map((p, i) => (
+                                                    <a key={i} href={getFileUrl(p)} target="_blank" rel="noreferrer" className="flex-shrink-0 w-8 h-8 rounded border border-slate-200 overflow-hidden hover:scale-110 transition-transform">
+                                                        <img src={getFileUrl(p)} alt="Photo" className="w-full h-full object-cover" onError={(e) => { e.target.src = '/image-placeholder.png'; }} />
+                                                    </a>
+                                                ))}
+                                                {(!row.photos || row.photos.length === 0) && <span className="text-slate-300 italic">No fotos</span>}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-slate-500">
+                                            {row.createdBy?.username || '-'}
+                                        </td>
+                                        <td className="p-4 text-slate-500">
+                                            {row.address?.project?.name || '-'}
                                         </td>
                                     </>
                                 )}
@@ -616,7 +652,8 @@ const BillingPage = () => {
                         { id: 'fusion', label: 'Fusión', color: 'purple' },
                         { id: 'activation', label: 'Activaciones', color: 'green' },
                         { id: 'protocol', label: 'Protocolos', color: 'indigo' },
-                        { id: 'repair', label: 'Reparaciones', color: 'orange' }
+                        { id: 'repair', label: 'Reparaciones', color: 'orange' },
+                        { id: 'simpleInstallation', label: 'G&K / Otros', color: 'cyan' }
                     ].map(tab => (
                         <button
                             key={tab.id}

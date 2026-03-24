@@ -156,8 +156,9 @@ exports.getBillingData = async (req, res) => {
             soplado: [],
             fusion: [],
             activation: [],
-            protocol: [], // Added newline for clarity
-            repair: [] // Added repair here
+            protocol: [], 
+            repair: [],
+            simpleInstallation: [] // Added for G&K
         };
 
         // 1. SOPLADO
@@ -251,8 +252,25 @@ exports.getBillingData = async (req, res) => {
             orderBy: { updatedAt: 'desc' }
         });
 
-        // 6. Calculate Totals if client is selected
-        results.totals = { euros: 0, bp: 0, ta: 0, sp: 0, mdu: 0 };
+        // 6. SIMPLE INSTALLATIONS (G&K / Otros)
+        results.simpleInstallation = await prisma.simpleInstallation.findMany({
+            where: {
+                createdAt: hasDate ? dateFilter : undefined,
+                address: {
+                    projectId: projectId || undefined,
+                    project: {
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
+                    },
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                }
+            },
+            include: { address: { include: { project: true } }, createdBy: true },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        // 7. Calculate Totals if client is selected
+        results.totals = { euros: 0, bp: 0, ta: 0, sp: 0, mdu: 0, gk: 0 };
         if (clientCompanyId) {
             const client = await prisma.clientCompany.findUnique({ where: { id: clientCompanyId } });
             if (client && client.settings) {
@@ -287,6 +305,12 @@ exports.getBillingData = async (req, res) => {
                 if (prices.apLPrice) {
                     results.totals.euros += (results.soplado.length * prices.apLPrice);
                 }
+
+                // 5. G&K / Simple Installations
+                results.simpleInstallation.forEach(item => {
+                    results.totals.gk++;
+                    results.totals.euros += (prices.ApLPrice || prices.apLPrice || 0); // Check both casings just in case
+                });
             }
         }
 

@@ -448,13 +448,21 @@ const DashboardHome = () => {
                             </div>
 
                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                                <div className="p-3 bg-orange-50 text-orange-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                                    <span className="font-extrabold text-xs">MDU</span>
-                                </div>
-                                <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.mdu || 0}</h3>
-                                <p className="text-xs text-slate-400 font-bold uppercase mt-2">MDU</p>
-                            </div>
-                        </div>
+                                 <div className="p-3 bg-orange-50 text-orange-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                     <span className="font-extrabold text-xs">MDU</span>
+                                 </div>
+                                 <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.mdu || 0}</h3>
+                                 <p className="text-xs text-slate-400 font-bold uppercase mt-2">MDU</p>
+                             </div>
+
+                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
+                                 <div className="p-3 bg-cyan-50 text-cyan-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                     <span className="font-extrabold text-xs">G&K</span>
+                                 </div>
+                                 <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.gk || 0}</h3>
+                                 <p className="text-xs text-slate-400 font-bold uppercase mt-2">G&K / Otros</p>
+                             </div>
+                         </div>
                     </>
                 )}
 
