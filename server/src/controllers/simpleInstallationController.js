@@ -70,7 +70,11 @@ exports.createInstallation = async (req, res) => {
         res.status(201).json({ message: 'Installation recorded successfully', installation });
     } catch (error) {
         console.error('Error creating simple installation:', error);
-        res.status(500).json({ message: 'Error processing installation' });
+        res.status(500).json({ 
+            message: 'Error processing installation', 
+            details: error.message,
+            stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined 
+        });
     }
 };
 
