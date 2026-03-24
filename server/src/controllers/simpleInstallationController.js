@@ -5,7 +5,7 @@ exports.createInstallation = async (req, res) => {
     try {
         const { projectId, contactName, comments, addressInfo } = req.body;
         const photos = req.files || [];
-        const userId = req.user.id;
+        const userId = req.userId;
 
         // Parse address info
         const parsedAddress = JSON.parse(addressInfo);
@@ -18,16 +18,24 @@ exports.createInstallation = async (req, res) => {
             // Find a generic project for the current user's active client
             const user = await prisma.user.findUnique({
                 where: { id: userId },
-                include: { activeClientCompany: true }
+                include: { 
+                    activeClientCompany: true,
+                    team: { include: { activeClientCompany: true } }
+                }
             });
+            
+            const activeClient = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
+            const activeClientId = activeClient ? activeClient.id : null;
+            const clientName = activeClient ? activeClient.name : 'General';
+
             let dummyProject = await prisma.project.findFirst({
-                where: { name: `Proyectos Varios - ${user.activeClientCompany?.name || 'General'}` }
+                where: { name: `Proyectos Varios - ${clientName}` }
             });
             if (!dummyProject) {
                 dummyProject = await prisma.project.create({
                     data: {
-                        name: `Proyectos Varios - ${user.activeClientCompany?.name || 'General'}`,
-                        clientCompanyId: user.activeClientCompanyId
+                        name: `Proyectos Varios - ${clientName}`,
+                        clientCompanyId: activeClientId
                     }
                 });
             }
