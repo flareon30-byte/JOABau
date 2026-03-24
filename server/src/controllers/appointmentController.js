@@ -1,4 +1,5 @@
 const prisma = require('../prisma');
+const { processImages } = require('../utils/imageProcessor');
 
 // Get addresses ready for appointment (Soplado OK, Appointment Pending/Null)
 exports.getPendingAppointments = async (req, res) => {
@@ -247,7 +248,14 @@ exports.reciteAppointment = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
     const userId = req.userId;
-    const photos = req.files ? req.files.map(f => `/uploads/${f.filename}`) : [];
+    const photosRaw = req.files || [];
+    
+    // 🟢 COMPRESIÓN DE IMÁGENES
+    if (photosRaw.length > 0) {
+        await processImages(photosRaw);
+    }
+
+    const photos = photosRaw.map(f => `/uploads/${f.filename}`);
 
     try {
         const user = await prisma.user.findUnique({

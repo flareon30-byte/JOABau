@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+const { processImages } = require('../utils/imageProcessor');
 
 exports.createInstallation = async (req, res) => {
     try {
@@ -15,6 +16,11 @@ exports.createInstallation = async (req, res) => {
             itemsCount: itemsJSON ? JSON.parse(itemsJSON).length : 0,
             photoCount: photos.length
         });
+
+        // 🟢 COMPRESIÓN DE IMÁGENES
+        if (photos.length > 0) {
+            await processImages(photos);
+        }
 
         // Parse address info
         if (!addressInfo) {

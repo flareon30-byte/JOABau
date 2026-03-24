@@ -1,4 +1,5 @@
 const prisma = require('../prisma');
+const { processImages } = require('../utils/imageProcessor');
 
 // Get Tools for a Team
 exports.getTeamTools = async (req, res) => {
@@ -20,6 +21,11 @@ exports.addTool = async (req, res) => {
     const { teamId } = req.params;
     const { name, serialNumber, status } = req.body;
     const files = req.files; // Photos
+
+    // 🟢 COMPRESIÓN DE IMÁGENES
+    if (files && files.length > 0) {
+        await processImages(files);
+    }
 
     try {
         // Validation?

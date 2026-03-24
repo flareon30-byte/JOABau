@@ -1,4 +1,5 @@
 const prisma = require('../prisma');
+const { processImages } = require('../utils/imageProcessor');
 
 // Log Fusion Work (New Workflow)
 exports.logFusionWork = async (req, res) => {
@@ -8,6 +9,11 @@ exports.logFusionWork = async (req, res) => {
 
     if (!projectId || !nvt || !fusionCount) {
         return res.status(400).json({ message: 'Project ID, NVT, and Fusion Count are required' });
+    }
+
+    // 🟢 COMPRESIÓN DE IMÁGENES
+    if (files && files.length > 0) {
+        await processImages(files);
     }
 
     try {

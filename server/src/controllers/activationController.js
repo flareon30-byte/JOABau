@@ -2,6 +2,7 @@ const prisma = require('../prisma');
 const { PDFDocument } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
+const { processImages } = require('../utils/imageProcessor');
 
 // Points System Configuration
 const POINTS_MAP = {
@@ -77,6 +78,11 @@ exports.submitActivation = async (req, res) => {
 
     if (signedPdfFile) {
         pdfPath = signedPdfFile.path.replace(/\\/g, '/');
+    }
+
+    // 🟢 COMPRESIÓN DE IMÁGENES
+    if (photos.length > 0) {
+        await processImages(photos);
     }
 
     try {
