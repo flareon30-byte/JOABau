@@ -62,8 +62,18 @@ exports.login = async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000 // 1 day
         });
 
-        // If user has a direct client, use that. Otherwise use their team's client.
-        const activeClientCompany = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
+        // Hierarchy Logic:
+        // 1. Admins/Backoffice: Manual override (activeClientCompany) > Team default
+        // 2. Technicians: Team default > Manual override (rarely exists)
+        let activeClientCompany;
+        if (['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'].includes(user.role)) {
+            activeClientCompany = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
+        } else {
+            activeClientCompany = (user.team && user.team.activeClientCompany) 
+                ? user.team.activeClientCompany 
+                : (user.activeClientCompany || null);
+        }
+        
         const activeClientCompanyId = activeClientCompany ? activeClientCompany.id : null;
 
         res.json({ 
@@ -133,8 +143,18 @@ exports.getMe = async (req, res) => {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Consistent logic: User override > Team default
-        const activeClientCompany = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
+        // Hierarchy Logic:
+        // 1. Admins/Backoffice: Manual override (activeClientCompany) > Team default
+        // 2. Technicians: Team default > Manual override (rarely exists)
+        let activeClientCompany;
+        if (['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'].includes(user.role)) {
+            activeClientCompany = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
+        } else {
+            activeClientCompany = (user.team && user.team.activeClientCompany) 
+                ? user.team.activeClientCompany 
+                : (user.activeClientCompany || null);
+        }
+        
         const activeClientCompanyId = activeClientCompany ? activeClientCompany.id : null;
 
         res.json({
