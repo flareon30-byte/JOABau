@@ -23,6 +23,7 @@ jobs:
             git reset --hard origin/master
             
             echo "2. Reconstruyendo contenedores Docker..."
+            docker compose down
             docker compose up -d --build
             
             echo "3. Actualizando Base de Datos de Prisma..."
