@@ -32,26 +32,27 @@ exports.createInstallation = async (req, res) => {
         // 1. Get or create the address under a generic G&K project, or if they passed projectId use it.
         // If not, maybe create a temporary project or we use a "Sin Proyecto" dummy project.
         // For now, we assume projectId is provided or we fetch a default one for this active client.
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { 
+                activeClientCompany: true,
+                team: { include: { activeClientCompany: true } }
+            }
+        });
+        
+        const activeClient = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
+        const activeClientId = activeClient ? activeClient.id : null;
+        const clientName = activeClient ? activeClient.name : 'General';
+        
+        // Price should be resolved for EVERY installation
+        let billablePrice = 0;
+        if (activeClient && activeClient.settings) {
+            billablePrice = activeClient.settings.ApLPrice || activeClient.settings.apLPrice || 0;
+        }
+
         let targetProjectId = projectId;
         if (!targetProjectId) {
-            // Find a generic project for the current user's active client
-            const user = await prisma.user.findUnique({
-                where: { id: userId },
-                include: { 
-                    activeClientCompany: true,
-                    team: { include: { activeClientCompany: true } }
-                }
-            });
-            
-            const activeClient = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
-            const activeClientId = activeClient ? activeClient.id : null;
-            const clientName = activeClient ? activeClient.name : 'General';
-            
-            let billablePrice = 0;
-            if (activeClient && activeClient.settings) {
-                billablePrice = activeClient.settings.ApLPrice || activeClient.settings.apLPrice || 0;
-            }
-
+            // Find or create generic project
             let dummyProject = await prisma.project.findFirst({
                 where: { name: `Proyectos Varios - ${clientName}` }
             });
@@ -86,7 +87,6 @@ exports.createInstallation = async (req, res) => {
                 comments,
                 photos: photoUrls,
                 createdById: userId,
-                // priceCharged would be computed based on active client settings here if needed
                 priceCharged: billablePrice
             }
         });
