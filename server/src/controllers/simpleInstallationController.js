@@ -7,8 +7,27 @@ exports.createInstallation = async (req, res) => {
         const photos = req.files || [];
         const userId = req.userId;
 
+        console.log('[SimpleInstallation] Received:', {
+            userId,
+            projectId,
+            contactName,
+            addressInfo,
+            photoCount: photos.length
+        });
+
         // Parse address info
-        const parsedAddress = JSON.parse(addressInfo);
+        if (!addressInfo) {
+            console.error('[SimpleInstallation] Error: Missing addressInfo');
+            return res.status(400).json({ message: 'Información de dirección faltante' });
+        }
+        
+        let parsedAddress;
+        try {
+            parsedAddress = JSON.parse(addressInfo);
+        } catch (e) {
+            console.error('[SimpleInstallation] Error parsing JSON:', addressInfo);
+            return res.status(400).json({ message: 'Error de formato en dirección' });
+        }
 
         // 1. Get or create the address under a generic G&K project, or if they passed projectId use it.
         // If not, maybe create a temporary project or we use a "Sin Proyecto" dummy project.

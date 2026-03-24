@@ -198,7 +198,9 @@ const GnkInstallationForm = () => {
 
         } catch (error) {
             console.error(error);
-            setErrorMessage('Hubo un problema al enviar la ficha. Inténtalo de nuevo.');
+            const serverMsg = error.response?.data?.details || error.response?.data?.message;
+            const targetUrl = api.defaults.baseURL === '/' ? window.location.origin : api.defaults.baseURL;
+            setErrorMessage(serverMsg ? `Error: ${serverMsg}` : `Hubo un problema al enviar la ficha a ${targetUrl}. Revisa la conexión.`);
             setIsSubmitting(false);
         }
     };
