@@ -297,10 +297,9 @@ exports.getActivatorDashboard = async (req, res) => {
                     const bonus = (item.bonusAtTime || 0) * (item.quantity || 1);
                     instBonusTotal += bonus;
                     
-                    // Track counts by department if available
-                    const dept = item.priceItem?.department;
-                    if (dept === 'ACTIVATION') counts.bp += item.quantity;
-                    else if (dept === 'FUSION') counts.ta += item.quantity;
+                    // NEW: Dynamic Counts by Name (not just department)
+                    const itemName = item.priceItem?.name || 'Desconocido';
+                    counts[itemName] = (counts[itemName] || 0) + (item.quantity || 1);
                 });
 
                 // If no items, fallback to old priceCharged field (legacy support)

@@ -422,47 +422,34 @@ const DashboardHome = () => {
                 ) : (
                     <>
                         <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-2">Resumen de Producción (Mes Actual)</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                                <div className="p-3 bg-blue-50 text-blue-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                                    <span className="font-extrabold text-xs">BP</span>
-                                </div>
-                                <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.bp || 0}</h3>
-                                <p className="text-xs text-slate-400 font-bold uppercase mt-2">Básicas</p>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                                <div className="p-3 bg-green-50 text-green-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                                    <span className="font-extrabold text-xs">TA</span>
-                                </div>
-                                <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.ta || 0}</h3>
-                                <p className="text-xs text-slate-400 font-bold uppercase mt-2">SDU / TA</p>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                                <div className="p-3 bg-purple-50 text-purple-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                                    <span className="font-extrabold text-xs">SP</span>
-                                </div>
-                                <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.sp || 0}</h3>
-                                <p className="text-xs text-slate-400 font-bold uppercase mt-2">Activaciones SP</p>
-                            </div>
-
-                            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                                 <div className="p-3 bg-orange-50 text-orange-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                                     <span className="font-extrabold text-xs">MDU</span>
-                                 </div>
-                                 <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.mdu || 0}</h3>
-                                 <p className="text-xs text-slate-400 font-bold uppercase mt-2">MDU</p>
-                             </div>
-
-                             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all">
-                                 <div className="p-3 bg-cyan-50 text-cyan-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                                     <span className="font-extrabold text-xs">G&K</span>
-                                 </div>
-                                 <h3 className="text-4xl font-bold text-slate-800">{stats.counts?.gk || 0}</h3>
-                                 <p className="text-xs text-slate-400 font-bold uppercase mt-2">G&K / Otros</p>
-                             </div>
-                         </div>
+                        <div className="flex flex-wrap gap-4 md:gap-6">
+                            {Object.entries(stats.counts).map(([label, count]) => {
+                                // Don't show technical internal counters like 'viviendas' (for blowers) or 'gk'
+                                if (label === 'viviendas' || label === 'gk') return null;
+                                if (count === 0 && (label === 'bp' || label === 'ta' || label === 'sp' || label === 'mdu')) return null; // hide 0 standard ones
+                                if (count === 0 && !['bp', 'ta', 'sp', 'mdu'].includes(label)) return null; // hide 0 dynamic ones
+                                
+                                return (
+                                    <div key={label} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all min-w-[120px] flex-1 md:flex-none">
+                                        <div className="p-3 bg-blue-50 text-blue-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                            <span className="font-extrabold text-xs">
+                                                {label === 'bp' ? 'BP' : 
+                                                 label === 'ta' ? 'TA' : 
+                                                 label === 'sp' ? 'SP' : 
+                                                 label === 'mdu' ? 'MDU' : label.substring(0, 2).toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <h3 className="text-4xl font-bold text-slate-800">{count}</h3>
+                                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">
+                                            {label === 'bp' ? 'Básicas' : 
+                                             label === 'ta' ? 'SDU / TA' : 
+                                             label === 'sp' ? 'Activación SP' : 
+                                             label === 'mdu' ? 'MDU' : label}
+                                        </p>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </>
                 )}
 
