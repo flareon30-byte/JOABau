@@ -15,11 +15,12 @@ jobs:
           username: ${{ secrets.DO_USERNAME }}
           key: ${{ secrets.DO_SSH_KEY }}
           script: |
+            set -e
             cd /root/app
             
             echo "1. Descargando codigo de Github..."
-            git checkout master
-            git pull origin master
+            git fetch origin master
+            git reset --hard origin/master
             
             echo "2. Reconstruyendo contenedores Docker..."
             docker compose up -d --build
