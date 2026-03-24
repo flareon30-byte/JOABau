@@ -88,23 +88,40 @@ const GnkInstallationForm = () => {
                     const canvas = canvasRef.current;
                     const ctx = canvas.getContext('2d');
 
-                    // Set canvas size to image size
-                    canvas.width = img.width;
-                    canvas.height = img.height;
+                    // RESIZE LOGIC: Max 1600px dimension
+                    const MAX_DIM = 1600;
+                    let width = img.width;
+                    let height = img.height;
 
-                    // Draw original image
-                    ctx.drawImage(img, 0, 0);
+                    if (width > height) {
+                        if (width > MAX_DIM) {
+                            height *= MAX_DIM / width;
+                            width = MAX_DIM;
+                        }
+                    } else {
+                        if (height > MAX_DIM) {
+                            width *= MAX_DIM / height;
+                            height = MAX_DIM;
+                        }
+                    }
+
+                    // Set canvas size to calculated size
+                    canvas.width = width;
+                    canvas.height = height;
+
+                    // Draw image scaled
+                    ctx.drawImage(img, 0, 0, width, height);
 
                     // --- DRAW FOOTER STAMP ---
                     // Calculate relative sizes for text
-                    const footerHeight = Math.max(120, img.height * 0.1); // at least 120px or 10%
-                    const fontSizeTitle = Math.max(24, Math.floor(img.height * 0.025));
-                    const fontSizeBody = Math.max(18, Math.floor(img.height * 0.018));
+                    const footerHeight = Math.max(120, height * 0.12); // at least 120px or 12%
+                    const fontSizeTitle = Math.max(24, Math.floor(height * 0.025));
+                    const fontSizeBody = Math.max(18, Math.floor(height * 0.018));
                     const padding = fontSizeBody;
 
                     // Draw semi-transparent background at the bottom
                     ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
-                    ctx.fillRect(0, img.height - footerHeight, img.width, footerHeight);
+                    ctx.fillRect(0, height - footerHeight, width, footerHeight);
 
                     // Prepare text data
                     const timestampStr = new Date().toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' });
@@ -120,25 +137,23 @@ const GnkInstallationForm = () => {
                     // Draw active client tag
                     ctx.font = `bold ${fontSizeBody}px Arial`;
                     ctx.fillStyle = '#06b6d4'; // Cyan
-                    ctx.fillText(customClientStr.toUpperCase(), padding, img.height - footerHeight + padding);
+                    ctx.fillText(customClientStr.toUpperCase(), padding, height - footerHeight + padding);
 
                     // Draw Address
                     ctx.font = `bold ${fontSizeTitle}px Arial`;
                     ctx.fillStyle = '#FFFFFF';
-                    ctx.fillText(addrStr, padding, img.height - footerHeight + padding + fontSizeBody + 10);
+                    ctx.fillText(addrStr, padding, height - footerHeight + padding + fontSizeBody + 10);
 
                     // Draw Timestamp
                     ctx.font = `${fontSizeBody}px Arial`;
-                    ctx.fillText(`📅 ${timestampStr}`, padding, img.height - footerHeight + padding + fontSizeBody + fontSizeTitle + 20);
+                    ctx.fillText(`📅 ${timestampStr}`, padding, height - footerHeight + padding + fontSizeBody + fontSizeTitle + 20);
 
                     // Draw Tech Name (Aligned Right)
                     ctx.textAlign = 'right';
-                    ctx.fillText(`👤 ${techStr}`, img.width - padding, img.height - footerHeight + padding + fontSizeBody + fontSizeTitle + 20);
+                    ctx.fillText(`👤 ${techStr}`, width - padding, height - footerHeight + padding + fontSizeBody + fontSizeTitle + 20);
 
-                    // Get EXIF if we want to inject it (for now canvas strips EXIF, we could use piexifjs here if strict EXIF is needed, 
-                    // but the user's main request was visual stamping on the photo, plus EXIF coords).
-                    // We will extract base64 from canvas.
-                    const stampedDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                    // Export with standard quality (0.7) to save data / avoid Nginx limits
+                    const stampedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
                     
                     // We will store the original coordinates if available
                     fetch(stampedDataUrl).then(res => res.blob()).then(blob => {
@@ -387,8 +402,7 @@ const GnkInstallationForm = () => {
                             </button>
                             <button 
                                 onClick={() => setStep(3)}
-                                disabled={photos.length === 0}
-                                className="bg-joa-blue hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:scale-105"
+                                className="bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-transform hover:scale-105"
                             >
                                 Revisar y Enviar
                             </button>
