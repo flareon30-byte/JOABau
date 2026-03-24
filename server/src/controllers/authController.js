@@ -115,6 +115,43 @@ exports.updatePassword = async (req, res) => {
     }
 };
 
+exports.getMe = async (req, res) => {
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            include: {
+                activeClientCompany: true,
+                team: {
+                    include: {
+                        activeClientCompany: true
+                    }
+                }
+            }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Consistent logic: User override > Team default
+        const activeClientCompany = user.activeClientCompany || (user.team ? user.team.activeClientCompany : null);
+        const activeClientCompanyId = activeClientCompany ? activeClientCompany.id : null;
+
+        res.json({
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            isDemo: user.isDemo,
+            teamId: user.teamId,
+            activeClientCompanyId,
+            activeClientCompany
+        });
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
 exports.logout = (req, res) => {
     res.clearCookie('token');
     res.json({ message: 'Logged out successfully' });

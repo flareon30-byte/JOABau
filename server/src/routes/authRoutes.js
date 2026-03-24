@@ -9,5 +9,6 @@ router.post('/logout', authController.logout);
 // Protected routes
 const authMiddleware = require('../middleware/authMiddleware');
 router.post('/update-password', authMiddleware.verifyToken, authController.updatePassword);
+router.get('/me', authMiddleware.verifyToken, authController.getMe);
 
 module.exports = router;

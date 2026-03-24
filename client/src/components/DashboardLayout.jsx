@@ -74,7 +74,23 @@ const DashboardLayout = () => {
         }
     };
 
+    // Sync User Profile with DB
+    const refreshUserProfile = async () => {
+        try {
+            const res = await api.get('/api/auth/me');
+            localStorage.setItem('user', JSON.stringify(res.data));
+            // Log for debug
+            console.log('[AUTH] User profile synced:', res.data.activeClientCompany?.name);
+        } catch (error) {
+            if (error.response?.status === 401) {
+                localStorage.removeItem('user');
+                navigate('/login');
+            }
+        }
+    };
+
     useEffect(() => {
+        refreshUserProfile();
         fetchNotifications();
         const interval = setInterval(fetchNotifications, 30000); // Poll every 30s
         return () => clearInterval(interval);
