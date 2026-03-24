@@ -269,8 +269,8 @@ const GnkInstallationForm = () => {
                     <ArrowLeft size={20} />
                 </button>
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Nueva Ficha de Cliente</h1>
-                    <p className="text-sm text-slate-500 font-medium">Instalación - {user.activeClientCompany?.name || 'G&K'}</p>
+                    <h1 className="text-2xl font-bold text-slate-800">Nueva Ficha de Instalación</h1>
+                    <p className="text-sm text-slate-500 font-medium">{user.activeClientCompany?.name || 'Cargando cliente...'}</p>
                 </div>
             </div>
 
@@ -352,7 +352,7 @@ const GnkInstallationForm = () => {
                         {availableItems.length > 0 && (
                             <div className="space-y-4 pt-2">
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                    <Tag size={14} className="text-joa-blue" /> Elementos Instalados ({user.activeClientCompany?.name})
+                                    <Tag size={14} className="text-joa-blue" /> Unidades Instaladas ({user.activeClientCompany?.name})
                                 </label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {availableItems.map(item => (

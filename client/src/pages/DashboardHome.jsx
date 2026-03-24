@@ -348,15 +348,15 @@ const DashboardHome = () => {
                             </div>
                         </div>
 
-                        {/* G&K Specific Button (or logic based on client settings) */}
-                        {user.activeClientCompany && user.activeClientCompany.name.includes("G&K") && (
+                        {/* Generic Installation Button for any client with assigned items */}
+                        {user.activeClientCompany && (
                             <div className="mb-6">
                                 <button 
                                     onClick={() => window.location.href = '/dashboard/gnk-installation'}
                                     className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-green-500/30 transition-transform hover:scale-105 flex items-center justify-center gap-2"
                                 >
                                     <MapPin />
-                                    Nueva Ficha de Instalación (G&K)
+                                    Nueva Ficha de Instalación
                                 </button>
                             </div>
                         )}
