@@ -4,24 +4,36 @@ const path = require('path');
 const prisma = new PrismaClient();
 
 async function main() {
-    console.log('🚀 INICIANDO REINICIO TOTAL DE BASE DE DATOS Y ARCHIVOS...');
+    console.log('🚀 INICIANDO REINICIO TOTAL SEGURO...');
     
+    // Lista de modelos a borrar en orden de dependencia (hijos primero)
+    const models = [
+        'simpleInstallationItem',
+        'simpleInstallation',
+        'activationInfo',
+        'sopladoInfo',
+        'fusionWork',
+        'tool',
+        'appointmentComment',
+        'appointment',
+        'address',
+        'project',
+        'clientPriceItem',
+        'clientCompany',
+        'notification'
+    ];
+
     try {
-        // 1. Borrado de base de datos (ordenado por dependencias)
         console.log('🗑️  Borrando registros de la base de datos...');
-        await prisma.simpleInstallationItem.deleteMany({});
-        await prisma.simpleInstallation.deleteMany({});
-        await prisma.activationInfo.deleteMany({});
-        await prisma.sopladoInfo.deleteMany({});
-        await prisma.fusionWork.deleteMany({});
-        await prisma.tool.deleteMany({}); // Añadido borrado de herramientas si hubiera
-        await prisma.appointmentComment.deleteMany({});
-        await prisma.appointment.deleteMany({});
-        await prisma.address.deleteMany({});
-        await prisma.project.deleteMany({});
-        await prisma.clientPriceItem.deleteMany({});
-        await prisma.clientCompany.deleteMany({});
-        await prisma.notification.deleteMany({}); // Limpiar notificaciones
+        
+        for (const model of models) {
+            if (prisma[model]) {
+                console.log(`   - Borrando ${model}...`);
+                await prisma[model].deleteMany({});
+            } else {
+                console.log(`   - Saltando ${model} (No existe en el cliente de Prisma actual)`);
+            }
+        }
 
         console.log('✅ Base de datos vaciada.');
 
@@ -31,17 +43,16 @@ async function main() {
             console.log('🗑️  Borrando archivos físicos en /uploads...');
             
             const wipeDir = (dirPath) => {
+                if (!fs.existsSync(dirPath)) return;
                 const files = fs.readdirSync(dirPath);
                 for (const file of files) {
                     const fullPath = path.join(dirPath, file);
                     if (fs.lstatSync(fullPath).isDirectory()) {
                         wipeDir(fullPath);
                         try {
-                            // Intentar borrar carpeta si está vacía
                             fs.rmdirSync(fullPath);
                         } catch (e) {}
                     } else {
-                        // NO borrar el .gitkeep si lo hubiera (opcional)
                         fs.unlinkSync(fullPath);
                     }
                 }
@@ -49,9 +60,8 @@ async function main() {
 
             wipeDir(uploadsDir);
             
-            // Asegurar que las subcarpetas necesarias existan para que no de error multer
-            const subdirs = ['pdfs', 'temp'];
-            subdirs.forEach(sd => {
+            // Recrear estructura mínima necesaria
+            ['pdfs', 'temp'].forEach(sd => {
                 const p = path.join(uploadsDir, sd);
                 if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
             });
@@ -60,7 +70,6 @@ async function main() {
         }
 
         console.log('\n✨ REINICIO COMPLETADO CON ÉXITO.');
-        console.log('El entorno está ahora como nuevo y listo para datos reales.');
         
     } catch (error) {
         console.error('❌ ERROR DURANTE EL REINICIO:', error);

@@ -17,6 +17,7 @@ const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const payrollRoutes = require('./src/routes/payrollRoutes');
 const settingsRoutes = require('./src/routes/settingsRoutes');
 const { initBackupJob } = require('./src/services/backupService');
+const { initCleanupJob } = require('./src/services/cleanupService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -48,8 +49,8 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/activations', activationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));
-app.use('/api/settings', require('./src/routes/settingsRoutes'));
-app.use('/api/payroll', require('./src/routes/payrollRoutes'));
+app.use('/api/settings', settingsRoutes);
+app.use('/api/payroll', payrollRoutes);
 app.use('/api/billing', require('./src/routes/billingRoutes'));
 app.use('/api/tools', require('./src/routes/toolRoutes'));
 app.use('/api/issues', require('./src/routes/issueRoutes'));
@@ -62,7 +63,6 @@ app.use('/api/simple-installations', require('./src/routes/simpleInstallationRou
 app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Catch-all handler for any request that doesn't match an API route (SPA support)
-// Note: Using (.*) because Express 5 (beta) uses a newer path-to-regexp that requires named parameters or explicit regex for wildcards
 app.get(/(.*)/, (req, res) => {
     const indexPath = path.join(__dirname, '../client/dist/index.html');
     if (require('fs').existsSync(indexPath)) {
@@ -75,4 +75,5 @@ app.get(/(.*)/, (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
     initBackupJob(); // Start automated backups (Sundays 03:00)
+    initCleanupJob(); // Start automated cleanup (1st of each month 04:00)
 });
