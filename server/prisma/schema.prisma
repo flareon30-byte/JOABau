@@ -377,6 +377,8 @@ model ClientCompany {
   isActive  Boolean  @default(true)
   settings  Json?    // Store client-specific financial/bonus/rates config
   
+  teams     Team[]
+  
   users     User[]   @relation("ActiveClientCompany")
   projects  Project[]
   
