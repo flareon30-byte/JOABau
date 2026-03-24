@@ -281,17 +281,33 @@ exports.getActivatorDashboard = async (req, res) => {
                 }
             });
 
-            // 5. Get Simple Installations (G&K)
+            // 5. Get Simple Installations (Dynamic Catalog)
             const simpleData = await prisma.simpleInstallation.findMany({
                 where: {
                     createdAt: { gte: startOfMonth, lte: endDate },
                     createdById: userId
+                },
+                include: {
+                    items: { include: { priceItem: true } }
                 }
             });
             simpleData.forEach(gk => {
+                let instBonusTotal = 0;
+                gk.items.forEach(item => {
+                    const bonus = (item.bonusAtTime || 0) * (item.quantity || 1);
+                    instBonusTotal += bonus;
+                    
+                    // Track counts by department if available
+                    const dept = item.priceItem?.department;
+                    if (dept === 'ACTIVATION') counts.bp += item.quantity;
+                    else if (dept === 'FUSION') counts.ta += item.quantity;
+                });
+
+                // If no items, fallback to old priceCharged field (legacy support)
+                const bonusToCredit = gk.items.length > 0 ? instBonusTotal : (gk.priceCharged || 0);
+                
                 counts.gk++;
-                const price = gk.priceCharged || 0;
-                regularEarnings += price;
+                regularEarnings += bonusToCredit;
                 regularActivations++;
             });
         }

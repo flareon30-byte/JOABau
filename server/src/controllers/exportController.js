@@ -252,7 +252,7 @@ exports.getBillingData = async (req, res) => {
             orderBy: { updatedAt: 'desc' }
         });
 
-        // 6. SIMPLE INSTALLATIONS (G&K / Otros)
+        // 6. SIMPLE INSTALLATIONS (Universal Catalog)
         results.simpleInstallation = await prisma.simpleInstallation.findMany({
             where: {
                 createdAt: hasDate ? dateFilter : undefined,
@@ -265,17 +265,22 @@ exports.getBillingData = async (req, res) => {
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 }
             },
-            include: { address: { include: { project: true } }, createdBy: true },
+            include: { 
+                address: { include: { project: true } }, 
+                createdBy: true,
+                items: { include: { priceItem: true } }
+            },
             orderBy: { createdAt: 'desc' }
         });
 
         // 7. Calculate Totals if client is selected
-        results.totals = { euros: 0, bp: 0, ta: 0, sp: 0, mdu: 0, gk: 0 };
+        results.totals = { euros: 0, bp: 0, ta: 0, sp: 0, mdu: 0, gk: 0, itemsSummary: {} };
         if (clientCompanyId) {
             const client = await prisma.clientCompany.findUnique({ where: { id: clientCompanyId } });
-            if (client && client.settings) {
-                const prices = client.settings;
+            if (client) {
+                const prices = client.settings || {}; // Standard settings for "Proyectos" (Legacy)
                 
+                // --- Part A: Legancy Installations (Activations Info) ---
                 results.activation.forEach(act => {
                     const t = act.activationType;
                     if (t === 'BP' || t === 'BP_2_FAM') {
@@ -294,22 +299,38 @@ exports.getBillingData = async (req, res) => {
                     }
 
                     if (act.spInstalled) {
-                        const spCount = act.spInstalled; // it's an integer
+                        const spCount = act.spInstalled;
                         results.totals.sp += spCount;
                         results.totals.euros += ((prices.spPrice || 0) * spCount);
                     }
                 });
 
-                // Add soplados assuming standard blower price (or maybe custom config later)
-                // Assuming soplados are also billed at client settings:
+                // Standard soplados from legacy soplado list
                 if (prices.apLPrice) {
                     results.totals.euros += (results.soplado.length * prices.apLPrice);
                 }
 
-                // 5. G&K / Simple Installations
-                results.simpleInstallation.forEach(item => {
+                // --- Part B: New Dynamic Installations (SimpleInstallation) ---
+                results.simpleInstallation.forEach(inst => {
                     results.totals.gk++;
-                    results.totals.euros += (prices.ApLPrice || prices.apLPrice || 0); // Check both casings just in case
+                    
+                    // If it has items, calculate total from items
+                    if (inst.items && inst.items.length > 0) {
+                        inst.items.forEach(item => {
+                            const lineTotal = item.priceAtTime * item.quantity;
+                            results.totals.euros += lineTotal;
+
+                            // Keep track of counts by item name
+                            const itemName = item.priceItem?.name || 'Varios';
+                            if (!results.totals.itemsSummary[itemName]) {
+                                results.totals.itemsSummary[itemName] = 0;
+                            }
+                            results.totals.itemsSummary[itemName] += item.quantity;
+                        });
+                    } else {
+                        // Fallback to legacy priceCharged field if no items
+                        results.totals.euros += (inst.priceCharged || 0);
+                    }
                 });
             }
         }

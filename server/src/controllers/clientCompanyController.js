@@ -4,6 +4,7 @@ const prisma = new PrismaClient();
 exports.getAllClients = async (req, res) => {
   try {
     const clients = await prisma.clientCompany.findMany({
+      include: { priceItems: true },
       orderBy: { name: 'asc' }
     });
     res.json(clients);
@@ -58,5 +59,73 @@ exports.deleteClient = async (req, res) => {
   } catch (err) {
     console.error('Error deleting client:', err);
     res.status(500).json({ message: 'Error deleting client' });
+  }
+};
+
+// PRICE ITEMS
+exports.getClientPriceItems = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const items = await prisma.clientPriceItem.findMany({
+      where: { clientCompanyId: id },
+      orderBy: { name: 'asc' }
+    });
+    res.json(items);
+  } catch (err) {
+    console.error('Error fetching price items:', err);
+    res.status(500).json({ message: 'Error fetching price items' });
+  }
+};
+
+exports.addPriceItem = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, department, priceToClient, bonusToTeam } = req.body;
+    
+    const newItem = await prisma.clientPriceItem.create({
+      data: {
+        clientCompanyId: id,
+        name,
+        department,
+        priceToClient: parseFloat(priceToClient || 0),
+        bonusToTeam: parseFloat(bonusToTeam || 0)
+      }
+    });
+    res.status(201).json(newItem);
+  } catch (err) {
+    console.error('Error creating price item:', err);
+    res.status(500).json({ message: 'Error creating price item' });
+  }
+};
+
+exports.updatePriceItem = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    const { name, department, priceToClient, bonusToTeam } = req.body;
+    
+    const updated = await prisma.clientPriceItem.update({
+      where: { id: itemId },
+      data: {
+        name,
+        department,
+        priceToClient: parseFloat(priceToClient || 0),
+        bonusToTeam: parseFloat(bonusToTeam || 0)
+      }
+    });
+    res.json(updated);
+  } catch (err) {
+    console.error('Error updating price item:', err);
+    res.status(500).json({ message: 'Error updating price item' });
+  }
+};
+
+exports.deletePriceItem = async (req, res) => {
+  try {
+    const { itemId } = req.params;
+    await prisma.clientPriceItem.delete({ where: { id: itemId } });
+    res.json({ message: 'Price item deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting price item:', err);
+    res.status(500).json({ message: 'Error deleting price item' });
   }
 };

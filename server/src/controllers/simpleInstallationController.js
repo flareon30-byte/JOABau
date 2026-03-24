@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 exports.createInstallation = async (req, res) => {
     try {
-        const { projectId, contactName, comments, addressInfo } = req.body;
+        const { projectId, contactName, comments, addressInfo, itemsJSON } = req.body;
         const photos = req.files || [];
         const userId = req.userId;
 
@@ -12,6 +12,7 @@ exports.createInstallation = async (req, res) => {
             projectId,
             contactName,
             addressInfo,
+            itemsCount: itemsJSON ? JSON.parse(itemsJSON).length : 0,
             photoCount: photos.length
         });
 
@@ -76,8 +77,32 @@ exports.createInstallation = async (req, res) => {
             }
         });
 
-        // Photos mapping
         const photoUrls = photos.map(file => `/uploads/${file.filename}`);
+
+        // Parse items and calculate total price
+        const parsedItems = itemsJSON ? JSON.parse(itemsJSON) : [];
+        let totalBillable = 0;
+        
+        // Fetch price items to ensure we have latest prices/bonus
+        const priceItemIds = parsedItems.map(i => i.priceItemId);
+        const actualPriceItems = await prisma.clientPriceItem.findMany({
+            where: { id: { in: priceItemIds } }
+        });
+
+        const itemsToCreate = parsedItems.map(sentItem => {
+            const actual = actualPriceItems.find(ap => ap.id === sentItem.priceItemId);
+            if (!actual) return null;
+            
+            const qty = parseInt(sentItem.quantity || 1);
+            totalBillable += (actual.priceToClient * qty);
+            
+            return {
+                priceItemId: actual.id,
+                quantity: qty,
+                priceAtTime: actual.priceToClient,
+                bonusAtTime: actual.bonusToTeam
+            };
+        }).filter(Boolean);
 
         // Create the SimpleInstallation record
         const installation = await prisma.simpleInstallation.create({
@@ -87,7 +112,13 @@ exports.createInstallation = async (req, res) => {
                 comments,
                 photos: photoUrls,
                 createdById: userId,
-                priceCharged: billablePrice
+                priceCharged: totalBillable > 0 ? totalBillable : billablePrice, // Fallback to old field if no items
+                items: {
+                    create: itemsToCreate
+                }
+            },
+            include: {
+                items: { include: { priceItem: true } }
             }
         });
 
@@ -105,7 +136,11 @@ exports.createInstallation = async (req, res) => {
 exports.getInstallations = async (req, res) => {
     try {
         const installations = await prisma.simpleInstallation.findMany({
-            include: { address: true, createdBy: true },
+            include: { 
+                address: { include: { project: true } }, 
+                createdBy: true,
+                items: { include: { priceItem: true } }
+            },
             orderBy: { createdAt: 'desc' }
         });
         res.json(installations);

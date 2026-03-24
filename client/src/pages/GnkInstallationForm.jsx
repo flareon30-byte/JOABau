@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera as CameraIcon, MapPin, CheckCircle, Navigation, Type, MessageSquare, Trash2, ArrowLeft, Image as ImageIcon } from 'lucide-react';
+import { Camera as CameraIcon, MapPin, CheckCircle, Navigation, Type, MessageSquare, Trash2, ArrowLeft, Image as ImageIcon, Tag } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 
@@ -21,9 +21,39 @@ const GnkInstallationForm = () => {
     const [gpsCoordinates, setGpsCoordinates] = useState(null);
     const fileInputRef = useRef(null);
     const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const [availableItems, setAvailableItems] = useState([]);
+    const [selectedQuantities, setSelectedQuantities] = useState({}); // itemId -> qty
 
     // Canvas for image processing
     const canvasRef = useRef(null);
+
+    useEffect(() => {
+        if (user.activeClientCompanyId) {
+            fetchClientItems();
+        }
+    }, [user.activeClientCompanyId]);
+
+    const fetchClientItems = async () => {
+        try {
+            const res = await api.get(`/api/clients/${user.activeClientCompanyId}/price-items`);
+            setAvailableItems(res.data);
+            // Default quantities to 0
+            const defaults = {};
+            res.data.forEach(item => {
+                defaults[item.id] = 0;
+            });
+            setSelectedQuantities(defaults);
+        } catch (error) {
+            console.error('Error fetching client items:', error);
+        }
+    };
+
+    const handleQuantityChange = (itemId, val) => {
+        setSelectedQuantities(prev => ({
+            ...prev,
+            [itemId]: parseInt(val || 0)
+        }));
+    };
 
     const getGPSLocation = () => {
         setLoadingLocation(true);
@@ -193,6 +223,15 @@ const GnkInstallationForm = () => {
             formData.append('comments', comments || '');
             formData.append('addressInfo', JSON.stringify(address));
             
+            // Format items for submission
+            const itemsToSubmit = Object.entries(selectedQuantities)
+                .filter(([_, qty]) => qty > 0)
+                .map(([itemId, qty]) => ({
+                    priceItemId: itemId,
+                    quantity: qty
+                }));
+            formData.append('itemsJSON', JSON.stringify(itemsToSubmit));
+            
             if (gpsCoordinates) {
                 formData.append('gpsLat', gpsCoordinates.lat);
                 formData.append('gpsLng', gpsCoordinates.lng);
@@ -308,6 +347,45 @@ const GnkInstallationForm = () => {
                                 />
                             </div>
                         </div>
+
+                        {/* DYNAMIC PRICE ITEMS */}
+                        {availableItems.length > 0 && (
+                            <div className="space-y-4 pt-2">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <Tag size={14} className="text-joa-blue" /> Elementos Instalados ({user.activeClientCompany?.name})
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {availableItems.map(item => (
+                                        <div key={item.id} className="bg-white border border-slate-200 p-3 rounded-2xl flex items-center justify-between shadow-sm hover:border-joa-blue transition-colors">
+                                            <div className="flex flex-col">
+                                                <span className="font-bold text-slate-700 text-sm">{item.name}</span>
+                                                <span className="text-[10px] text-slate-400 font-bold uppercase">{item.department}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button 
+                                                    onClick={() => handleQuantityChange(item.id, Math.max(0, (selectedQuantities[item.id] || 0) - 1))}
+                                                    className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 active:bg-slate-200"
+                                                >
+                                                    -
+                                                </button>
+                                                <input 
+                                                    type="number" 
+                                                    value={selectedQuantities[item.id] || 0}
+                                                    onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                                                    className="w-12 text-center font-black text-joa-blue focus:outline-none"
+                                                />
+                                                <button 
+                                                    onClick={() => handleQuantityChange(item.id, (selectedQuantities[item.id] || 0) + 1)}
+                                                    className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-500 active:bg-slate-200"
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
 
                         <div className="pt-4 border-t border-slate-100">
                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
@@ -443,6 +521,21 @@ const GnkInstallationForm = () => {
                                     {comments || 'Sin comentarios.'}
                                 </p>
                             </div>
+
+                            {/* Review Items */}
+                            {Object.entries(selectedQuantities).some(([_, qty]) => qty > 0) && (
+                                <div className="pt-4 border-t border-slate-200">
+                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Elementos a Facturar</h4>
+                                    <div className="flex flex-wrap gap-2">
+                                        {availableItems.filter(i => selectedQuantities[i.id] > 0).map(item => (
+                                            <div key={item.id} className="bg-joa-blue/10 border border-joa-blue/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                                                <span className="font-bold text-joa-blue">{selectedQuantities[item.id]}x</span>
+                                                <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         <div className="pt-6 flex gap-4">

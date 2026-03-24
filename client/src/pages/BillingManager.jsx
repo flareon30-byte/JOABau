@@ -246,7 +246,7 @@ const BillingPage = () => {
                 break;
             case 'simpleInstallation':
                 data = billingData.simpleInstallation;
-                columns = ['Fecha', 'Dirección', 'Visitado', 'Comentarios', 'Fotos', 'Técnico', 'Proyecto', 'Acciones'];
+                columns = ['Fecha', 'Dirección', 'Conceptos / Items', 'Comentarios', 'Fotos', 'Técnico', 'Proyecto', 'Acciones'];
                 emptyMsg = "No hay fichas de G&K / Otros enviadas";
                 break;
             default:
@@ -371,8 +371,17 @@ const BillingPage = () => {
                                         <td className="p-4 text-slate-900 font-bold">
                                             {row.address.street} {row.address.number || ''}
                                         </td>
-                                        <td className="p-4 text-slate-500">
-                                            {row.contactName || '-'}
+                                        <td className="p-4">
+                                            <div className="flex flex-wrap gap-1">
+                                                {row.items?.map(item => (
+                                                    <span key={item.id} className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold border border-blue-100">
+                                                        {item.quantity}x {item.priceItem?.name}
+                                                    </span>
+                                                ))}
+                                                {(!row.items || row.items.length === 0) && (
+                                                    <span className="text-slate-400 text-xs italic">Legacy (€{row.priceCharged || 0})</span>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="p-4 text-slate-500 max-w-xs truncate">
                                             {row.comments || '-'}
@@ -698,6 +707,18 @@ const BillingPage = () => {
                         <p className="text-[10px] uppercase font-bold text-green-200 mb-1">MDU's</p>
                         <p className="text-xl font-bold">{billingData.totals.mdu}</p>
                     </div>
+
+                    {/* NEW: Dynamic Items Detailed Breakdown */}
+                    {billingData.totals.itemsSummary && Object.keys(billingData.totals.itemsSummary).length > 0 && (
+                        <div className="col-span-2 md:col-span-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mt-4 pt-4 border-t border-white/20">
+                            {Object.entries(billingData.totals.itemsSummary).map(([name, count]) => (
+                                <div key={name} className="bg-black/10 p-2 rounded-lg text-center backdrop-blur-sm border border-white/5">
+                                    <p className="text-[9px] uppercase font-bold text-green-100 mb-0.5 truncate px-1" title={name}>{name}</p>
+                                    <p className="text-lg font-black">{count}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 

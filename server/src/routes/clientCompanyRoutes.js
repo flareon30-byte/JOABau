@@ -13,4 +13,10 @@ router.put('/:id', verifyToken, checkRole(['ADMIN', 'SUPER_ADMIN']), clientCompa
 // Only super admin can delete
 router.delete('/:id', verifyToken, checkRole(['SUPER_ADMIN']), clientCompanyController.deleteClient);
 
+// Price items management
+router.get('/:id/price-items', verifyToken, clientCompanyController.getClientPriceItems);
+router.post('/:id/price-items', verifyToken, checkRole(['ADMIN', 'SUPER_ADMIN']), clientCompanyController.addPriceItem);
+router.put('/:id/price-items/:itemId', verifyToken, checkRole(['ADMIN', 'SUPER_ADMIN']), clientCompanyController.updatePriceItem);
+router.delete('/:id/price-items/:itemId', verifyToken, checkRole(['ADMIN', 'SUPER_ADMIN']), clientCompanyController.deletePriceItem);
+
 module.exports = router;

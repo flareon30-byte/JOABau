@@ -382,8 +382,25 @@ model ClientCompany {
   users     User[]   @relation("ActiveClientCompany")
   projects  Project[]
   
+  priceItems ClientPriceItem[] // Dynamic pricing items
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ClientPriceItem {
+  id               String        @id @default(uuid())
+  clientCompanyId  String
+  clientCompany    ClientCompany @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  name             String
+  department       Department    // ACTIVATION, BLOWING, etc.
+  priceToClient    Float         @default(0.0) // What Joa charges the client
+  bonusToTeam      Float         @default(0.0) // Extra pay for the team
+  
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  installationEntries SimpleInstallationItem[]
 }
 
 model SimpleInstallation {
@@ -398,9 +415,22 @@ model SimpleInstallation {
   // Financial tracking metadata based on Active Client settings at the time of creation
   priceCharged Float @default(0.0)
   
+  items       SimpleInstallationItem[] // New: Multiple items support
+  
   createdById String?
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model SimpleInstallationItem {
+  id                   String            @id @default(uuid())
+  simpleInstallationId String
+  simpleInstallation   SimpleInstallation @relation(fields: [simpleInstallationId], references: [id], onDelete: Cascade)
+  priceItemId          String
+  priceItem            ClientPriceItem   @relation(fields: [priceItemId], references: [id])
+  quantity             Int               @default(1)
+  priceAtTime          Float
+  bonusAtTime          Float
 }

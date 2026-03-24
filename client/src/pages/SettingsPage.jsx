@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Save, DollarSign, Target, Lock, Truck, Users, Briefcase } from 'lucide-react';
+import { Save, DollarSign, Target, Lock, Truck, Users, Briefcase, Plus, Trash2, Tag, ChevronRight } from 'lucide-react';
 
 const SettingsPage = () => {
     // Stores the complex financial config
@@ -63,6 +63,7 @@ const SettingsPage = () => {
     const [loading, setLoading] = useState(true);
     const [message, setMessage] = useState(null);
     const [activeTab, setActiveTab] = useState('clients'); // Start on clients now
+    const [activeSubTab, setActiveSubTab] = useState('priceItems'); // New subtab for client config
 
     useEffect(() => {
         fetchSettings();
@@ -421,75 +422,130 @@ const SettingsPage = () => {
                                     className="bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
                                 >
                                     <Save size={20} />
-                                    Guardar Precios de este Cliente
+                                    Guardar Gastos de este Cliente
                                 </button>
                             </div>
                         </form>
                     ) : (
                         <div className="p-10 text-center text-slate-400">
-                            Por favor selecciona un cliente en el menú desplegable arriba para ver y configurar sus tablas de precios y nóminas.
+                            Por favor selecciona un cliente arriba para configurar sus gastos.
                         </div>
                     )
-                ) : (
-                    <div className="animate-fadeIn space-y-6">
-                        <div className="flex items-center gap-2 mb-4">
-                            <h3 className="text-xl font-bold text-slate-700">Empresas / Clientes Asociados</h3>
-                        </div>
-                        <p className="text-sm text-slate-500 mb-6">Añade los distintos clientes con los que trabajas (ej. Glasfaser plus, G&K, etc.) para que los técnicos puedan seleccionarlos y adaptar su metodología de trabajo.</p>
+                ) : ( // activeTab === 'clients'
+                    !selectedClientId ? (
+                        <div className="animate-fadeIn space-y-6">
+                            <div className="flex items-center gap-2 mb-4">
+                                <h3 className="text-xl font-bold text-slate-700">Empresas / Clientes Asociados</h3>
+                            </div>
+                            <p className="text-sm text-slate-500 mb-6">Añade los distintos clientes con los que trabajas para que los técnicos puedan seleccionarlos.</p>
 
-                        <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                            <form onSubmit={handleCreateClient} className="flex gap-4">
-                                <input 
-                                    type="text" 
-                                    value={newClientName}
-                                    onChange={(e) => setNewClientName(e.target.value)}
-                                    placeholder="Nombre del nuevo cliente (ej. G&K)" 
-                                    className="flex-1 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none" 
-                                />
-                                <button type="submit" className="bg-joa-blue text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition">
-                                    Añadir Cliente
-                                </button>
-                            </form>
-                        </div>
+                            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                                <form onSubmit={handleCreateClient} className="flex gap-4">
+                                    <input 
+                                        type="text" 
+                                        value={newClientName}
+                                        onChange={(e) => setNewClientName(e.target.value)}
+                                        placeholder="Nombre del nuevo cliente (ej. G&K)" 
+                                        className="flex-1 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none" 
+                                    />
+                                    <button type="submit" className="bg-joa-blue text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition">
+                                        Añadir Cliente
+                                    </button>
+                                </form>
+                            </div>
 
-                        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
-                            <table className="w-full text-left text-sm text-slate-600">
-                                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
-                                    <tr>
-                                        <th className="p-4 pl-6">Nombre de Cliente</th>
-                                        <th className="p-4">Técnicos Activos</th>
-                                        <th className="p-4 w-24">Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {clients.length === 0 ? (
-                                        <tr><td colSpan="3" className="p-6 text-center text-slate-400">No hay clientes configurados</td></tr>
-                                    ) : (
-                                        clients.map(client => (
-                                            <tr key={client.id} className="hover:bg-slate-50">
-                                                <td className="p-4 pl-6 font-bold text-slate-800">{client.name}</td>
-                                                <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold">Activo</span></td>
-                                                <td className="p-4">
-                                                    <button 
-                                                        onClick={() => {
-                                                            setSelectedClientId(client.id);
-                                                            setActiveTab('installers');
-                                                        }} 
-                                                        className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors font-bold mr-2"
-                                                    >
-                                                        Precios
-                                                    </button>
-                                                    <button onClick={() => handleDeleteClient(client.id)} className="text-red-500 hover:text-red-700 p-2 hover:bg-red-50 rounded-lg transition-colors">
-                                                        Eliminar
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                <table className="w-full text-left text-sm text-slate-600">
+                                    <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
+                                        <tr>
+                                            <th className="p-4 pl-6">Nombre de Cliente</th>
+                                            <th className="p-4">Técnicos Activos</th>
+                                            <th className="p-4 w-24">Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {clients.length === 0 ? (
+                                            <tr><td colSpan="3" className="p-6 text-center text-slate-400">No hay clientes configurados</td></tr>
+                                        ) : (
+                                            clients.map(client => (
+                                                <tr key={client.id} className="hover:bg-slate-50">
+                                                    <td className="p-4 pl-6 font-bold text-slate-800">{client.name}</td>
+                                                    <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold">Activo</span></td>
+                                                    <td className="p-4">
+                                                        <button 
+                                                            onClick={() => {
+                                                                setSelectedClientId(client.id);
+                                                                setActiveSubTab('priceItems');
+                                                            }} 
+                                                            className="text-blue-500 hover:text-blue-700 p-2 hover:bg-blue-50 rounded-lg transition-colors font-bold flex items-center gap-1 group"
+                                                        >
+                                                            Gestionar <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
+                    ) : ( // activeTab === 'clients' && selectedClientId
+                        <div className="animate-fadeIn">
+                            <button 
+                                onClick={() => setSelectedClientId('')}
+                                className="text-slate-500 hover:text-slate-800 font-bold mb-6 flex items-center gap-2 text-sm"
+                            >
+                                ← Volver a lista de clientes
+                            </button>
+
+                            <div className="flex flex-col gap-6">
+                                <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+                                    <h3 className="text-2xl font-black text-slate-800">
+                                        {clients.find(c => c.id === selectedClientId)?.name}
+                                    </h3>
+                                    <div className="flex gap-2">
+                                         <button 
+                                            onClick={() => setActiveSubTab('priceItems')}
+                                            className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeSubTab === 'priceItems' ? 'bg-joa-blue text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                         >
+                                            Conceptos de Facturación
+                                         </button>
+                                         <button 
+                                            onClick={() => setActiveSubTab('globalFinancials')}
+                                            className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${activeSubTab === 'globalFinancials' ? 'bg-joa-blue text-white shadow-md' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                         >
+                                            Gastos y Nóminas
+                                         </button>
+                                    </div>
+                                </div>
+
+                                {activeSubTab === 'priceItems' ? (
+                                    <PriceItemsManager 
+                                        clientId={selectedClientId} 
+                                        onMessage={(msg) => setMessage(msg)}
+                                        client={clients.find(c => c.id === selectedClientId)}
+                                        onUpdate={() => fetchSettings()}
+                                    />
+                                ) : (
+                                    <form onSubmit={handleSubmit}>
+                                        {renderFinancialInputs('installers', 'Configuración de Instaladores')}
+                                        {renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
+                                        {renderBackOfficeInputs()}
+
+                                        <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
+                                            <button
+                                                type="submit"
+                                                className="bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
+                                            >
+                                                <Save size={20} />
+                                                Guardar Gastos de este Cliente
+                                            </button>
+                                        </div>
+                                    </form>
+                                )}
+                            </div>
+                        </div>
+                    )
                 )}
 
                 <div className="my-12 border-t border-slate-200"></div>
@@ -604,6 +660,137 @@ const PasswordChangeForm = () => {
                     </button>
                 </div>
             </form>
+        </div>
+    );
+};
+
+const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
+    const [newItem, setNewItem] = useState({ name: '', department: 'ACTIVATION', priceToClient: '', bonusToTeam: '' });
+    const items = client?.priceItems || [];
+
+    const handleAddItem = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post(`/api/clients/${clientId}/price-items`, newItem);
+            onMessage({ type: 'success', text: 'Concepto añadido' });
+            setNewItem({ name: '', department: 'ACTIVATION', priceToClient: '', bonusToTeam: '' });
+            onUpdate();
+        } catch (error) {
+            onMessage({ type: 'error', text: 'Error al añadir concepto' });
+        }
+    };
+
+    const handleDeleteItem = async (itemId) => {
+        if (!window.confirm('¿Eliminar este concepto?')) return;
+        try {
+            await api.delete(`/api/clients/${clientId}/price-items/${itemId}`);
+            onMessage({ type: 'success', text: 'Concepto eliminado' });
+            onUpdate();
+        } catch (error) {
+            onMessage({ type: 'error', text: 'Error al eliminar' });
+        }
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Plus size={18} /> Añadir Nuevo Concepto</h4>
+                <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Nombre del Ítem</label>
+                        <input 
+                            type="text" 
+                            required
+                            placeholder="Ej. Caja, Roseta..."
+                            value={newItem.name}
+                            onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
+                            className="p-2.5 border rounded-lg text-sm bg-white" 
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Departamento</label>
+                        <select 
+                            value={newItem.department}
+                            onChange={(e) => setNewItem({ ...newItem, department: e.target.value })}
+                            className="p-2.5 border rounded-lg text-sm bg-white font-bold"
+                        >
+                            <option value="ACTIVATION">Activación / Instaladores</option>
+                            <option value="BLOWING">Soplado / Obra Civil</option>
+                            <option value="FUSION">Fusión</option>
+                            <option value="PROTOCOLS">Protocolos</option>
+                        </select>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Lo que cobra Joa (€)</label>
+                        <input 
+                            type="number" 
+                            step="0.01"
+                            required
+                            value={newItem.priceToClient}
+                            onChange={(e) => setNewItem({ ...newItem, priceToClient: e.target.value })}
+                            className="p-2.5 border border-blue-200 rounded-lg text-sm font-bold bg-blue-50 text-blue-700" 
+                        />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Bonus p/ Equipo (€)</label>
+                        <input 
+                            type="number" 
+                            step="0.01"
+                            required
+                            value={newItem.bonusToTeam}
+                            onChange={(e) => setNewItem({ ...newItem, bonusToTeam: e.target.value })}
+                            className="p-2.5 border border-green-200 rounded-lg text-sm font-bold bg-green-50 text-green-700" 
+                        />
+                    </div>
+                    <div className="md:col-span-4 flex justify-end">
+                        <button type="submit" className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-slate-900 transition flex items-center gap-2">
+                             <Plus size={16} /> Guardar Concepto
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+                        <tr>
+                            <th className="p-4 pl-6 uppercase tracking-wider text-[10px]">Concepto</th>
+                            <th className="p-4 uppercase tracking-wider text-[10px]">Depto</th>
+                            <th className="p-4 uppercase tracking-wider text-[10px]">Pág. Cliente</th>
+                            <th className="p-4 uppercase tracking-wider text-[10px]">Bonus p/ Equipo</th>
+                            <th className="p-4 w-16"></th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                        {items.length === 0 ? (
+                            <tr><td colSpan="5" className="p-10 text-center text-slate-400 italic">No hay conceptos definidos para este cliente</td></tr>
+                        ) : (
+                            items.map(item => (
+                                <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-4 pl-6 font-bold text-slate-800">{item.name}</td>
+                                    <td className="p-4">
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                            item.department === 'ACTIVATION' ? 'bg-green-100 text-green-700' :
+                                            item.department === 'BLOWING' ? 'bg-blue-100 text-blue-700' :
+                                            item.department === 'FUSION' ? 'bg-purple-100 text-purple-700' :
+                                            'bg-indigo-100 text-indigo-700'
+                                        }`}>
+                                            {item.department}
+                                        </span>
+                                    </td>
+                                    <td className="p-4 font-black text-blue-600">{item.priceToClient.toFixed(2)}€</td>
+                                    <td className="p-4 font-black text-green-600">{item.bonusToTeam.toFixed(2)}€</td>
+                                    <td className="p-4">
+                                        <button onClick={() => handleDeleteItem(item.id)} className="text-red-300 hover:text-red-500 p-2 transition-colors">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
         </div>
     );
 };
