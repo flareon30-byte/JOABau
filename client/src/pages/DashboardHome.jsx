@@ -356,7 +356,7 @@ const DashboardHome = () => {
                                     className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-green-500/30 transition-transform hover:scale-105 flex items-center justify-center gap-2"
                                 >
                                     <MapPin />
-                                    Nueva Ficha de Instalación
+                                    Nuevo Informe de Instalación Profesional
                                 </button>
                             </div>
                         )}

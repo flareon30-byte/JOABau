@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Camera as CameraIcon, MapPin, CheckCircle, Navigation, Type, MessageSquare, Trash2, ArrowLeft, Image as ImageIcon, Tag } from 'lucide-react';
+import { Camera as CameraIcon, MapPin, CheckCircle, Navigation, Type, MessageSquare, Trash2, ArrowLeft, Image as ImageIcon, Tag, QrCode, Shield, PenTool } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import SignaturePad from 'signature_pad';
 import api from '../api/axios';
 
 const GnkInstallationForm = () => {
@@ -11,7 +11,21 @@ const GnkInstallationForm = () => {
     const [address, setAddress] = useState({ street: '', number: '', city: '' });
     const [contactName, setContactName] = useState('');
     const [comments, setComments] = useState('');
-    const [photos, setPhotos] = useState([]);
+    const [muenetData, setMuenetData] = useState({
+        customerFirstName: '',
+        customerLastName: '',
+        olt: '',
+        pon: '',
+        splitterPort: '',
+        gponSerialNumber: '',
+        isReadyForOperation: true,
+        gpsAlt: ''
+    });
+    const [specialPhotos, setSpecialPhotos] = useState({
+        photoHuep: null,
+        photoModem: null,
+        photoOtdr: null
+    });
     
     // Tech State
     const [loadingLocation, setLoadingLocation] = useState(false);
@@ -20,12 +34,26 @@ const GnkInstallationForm = () => {
     const [successMessage, setSuccessMessage] = useState('');
     const [gpsCoordinates, setGpsCoordinates] = useState(null);
     const fileInputRef = useRef(null);
+    const huepInputRef = useRef(null);
+    const modemInputRef = useRef(null);
+    const otdrInputRef = useRef(null);
+    
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [availableItems, setAvailableItems] = useState([]);
     const [selectedQuantities, setSelectedQuantities] = useState({}); // itemId -> qty
 
     // Canvas for image processing
     const canvasRef = useRef(null);
+    const signatureCanvasRef = useRef(null);
+    const sigPad = useRef(null);
+
+    useEffect(() => {
+        if (signatureCanvasRef.current && step === 3) {
+            sigPad.current = new SignaturePad(signatureCanvasRef.current, {
+                backgroundColor: 'rgb(255, 255, 255)'
+            });
+        }
+    }, [step]);
 
     useEffect(() => {
         if (user.activeClientCompanyId) {
@@ -96,20 +124,23 @@ const GnkInstallationForm = () => {
         );
     };
 
-    const handlePhotoSelect = async (e) => {
+    const handlePhotoSelect = async (e, targetField = null) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
 
         // Process each image: stamp the address, date, and user on it
         for (const file of files) {
-            await processAndStampImage(file);
+            await processAndStampImage(file, targetField);
         }
         
         // Clear input to allow re-selecting the same file if needed
         if (fileInputRef.current) fileInputRef.current.value = '';
+        if (huepInputRef.current) huepInputRef.current.value = '';
+        if (modemInputRef.current) modemInputRef.current.value = '';
+        if (otdrInputRef.current) otdrInputRef.current.value = '';
     };
 
-    const processAndStampImage = (file) => {
+    const processAndStampImage = (file, targetField = null) => {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -190,11 +221,18 @@ const GnkInstallationForm = () => {
                         const newFile = new File([blob], `stamped_${file.name}`, { type: 'image/jpeg' });
                         const preview = URL.createObjectURL(newFile);
                         
-                        setPhotos(prev => [...prev, {
-                            file: newFile,
-                            preview,
-                            originalName: file.name
-                        }]);
+                        if (targetField) {
+                            setSpecialPhotos(prev => ({
+                                ...prev,
+                                [targetField]: { file: newFile, preview }
+                            }));
+                        } else {
+                            setPhotos(prev => [...prev, {
+                                file: newFile,
+                                preview,
+                                originalName: file.name
+                            }]);
+                        }
                         resolve();
                     });
                 };
@@ -213,6 +251,10 @@ const GnkInstallationForm = () => {
             setErrorMessage('La calle de la dirección es obligatoria.');
             return;
         }
+        if (sigPad.current && sigPad.current.isEmpty()) {
+            setErrorMessage('La firma del cliente es obligatoria para este informe profesional.');
+            return;
+        }
 
         setIsSubmitting(true);
         setErrorMessage('');
@@ -223,20 +265,33 @@ const GnkInstallationForm = () => {
             formData.append('comments', comments || '');
             formData.append('addressInfo', JSON.stringify(address));
             
-            // Format items for submission
-            const itemsToSubmit = Object.entries(selectedQuantities)
-                .filter(([_, qty]) => qty > 0)
-                .map(([itemId, qty]) => ({
-                    priceItemId: itemId,
-                    quantity: qty
-                }));
-            formData.append('itemsJSON', JSON.stringify(itemsToSubmit));
-            
+            // MUENET Fields
+            Object.entries(muenetData).forEach(([key, val]) => {
+                formData.append(key, val);
+            });
             if (gpsCoordinates) {
                 formData.append('gpsLat', gpsCoordinates.lat);
                 formData.append('gpsLng', gpsCoordinates.lng);
             }
 
+            // Categorized Photos
+            if (specialPhotos.photoHuep) formData.append('photoHuep', specialPhotos.photoHuep.file);
+            if (specialPhotos.photoModem) formData.append('photoModem', specialPhotos.photoModem.file);
+            if (specialPhotos.photoOtdr) formData.append('photoOtdr', specialPhotos.photoOtdr.file);
+
+            // Signature
+            if (sigPad.current) {
+                const sigDataUrl = sigPad.current.toDataURL();
+                const sigBlob = await fetch(sigDataUrl).then(res => res.blob());
+                formData.append('signature', sigBlob, 'signature.png');
+            }
+            
+            // Items
+            const itemsToSubmit = Object.entries(selectedQuantities)
+                .filter(([_, qty]) => qty > 0)
+                .map(([itemId, qty]) => ({ priceItemId: itemId, quantity: qty }));
+            formData.append('itemsJSON', JSON.stringify(itemsToSubmit));
+            
             photos.forEach(p => {
                 formData.append('photos', p.file);
             });
@@ -245,10 +300,8 @@ const GnkInstallationForm = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
 
-            setSuccessMessage('¡Ficha creada y enviada con éxito!');
-            setTimeout(() => {
-                navigate('/dashboard');
-            }, 2000);
+            setSuccessMessage('¡Ficha profesional enviada con éxito!');
+            setTimeout(() => { navigate('/dashboard'); }, 2000);
 
         } catch (error) {
             console.error(error);
@@ -387,17 +440,87 @@ const GnkInstallationForm = () => {
                             </div>
                         )}
 
-                        <div className="pt-4 border-t border-slate-100">
-                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                <Type size={14} /> Persona de Contacto
+                        {/* NEW MUENET FIELDS */}
+                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 mt-6 space-y-4">
+                            <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2 mb-2">
+                                <Shield className="text-joa-blue" size={16} /> Datos del Cliente y Red
+                            </h3>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Nombre (Vorname)</label>
+                                    <input 
+                                        type="text" 
+                                        value={muenetData.customerFirstName}
+                                        onChange={(e) => setMuenetData({...muenetData, customerFirstName: e.target.value})}
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none text-sm" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Apellido (Name)</label>
+                                    <input 
+                                        type="text" 
+                                        value={muenetData.customerLastName}
+                                        onChange={(e) => setMuenetData({...muenetData, customerLastName: e.target.value})}
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none text-sm" 
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">OLT</label>
+                                    <input 
+                                        type="text" 
+                                        value={muenetData.olt}
+                                        onChange={(e) => setMuenetData({...muenetData, olt: e.target.value})}
+                                        placeholder="Ej: OLT 2"
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none text-sm" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">PON</label>
+                                    <input 
+                                        type="text" 
+                                        value={muenetData.pon}
+                                        onChange={(e) => setMuenetData({...muenetData, pon: e.target.value})}
+                                        placeholder="Splitter 2"
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none text-sm" 
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Port</label>
+                                    <input 
+                                        type="number" 
+                                        value={muenetData.splitterPort}
+                                        onChange={(e) => setMuenetData({...muenetData, splitterPort: e.target.value})}
+                                        placeholder="41"
+                                        className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none text-sm" 
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                                    <QrCode size={12} /> GPON Serial (GNXS...)
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={muenetData.gponSerialNumber}
+                                    onChange={(e) => setMuenetData({...muenetData, gponSerialNumber: e.target.value})}
+                                    placeholder="GNXS05DF..."
+                                    className="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none text-sm font-mono" 
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-2 flex items-center gap-3">
+                            <label className="flex items-center gap-3 cursor-pointer group">
+                                <input 
+                                    type="checkbox" 
+                                    checked={muenetData.isReadyForOperation}
+                                    onChange={(e) => setMuenetData({...muenetData, isReadyForOperation: e.target.checked})}
+                                    className="w-5 h-5 rounded border-slate-300 text-joa-blue focus:ring-joa-blue"
+                                />
+                                <span className="text-sm font-bold text-slate-700">Anschluss betriebsbereit (Conexión Lista)</span>
                             </label>
-                            <input 
-                                type="text" 
-                                value={contactName}
-                                onChange={(e) => setContactName(e.target.value)}
-                                placeholder="Nombre completo del cliente (Opcional)"
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-joa-blue outline-none transition-all" 
-                            />
                         </div>
 
                         <div className="pt-2">
@@ -435,40 +558,110 @@ const GnkInstallationForm = () => {
                             </h2>
                         </div>
 
-                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800 flex gap-3 items-start mb-6">
-                            <ImageIcon className="text-blue-500 shrink-0 mt-0.5" />
+                        <div className="bg-blue-50 border border-blue-100 p-4 rounded-xl text-sm text-blue-800 flex gap-3 items-start mb-6 font-medium">
+                            <Shield size={18} className="text-blue-500 shrink-0 mt-0.5" />
                             <p>
-                                Selecciona o toma fotos. Automáticamente les imprimiremos un pie de página con tu nombre, 
-                                la fecha, hora y la dirección de la instalación.
+                                Para generar el informe profesional, es necesario tomar las siguientes fotos específicas. 
+                                Se les imprimirá un pie de página con los datos de red y ubicación.
                             </p>
                         </div>
 
-                        {/* Custom Photo Selector */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-                            {photos.map((photo, index) => (
-                                <div key={index} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 group bg-slate-50">
-                                    <img src={photo.preview} alt={`Foto ${index+1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                        <button type="button" onClick={() => removePhoto(index)} className="bg-red-500 text-white p-3 rounded-full hover:bg-red-600 transition-colors shadow-lg">
-                                            <Trash2 size={20} />
+                        {/* Categorized Photos */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                            {/* PHOTO HUEP */}
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Foto HÜP (Offen)</label>
+                                <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center group">
+                                    {specialPhotos.photoHuep ? (
+                                        <>
+                                            <img src={specialPhotos.photoHuep.preview} className="w-full h-full object-cover" />
+                                            <button onClick={() => setSpecialPhotos({...specialPhotos, photoHuep: null})} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button onClick={() => huepInputRef.current.click()} className="flex flex-col items-center text-slate-400 hover:text-joa-blue transition-colors">
+                                            <CameraIcon size={32} />
+                                            <span className="text-[10px] font-bold mt-1">CAPTURAR</span>
                                         </button>
-                                    </div>
+                                    )}
+                                    <input type="file" accept="image/*" capture="environment" className="hidden" ref={huepInputRef} onChange={(e) => handlePhotoSelect(e, 'photoHuep')} />
                                 </div>
-                            ))}
+                            </div>
 
-                            <label className="border-2 border-dashed border-slate-300 hover:border-joa-blue hover:bg-blue-50 rounded-2xl aspect-square flex flex-col items-center justify-center text-slate-500 hover:text-joa-blue cursor-pointer transition-colors">
-                                <CameraIcon size={32} className="mb-2" />
-                                <span className="text-sm font-bold">Tomar Foto</span>
-                                <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    capture="environment" 
-                                    multiple 
-                                    className="hidden" 
-                                    ref={fileInputRef}
-                                    onChange={handlePhotoSelect} 
-                                />
-                            </label>
+                            {/* PHOTO MODEM */}
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Foto Modem</label>
+                                <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center group">
+                                    {specialPhotos.photoModem ? (
+                                        <>
+                                            <img src={specialPhotos.photoModem.preview} className="w-full h-full object-cover" />
+                                            <button onClick={() => setSpecialPhotos({...specialPhotos, photoModem: null})} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button onClick={() => modemInputRef.current.click()} className="flex flex-col items-center text-slate-400 hover:text-joa-blue transition-colors">
+                                            <CameraIcon size={32} />
+                                            <span className="text-[10px] font-bold mt-1">CAPTURAR</span>
+                                        </button>
+                                    )}
+                                    <input type="file" accept="image/*" capture="environment" className="hidden" ref={modemInputRef} onChange={(e) => handlePhotoSelect(e, 'photoModem')} />
+                                </div>
+                            </div>
+
+                            {/* PHOTO OTDR */}
+                            <div className="space-y-2">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Foto OTDR</label>
+                                <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center group">
+                                    {specialPhotos.photoOtdr ? (
+                                        <>
+                                            <img src={specialPhotos.photoOtdr.preview} className="w-full h-full object-cover" />
+                                            <button onClick={() => setSpecialPhotos({...specialPhotos, photoOtdr: null})} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </>
+                                    ) : (
+                                        <button onClick={() => otdrInputRef.current.click()} className="flex flex-col items-center text-slate-400 hover:text-joa-blue transition-colors">
+                                            <CameraIcon size={32} />
+                                            <span className="text-[10px] font-bold mt-1">CAPTURAR</span>
+                                        </button>
+                                    )}
+                                    <input type="file" accept="image/*" capture="environment" className="hidden" ref={otdrInputRef} onChange={(e) => handlePhotoSelect(e, 'photoOtdr')} />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border-t border-slate-100 pt-6">
+                            <h3 className="text-sm font-bold text-slate-600 mb-4 flex items-center gap-2">
+                                <ImageIcon size={18} className="text-slate-400" /> Otras Fotos Adicionales
+                            </h3>
+                            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 mb-4">
+                                {photos.map((photo, index) => (
+                                    <div key={index} className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 group bg-slate-50">
+                                        <img src={photo.preview} alt={`Foto ${index+1}`} className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button type="button" onClick={() => removePhoto(index)} className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg">
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+
+                                <label className="border-2 border-dashed border-slate-300 hover:border-joa-blue hover:bg-blue-50 rounded-2xl aspect-square flex flex-col items-center justify-center text-slate-400 hover:text-joa-blue cursor-pointer transition-colors">
+                                    <CameraIcon size={24} className="mb-1" />
+                                    <span className="text-[10px] font-bold">Añadir</span>
+                                    <input 
+                                        type="file" 
+                                        accept="image/*" 
+                                        capture="environment" 
+                                        multiple 
+                                        className="hidden" 
+                                        ref={fileInputRef}
+                                        onChange={handlePhotoSelect} 
+                                    />
+                                </label>
+                            </div>
                         </div>
 
                         <div className="pt-6 border-t border-slate-100 flex justify-between">
@@ -492,50 +685,82 @@ const GnkInstallationForm = () => {
                     <div className="space-y-6 animate-fadeIn">
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2 mb-6">
                             <CheckCircle className="text-green-500" />
-                            3. Revisa los datos
+                            3. Revisión Final y Firma
                         </h2>
 
                         <div className="bg-slate-50 rounded-2xl p-6 border border-slate-200 space-y-4">
-                            <div>
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Dirección Registrada</h4>
-                                <p className="text-lg font-bold text-slate-800">
-                                    {address.street} {address.number}
-                                </p>
-                                <p className="text-slate-600">{address.city}</p>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-200">
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Contacto</h4>
-                                    <p className="font-semibold text-slate-700">{contactName || 'N/A'}</p>
+                                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Cliente</h4>
+                                    <p className="text-sm font-bold text-slate-800 truncate">
+                                        {muenetData.customerFirstName} {muenetData.customerLastName}
+                                    </p>
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Fotos Añadidas</h4>
-                                    <p className="font-semibold text-slate-700">{photos.length} Archivos</p>
+                                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Dirección</h4>
+                                    <p className="text-sm font-bold text-slate-800 truncate">
+                                        {address.street} {address.number}
+                                    </p>
                                 </div>
                             </div>
 
-                            <div className="pt-4 border-t border-slate-200">
-                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Comentarios</h4>
-                                <p className="text-sm text-slate-600 bg-white p-3 rounded-xl border border-slate-200">
-                                    {comments || 'Sin comentarios.'}
-                                </p>
+                            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-200">
+                                <div>
+                                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">OLT</h4>
+                                    <p className="text-sm font-semibold text-slate-700">{muenetData.olt || '-'}</p>
+                                </div>
+                                <div>
+                                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">PON</h4>
+                                    <p className="text-sm font-semibold text-slate-700">{muenetData.pon || '-'}</p>
+                                </div>
+                                <div>
+                                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Port</h4>
+                                    <p className="text-sm font-semibold text-slate-700">{muenetData.splitterPort || '-'}</p>
+                                </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-slate-200">
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">GPON Serial</h4>
+                                <p className="text-sm font-mono font-bold text-slate-700">{muenetData.gponSerialNumber || 'No definido'}</p>
                             </div>
 
                             {/* Review Items */}
                             {Object.entries(selectedQuantities).some(([_, qty]) => qty > 0) && (
-                                <div className="pt-4 border-t border-slate-200">
-                                    <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Elementos a Facturar</h4>
+                                <div className="pt-3 border-t border-slate-200">
+                                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Unidades Instaladas</h4>
                                     <div className="flex flex-wrap gap-2">
                                         {availableItems.filter(i => selectedQuantities[i.id] > 0).map(item => (
-                                            <div key={item.id} className="bg-joa-blue/10 border border-joa-blue/20 px-3 py-1.5 rounded-xl flex items-center gap-2">
-                                                <span className="font-bold text-joa-blue">{selectedQuantities[item.id]}x</span>
-                                                <span className="text-sm font-medium text-slate-700">{item.name}</span>
+                                            <div key={item.id} className="bg-joa-blue/10 border border-joa-blue/20 px-2 py-1 rounded-lg flex items-center gap-2">
+                                                <span className="font-bold text-joa-blue text-xs">{selectedQuantities[item.id]}x</span>
+                                                <span className="text-[10px] font-medium text-slate-700">{item.name}</span>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             )}
+
+                            {/* SIGNATURE SECTION */}
+                            <div className="pt-4 border-t border-slate-200">
+                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <PenTool size={12} /> Firma del Cliente
+                                </label>
+                                <div className="bg-white border-2 border-slate-200 rounded-2xl overflow-hidden relative">
+                                    <canvas 
+                                        ref={signatureCanvasRef} 
+                                        className="w-full h-48 touch-none cursor-crosshair"
+                                    ></canvas>
+                                    <button 
+                                        type="button"
+                                        onClick={() => sigPad.current && sigPad.current.clear()}
+                                        className="absolute bottom-2 right-2 text-[10px] font-bold text-slate-400 hover:text-red-500 transition-colors uppercase px-3 py-1 bg-slate-100 rounded-lg"
+                                    >
+                                        Limpiar
+                                    </button>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-2 italic text-center">
+                                    Al firmar, el cliente confirma que la instalación ha sido realizada correctamente y está operativa.
+                                </p>
+                            </div>
                         </div>
 
                         <div className="pt-6 flex gap-4">
@@ -543,20 +768,20 @@ const GnkInstallationForm = () => {
                                 onClick={() => setStep(2)}
                                 className="flex-1 py-4 rounded-xl font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
                             >
-                                Volver a Fotos
+                                Volver
                             </button>
                             <button 
                                 onClick={handleSubmit}
                                 disabled={isSubmitting}
-                                className="flex-2 w-2/3 bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-green-500/30 transition-all flex items-center justify-center gap-2"
+                                className="flex-[2] bg-green-500 hover:bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-green-500/30 transition-all flex items-center justify-center gap-2"
                             >
                                 {isSubmitting ? (
                                     <>
                                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        Guardando...
+                                        Enviando...
                                     </>
                                 ) : (
-                                    <>Confirmar Ficha</>
+                                    <>Enviar Informe Profesional</>
                                 )}
                             </button>
                         </div>

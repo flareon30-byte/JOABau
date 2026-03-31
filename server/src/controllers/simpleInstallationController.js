@@ -1,44 +1,43 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 const { processImages } = require('../utils/imageProcessor');
+const pdfService = require('../services/pdfService');
 
 exports.createInstallation = async (req, res) => {
     try {
-        const { projectId, contactName, comments, addressInfo, itemsJSON } = req.body;
-        const photos = req.files || [];
+        const { 
+            projectId, contactName, comments, addressInfo, itemsJSON,
+            customerFirstName, customerLastName, olt, pon, splitterPort, gponSerialNumber,
+            isReadyForOperation, gpsAlt
+        } = req.body;
+        
+        const files = req.files || {};
+        const photos = files.photos || [];
+        const photoHuepFile = files.photoHuep ? files.photoHuep[0] : null;
+        const photoModemFile = files.photoModem ? files.photoModem[0] : null;
+        const photoOtdrFile = files.photoOtdr ? files.photoOtdr[0] : null;
+        const signatureFile = files.signature ? files.signature[0] : null;
+
         const userId = req.userId;
 
-        console.log('[SimpleInstallation] Received:', {
-            userId,
-            projectId,
-            contactName,
-            addressInfo,
-            itemsCount: itemsJSON ? JSON.parse(itemsJSON).length : 0,
-            photoCount: photos.length
-        });
+        // Compression for all images
+        const allFilesToProcess = [...photos];
+        if (photoHuepFile) allFilesToProcess.push(photoHuepFile);
+        if (photoModemFile) allFilesToProcess.push(photoModemFile);
+        if (photoOtdrFile) allFilesToProcess.push(photoOtdrFile);
+        if (signatureFile) allFilesToProcess.push(signatureFile);
 
-        // 🟢 COMPRESIÓN DE IMÁGENES
-        if (photos.length > 0) {
-            await processImages(photos);
+        if (allFilesToProcess.length > 0) {
+            await processImages(allFilesToProcess);
         }
 
         // Parse address info
         if (!addressInfo) {
-            console.error('[SimpleInstallation] Error: Missing addressInfo');
             return res.status(400).json({ message: 'Información de dirección faltante' });
         }
         
-        let parsedAddress;
-        try {
-            parsedAddress = JSON.parse(addressInfo);
-        } catch (e) {
-            console.error('[SimpleInstallation] Error parsing JSON:', addressInfo);
-            return res.status(400).json({ message: 'Error de formato en dirección' });
-        }
+        let parsedAddress = JSON.parse(addressInfo);
 
-        // 1. Get or create the address under a generic G&K project, or if they passed projectId use it.
-        // If not, maybe create a temporary project or we use a "Sin Proyecto" dummy project.
-        // For now, we assume projectId is provided or we fetch a default one for this active client.
         const user = await prisma.user.findUnique({
             where: { id: userId },
             include: { 
@@ -51,24 +50,12 @@ exports.createInstallation = async (req, res) => {
         const activeClientId = activeClient ? activeClient.id : null;
         const clientName = activeClient ? activeClient.name : 'General';
         
-        // Price should be resolved for EVERY installation
-        let billablePrice = 0;
-        if (activeClient && activeClient.settings) {
-            billablePrice = activeClient.settings.ApLPrice || activeClient.settings.apLPrice || 0;
-        }
-
         let targetProjectId = projectId;
         if (!targetProjectId) {
-            // Find or create generic project
-            let dummyProject = await prisma.project.findFirst({
-                where: { name: `Proyectos Varios - ${clientName}` }
-            });
+            let dummyProject = await prisma.project.findFirst({ where: { name: `Proyectos Varios - ${clientName}` } });
             if (!dummyProject) {
                 dummyProject = await prisma.project.create({
-                    data: {
-                        name: `Proyectos Varios - ${clientName}`,
-                        clientCompanyId: activeClientId
-                    }
+                    data: { name: `Proyectos Varios - ${clientName}`, clientCompanyId: activeClientId }
                 });
             }
             targetProjectId = dummyProject.id;
@@ -84,24 +71,17 @@ exports.createInstallation = async (req, res) => {
         });
 
         const photoUrls = photos.map(file => `/uploads/${file.filename}`);
-
-        // Parse items and calculate total price
         const parsedItems = itemsJSON ? JSON.parse(itemsJSON) : [];
         let totalBillable = 0;
         
-        // Fetch price items to ensure we have latest prices/bonus
         const priceItemIds = parsedItems.map(i => i.priceItemId);
-        const actualPriceItems = await prisma.clientPriceItem.findMany({
-            where: { id: { in: priceItemIds } }
-        });
+        const actualPriceItems = await prisma.clientPriceItem.findMany({ where: { id: { in: priceItemIds } } });
 
         const itemsToCreate = parsedItems.map(sentItem => {
             const actual = actualPriceItems.find(ap => ap.id === sentItem.priceItemId);
             if (!actual) return null;
-            
             const qty = parseInt(sentItem.quantity || 1);
             totalBillable += (actual.priceToClient * qty);
-            
             return {
                 priceItemId: actual.id,
                 quantity: qty,
@@ -118,17 +98,51 @@ exports.createInstallation = async (req, res) => {
                 comments,
                 photos: photoUrls,
                 createdById: userId,
-                priceCharged: totalBillable > 0 ? totalBillable : billablePrice, // Fallback to old field if no items
-                items: {
-                    create: itemsToCreate
-                }
+                priceCharged: totalBillable,
+                
+                // MUENET / Generic Fields
+                customerFirstName,
+                customerLastName,
+                olt,
+                pon,
+                splitterPort,
+                gponSerialNumber,
+                isReadyForOperation: isReadyForOperation === 'true' || isReadyForOperation === true,
+                gpsLat: parsedAddress.lat ? parseFloat(parsedAddress.lat) : null,
+                gpsLng: parsedAddress.lng ? parseFloat(parsedAddress.lng) : null,
+                gpsAlt: gpsAlt ? parseFloat(gpsAlt) : null,
+                
+                photoHuep: photoHuepFile ? `/uploads/${photoHuepFile.filename}` : null,
+                photoModem: photoModemFile ? `/uploads/${photoModemFile.filename}` : null,
+                photoOtdr: photoOtdrFile ? `/uploads/${photoOtdrFile.filename}` : null,
+                signaturePath: signatureFile ? `/uploads/${signatureFile.filename}` : null,
+
+                items: { create: itemsToCreate }
             },
-            include: {
-                items: { include: { priceItem: true } }
+            include: { 
+                items: { include: { priceItem: true } },
+                address: true,
+                createdBy: true
             }
         });
 
-        res.status(201).json({ message: 'Installation recorded successfully', installation });
+        // --- AUTOMATIC PDF GENERATION ---
+        let finalPdfPath = null;
+        try {
+            finalPdfPath = await pdfService.generateInstallationReport(installation);
+            // Non-blocking update (or block if you prefer completeness)
+            await prisma.simpleInstallation.update({
+                where: { id: installation.id },
+                data: { pdfPath: finalPdfPath }
+            });
+        } catch (pdfError) {
+            console.error('[CRITICAL] PDF Report Generation Failed:', pdfError);
+        }
+
+        res.status(201).json({ 
+            message: 'Installation recorded successfully', 
+            installation: { ...installation, pdfPath: finalPdfPath } 
+        });
     } catch (error) {
         console.error('Error creating simple installation:', error);
         res.status(500).json({ 

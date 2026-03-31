@@ -246,7 +246,10 @@ const BillingPage = () => {
                 break;
             case 'simpleInstallation':
                 data = billingData.simpleInstallation;
-                columns = ['Fecha', 'Dirección', 'Conceptos / Items', 'Comentarios', 'Fotos', 'Técnico', 'Proyecto', 'Acciones'];
+                columns = [
+                    <div key="chk" className="flex items-center"><input type="checkbox" checked={data.length > 0 && selectedIds.length === data.length} onChange={() => toggleSelectAll(data)} className="w-4 h-4 rounded border-slate-300" /></div>,
+                    'Fecha', 'Dirección', 'Conceptos / Items', 'Comentarios', 'Fotos', 'PDF', 'Técnico', 'Proyecto', 'Acciones'
+                ];
                 emptyMsg = "No hay fichas de G&K / Otros enviadas";
                 break;
             default:
@@ -367,6 +370,14 @@ const BillingPage = () => {
 
                                 {activeTab === 'simpleInstallation' && (
                                     <>
+                                        <td className="p-4">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.includes(row.id)}
+                                                onChange={() => toggleSelect(row.id)}
+                                                className="w-4 h-4 rounded border-slate-300"
+                                            />
+                                        </td>
                                         <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 text-slate-900 font-bold">
                                             {row.address.street} {row.address.number || ''}
@@ -395,6 +406,22 @@ const BillingPage = () => {
                                                 ))}
                                                 {(!row.photos || row.photos.length === 0) && <span className="text-slate-300 italic">No fotos</span>}
                                             </div>
+                                        </td>
+                                        {/* NEW PDF COLUMN */}
+                                        <td className="p-4">
+                                            {row.pdfPath ? (
+                                                <a
+                                                    href={getFileUrl(row.pdfPath)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-red-500 hover:text-red-700 flex items-center gap-1 font-bold"
+                                                    title="Ver Informe PDF"
+                                                >
+                                                    <FileText size={18} /> INFO
+                                                </a>
+                                            ) : (
+                                                <span className="text-slate-300">-</span>
+                                            )}
                                         </td>
                                         <td className="p-4 text-slate-500">
                                             {row.createdBy?.username || '-'}
@@ -428,7 +455,7 @@ const BillingPage = () => {
                                 {/* ACTIONS COLUMN */}
                                 <td className="p-4 w-28">
                                     <div className="flex items-center gap-2">
-                                        {activeTab === 'activation' && (
+                                        {(activeTab === 'activation' || activeTab === 'simpleInstallation') && (
                                             <button
                                                 onClick={() => handleDownloadDocs([row.id])} // Download ZIP for single item
                                                 className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors"
@@ -537,7 +564,7 @@ const BillingPage = () => {
                     <p className="text-slate-500 text-sm">Gestiona y exporta los trabajos realizados para facturar.</p>
                 </div>
                 <div className="flex gap-2">
-                    {activeTab === 'activation' && selectedIds.length > 0 && (
+                    {(activeTab === 'activation' || activeTab === 'simpleInstallation') && selectedIds.length > 0 && (
                         <button
                             onClick={() => handleDownloadDocs()}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all"

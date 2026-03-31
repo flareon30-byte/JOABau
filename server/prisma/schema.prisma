@@ -408,9 +408,30 @@ model SimpleInstallation {
   addressId String  @unique
   address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
   
+  customerFirstName String?
+  customerLastName  String?
+  
+  olt              String?
+  pon              String?
+  splitterPort     String?
+  gponSerialNumber String?
+  
+  isReadyForOperation Boolean? @default(true)
+  
+  gpsLat           Float?
+  gpsLng           Float?
+  gpsAlt           Float?
+  
   contactName String?
   comments    String?
   photos      String[]
+  
+  // New: Categorized Photo Paths (Optional overrides for PDF generation)
+  photoHuep        String?
+  photoModem       String?
+  photoOtdr        String?
+  signaturePath    String?
+  pdfPath          String?
   
   // Financial tracking metadata based on Active Client settings at the time of creation
   priceCharged Float @default(0.0)

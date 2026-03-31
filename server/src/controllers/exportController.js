@@ -10,14 +10,24 @@ exports.exportActivationPhotos = async (req, res) => {
     console.log('Exporting documentation with filters:', { projectId, startDate, endDate, ids });
 
     try {
-        // Build filters
-        const whereClause = {};
+        let activations = [];
+        let simpleInstallations = [];
 
         if (ids) {
             const idList = ids.split(',');
-            whereClause.id = { in: idList };
+            // 1. Fetch from ActivationInfo
+            activations = await prisma.activationInfo.findMany({
+                where: { id: { in: idList } },
+                include: { address: true }
+            });
+            // 2. Fetch from SimpleInstallation
+            simpleInstallations = await prisma.simpleInstallation.findMany({
+                where: { id: { in: idList } },
+                include: { address: true }
+            });
         } else {
-            whereClause.photos = { isEmpty: false };
+            // Bulk filter (Same as before but only for ActivationInfo for now)
+            const whereClause = { photos: { isEmpty: false } };
             const addressWhere = {};
             if (projectId) addressWhere.projectId = projectId;
 
@@ -26,22 +36,18 @@ exports.exportActivationPhotos = async (req, res) => {
                     gte: new Date(startDate),
                     lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
                 };
-            } else if (startDate) {
-                whereClause.createdAt = { gte: new Date(startDate) };
-            } else if (endDate) {
-                whereClause.createdAt = { lte: new Date(new Date(endDate).setHours(23, 59, 59, 999)) };
             }
 
             if (projectId) whereClause.address = addressWhere;
+
+            activations = await prisma.activationInfo.findMany({
+                where: whereClause,
+                include: { address: true }
+            });
         }
 
-        const activations = await prisma.activationInfo.findMany({
-            where: whereClause,
-            include: { address: true }
-        });
-
-        if (activations.length === 0) {
-            return res.status(404).send('No se encontraron activaciones.');
+        if (activations.length === 0 && simpleInstallations.length === 0) {
+            return res.status(404).send('No se encontraron registros con documentación.');
         }
 
         const archive = archiver('zip', { zlib: { level: 9 } });
@@ -52,87 +58,56 @@ exports.exportActivationPhotos = async (req, res) => {
             if (!res.headersSent) res.status(500).send({ error: err.message });
         });
 
-        archive.on('warning', (err) => {
-            if (err.code === 'ENOENT') {
-                console.warn('[ZIP WARNING]', err);
-            } else {
-                console.error('[ZIP WARNING]', err);
-            }
-        });
-
-        res.attachment('documentacion_clientes.zip');
+        res.attachment(`documentacion_${new Date().getTime()}.zip`);
         archive.pipe(res);
 
+        // Helper to add file safely
+        const addFileToArchive = (filePath, archivePath) => {
+            if (!filePath) return;
+            filePath = filePath.split('?')[0];
+            let normalized = filePath.replace(/\\/g, '/');
+            if (normalized.startsWith('/')) normalized = normalized.slice(1);
+            const fullPath = path.resolve(__dirname, '../../', normalized);
+
+            if (fs.existsSync(fullPath)) {
+                archive.file(fullPath, { name: archivePath });
+            }
+        };
+
+        // PROCESS ACTIVATIONS
         for (const act of activations) {
-            const address = act.address;
-            const folderName = `${address.street} ${address.number || ''} - ${address.clientName || 'Sin Cliente'}`
-                .trim()
-                .replace(/[\\/:*?"<>|]/g, '_');
-
-            // Helper to add file safely
-            const addFileToArchive = (filePath, archivePath) => {
-                if (!filePath) return;
-
-                // Strip query parameters (e.g. ?t=123456)
-                filePath = filePath.split('?')[0];
-
-                // Normalize slashes
-                let normalized = filePath.replace(/\\/g, '/');
-
-                // Security/Legacy check: Ignore absolute paths (C:/, /tmp/) if on server
-                // We assume valid files are relative 'uploads/...'
-                if (normalized.startsWith('/') || normalized.match(/^[a-zA-Z]:/)) {
-                    // Check if it's a legacy /tmp path or absolute path
-                    // Try to match it to our project structure if possible, otherwise skip
-                    // For now, simple heuristic: if it doesn't start with 'uploads', skip it to avoid crashing
-                    if (!normalized.includes('uploads/')) {
-                        console.warn(`[ZIP SKIP] Ignoring absolute/legacy path: ${normalized}`);
-                        return;
-                    }
-                }
-
-                // Remove leading slash or './' if present to make it clean relative
-                if (normalized.startsWith('./')) normalized = normalized.slice(2);
-                if (normalized.startsWith('/')) normalized = normalized.slice(1);
-
-                // Resolve against server root (../../ relative to controller)
-                const fullPath = path.resolve(__dirname, '../../', normalized);
-
-                if (fs.existsSync(fullPath)) {
-                    archive.file(fullPath, { name: archivePath });
-                } else {
-                    console.warn(`[ZIP MISSING] File not found: ${fullPath} (Org: ${filePath})`);
-                }
-            };
-
-            // 1. Add Photos
-            if (act.photos && Array.isArray(act.photos)) {
-                act.photos.forEach(photoPath => {
-                    const fileName = path.basename(photoPath.replace(/\\/g, '/'));
-                    addFileToArchive(photoPath, `${folderName}/Fotos/${fileName}`);
-                });
+            const folderName = `Doc_${act.address.street}_${act.address.number || ''}`.replace(/[\\/:*?"<>|]/g, '_');
+            
+            if (act.photos) {
+                act.photos.forEach((p, idx) => addFileToArchive(p, `${folderName}/Fotos/Foto_${idx}.jpeg`));
             }
-
-            // 2. Add PDF
-            if (act.pdfPath) {
-                addFileToArchive(act.pdfPath, `${folderName}/Montageprotokoll.pdf`);
-            }
+            if (act.pdfPath) addFileToArchive(act.pdfPath, `${folderName}/Montageprotokoll.pdf`);
         }
 
+        // PROCESS SIMPLE INSTALLATIONS
+        for (const inst of simpleInstallations) {
+            const folderName = `Inst_${inst.customerLastName || 'GK'}_${inst.address.street}_${inst.address.number || ''}`.replace(/[\\/:*?"<>|]/g, '_');
+            
+            // Standard photos
+            if (inst.photos) {
+                inst.photos.forEach((p, idx) => addFileToArchive(p, `${folderName}/Fotos/Adicional_${idx}.jpeg`));
+            }
+            // Categorized photos
+            addFileToArchive(inst.photoHuep, `${folderName}/Fotos/HUEP.jpeg`);
+            addFileToArchive(inst.photoModem, `${folderName}/Fotos/Modem.jpeg`);
+            addFileToArchive(inst.photoOtdr, `${folderName}/Fotos/OTDR.jpeg`);
+            addFileToArchive(inst.signaturePath, `${folderName}/Fotos/Firma_Cliente.png`);
 
+            // THE GENERATED PDF
+            if (inst.pdfPath) addFileToArchive(inst.pdfPath, `${folderName}/Informe_Profesional.pdf`);
+        }
 
-        // --- FIX: Add a dummy file to ensure ZIP is never empty/corrupt ---
-        archive.append('Generación de documentación completada.\n' +
-            'Si faltan carpetas, es posible que los archivos originales no existan en el servidor.',
-            { name: 'LEEME.txt' });
-
+        archive.append('Generación de documentación completada.', { name: 'INFO.txt' });
         await archive.finalize();
 
     } catch (error) {
         console.error('[EXPORT CONTROLLER ERROR]', error);
-        if (!res.headersSent) {
-            res.status(500).json({ message: 'Error exporting documentation' });
-        }
+        if (!res.headersSent) res.status(500).json({ message: 'Error exporting documentation' });
     }
 };
 

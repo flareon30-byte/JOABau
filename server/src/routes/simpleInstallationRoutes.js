@@ -17,8 +17,16 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
+const uploadFields = upload.fields([
+    { name: 'photos', maxCount: 15 },
+    { name: 'photoHuep', maxCount: 1 },
+    { name: 'photoModem', maxCount: 1 },
+    { name: 'photoOtdr', maxCount: 1 },
+    { name: 'signature', maxCount: 1 }
+]);
+
 router.use(verifyToken);
-router.post('/', upload.array('photos', 15), controller.createInstallation);
+router.post('/', uploadFields, controller.createInstallation);
 router.get('/', checkRole(['ADMIN', 'SUPER_ADMIN']), controller.getInstallations);
 
 module.exports = router;
