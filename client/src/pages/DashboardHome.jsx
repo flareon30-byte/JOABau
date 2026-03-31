@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target, Camera, Trash2, Navigation } from 'lucide-react';
 
@@ -208,7 +209,10 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
 };
 
 const DashboardHome = () => {
-    const [stats, setStats] = useState({});
+    const navigate = useNavigate();
+    const [stats, setStats] = useState({
+        pendingAppointments: 0,
+    });
     const [activatorData, setActivatorData] = useState(null);
     const [payroll, setPayroll] = useState([]);
     const [clients, setClients] = useState([]);
@@ -352,7 +356,7 @@ const DashboardHome = () => {
                         {user.activeClientCompany && (
                             <div className="mb-6">
                                 <button 
-                                    onClick={() => window.location.href = '/dashboard/gnk-installation'}
+                                    onClick={() => navigate('/dashboard/gnk-installation')}
                                     className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-green-500/30 transition-transform hover:scale-105 flex items-center justify-center gap-2"
                                 >
                                     <MapPin />

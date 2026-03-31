@@ -1,3 +1,4 @@
+import React, { useState, useEffect, useRef } from 'react';
 import { Camera as CameraIcon, MapPin, CheckCircle, Navigation, Type, MessageSquare, Trash2, ArrowLeft, Image as ImageIcon, Tag, QrCode, Shield, PenTool } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import SignaturePad from 'signature_pad';
