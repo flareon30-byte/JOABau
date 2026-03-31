@@ -27,6 +27,7 @@ const GnkInstallationForm = () => {
         photoModem: null,
         photoOtdr: null
     });
+    const [photos, setPhotos] = useState([]);
     
     // Tech State
     const [loadingLocation, setLoadingLocation] = useState(false);
