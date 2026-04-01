@@ -16,9 +16,22 @@ exports.generateInstallationReport = async (installation) => {
         // --- ASSETS ---
         let logoImage;
         const logoPath = path.join(__dirname, '../../../client/public/logo.png');
+        console.log(`[PDF Service] Attempting to load logo from: ${logoPath}`);
+        
         if (fs.existsSync(logoPath)) {
             const logoBytes = fs.readFileSync(logoPath);
-            logoImage = await pdfDoc.embedPng(logoBytes);
+            try {
+                if (logoPath.toLowerCase().endsWith('.png')) {
+                    logoImage = await pdfDoc.embedPng(logoBytes);
+                } else {
+                    logoImage = await pdfDoc.embedJpg(logoBytes);
+                }
+                console.log(`[PDF Service] Logo embedded successfully`);
+            } catch (embedError) {
+                console.error(`[PDF Service] Failed to embed logo file:`, embedError);
+            }
+        } else {
+            console.warn(`[PDF Service] Logo file NOT FOUND at: ${logoPath}`);
         }
 
         const addHeader = (page) => {
@@ -145,9 +158,15 @@ exports.generateInstallationReport = async (installation) => {
  */
 async function embedImage(pdfDoc, page, relativePath, x, y, width, height, isPng = false) {
     try {
-        const fullPath = path.join(__dirname, '../../', relativePath.split('?')[0]);
+        if (!relativePath) return;
+        // Strip leading slash if present to prevent path.join from going to root in Linux
+        const cleanPath = relativePath.split('?')[0].replace(/^\//, '');
+        const fullPath = path.join(__dirname, '../../', cleanPath);
+        
+        console.log(`[PDF Service] Embedding image from: ${fullPath}`);
+
         if (!fs.existsSync(fullPath)) {
-            console.warn(`[PDF Service] Image missing: ${fullPath}`);
+            console.warn(`[PDF Service] Image missing on disk: ${fullPath}`);
             return;
         }
         const imgBytes = fs.readFileSync(fullPath);
