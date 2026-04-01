@@ -126,7 +126,7 @@ exports.generateInstallationReport = async (installation) => {
         // Finalize
         const pdfBytes = await pdfDoc.save();
         const fileName = `Report_${installation.customerLastName || 'Inst'}_${new Date().getTime()}.pdf`;
-        const dir = path.join(__dirname, '../../../uploads/reports');
+        const dir = path.join(__dirname, '../../uploads/reports');
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         
         const filePath = path.join(dir, fileName);
@@ -145,7 +145,7 @@ exports.generateInstallationReport = async (installation) => {
  */
 async function embedImage(pdfDoc, page, relativePath, x, y, width, height, isPng = false) {
     try {
-        const fullPath = path.join(__dirname, '../../../', relativePath.split('?')[0]);
+        const fullPath = path.join(__dirname, '../../', relativePath.split('?')[0]);
         if (!fs.existsSync(fullPath)) {
             console.warn(`[PDF Service] Image missing: ${fullPath}`);
             return;
