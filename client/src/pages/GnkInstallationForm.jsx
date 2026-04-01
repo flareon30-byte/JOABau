@@ -51,7 +51,7 @@ const GnkInstallationForm = () => {
 
     useEffect(() => {
         if (signatureCanvasRef.current && step === 3) {
-            // Small delay to ensure DOM dimensions are settled
+            // Delay ensures DOM has calculated accurate offsetWidth/Height
             const timer = setTimeout(() => {
                 const canvas = signatureCanvasRef.current;
                 if (!canvas) return;
@@ -62,11 +62,11 @@ const GnkInstallationForm = () => {
                 canvas.getContext("2d").scale(ratio, ratio);
 
                 sigPad.current = new SignaturePad(canvas, {
-                    backgroundColor: 'rgba(255, 255, 255, 0)', // Transparent fallback or white
+                    backgroundColor: 'rgb(255, 255, 255)', // Solid white for better PDF contrast
                     penColor: 'rgb(0, 0, 0)'
                 });
                 sigPad.current.clear();
-            }, 100);
+            }, 250); // Increased timeout for slower mobile renders
             return () => clearTimeout(timer);
         }
     }, [step]);

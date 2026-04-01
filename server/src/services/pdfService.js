@@ -41,14 +41,14 @@ exports.generateInstallationReport = async (installation) => {
             page.drawText('JOA Technologien', { x: 50, y: height - 50, size: 18, font: fontBold });
             // Logo
             if (logoImage) {
-                const maxWidth = 150;
-                const maxHeight = 40;
+                const maxWidth = 200; // Increased size for visibility
+                const maxHeight = 80;
                 const dims = logoImage.scale(1);
                 const scale = Math.min(maxWidth / dims.width, maxHeight / dims.height);
                 
                 page.drawImage(logoImage, {
                     x: width - (dims.width * scale) - 50,
-                    y: height - (dims.height * scale) - 25,
+                    y: height - (dims.height * scale) - 15,
                     width: dims.width * scale,
                     height: dims.height * scale,
                 });
