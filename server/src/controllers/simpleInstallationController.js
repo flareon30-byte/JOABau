@@ -8,7 +8,7 @@ exports.createInstallation = async (req, res) => {
         const { 
             projectId, contactName, comments, addressInfo, itemsJSON,
             customerFirstName, customerLastName, olt, pon, splitterPort, gponSerialNumber,
-            isReadyForOperation, gpsAlt
+            isReadyForOperation, gpsAlt, gpsLat, gpsLng
         } = req.body;
         
         const files = req.files || {};
@@ -108,9 +108,9 @@ exports.createInstallation = async (req, res) => {
                 splitterPort,
                 gponSerialNumber,
                 isReadyForOperation: isReadyForOperation === 'true' || isReadyForOperation === true,
-                gpsLat: parsedAddress.lat ? parseFloat(parsedAddress.lat) : null,
-                gpsLng: parsedAddress.lng ? parseFloat(parsedAddress.lng) : null,
-                gpsAlt: gpsAlt ? parseFloat(gpsAlt) : null,
+                gpsLat: gpsLat ? parseFloat(gpsLat) : null,
+                gpsLng: gpsLng ? parseFloat(gpsLng) : null,
+                gpsAlt: gpsAlt ? parseFloat(gpsAlt) : (parsedAddress.alt ? parseFloat(parsedAddress.alt) : null),
                 
                 photoHuep: photoHuepFile ? `/uploads/${photoHuepFile.filename}` : null,
                 photoModem: photoModemFile ? `/uploads/${photoModemFile.filename}` : null,

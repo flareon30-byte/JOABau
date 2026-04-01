@@ -51,9 +51,16 @@ const GnkInstallationForm = () => {
 
     useEffect(() => {
         if (signatureCanvasRef.current && step === 3) {
-            sigPad.current = new SignaturePad(signatureCanvasRef.current, {
+            const canvas = signatureCanvasRef.current;
+            const ratio = Math.max(window.devicePixelRatio || 1, 1);
+            canvas.width = canvas.offsetWidth * ratio;
+            canvas.height = canvas.offsetHeight * ratio;
+            canvas.getContext("2d").scale(ratio, ratio);
+
+            sigPad.current = new SignaturePad(canvas, {
                 backgroundColor: 'rgb(255, 255, 255)'
             });
+            sigPad.current.clear();
         }
     }, [step]);
 
@@ -97,8 +104,9 @@ const GnkInstallationForm = () => {
 
         navigator.geolocation.getCurrentPosition(
             async (position) => {
-                const { latitude, longitude } = position.coords;
-                setGpsCoordinates({ lat: latitude, lng: longitude });
+                const { latitude, longitude, altitude } = position.coords;
+                setGpsCoordinates({ lat: latitude, lng: longitude, alt: altitude });
+                setMuenetData(prev => ({ ...prev, gpsAlt: altitude ? Math.round(altitude) : '' }));
                 
                 // Reverse Geocoding via Nominatim (OpenStreetMap)
                 try {
