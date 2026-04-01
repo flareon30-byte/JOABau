@@ -15,23 +15,24 @@ exports.generateInstallationReport = async (installation) => {
         
         // --- ASSETS ---
         let logoImage;
-        const logoPath = path.join(__dirname, '../../../client/public/logo.png');
-        console.log(`[PDF Service] Attempting to load logo from: ${logoPath}`);
+        const logoPath = path.join(__dirname, '../../uploads/logo.png');
+        console.log(`[PDF Service] Searching logo at: ${logoPath}`);
         
         if (fs.existsSync(logoPath)) {
             const logoBytes = fs.readFileSync(logoPath);
             try {
-                if (logoPath.toLowerCase().endsWith('.png')) {
-                    logoImage = await pdfDoc.embedPng(logoBytes);
-                } else {
+                logoImage = await pdfDoc.embedPng(logoBytes);
+                console.log(`[PDF Service] PNG Logo loaded`);
+            } catch (pngError) {
+                try {
                     logoImage = await pdfDoc.embedJpg(logoBytes);
+                    console.log(`[PDF Service] JPG Logo loaded as fallback`);
+                } catch (jpgError) {
+                    console.error(`[PDF Service] All logo embeds failed:`, jpgError);
                 }
-                console.log(`[PDF Service] Logo embedded successfully`);
-            } catch (embedError) {
-                console.error(`[PDF Service] Failed to embed logo file:`, embedError);
             }
         } else {
-            console.warn(`[PDF Service] Logo file NOT FOUND at: ${logoPath}`);
+            console.warn(`[PDF Service] Logo file NOT found in uploads/logo.png`);
         }
 
         const addHeader = (page) => {
@@ -40,12 +41,16 @@ exports.generateInstallationReport = async (installation) => {
             page.drawText('JOA Technologien', { x: 50, y: height - 50, size: 18, font: fontBold });
             // Logo
             if (logoImage) {
-                const dims = logoImage.scale(0.08); // Scale down
+                const maxWidth = 150;
+                const maxHeight = 40;
+                const dims = logoImage.scale(1);
+                const scale = Math.min(maxWidth / dims.width, maxHeight / dims.height);
+                
                 page.drawImage(logoImage, {
-                    x: width - dims.width - 50,
-                    y: height - 65,
-                    width: dims.width,
-                    height: dims.height,
+                    x: width - (dims.width * scale) - 50,
+                    y: height - (dims.height * scale) - 25,
+                    width: dims.width * scale,
+                    height: dims.height * scale,
                 });
             }
             // Horizontal Line

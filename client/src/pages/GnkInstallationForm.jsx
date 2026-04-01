@@ -51,16 +51,23 @@ const GnkInstallationForm = () => {
 
     useEffect(() => {
         if (signatureCanvasRef.current && step === 3) {
-            const canvas = signatureCanvasRef.current;
-            const ratio = Math.max(window.devicePixelRatio || 1, 1);
-            canvas.width = canvas.offsetWidth * ratio;
-            canvas.height = canvas.offsetHeight * ratio;
-            canvas.getContext("2d").scale(ratio, ratio);
+            // Small delay to ensure DOM dimensions are settled
+            const timer = setTimeout(() => {
+                const canvas = signatureCanvasRef.current;
+                if (!canvas) return;
+                
+                const ratio = Math.max(window.devicePixelRatio || 1, 1);
+                canvas.width = canvas.offsetWidth * ratio;
+                canvas.height = canvas.offsetHeight * ratio;
+                canvas.getContext("2d").scale(ratio, ratio);
 
-            sigPad.current = new SignaturePad(canvas, {
-                backgroundColor: 'rgb(255, 255, 255)'
-            });
-            sigPad.current.clear();
+                sigPad.current = new SignaturePad(canvas, {
+                    backgroundColor: 'rgba(255, 255, 255, 0)', // Transparent fallback or white
+                    penColor: 'rgb(0, 0, 0)'
+                });
+                sigPad.current.clear();
+            }, 100);
+            return () => clearTimeout(timer);
         }
     }, [step]);
 
