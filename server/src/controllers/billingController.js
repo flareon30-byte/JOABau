@@ -90,3 +90,25 @@ exports.deleteProtocol = async (req, res) => {
         res.status(500).json({ message: 'Error revirtiendo protocolo' });
     }
 };
+
+exports.deleteRepair = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.simpleInstallation.delete({ where: { id } });
+        res.json({ message: 'Reparación eliminada.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error eliminando reparación' });
+    }
+};
+
+exports.deleteSimpleInstallation = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.simpleInstallation.delete({ where: { id } });
+        res.json({ message: 'Instalación G&K eliminada.' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error eliminando instalación' });
+    }
+};

@@ -21,5 +21,7 @@ router.delete('/soplado/:id', allowBilling, billingController.deleteSoplado);
 router.delete('/fusion/:id', allowBilling, billingController.deleteFusion);
 router.delete('/activation/:id', allowBilling, billingController.deleteActivation);
 router.delete('/protocol/:id', allowBilling, billingController.deleteProtocol);
+router.delete('/repair/:id', allowBilling, billingController.deleteRepair);
+router.delete('/simpleInstallation/:id', allowBilling, billingController.deleteSimpleInstallation);
 
 module.exports = router;
