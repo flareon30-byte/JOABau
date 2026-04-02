@@ -366,31 +366,42 @@ const DashboardHome = () => {
                         )}
 
                         {stats.isBonusMode ? (
-                            <div className="bg-green-500/20 border border-green-500/50 p-4 rounded-xl flex items-center gap-3 animate-pulse">
-                                <Star className="text-yellow-400 fill-yellow-400" />
-                                <div>
-                                    <p className="font-bold text-green-400">¡Modo Paga Extra Activado!</p>
-                                    <p className="text-xs text-green-200">
-                                        Has superado los gastos de tu equipo. ¡Cada vivienda soplada ahora genera un bonus directo!
-                                    </p>
+                            <div className="bg-yellow-500/20 border border-yellow-500/50 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 animate-in zoom-in duration-500 shadow-lg shadow-yellow-500/10">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-yellow-500 p-3 rounded-xl">
+                                        <TrendingUp className="text-white" size={24} />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xl font-bold text-yellow-400">¡Bonus Activo! 💸</h4>
+                                        <p className="text-sm text-slate-300">Has cubierto tus gastos. ¡Ahora todo suma extra!</p>
+                                    </div>
+                                </div>
+                                <div className="text-right flex flex-col items-center md:items-end">
+                                    <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-1">Tu Bonus Acumulado</p>
+                                    <p className="text-4xl font-black text-white">{money(stats.accumulatedBonus)}</p>
                                 </div>
                             </div>
                         ) : (
-                            <div className="bg-white/10 border border-white/20 p-4 rounded-xl flex items-center gap-3">
-                                <AlertCircle className="text-slate-300" />
-                                <div>
-                                    <p className="font-bold text-white">Objetivo para Bonus</p>
-                                    <div className="w-full max-w-sm h-2 bg-white/20 rounded-full mt-2 mb-1">
-                                        <div
-                                            className="h-full bg-joa-cyan rounded-full transition-all duration-1000"
-                                            style={{ width: `${progress}%` }}
-                                        ></div>
+                            <div className="bg-white/5 border border-white/10 p-5 rounded-2xl">
+                                <div className="flex justify-between items-center mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Calculator className="text-joa-cyan" size={18} />
+                                        <p className="font-bold text-sm text-white">Objetivo de Rentabilidad (Gastos)</p>
                                     </div>
-                                    <p className="text-xs text-slate-300">
-                                        {stats.regularEarnings !== null
-                                            ? `Progreso actual: ${Math.round(progress)}%. Objetivo: ${stats.breakEvenUnits} viviendas.`
-                                            : `Progreso actual: ${Math.round(progress)}%. Objetivo: ${stats.breakEvenUnits} viviendas.`
-                                        }
+                                    <p className="text-xs font-bold text-slate-300">
+                                        {money(stats.totalRevenueGenerated)} / {money(stats.targetRevenueToCover)}
+                                    </p>
+                                </div>
+                                <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden border border-white/5">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-joa-cyan to-blue-400 rounded-full transition-all duration-1000 shadow-[0_0_15px_rgba(0,186,224,0.4)]"
+                                        style={{ width: `${stats.moneyProgressPercent}%` }}
+                                    ></div>
+                                </div>
+                                <div className="flex justify-between mt-2">
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Inicio Mes</p>
+                                    <p className="text-[10px] text-joa-cyan font-black uppercase tracking-tight">
+                                        Faltan {money(Math.max(0, stats.targetRevenueToCover - stats.totalRevenueGenerated))} para Bonus
                                     </p>
                                 </div>
                             </div>
@@ -399,63 +410,80 @@ const DashboardHome = () => {
                 </div>
 
                 {/* Stats Section */}
-                {isBlower ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
-                            <div className="p-4 bg-blue-50 text-blue-600 rounded-2xl group-hover:scale-110 transition-transform">
-                                <Target size={32} />
-                            </div>
-                            <div>
-                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Viviendas Sopladas</p>
-                                <h3 className="text-3xl font-bold text-slate-800">{stats.counts?.viviendas || 0}</h3>
-                                <p className="text-[10px] text-slate-400 mt-1">Producción mensual acumulada</p>
-                            </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
+                        <div className="p-3 bg-blue-50 text-blue-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <Target size={24} />
                         </div>
-
-                        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
-                            <div className="p-4 bg-green-50 text-green-600 rounded-2xl group-hover:scale-110 transition-transform">
-                                <DollarSign size={32} />
-                            </div>
-                            <div>
-                                <p className="text-slate-400 text-xs font-bold uppercase tracking-wider">Bonus Generado</p>
-                                <h3 className="text-3xl font-bold text-green-600">{money(bonusMoney)}</h3>
-                                <p className="text-[10px] text-slate-400 mt-1">Ganancia extra tras cubrir gastos</p>
-                            </div>
+                        <div>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Total Generado</p>
+                            <h3 className="text-2xl font-bold text-slate-800">{money(stats.totalRevenueGenerated)}</h3>
                         </div>
                     </div>
-                ) : (
-                    <>
-                        <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-2">Resumen de Producción (Mes Actual)</h3>
-                        <div className="flex flex-wrap gap-4 md:gap-6">
-                            {Object.entries(stats.counts).map(([label, count]) => {
-                                // Don't show technical internal counters like 'viviendas' (for blowers) or 'gk'
-                                if (label === 'viviendas' || label === 'gk') return null;
-                                if (count === 0 && (label === 'bp' || label === 'ta' || label === 'sp' || label === 'mdu')) return null; // hide 0 standard ones
-                                if (count === 0 && !['bp', 'ta', 'sp', 'mdu'].includes(label)) return null; // hide 0 dynamic ones
-                                
-                                return (
-                                    <div key={label} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all min-w-[120px] flex-1 md:flex-none">
-                                        <div className="p-3 bg-blue-50 text-blue-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                                            <span className="font-extrabold text-xs">
-                                                {label === 'bp' ? 'BP' : 
-                                                 label === 'ta' ? 'TA' : 
-                                                 label === 'sp' ? 'SP' : 
-                                                 label === 'mdu' ? 'MDU' : label.substring(0, 2).toUpperCase()}
-                                            </span>
-                                        </div>
-                                        <h3 className="text-4xl font-bold text-slate-800">{count}</h3>
-                                        <p className="text-xs text-slate-400 font-bold uppercase mt-2">
-                                            {label === 'bp' ? 'Básicas' : 
-                                             label === 'ta' ? 'SDU / TA' : 
-                                             label === 'sp' ? 'Activación SP' : 
-                                             label === 'mdu' ? 'MDU' : label}
-                                        </p>
-                                    </div>
-                                );
-                            })}
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
+                        <div className="p-3 bg-orange-50 text-orange-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <Truck size={24} />
                         </div>
-                    </>
-                )}
+                        <div>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Gastos a Cubrir</p>
+                            <h3 className="text-2xl font-bold text-slate-800">{money(stats.targetRevenueToCover)}</h3>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
+                        <div className="p-3 bg-green-50 text-green-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <DollarSign size={24} />
+                        </div>
+                        <div>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Tu Bonus Actual</p>
+                            <h3 className={`${stats.accumulatedBonus > 0 ? 'text-green-600' : 'text-slate-400'} text-2xl font-bold`}>
+                                {money(stats.accumulatedBonus)}
+                            </h3>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
+                        <div className="p-3 bg-sky-50 text-sky-600 rounded-xl group-hover:scale-110 transition-transform">
+                            <Percent size={24} />
+                        </div>
+                        <div>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Rentabilidad</p>
+                            <h3 className="text-2xl font-bold text-slate-800">{Math.round(stats.moneyProgressPercent)}%</h3>
+                        </div>
+                    </div>
+                </div>
+                <div className="mt-8">
+                    <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-4 px-2">Desglose de Producción (Mes Actual)</h3>
+                    <div className="flex flex-wrap gap-4 md:gap-6">
+                        {Object.entries(stats.counts).map(([label, count]) => {
+                            // Don't show technical internal counters like 'viviendas' (for blowers) or 'gk'
+                            if (label === 'viviendas' || label === 'gk') return null;
+                            if (count === 0 && (label === 'bp' || label === 'ta' || label === 'sp' || label === 'mdu')) return null; // hide 0 standard ones
+                            if (count === 0 && !['bp', 'ta', 'sp', 'mdu'].includes(label)) return null; // hide 0 dynamic ones
+                            
+                            return (
+                                <div key={label} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center group hover:shadow-md transition-all min-w-[120px] flex-1 md:flex-none">
+                                    <div className="p-3 bg-blue-50 text-blue-600 rounded-full mb-3 group-hover:scale-110 transition-transform">
+                                        <span className="font-extrabold text-xs">
+                                            {label === 'bp' ? 'BP' : 
+                                             label === 'ta' ? 'TA' : 
+                                             label === 'sp' ? 'SP' : 
+                                             label === 'mdu' ? 'MDU' : label.substring(0, 2).toUpperCase()}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-4xl font-bold text-slate-800">{count}</h3>
+                                    <p className="text-xs text-slate-400 font-bold uppercase mt-2">
+                                        {label === 'bp' ? 'Básicas' : 
+                                         label === 'ta' ? 'SDU / TA' : 
+                                         label === 'sp' ? 'Activación SP' : 
+                                         label === 'mdu' ? 'MDU' : label}
+                                    </p>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
 
                 {/* Saturday Section */}
                 <div className="bg-orange-50 p-6 rounded-3xl border border-orange-100 animate-in fade-in slide-in-from-bottom-4 duration-500">

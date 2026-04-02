@@ -354,17 +354,24 @@ exports.getActivatorDashboard = async (req, res) => {
         // PRIVACY: Only show 'earnings' if user is Admin, otherwise just show progress towards target
         const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.userRole);
 
-        res.json({
-            appointments,
-            stats: {
-                regularEarnings: isAdmin ? statsFromLib.totalRevenue - statsFromLib.saturdayPay : null,
-                saturdayEarnings: isAdmin ? statsFromLib.saturdayPay : null,
-                regularActivations,
-                saturdayActivations,
-                counts,
-                target: (statsFromLib.bonusThresholdUnits / (user.team?.members?.length || 1)) * (fin.pricePerUnit || (isBlower ? 10 : 250)),
-                breakEvenUnits: Math.ceil(statsFromLib.bonusThresholdUnits / (user.team?.members?.length || 1)), // Individual target for Alex
-                isBonusMode: (regularActivations / Math.ceil(statsFromLib.bonusThresholdUnits / (user.team?.members?.length || 1))) >= 1,
+        const teamSizeInner = user.team?.members?.length || teamSize;
+ 
+         res.json({
+             appointments,
+             stats: {
+                 regularEarnings: isAdmin ? statsFromLib.totalRevenue - statsFromLib.saturdayPay : null,
+                 saturdayEarnings: isAdmin ? statsFromLib.saturdayPay : null,
+                 regularActivations,
+                 saturdayActivations,
+                 counts,
+                 // Money-based progress
+                 totalRevenueGenerated: statsFromLib.totalRevenue / teamSizeInner,
+                 targetRevenueToCover: statsFromLib.totalTargetRevenue / teamSizeInner,
+                 moneyProgressPercent: statsFromLib.progressPercent,
+                 accumulatedBonus: statsFromLib.bonusPool / teamSizeInner,
+                // Legacy support for UI
+                breakEvenUnits: Math.ceil(statsFromLib.bonusThresholdUnits / teamSize),
+                isBonusMode: statsFromLib.progressPercent >= 100,
                 role: req.userRole
             }
         });

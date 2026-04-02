@@ -220,6 +220,18 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
     stats.bonusPool = bonusCost;
 
     // --- 5. RESULTS ---
+    const targetRevenue = totalDebtToCover; // Salaries + SS + OpCosts + Share of Company Deficit
+    const revenueMf = totalRevenue - (activations.filter(a => a.isSaturday).reduce((sum, act) => {
+        // Simple Revenue extraction for Saturday exclusion
+        const type = act.activationType || 'BP';
+        const price = (financialConfig.pricePerUnit || (type === 'BP' ? 250 : 60)); // Approximate check for safety
+        return sum + price;
+    }, 0));
+
+    stats.totalTargetRevenue = targetRevenue;
+    stats.currentRevenueMf = revenueMf;
+    stats.progressPercent = targetRevenue > 0 ? Math.min(100, (revenueMf / targetRevenue) * 100) : 100;
+
     stats.totalCost = totalAbsoluteExpenses + bonusCost;
     stats.totalRevenue = totalRevenue;
     stats.netResult = totalRevenue - stats.totalCost;
@@ -228,15 +240,6 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
     stats.details.opCost = perTeamExpenses;
     stats.details.bonusCost = bonusCost;
     stats.details.saturdayCost = saturdayCostTotal;
-
-    // Progress: Show progress towards the REAL threshold (Fixed + Overhead)
-    if (stats.bonusThresholdUnits > 0) {
-        // Exclude saturdayInstalls to show purely M-F effort
-        const baseUnitsDoneMf = standardUnits;
-        stats.progressPercent = Math.min(100, (baseUnitsDoneMf / stats.bonusThresholdUnits) * 100);
-    } else {
-        stats.progressPercent = 100;
-    }
 
     stats.taUnits = taUnits + saturdayTa;
     stats.spUnits = spUnits + saturdaySp;
