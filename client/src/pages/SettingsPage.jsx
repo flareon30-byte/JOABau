@@ -224,7 +224,7 @@ const SettingsPage = () => {
         return (
             <div className="space-y-6 animate-fadeIn">
                 <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-xl font-bold text-slate-700">Configuración Gestor de Protocolos</h3>
+                    <h3 className="text-xl font-bold text-slate-700">Configuración PROTOCOLOS (Verificado)</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -364,16 +364,16 @@ const SettingsPage = () => {
                         Precios: Soplado
                     </button>
                     <button
+                        onClick={() => setActiveTab('protocols')}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'protocols' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Costes: Protocolos (Nuevo)
+                    </button>
+                    <button
                         onClick={() => setActiveTab('backOffice')}
                         className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'backOffice' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                     >
                         Costes: Back Office
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('protocols')}
-                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'protocols' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
-                    >
-                        Costes: Protocolos
                     </button>
                 </div>
                 
