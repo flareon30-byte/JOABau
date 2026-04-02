@@ -5,7 +5,7 @@ COPY package*.json ./
 RUN npm install
 ENV FORCE_REBUILD=v2
 COPY . .
-RUN npm run build
+RUN NODE_OPTIONS="--max-old-space-size=450" npm run build
 
 # Production Stage
 FROM nginx:alpine
