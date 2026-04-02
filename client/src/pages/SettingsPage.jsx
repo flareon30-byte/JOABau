@@ -437,16 +437,13 @@ const SettingsPage = () => {
                                     <button type="submit" className="bg-joa-blue text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition">
                                         Añadir Cliente
                                     </button>
-                                </form>
-                            </div>
-
-                            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                                 <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                                 <table className="w-full text-left text-sm text-slate-600">
                                     <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
                                         <tr>
                                             <th className="p-4 pl-6">Nombre de Cliente</th>
                                             <th className="p-4">Técnicos Activos</th>
-                                            <th className="p-4 w-24">Acciones</th>
+                                            <th className="p-4 w-32">Acciones</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50">
@@ -457,7 +454,7 @@ const SettingsPage = () => {
                                                 <tr key={client.id} className="hover:bg-slate-50">
                                                     <td className="p-4 pl-6 font-bold text-slate-800">{client.name}</td>
                                                     <td className="p-4"><span className="bg-green-100 text-green-700 px-2 py-1 rounded-md text-xs font-bold">Activo</span></td>
-                                                    <td className="p-4">
+                                                    <td className="p-4 flex items-center gap-4">
                                                         <button 
                                                             onClick={() => {
                                                                 setSelectedClientId(client.id);
@@ -467,12 +464,21 @@ const SettingsPage = () => {
                                                         >
                                                             Gestionar <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
                                                         </button>
+                                                        <button 
+                                                            onClick={() => handleDeleteClient(client.id)}
+                                                            className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Eliminar Cliente"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             ))
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+             </table>
                             </div>
                         </div>
                     ) : ( // activeTab === 'clients' && selectedClientId
