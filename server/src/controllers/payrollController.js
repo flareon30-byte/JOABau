@@ -150,20 +150,15 @@ exports.getMyPayroll = async (req, res) => {
         const mySaturday = stats.saturdayPay / memberCount;
         const myTotal = (financialConfig?.salary || user.baseSalary) + myBonus + mySaturday;
 
-        const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user.role);
-
-        // PRIVACY FILTER
-        const filteredStats = { ...stats };
-        if (!isAdmin) {
-            delete filteredStats.totalRevenue;
-            delete filteredStats.netResult;
-            delete filteredStats.overheadApplied;
-        }
+        const memberCountSafe = memberCount || 1;
 
         res.json({
             financials: financialConfig,
             stats: {
-                ...filteredStats,
+                ...stats,
+                myTargetRevenue: stats.totalTargetRevenue / memberCountSafe,
+                myCurrentRevenue: stats.currentRevenueMf / memberCountSafe,
+                myProgressPercent: stats.moneyProgressPercent,
                 activationsCount: activations.length,
                 teamName: team?.name || 'Sin Equipo'
             },

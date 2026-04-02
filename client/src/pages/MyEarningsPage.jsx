@@ -141,21 +141,14 @@ const MyEarningsPage = () => {
         );
     }
 
-    // Safely derived values for simulator
-    const teamBonusPerExtraUnit = financials?.bonusPerUnit || 0;
-    const additionalBonusPotential = simExtraUnits * teamBonusPerExtraUnit;
+    // Individual Profitability Stats
+    const myCurrentRevenue = stats?.myCurrentRevenue || 0;
+    const myTargetRevenue = stats?.myTargetRevenue || 0;
+    const progressPercent = Math.min(stats?.myProgressPercent || 0, 100);
+    const accumulatedBonus = personal?.myBonusShare || 0;
 
-    // Progress
-    const unitsDone = stats?.unitsDone || 0;
-    const breakEvenUnits = stats?.breakEvenUnits || 0;
-    const bonusThresholdUnits = stats?.bonusThresholdUnits || breakEvenUnits || 1;
-    const progressPercent = stats?.progressPercent || 0;
-
-    const isGoalMet = unitsDone >= bonusThresholdUnits;
+    const isGoalMet = progressPercent >= 100;
     const progressColor = isGoalMet ? 'bg-green-500' : 'bg-blue-500';
-
-    // Calculate max value for progress bar to leave space for the threshold
-    const maxValue = Math.max(bonusThresholdUnits * 1.5, unitsDone * 1.25);
 
     return (
         <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-fadeIn">
@@ -192,155 +185,122 @@ const MyEarningsPage = () => {
                     <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
                     <div className="relative">
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Variable (Estimado)</p>
-                        <h3 className={`text-3xl font-bold ${(personal?.myBonusShare || 0) + (personal?.mySaturdayPay || 0) > 0 ? 'text-green-600' : 'text-slate-300'}`}>
-                            {money((personal?.myBonusShare || 0) + (personal?.mySaturdayPay || 0))}
+                        <h3 className={`text-3xl font-bold ${accumulatedBonus + (personal?.mySaturdayPay || 0) > 0 ? 'text-green-600' : 'text-slate-300'}`}>
+                            {money(accumulatedBonus + (personal?.mySaturdayPay || 0))}
                         </h3>
                         <div className="text-xs text-slate-400 mt-2 space-y-0.5">
-                            <p>Bonus Producción: {money(personal?.myBonusShare)}</p>
+                            <p>Bonus Producción: {money(accumulatedBonus)}</p>
                             <p>Extras Sábados: {money(personal?.mySaturdayPay)}</p>
                         </div>
                     </div>
                 </div>
 
-                {/* 3. Total */}
-                <div className="bg-gradient-to-br from-joa-blue to-slate-900 p-6 rounded-2xl shadow-xl text-white relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-4 opacity-10">
-                        <Wallet size={80} />
+                {/* 3. Total Percibir */}
+                <div className="bg-blue-600 p-6 rounded-2xl shadow-xl text-white relative overflow-hidden group">
+                    <div className="absolute top-1/2 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+                    <div className="relative">
+                        <p className="text-blue-200 text-xs font-bold uppercase tracking-wider mb-1">Total a Percibir</p>
+                        <h3 className="text-4xl font-bold text-white">{money(personal?.totalEstimated)}</h3>
+                        <p className="text-xs text-blue-100 opacity-80 mt-2">
+                            * Cálculo estimado antes de IRPF
+                        </p>
                     </div>
-                    <p className="text-blue-100 text-xs font-bold uppercase tracking-wider mb-1">Total a Percibir</p>
-                    <h3 className="text-4xl font-bold text-white mb-2">{money(personal?.totalEstimated)}</h3>
-                    <p className="text-xs text-blue-200 opacity-80 border-t border-white/10 pt-2">
-                        * Cálculo estimado antes de IRPF
-                    </p>
                 </div>
             </div>
 
-            {/* Productivity & Goals Section */}
+            {/* Profitability Progress: Revenue Goal */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-                {/* Progress Visualizer */}
                 <div className="lg:col-span-2 bg-white p-8 rounded-2xl shadow-sm border border-slate-200">
-                    <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2">
-                        <Target className={isGoalMet ? 'text-green-500' : 'text-blue-500'} />
-                        Objetivo de Producción (Equipo)
-                    </h3>
-
-                    {/* The Bar */}
-                    <div className="relative pt-6 pb-2">
-                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
-                            <span>Mínimo Producción (0)</span>
-                            <span className="text-blue-500">Objetivo Bonus ({bonusThresholdUnits})</span>
-                            <span>Capacidad Estimada ({maxValue.toFixed(0)})</span>
-                        </div>
-
-                        {/* Track */}
-                        <div className="h-6 w-full bg-slate-100 rounded-full overflow-hidden relative">
-                            <div
-                                className="absolute top-0 bottom-0 w-1 bg-amber-400/50 z-10 border-r border-white/50"
-                                style={{ left: `${(breakEvenUnits / maxValue) * 100}%` }}
-                                title={`Gtos Equipo: ${breakEvenUnits}`}
-                            ></div>
-
-                            {/* Bonus Threshold Marker Line */}
-                            <div
-                                className="absolute top-0 bottom-0 w-1 bg-red-500 z-20 border-r border-white"
-                                style={{ left: `${(bonusThresholdUnits / maxValue) * 100}%` }}
-                                title={`Objetivo Bonus: ${bonusThresholdUnits}`}
-                            ></div>
-
-                            {/* Fill */}
-                            <div
-                                className={`h-full rounded-full transition-all duration-1000 ease-out flex items-center justify-end pr-2 ${progressColor} shadow-lg shadow-blue-500/30`}
-                                style={{ width: `${Math.min(100, (unitsDone / maxValue) * 100)}%` }}
-                            >
-                                <span className="text-[10px] font-bold text-white tabular-nums">
-                                    {unitsDone} / {bonusThresholdUnits}
-                                </span>
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-3 rounded-xl ${isGoalMet ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                                <TrendingUp size={24} />
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-lg text-slate-700">Objetivo de Rentabilidad (Individual)</h3>
+                                <p className="text-sm text-slate-500">Saldo generado para cubrir tus gastos y cobrar extras</p>
                             </div>
                         </div>
+                    </div>
 
-                        {/* Legend */}
-                        <div className="flex justify-between mt-4">
-                            <div className="text-center">
-                                <p className="text-xs text-slate-400 uppercase font-bold">Hecho</p>
-                                <p className="text-2xl font-bold text-slate-700">{unitsDone}</p>
-                                <p className="text-xs text-slate-400">Unidades</p>
+                    <div className="space-y-6">
+                        <div className="flex justify-between items-end">
+                            <div className="space-y-1">
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Mínimo Gastos (0€)</p>
+                                <p className="text-2xl font-black text-slate-800">{money(myCurrentRevenue)}</p>
                             </div>
-                            <div className="text-center">
-                                <p className="text-xs text-slate-400 uppercase font-bold">Objetivo Bonus</p>
-                                <p className="text-2xl font-bold text-blue-600">{bonusThresholdUnits}</p>
-                                <p className="text-xs text-slate-400">Para generar extra</p>
-                            </div>
-                            <div className="text-center">
-                                <p className="text-xs text-slate-400 uppercase font-bold">Progreso</p>
-                                <p className={`text-2xl font-bold ${isGoalMet ? 'text-green-500' : 'text-orange-500'}`}>
-                                    {progressPercent.toFixed(0)}%
+                            <div className="text-right space-y-1">
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Meta Bonus ({money(myTargetRevenue)})</p>
+                                <p className="text-xs font-bold text-blue-600">
+                                    {isGoalMet ? '¡Objetivo Superado!' : `Faltan ${money(Math.max(0, myTargetRevenue - myCurrentRevenue))}`}
                                 </p>
                             </div>
                         </div>
 
+                        <div className="relative h-6 w-full bg-slate-100 rounded-2xl overflow-hidden shadow-inner p-1">
+                            <div 
+                                className={`h-full rounded-xl transition-all duration-1000 shadow-lg ${isGoalMet ? 'bg-gradient-to-r from-green-500 to-emerald-400' : 'bg-gradient-to-r from-blue-500 to-sky-400'}`}
+                                style={{ width: `${progressPercent}%` }}
+                            >
+                                <div className="h-full flex items-center justify-end px-3">
+                                    <span className="text-[10px] font-black text-white">{Math.round(progressPercent)}%</span>
+                                </div>
+                            </div>
+                        </div>
+
                         {!isGoalMet ? (
-                            <div className="mt-6 bg-orange-50 text-orange-700 text-sm p-3 rounded-lg flex items-center gap-2">
-                                <AlertCircle size={16} />
-                                Faltan <strong>{bonusThresholdUnits - unitsDone} unidades</strong> para empezar a generar bonus. {breakEvenUnits > 0 && `(Costes de equipo cubiertos en ${breakEvenUnits} unid.)`}
+                            <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl flex items-center gap-3 text-slate-600">
+                                <AlertCircle size={20} />
+                                <p className="text-sm font-bold">Has cubierto un {Math.round(progressPercent)}% de tus gastos mensuales para empezar a cobrar extras.</p>
                             </div>
                         ) : (
-                            <div className="mt-6 bg-green-50 text-green-700 text-sm p-3 rounded-lg flex items-center gap-2">
-                                <CheckCircle size={16} />
-                                ¡Objetivo cumplido! Cada unidad extra suma <strong>{money(financials?.bonusPerUnit)}</strong> al bonus del equipo.
+                            <div className="bg-green-50 border border-green-100 p-4 rounded-xl flex items-center gap-3 text-green-800 animate-fadeIn">
+                                <CheckCircle size={20} />
+                                <p className="text-sm font-bold">¡Enhorabuena! Has llegado al 100%. A partir de aquí todo el valor que generes suma bonus extra.</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Financial Details (Mini) */}
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
-                    <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                        <DollarSign size={18} /> Estado Financiero
+                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                    <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2">
+                        <Users size={18} /> Mi Estado Financiero
                     </h3>
-
-                    <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-slate-100">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-red-50 text-red-500 rounded-lg"><Users size={16} /></div>
-                            <span className="text-sm text-slate-600">Costes Personal</span>
+                    <div className="space-y-4">
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500">Mi Coste Personal + SS</span>
+                            <span className="font-bold text-red-500">-{money(personal?.baseSalary * 1.3)}</span>
                         </div>
-                        <span className="font-bold text-slate-700">{money(stats?.details?.salaryCost)}</span>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500">Mi Parte Gastos Equipo</span>
+                            <span className="font-bold text-red-500">-{money(stats?.details?.opCost / 2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                            <span className="text-slate-500">Parte Déficit Empresa</span>
+                            <span className="font-bold text-red-500">-{money(myTargetRevenue - (personal?.baseSalary * 1.3) - (stats?.details?.opCost / 2))}</span>
+                        </div>
+                        <div className="border-t border-slate-200 pt-4 mt-4">
+                            <div className="flex justify-between items-center">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Facturado Personal</span>
+                                <span className="font-bold text-blue-600">{money(myCurrentRevenue)}</span>
+                            </div>
+                            <div className="flex justify-between items-center mt-2">
+                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rendimiento (Profit)</span>
+                                <span className={`font-black ${myCurrentRevenue - myTargetRevenue > 0 ? 'text-green-600' : 'text-slate-400'}`}>
+                                    {money(myCurrentRevenue - myTargetRevenue)}
+                                </span>
+                            </div>
+                        </div>
                     </div>
-
-                    <div className="flex justify-between items-center p-3 bg-white rounded-xl border border-slate-100">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-red-50 text-red-500 rounded-lg"><Truck size={16} /></div>
-                            <span className="text-sm text-slate-600">Gastos Operativos</span>
-                        </div>
-                        <span className="font-bold text-slate-700">{money(stats?.details?.opCost)}</span>
-                    </div>
-
-                    <div className="border-t border-slate-200 my-2"></div>
-
-                    <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-slate-400 uppercase">Coste Total Equipo</span>
-                        <span className="font-bold text-red-400">-{money(stats?.totalCost)}</span>
-                    </div>
-                    {['ADMIN', 'SUPER_ADMIN'].includes(user.role) ? (
-                        <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-400 uppercase">Facturación Actual</span>
-                            <span className="font-bold text-blue-600">{money(stats?.totalRevenue)}</span>
-                        </div>
-                    ) : (
-                        <div className="flex justify-between items-center">
-                            <span className="text-xs font-bold text-slate-400 uppercase">Rendimiento</span>
-                            <span className="font-bold text-blue-600">{progressPercent.toFixed(1)}%</span>
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* Production Breakdown */}
+            {/* Production Details */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <h3 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
-                    <CheckCircle className="text-joa-blue" size={20} /> Detalle de Producción
+                    <Target className="text-joa-blue" size={20} /> Detalle de Mi Producción (Unidades)
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
                         <p className="text-xs font-bold text-slate-400 uppercase mb-1">Básicas (BP)</p>
                         <p className="text-2xl font-bold text-slate-700">{stats?.counts?.bp || 0}</p>
@@ -360,47 +320,8 @@ const MyEarningsPage = () => {
                 </div>
             </div>
 
-            {/* Simulator */}
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
-                    <Calculator className="text-slate-400" />
-                    <h3 className="font-bold text-slate-800">Simulador de Bonus</h3>
-                </div>
-                <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                    <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-4">
-                            Si el equipo hace <span className="text-joa-blue font-bold text-lg">{simExtraUnits}</span> unidades extra...
-                        </label>
-                        <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            step="1"
-                            value={simExtraUnits}
-                            onChange={(e) => setSimExtraUnits(parseInt(e.target.value))}
-                            className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-joa-blue"
-                        />
-                        <div className="flex justify-between text-xs text-slate-400 mt-2 font-medium">
-                            <span>0</span>
-                            <span>+50</span>
-                            <span>+100</span>
-                        </div>
-                    </div>
-
-                    <div className="text-center bg-blue-50/50 p-6 rounded-2xl border border-blue-100">
-                        <p className="text-slate-500 text-sm font-medium mb-1">El Bonus del Equipo aumentaría en:</p>
-                        <p className="text-4xl font-bold text-joa-blue transition-all duration-300">
-                            +{money(additionalBonusPotential)}
-                        </p>
-                        <p className="text-xs text-blue-400 mt-2">
-                            A repartir entre todos los miembros
-                        </p>
-                    </div>
-                </div>
-            </div>
-
             <div className="text-center text-slate-400 text-xs mt-10">
-                <p>Datos sincronizados con la configuración de rentabilidad de la empresa.</p>
+                <p>Datos calculados en tiempo real según la rentabilidad de cada servicio realizado.</p>
             </div>
         </div>
     );
