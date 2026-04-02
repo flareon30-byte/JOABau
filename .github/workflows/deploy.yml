@@ -24,11 +24,14 @@ jobs:
             git fetch origin master
             git reset --hard origin/master
             
-            echo "2. Reconstruyendo contenedores Docker..."
-            docker compose down
-            docker compose up -d --build
+            echo "2. Reconstruyendo contenedores por separado para ahorrar RAM..."
+            docker compose build server
+            docker compose build client
             
-            echo "3. Actualizando Base de Datos de Prisma..."
+            echo "3. Reiniciando servicios..."
+            docker compose up -d
+            
+            echo "4. Actualizando Base de Datos de Prisma..."
             docker compose exec -T server npx prisma db push
             
             echo "DESPLIEGUE FINALIZADO"
