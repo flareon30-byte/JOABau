@@ -221,14 +221,26 @@ exports.getActivatorDashboard = async (req, res) => {
             viviendas: 0 // New field for blowers
         };
 
-        // 4. Get Settings
-        const settings = await prisma.systemSettings.findFirst() || {
-            monthlyTargetPoints: 100,
-            financials: {}
-        };
+        // 4. Get Financial Config (Same logic as Payroll Controller for parity)
+        const systemSettings = await prisma.systemSettings.findFirst({
+            where: { isDemo: req.isDemo || false }
+        }) || { financials: {} };
 
         const groupKey = isBlower ? 'blowers' : 'installers';
-        const fin = settings.financials?.[groupKey] || {};
+        let fin = null;
+
+        if (user.team?.activeClientCompany?.settings) {
+            fin = user.team.activeClientCompany.settings[groupKey];
+        } else if (user.activeClientCompany?.settings) {
+            fin = user.activeClientCompany.settings[groupKey];
+        }
+
+        if (!fin && systemSettings.financials) {
+            fin = systemSettings.financials[groupKey];
+        }
+        
+        // Fallback for UI robustness
+        if (!fin) fin = {};
 
         if (isBlower) {
             performanceData.forEach(sop => {
