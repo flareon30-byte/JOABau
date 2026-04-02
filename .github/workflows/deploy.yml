@@ -28,9 +28,14 @@ jobs:
             docker compose build --parallel=false server
             docker compose build --parallel=false client
             
-            echo "3. Encendiendo aplicación inmediatamente..."
-            # Forzamos el arranque antes de la migración para asegurar disponibilidad
-            docker compose up -d
+            echo "3. Deteniendo y limpiando contenedores previos..."
+            docker compose down || true
+            # Eliminamos forzosamente si se quedó alguno colgado con el mismo nombre para evitar el error de Conflict
+            docker rm -f app-server-1 app-client-1 || true
+            
+            echo "4. Encendiendo aplicación inmediatamente..."
+            # Forzamos la recreación para asegurar que carguen los nuevos cambios
+            docker compose up -d --force-recreate
             
             echo "4. Actualizando Base de Datos (en segundo plano)..."
             # Intentamos la migración; si falla por RAM, la app sigue arriba
