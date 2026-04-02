@@ -21,17 +21,20 @@ jobs:
             cd /root/app
             
             echo "1. Descargando codigo de Github..."
-            git fetch origin master
-            git reset --hard origin/master
+            echo "2. Reconstruyendo contenedores (Secuencial)..."
+            # Construimos una imagen tras otra, sin paralelismo para no forzar la CPU/RAM
+            docker compose build --parallel=false server
+            docker compose build --parallel=false client
             
-            echo "2. Reconstruyendo contenedores por separado para ahorrar RAM..."
-            docker compose build server
-            docker compose build client
+            echo "3. Reiniciando servicios y liberando RAM..."
+            # Paramos todo para asegurar que tenemos el 100% de la RAM libre para Prisma
+            docker compose down
             
-            echo "3. Reiniciando servicios..."
+            echo "4. Ejecutando Migración (Modo Aislado)..."
+            # Usamos 'run' en lugar de 'exec' para mayor eficiencia y le damos un límite de memoria a Node
+            docker compose run --rm -e NODE_OPTIONS="--max-old-space-size=450" server npx prisma db push
+            
+            echo "5. Encendiendo la aplicación Final..."
             docker compose up -d
-            
-            echo "4. Actualizando Base de Datos de Prisma..."
-            docker compose exec -T server npx prisma db push
             
             echo "DESPLIEGUE FINALIZADO"
