@@ -322,12 +322,9 @@ const DashboardHome = () => {
                 : (isCompleted && matchesSearch);
         });
 
-        const progress = Math.min((stats.regularEarnings / stats.target) * 100, 100);
-        const bonusMoney = Math.max(0, stats.regularEarnings - stats.target);
-
+        const progress = stats.moneyProgressPercent || 0;
+        const bonusMoney = stats.accumulatedBonus || 0;
         const saturdayMoney = stats.saturdayEarnings;
-
-
         const isBlower = stats.role === 'BLOWER';
 
         return (
