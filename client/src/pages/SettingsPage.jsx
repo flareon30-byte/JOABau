@@ -218,6 +218,46 @@ const SettingsPage = () => {
         );
     };
 
+    const renderProtocolInputs = () => {
+        const data = financials.protocols || {};
+        const groupKey = 'protocols';
+        return (
+            <div className="space-y-6 animate-fadeIn">
+                <div className="flex items-center gap-2 mb-4">
+                    <h3 className="text-xl font-bold text-slate-700">Configuración Gestor de Protocolos</h3>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Personnel Costs */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h4 className="font-bold text-slate-600 mb-4 flex items-center gap-2"><Users size={18} /> Costes de Personal (Por Persona/Mes)</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Salario Base (€)</label>
+                                <input type="number" value={data.salary} onChange={(e) => handleFinancialChange(groupKey, 'salary', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (€)</label>
+                                <input type="number" value={data.insurance} onChange={(e) => handleFinancialChange(groupKey, 'insurance', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Operational Costs */}
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                        <h4 className="font-bold text-slate-600 mb-4 flex items-center gap-2"><Truck size={18} /> Gastos Operativos</h4>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Gasto Operativo (Por Persona) (€)</label>
+                                <input type="number" value={data.opCostPerPerson} onChange={(e) => handleFinancialChange(groupKey, 'opCostPerPerson', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     const renderFinancialInputs = (groupKey, title) => {
         const data = financials[groupKey];
         return (
@@ -329,6 +369,12 @@ const SettingsPage = () => {
                     >
                         Costes: Back Office
                     </button>
+                    <button
+                        onClick={() => setActiveTab('protocols')}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'protocols' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Costes: Protocolos
+                    </button>
                 </div>
                 
                 {/* Client selection banner if configuring prices */}
@@ -354,6 +400,7 @@ const SettingsPage = () => {
                             {activeTab === 'installers' && renderFinancialInputs('installers', 'Configuración de Instaladores')}
                             {activeTab === 'blowers' && renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
                             {activeTab === 'backOffice' && renderBackOfficeInputs()}
+                            {activeTab === 'protocols' && renderProtocolInputs()}
 
                             <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
                                 <button
