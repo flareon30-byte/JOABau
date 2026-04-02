@@ -379,7 +379,7 @@ const DashboardHome = () => {
                             <div className="bg-white/10 border border-white/20 p-4 rounded-xl flex items-center gap-3">
                                 <AlertCircle className="text-slate-300" />
                                 <div>
-                                    <p className="font-bold text-white">Progreso de Gastos Cubiertos</p>
+                                    <p className="font-bold text-white">Objetivo para Bonus</p>
                                     <div className="w-full max-w-sm h-2 bg-white/20 rounded-full mt-2 mb-1">
                                         <div
                                             className="h-full bg-joa-cyan rounded-full transition-all duration-1000"
@@ -388,7 +388,7 @@ const DashboardHome = () => {
                                     </div>
                                     <p className="text-xs text-slate-300">
                                         {stats.regularEarnings !== null
-                                            ? `Faltan ${money(stats.target - stats.regularEarnings)} (${stats.breakEvenUnits} unid. aprox) para cubrir gastos.`
+                                            ? `Progreso actual: ${Math.round(progress)}%. Objetivo: ${stats.breakEvenUnits} viviendas.`
                                             : `Progreso actual: ${Math.round(progress)}%. Objetivo: ${stats.breakEvenUnits} viviendas.`
                                         }
                                     </p>

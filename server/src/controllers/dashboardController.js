@@ -1,4 +1,6 @@
 const prisma = require('../prisma');
+const { calculateGroupFinancials } = require('../utils/financialUtils');
+const { getGlobalSupportDeficit } = require('../services/financialService');
 
 exports.getDashboardStats = async (req, res) => {
     try {
@@ -311,13 +313,13 @@ exports.getActivatorDashboard = async (req, res) => {
             });
         }
 
-        // Use 21 days as standard for budget target to match calculator
-        const workingDays = 21;
-        const perPersonTotal = (fin.salary || 0) + (fin.insurance || 0) + (fin.materials || 0) + ((fin.dietasPerDay || 0) * workingDays);
-        const teamTotal = (fin.car || 0) + (fin.gas || 0) + (fin.equipmentRent || 0);
+        // --- OVERHEAD CALCULATION (Global Deficit) ---
+        let overheadToCover = 0;
+        if (groupKey === 'installers') {
+            overheadToCover = await getGlobalSupportDeficit(req.isDemo || false);
+        }
 
-        const targetExpenses = (perPersonTotal * teamSize) + teamTotal;
-        const breakEvenUnits = Math.ceil(targetExpenses / (fin.pricePerUnit || (isBlower ? 10 : 250)));
+        const statsFromLib = calculateGroupFinancials(performanceData, fin, user.team?.members || [user], overheadToCover);
 
         // PRIVACY: Only show 'earnings' if user is Admin, otherwise just show progress towards target
         const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.userRole);
@@ -325,14 +327,14 @@ exports.getActivatorDashboard = async (req, res) => {
         res.json({
             appointments,
             stats: {
-                regularEarnings: isAdmin ? regularEarnings : null,
-                saturdayEarnings: isAdmin ? saturdayEarnings : null,
+                regularEarnings: isAdmin ? statsFromLib.totalRevenue - statsFromLib.saturdayPay : null,
+                saturdayEarnings: isAdmin ? statsFromLib.saturdayPay : null,
                 regularActivations,
                 saturdayActivations,
                 counts,
-                target: targetExpenses > 0 ? targetExpenses : (settings.monthlyTargetPoints || 100),
-                breakEvenUnits,
-                isBonusMode: regularEarnings >= (targetExpenses > 0 ? targetExpenses : (settings.monthlyTargetPoints || 100)),
+                target: statsFromLib.bonusThresholdUnits * (fin.pricePerUnit || (isBlower ? 10 : 250)), // Value of production needed
+                breakEvenUnits: statsFromLib.bonusThresholdUnits, // This is what technicians care about
+                isBonusMode: statsFromLib.progressPercent >= 100,
                 role: req.userRole // Send role back for UI switching
             }
         });

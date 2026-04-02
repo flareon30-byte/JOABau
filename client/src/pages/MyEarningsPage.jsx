@@ -147,14 +147,15 @@ const MyEarningsPage = () => {
 
     // Progress
     const unitsDone = stats?.unitsDone || 0;
-    const breakEvenUnits = stats?.breakEvenUnits || 1; // Avoid divide by zero
+    const breakEvenUnits = stats?.breakEvenUnits || 0;
+    const bonusThresholdUnits = stats?.bonusThresholdUnits || breakEvenUnits || 1;
     const progressPercent = stats?.progressPercent || 0;
 
-    const isGoalMet = unitsDone >= breakEvenUnits;
+    const isGoalMet = unitsDone >= bonusThresholdUnits;
     const progressColor = isGoalMet ? 'bg-green-500' : 'bg-blue-500';
 
-    // Calculate max value for progress bar (either break even * 1.5 or current units * 1.25 to leave space)
-    const maxValue = Math.max(breakEvenUnits * 1.5, unitsDone * 1.25);
+    // Calculate max value for progress bar to leave space for the threshold
+    const maxValue = Math.max(bonusThresholdUnits * 1.5, unitsDone * 1.25);
 
     return (
         <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-fadeIn">
@@ -226,19 +227,25 @@ const MyEarningsPage = () => {
 
                     {/* The Bar */}
                     <div className="relative pt-6 pb-2">
-                        <div className="flex justify-between text-sm font-bold text-slate-600 mb-2">
-                            <span>0</span>
-                            <span className="text-blue-600">Break-Even (Costes Cubiertos)</span>
-                            <span>{maxValue.toFixed(0)}</span>
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">
+                            <span>Mínimo Producción (0)</span>
+                            <span className="text-blue-500">Objetivo Bonus ({bonusThresholdUnits})</span>
+                            <span>Capacidad Estimada ({maxValue.toFixed(0)})</span>
                         </div>
 
                         {/* Track */}
                         <div className="h-6 w-full bg-slate-100 rounded-full overflow-hidden relative">
-                            {/* Break Even Marker Line */}
                             <div
-                                className="absolute top-0 bottom-0 w-1 bg-red-400/50 z-10 border-r border-white/50"
+                                className="absolute top-0 bottom-0 w-1 bg-amber-400/50 z-10 border-r border-white/50"
                                 style={{ left: `${(breakEvenUnits / maxValue) * 100}%` }}
-                                title={`Objetivo: ${breakEvenUnits}`}
+                                title={`Gtos Equipo: ${breakEvenUnits}`}
+                            ></div>
+
+                            {/* Bonus Threshold Marker Line */}
+                            <div
+                                className="absolute top-0 bottom-0 w-1 bg-red-500 z-20 border-r border-white"
+                                style={{ left: `${(bonusThresholdUnits / maxValue) * 100}%` }}
+                                title={`Objetivo Bonus: ${bonusThresholdUnits}`}
                             ></div>
 
                             {/* Fill */}
@@ -247,7 +254,7 @@ const MyEarningsPage = () => {
                                 style={{ width: `${Math.min(100, (unitsDone / maxValue) * 100)}%` }}
                             >
                                 <span className="text-[10px] font-bold text-white tabular-nums">
-                                    {unitsDone} / {breakEvenUnits}
+                                    {unitsDone} / {bonusThresholdUnits}
                                 </span>
                             </div>
                         </div>
@@ -260,9 +267,9 @@ const MyEarningsPage = () => {
                                 <p className="text-xs text-slate-400">Unidades</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-xs text-slate-400 uppercase font-bold">Objetivo</p>
-                                <p className="text-2xl font-bold text-blue-600">{breakEvenUnits}</p>
-                                <p className="text-xs text-slate-400">Para cubrir costes</p>
+                                <p className="text-xs text-slate-400 uppercase font-bold">Objetivo Bonus</p>
+                                <p className="text-2xl font-bold text-blue-600">{bonusThresholdUnits}</p>
+                                <p className="text-xs text-slate-400">Para generar extra</p>
                             </div>
                             <div className="text-center">
                                 <p className="text-xs text-slate-400 uppercase font-bold">Progreso</p>
@@ -275,7 +282,7 @@ const MyEarningsPage = () => {
                         {!isGoalMet ? (
                             <div className="mt-6 bg-orange-50 text-orange-700 text-sm p-3 rounded-lg flex items-center gap-2">
                                 <AlertCircle size={16} />
-                                Faltan <strong>{breakEvenUnits - unitsDone} unidades</strong> para empezar a generar bonus.
+                                Faltan <strong>{bonusThresholdUnits - unitsDone} unidades</strong> para empezar a generar bonus. {breakEvenUnits > 0 && `(Costes de equipo cubiertos en ${breakEvenUnits} unid.)`}
                             </div>
                         ) : (
                             <div className="mt-6 bg-green-50 text-green-700 text-sm p-3 rounded-lg flex items-center gap-2">
