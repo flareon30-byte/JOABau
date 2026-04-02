@@ -2,6 +2,18 @@ const prisma = require('../prisma');
 const { calculateGroupFinancials } = require('../utils/financialUtils');
 const { getGlobalSupportDeficit } = require('../services/financialService');
 
+// Helper: Calculate working days for a given month/year
+const getWorkingDays = (year, month) => {
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+    let count = 0;
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const day = d.getDay();
+        if (day !== 0 && day !== 6) count++;
+    }
+    return count;
+};
+
 exports.getDashboardStats = async (req, res) => {
     try {
         const [pendingCount, assignedCount, completedActivationsCount, simpleCount] = await Promise.all([
@@ -197,6 +209,7 @@ exports.getActivatorDashboard = async (req, res) => {
                         lte: endDate
                     },
                     address: {
+                        project: { isDemo: req.isDemo || false }, // Sync: Filter by Demo
                         appointment: {
                             assignedTeamId: user.teamId
                         }
@@ -330,7 +343,13 @@ exports.getActivatorDashboard = async (req, res) => {
             overheadToCover = await getGlobalSupportDeficit(req.isDemo || false);
         }
 
-        const statsFromLib = calculateGroupFinancials(performanceData, fin, user.team?.members || [user], overheadToCover);
+        const statsFromLib = calculateGroupFinancials(
+            performanceData, 
+            fin, 
+            user.team?.members || [user], 
+            overheadToCover,
+            getWorkingDays(today.getFullYear(), today.getMonth()) // Sync: Pass exact working days
+        );
 
         // PRIVACY: Only show 'earnings' if user is Admin, otherwise just show progress towards target
         const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.userRole);
