@@ -28,7 +28,10 @@ jobs:
             docker compose down
             docker compose up -d --build
             
-            echo "3. Actualizando Base de Datos de Prisma..."
+            echo "3. Esperando estabilización del sistema (15s)..."
+            sleep 15
+            
+            echo "4. Actualizando Base de Datos de Prisma..."
             docker compose exec -T server npx prisma db push
             
             echo "DESPLIEGUE FINALIZADO"
