@@ -133,13 +133,12 @@ exports.getActivatorDashboard = async (req, res) => {
         // 1. Get User's Team
         const user = await prisma.user.findUnique({
             where: { id: userId },
-            select: {
-                teamId: true,
+            include: {
+                activeClientCompany: true,
                 team: {
                     include: {
-                        _count: {
-                            select: { members: true }
-                        }
+                        members: true,
+                        activeClientCompany: true
                     }
                 }
             }
