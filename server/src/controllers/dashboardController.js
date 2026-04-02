@@ -362,10 +362,10 @@ exports.getActivatorDashboard = async (req, res) => {
                 regularActivations,
                 saturdayActivations,
                 counts,
-                target: statsFromLib.bonusThresholdUnits * (fin.pricePerUnit || (isBlower ? 10 : 250)), // Value of production needed
-                breakEvenUnits: statsFromLib.bonusThresholdUnits, // This is what technicians care about
-                isBonusMode: statsFromLib.progressPercent >= 100,
-                role: req.userRole // Send role back for UI switching
+                target: (statsFromLib.bonusThresholdUnits / (user.team?.members?.length || 1)) * (fin.pricePerUnit || (isBlower ? 10 : 250)),
+                breakEvenUnits: Math.ceil(statsFromLib.bonusThresholdUnits / (user.team?.members?.length || 1)), // Individual target for Alex
+                isBonusMode: (regularActivations / Math.ceil(statsFromLib.bonusThresholdUnits / (user.team?.members?.length || 1))) >= 1,
+                role: req.userRole
             }
         });
 
