@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Save, DollarSign, Target, Lock, Truck, Users, Briefcase, Plus, Trash2, Tag, ChevronRight } from 'lucide-react';
+import { Save, DollarSign, Target, Lock, Truck, Users, Briefcase, Plus, Trash2, Tag, ChevronRight, Pencil, X } from 'lucide-react';
 
 const SettingsPage = () => {
     // Stores the complex financial config
@@ -605,18 +605,44 @@ const PasswordChangeForm = () => {
 
 const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
     const [newItem, setNewItem] = useState({ name: '', department: 'ACTIVATION', priceToClient: '', bonusToTeam: '' });
+    const [isEditing, setIsEditing] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     const items = client?.priceItems || [];
 
     const handleAddItem = async (e) => {
         e.preventDefault();
         try {
-            await api.post(`/api/clients/${clientId}/price-items`, newItem);
-            onMessage({ type: 'success', text: 'Concepto añadido' });
-            setNewItem({ name: '', department: 'ACTIVATION', priceToClient: '', bonusToTeam: '' });
+            if (isEditing) {
+                await api.put(`/api/clients/${clientId}/price-items/${editingId}`, newItem);
+                onMessage({ type: 'success', text: 'Concepto actualizado' });
+            } else {
+                await api.post(`/api/clients/${clientId}/price-items`, newItem);
+                onMessage({ type: 'success', text: 'Concepto añadido' });
+            }
+            resetForm();
             onUpdate();
         } catch (error) {
-            onMessage({ type: 'error', text: 'Error al añadir concepto' });
+            onMessage({ type: 'error', text: 'Error al procesar' });
         }
+    };
+
+    const resetForm = () => {
+        setNewItem({ name: '', department: 'ACTIVATION', priceToClient: '', bonusToTeam: '' });
+        setIsEditing(false);
+        setEditingId(null);
+    };
+
+    const handleEditClick = (item) => {
+        setNewItem({ 
+            name: item.name, 
+            department: item.department, 
+            priceToClient: item.priceToClient, 
+            bonusToTeam: item.bonusToTeam 
+        });
+        setEditingId(item.id);
+        setIsEditing(true);
+        // Scroll to top of form
+        window.scrollTo({ top: 300, behavior: 'smooth' });
     };
 
     const handleDeleteItem = async (itemId) => {
@@ -632,8 +658,11 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
 
     return (
         <div className="space-y-6">
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2"><Plus size={18} /> Añadir Nuevo Concepto</h4>
+            <div className={`p-6 rounded-2xl border transition-all ${isEditing ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                <h4 className="font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    {isEditing ? <Pencil size={18} className="text-amber-500" /> : <Plus size={18} />} 
+                    {isEditing ? 'Modificar Concepto' : 'Añadir Nuevo Concepto'}
+                </h4>
                 <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div className="flex flex-col gap-1">
                         <label className="text-[10px] font-bold text-slate-500 uppercase">Nombre del Ítem</label>
@@ -681,9 +710,19 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
                             className="p-2.5 border border-green-200 rounded-lg text-sm font-bold bg-green-50 text-green-700" 
                         />
                     </div>
-                    <div className="md:col-span-4 flex justify-end">
-                        <button type="submit" className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md hover:bg-slate-900 transition flex items-center gap-2">
-                             <Plus size={16} /> Guardar Concepto
+                    <div className="md:col-span-4 flex justify-end gap-2">
+                        {isEditing && (
+                            <button 
+                                type="button" 
+                                onClick={resetForm}
+                                className="bg-white text-slate-500 border border-slate-200 px-6 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-50 transition flex items-center gap-2"
+                            >
+                                <X size={16} /> Cancelar
+                            </button>
+                        )}
+                        <button type="submit" className={`${isEditing ? 'bg-amber-500 hover:bg-amber-600' : 'bg-slate-800 hover:bg-slate-900'} text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition flex items-center gap-2`}>
+                             {isEditing ? <Save size={16} /> : <Plus size={16} />} 
+                             {isEditing ? 'Actualizar Cambios' : 'Guardar Concepto'}
                         </button>
                     </div>
                 </form>
@@ -720,9 +759,14 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
                                     <td className="p-4 font-black text-blue-600">{item.priceToClient.toFixed(2)}€</td>
                                     <td className="p-4 font-black text-green-600">{item.bonusToTeam.toFixed(2)}€</td>
                                     <td className="p-4">
-                                        <button onClick={() => handleDeleteItem(item.id)} className="text-red-300 hover:text-red-500 p-2 transition-colors">
-                                            <Trash2 size={16} />
-                                        </button>
+                                        <div className="flex gap-1 justify-end">
+                                            <button onClick={() => handleEditClick(item)} className="text-slate-400 hover:text-amber-500 p-2 transition-colors">
+                                                <Pencil size={16} />
+                                            </button>
+                                            <button onClick={() => handleDeleteItem(item.id)} className="text-slate-400 hover:text-red-500 p-2 transition-colors">
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))
