@@ -437,7 +437,10 @@ const SettingsPage = () => {
                                     <button type="submit" className="bg-joa-blue text-white px-6 py-3 rounded-xl font-bold shadow-md hover:bg-blue-700 transition">
                                         Añadir Cliente
                                     </button>
-                                                 <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                                </form>
+                            </div>
+
+                            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
                                 <table className="w-full text-left text-sm text-slate-600">
                                     <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
                                         <tr>
@@ -477,8 +480,6 @@ const SettingsPage = () => {
                                         )}
                                     </tbody>
                                 </table>
-                            </div>
-             </table>
                             </div>
                         </div>
                     ) : ( // activeTab === 'clients' && selectedClientId
