@@ -1,5 +1,6 @@
 const prisma = require('../prisma');
 const { processImages } = require('../utils/imageProcessor');
+const { sendPushToTeam } = require('../utils/notificationUtils');
 
 // Get addresses ready for appointment (Soplado OK, Appointment Pending/Null)
 exports.getPendingAppointments = async (req, res) => {
@@ -172,6 +173,21 @@ exports.scheduleAppointment = async (req, res) => {
 
             return appointment;
         });
+
+        // --- PUSH NOTIFICATION ALERT ---
+        if (teamId) {
+            try {
+                // Fetch full address for the message
+                const addr = await prisma.address.findUnique({ where: { id: addressId } });
+                sendPushToTeam(teamId, {
+                    title: '📋 Nueva Orden de Trabajo',
+                    body: `Asignado: ${addr.street} ${addr.number || ''} para ${new Date(date).toLocaleDateString()}.`,
+                    data: { addressId: addr.id, type: 'ASSIGNMENT' }
+                }).catch(e => console.error('Push signal error:', e.message));
+            } catch (pError) {
+                console.error('Failed to prepare push payload:', pError);
+            }
+        }
 
         res.json(result);
     } catch (error) {
