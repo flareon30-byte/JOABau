@@ -384,9 +384,8 @@ const DashboardHome = () => {
                                     <div className="flex items-center gap-2">
                                         <Calculator className="text-joa-cyan" size={18} />
                                         <p className="font-bold text-sm text-white">Objetivo de Rentabilidad (Gastos)</p>
-                                    </div>
-                                    <p className="text-xs font-bold text-slate-300">
-                                        {money(stats.totalRevenueGenerated)} / {money(stats.targetRevenueToCover)}
+                                                               <p className="text-xs font-bold text-slate-300">
+                                        {Math.round(stats.moneyProgressPercent)}% / 100%
                                     </p>
                                 </div>
                                 <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden border border-white/5">
@@ -398,9 +397,10 @@ const DashboardHome = () => {
                                 <div className="flex justify-between mt-2">
                                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Inicio Mes</p>
                                     <p className="text-[10px] text-joa-cyan font-black uppercase tracking-tight">
-                                        Faltan {money(Math.max(0, stats.targetRevenueToCover - stats.totalRevenueGenerated))} para Bonus
+                                        Falta un {Math.max(0, 100 - Math.round(stats.moneyProgressPercent))}% para entrar en nivel de Bonus
                                     </p>
                                 </div>
+         </div>
                             </div>
                         )}
                     </div>
@@ -413,18 +413,18 @@ const DashboardHome = () => {
                             <Target size={24} />
                         </div>
                         <div>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Total Generado</p>
-                            <h3 className="text-2xl font-bold text-slate-800">{money(stats.totalRevenueGenerated)}</h3>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Progreso de Producción</p>
+                            <h3 className="text-2xl font-bold text-slate-800">{Math.round(stats.moneyProgressPercent)}%</h3>
                         </div>
                     </div>
 
                     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4 group hover:shadow-md transition-all">
                         <div className="p-3 bg-orange-50 text-orange-600 rounded-xl group-hover:scale-110 transition-transform">
-                            <Truck size={24} />
+                            <TrendingUp size={24} />
                         </div>
                         <div>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Gastos a Cubrir</p>
-                            <h3 className="text-2xl font-bold text-slate-800">{money(stats.targetRevenueToCover)}</h3>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Objetivo del Mes</p>
+                            <h3 className="text-2xl font-bold text-slate-800">100%</h3>
                         </div>
                     </div>
 

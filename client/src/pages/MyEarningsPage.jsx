@@ -226,13 +226,13 @@ const MyEarningsPage = () => {
                     <div className="space-y-6">
                         <div className="flex justify-between items-end">
                             <div className="space-y-1">
-                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Mínimo Gastos (0€)</p>
-                                <p className="text-2xl font-black text-slate-800">{money(myCurrentRevenue)}</p>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Progreso Actual</p>
+                                <p className="text-2xl font-black text-slate-800">{Math.round(progressPercent)}%</p>
                             </div>
                             <div className="text-right space-y-1">
-                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Meta Bonus ({money(myTargetRevenue)})</p>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Meta del Mes</p>
                                 <p className="text-xs font-bold text-blue-600">
-                                    {isGoalMet ? '¡Objetivo Superado!' : `Faltan ${money(Math.max(0, myTargetRevenue - myCurrentRevenue))}`}
+                                    {isGoalMet ? '¡Objetivo Superado!' : `Falta un ${Math.max(0, 100 - Math.round(progressPercent))}% para Bonus`}
                                 </p>
                             </div>
                         </div>
@@ -262,36 +262,8 @@ const MyEarningsPage = () => {
                     </div>
                 </div>
 
-                <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                    <h3 className="font-bold text-slate-700 mb-6 flex items-center gap-2">
-                        <Users size={18} /> Mi Estado Financiero
-                    </h3>
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-500">Mi Coste Personal + SS</span>
-                            <span className="font-bold text-red-500">-{money(personal?.baseSalary * 1.3)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-500">Mi Parte Gastos Equipo</span>
-                            <span className="font-bold text-red-500">-{money(stats?.details?.opCost / 2)}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                            <span className="text-slate-500">Parte Déficit Empresa</span>
-                            <span className="font-bold text-red-500">-{money(myTargetRevenue - (personal?.baseSalary * 1.3) - (stats?.details?.opCost / 2))}</span>
-                        </div>
-                        <div className="border-t border-slate-200 pt-4 mt-4">
-                            <div className="flex justify-between items-center">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Facturado Personal</span>
-                                <span className="font-bold text-blue-600">{money(myCurrentRevenue)}</span>
-                            </div>
-                            <div className="flex justify-between items-center mt-2">
-                                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Rendimiento (Profit)</span>
-                                <span className={`font-black ${myCurrentRevenue - myTargetRevenue > 0 ? 'text-green-600' : 'text-slate-400'}`}>
-                                    {money(myCurrentRevenue - myTargetRevenue)}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                <div className="lg:col-span-3">
+                    {/* Detailed financial cost breakdown removed for technician privacy */}
                 </div>
             </div>
 
