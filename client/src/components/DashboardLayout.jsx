@@ -4,7 +4,7 @@ import api from '../api/axios';
 import { 
     LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, 
     Folder, Zap, ChevronRight, ChevronDown, Settings, Lock, ClipboardList, 
-    Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase
+    Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase, Truck
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 
