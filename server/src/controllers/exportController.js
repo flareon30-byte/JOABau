@@ -136,9 +136,10 @@ exports.getBillingData = async (req, res) => {
             simpleInstallation: [] // Added for G&K
         };
 
-        // 1. SOPLADO
+        // 1. SOPLADO (Filter out 0m records)
         results.soplado = await prisma.sopladoInfo.findMany({
             where: {
+                meters: { gt: 0 }, // Only billable soplados
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
@@ -248,7 +249,7 @@ exports.getBillingData = async (req, res) => {
             orderBy: { createdAt: 'desc' }
         });
 
-        // 7. Calculate Totals if client is selected
+        // 7. Calculate Totals (Enhanced for Global or Single Client)
         results.totals = { 
             euros: 0, 
             weekdayGross: 0,
@@ -261,72 +262,64 @@ exports.getBillingData = async (req, res) => {
             itemsSummary: {} 
         };
 
-        if (clientCompanyId) {
-            const client = await prisma.clientCompany.findUnique({ where: { id: clientCompanyId } });
-            if (client) {
-                const prices = client.settings || {}; // Standard settings for "Proyectos" (Legacy)
-                
-                // --- Part A: Activations (Using Snapshots) ---
-                results.activation.forEach(act => {
-                    const t = act.activationType;
-                    const lineGross = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
-                    
-                    results.totals.euros += lineGross;
-                    if (act.isSaturday) {
-                        results.totals.saturdayGross += lineGross;
-                    } else {
-                        results.totals.weekdayGross += lineGross;
-                    }
-
-                    // Counts (For display)
-                    if (t === 'BP' || t === 'BP_2_FAM') results.totals.bp++;
-                    if (t === 'SDU' || t === 'BR_MULTI') results.totals.ta += (act.taCount || 1);
-                    if (act.spInstalled) results.totals.sp += act.spInstalled;
-                    if (act.mduInstalled) results.totals.mdu++;
-                });
-
-                // --- Part B: Soplados (Legacy lookup or Snapshot if available) ---
-                const sopladoPrice = parseFloat(prices.apLPrice || 60);
-                results.soplado.forEach(s => {
-                    results.totals.euros += sopladoPrice;
-                    if (s.isSaturday) {
-                        results.totals.saturdayGross += sopladoPrice;
-                    } else {
-                        results.totals.weekdayGross += sopladoPrice;
-                    }
-                });
-
-                // --- Part C: Dynamic Installations (SimpleInstallation) ---
-                results.simpleInstallation.forEach(inst => {
-                    results.totals.gk++;
-                    let instGross = 0;
-                    
-                    if (inst.items && inst.items.length > 0) {
-                        inst.items.forEach(item => {
-                            const lineTotal = item.priceAtTime * item.quantity;
-                            instGross += lineTotal;
-
-                            const itemName = item.priceItem?.name || 'Varios';
-                            if (!results.totals.itemsSummary[itemName]) {
-                                results.totals.itemsSummary[itemName] = 0;
-                            }
-                            results.totals.itemsSummary[itemName] += item.quantity;
-                        });
-                    } else {
-                        instGross = (inst.priceCharged || 0);
-                    }
-
-                    results.totals.euros += instGross;
-                    // Detect if Saturday for SimpleInstallation (G&K style)
-                    const isSat = inst.createdAt && new Date(inst.createdAt).getDay() === 6;
-                    if (isSat) {
-                        results.totals.saturdayGross += instGross;
-                    } else {
-                        results.totals.weekdayGross += instGross;
-                    }
-                });
-            }
+        // Pre-fetch clients map for performance if no clientCompanyId is selected
+        let clientsMap = {};
+        if (!clientCompanyId) {
+            const allClients = await prisma.clientCompany.findMany();
+            allClients.forEach(c => { clientsMap[c.id] = c; });
         }
+
+        const getClientForWork = (work) => {
+            if (clientCompanyId) return { id: clientCompanyId }; // Placeholder, won't use it much
+            const cid = work.address?.project?.clientCompanyId || work.project?.clientCompanyId;
+            return clientsMap[cid];
+        };
+
+        const calculateWorkGross = (act) => {
+            return (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+        };
+
+        // --- Part A: Activations (Snapshots - Works globally) ---
+        results.activation.forEach(act => {
+            const lineGross = calculateWorkGross(act);
+            results.totals.euros += lineGross;
+            if (act.isSaturday) results.totals.saturdayGross += lineGross;
+            else results.totals.weekdayGross += lineGross;
+
+            // Counts
+            const t = act.activationType;
+            if (t === 'BP' || t === 'BP_2_FAM') results.totals.bp++;
+            if (t === 'SDU' || t === 'BR_MULTI') results.totals.ta += (act.taCount || 1);
+            if (act.spInstalled) results.totals.sp += act.spInstalled;
+            if (act.mduInstalled) results.totals.mdu++;
+        });
+
+        // --- Part B: Soplados (Need client lookup for price) ---
+        results.soplado.forEach(s => {
+            const client = clientCompanyId ? { settings: (results.soplado[0]?.address?.project?.clientCompany?.settings || {}) } : getClientForWork(s);
+            const prices = client?.settings || {};
+            const sopladoPrice = parseFloat(prices.apLPrice || 60);
+
+            results.totals.euros += sopladoPrice;
+            if (s.isSaturday) results.totals.saturdayGross += sopladoPrice;
+            else results.totals.weekdayGross += sopladoPrice;
+        });
+
+        // --- Part C: Dynamic Installations (SimpleInstallation) ---
+        results.simpleInstallation.forEach(inst => {
+            results.totals.gk++;
+            let instGross = 0;
+            if (inst.items && inst.items.length > 0) {
+                inst.items.forEach(item => { instGross += (item.priceAtTime * item.quantity); });
+            } else {
+                instGross = (inst.priceCharged || 0);
+            }
+
+            results.totals.euros += instGross;
+            const isSat = inst.createdAt && new Date(inst.createdAt).getDay() === 6;
+            if (isSat) results.totals.saturdayGross += instGross;
+            else results.totals.weekdayGross += instGross;
+        });
 
         res.json(results);
     } catch (error) {
@@ -351,6 +344,7 @@ exports.exportBillingExcel = async (req, res) => {
     try {
         const soplado = await prisma.sopladoInfo.findMany({
             where: {
+                meters: { gt: 0 }, // Billable only
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
