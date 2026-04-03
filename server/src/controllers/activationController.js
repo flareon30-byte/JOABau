@@ -123,12 +123,41 @@ exports.submitActivation = async (req, res) => {
         const isRepairBool = isRepair === 'true' || isRepair === true;
         const taInstalledBool = taInstalled === 'true' || taInstalled === true;
 
-        // Fetch System Settings
+        // 1. Fetch User and Team (to know the client rates)
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            include: { team: { include: { activeClientCompany: { include: { priceItems: true } } } } }
+        });
+
+        const activeClient = user?.team?.activeClientCompany;
+        const priceItems = activeClient?.priceItems || [];
+
+        // Fetch Global System Settings (Fallback)
         const settings = await prisma.systemSettings.findFirst();
         const fin = settings?.financials?.installers || {};
 
+        const isSaturday = req.body.isSaturday === 'true' || req.body.isSaturday === true || (new Date().getDay() === 6);
+
         // Financials (Snapshot)
         let basePrice = parseFloat(fin.pricePerUnit || 60);
+        let saturdayPay = 0;
+
+        // Try to find specific prices in ClientPriceItems
+        const matchingItem = priceItems.find(item => {
+            if (activationType === 'BP' || activationType === 'BP_2_FAM') return item.name.includes('Caja') || item.name.includes('BP');
+            if (activationType === 'SDU') return item.name.includes('SDU') || item.name.includes('TA');
+            if (activationType === 'MDU') return item.name.includes('MDU');
+            if (activationType === 'BR_MULTI') return item.name.includes('BR') || item.name.includes('Multi');
+            return false;
+        });
+
+        if (matchingItem) {
+            basePrice = matchingItem.priceToClient;
+            if (isSaturday) {
+                saturdayPay = matchingItem.saturdayPay; // The direct payment to tech
+            }
+        }
+
         const pricePerSP = parseFloat(fin.pricePerSP || 75);
         const totalSpPrice = spCount * pricePerSP;
 
@@ -176,7 +205,6 @@ exports.submitActivation = async (req, res) => {
             points += pointsConfig['MDU'];
         }
 
-        const isSaturday = new Date().getDay() === 6;
 
         const result = await prisma.$transaction(async (tx) => {
             if (klsId) {
@@ -200,6 +228,7 @@ exports.submitActivation = async (req, res) => {
                 description,
                 points,
                 isSaturday,
+                saturdayPay,
                 basePrice,
                 spPrice: totalSpPrice,
                 taPrice: taPriceTotal,

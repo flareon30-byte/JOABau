@@ -670,7 +670,7 @@ const PasswordChangeForm = () => {
 };
 
 const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
-    const [newItem, setNewItem] = useState({ name: '', department: 'ACTIVATION', priceToClient: '', bonusToTeam: '' });
+    const [newItem, setNewItem] = useState({ name: '', department: 'ACTIVATION', priceToClient: '', bonusToTeam: '', saturdayPay: '' });
     const [isEditing, setIsEditing] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const items = client?.priceItems || [];
@@ -693,7 +693,7 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
     };
 
     const resetForm = () => {
-        setNewItem({ name: '', department: 'ACTIVATION', priceToClient: '', bonusToTeam: '' });
+        setNewItem({ name: '', department: 'ACTIVATION', priceToClient: '', bonusToTeam: '', saturdayPay: '' });
         setIsEditing(false);
         setEditingId(null);
     };
@@ -703,7 +703,8 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
             name: item.name, 
             department: item.department, 
             priceToClient: item.priceToClient, 
-            bonusToTeam: item.bonusToTeam 
+            bonusToTeam: item.bonusToTeam,
+            saturdayPay: item.saturdayPay || ''
         });
         setEditingId(item.id);
         setIsEditing(true);
@@ -729,7 +730,7 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
                     {isEditing ? <Pencil size={18} className="text-amber-500" /> : <Plus size={18} />} 
                     {isEditing ? 'Modificar Concepto' : 'Añadir Nuevo Concepto'}
                 </h4>
-                <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <form onSubmit={handleAddItem} className="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div className="flex flex-col gap-1">
                         <label className="text-[10px] font-bold text-slate-500 uppercase">Nombre del Ítem</label>
                         <input 
@@ -755,7 +756,7 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
                         </select>
                     </div>
                     <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Lo que cobra Joa (€)</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Paga Cliente (€)</label>
                         <input 
                             type="number" 
                             step="0.01"
@@ -766,7 +767,7 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
                         />
                     </div>
                     <div className="flex flex-col gap-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Bonus p/ Equipo (€)</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Bonus Eq. (€)</label>
                         <input 
                             type="number" 
                             step="0.01"
@@ -776,7 +777,18 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
                             className="p-2.5 border border-green-200 rounded-lg text-sm font-bold bg-green-50 text-green-700" 
                         />
                     </div>
-                    <div className="md:col-span-4 flex justify-end gap-2">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-[10px] font-bold text-orange-600 uppercase">Pago Sábados (€)</label>
+                        <input 
+                            type="number" 
+                            step="0.01"
+                            required
+                            value={newItem.saturdayPay}
+                            onChange={(e) => setNewItem({ ...newItem, saturdayPay: e.target.value })}
+                            className="p-2.5 border border-orange-200 rounded-lg text-sm font-bold bg-orange-50 text-orange-700" 
+                        />
+                    </div>
+                    <div className="md:col-span-5 flex justify-end gap-2">
                         {isEditing && (
                             <button 
                                 type="button" 
@@ -801,7 +813,8 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
                             <th className="p-4 pl-6 uppercase tracking-wider text-[10px]">Concepto</th>
                             <th className="p-4 uppercase tracking-wider text-[10px]">Depto</th>
                             <th className="p-4 uppercase tracking-wider text-[10px]">Pág. Cliente</th>
-                            <th className="p-4 uppercase tracking-wider text-[10px]">Bonus p/ Equipo</th>
+                            <th className="p-4 uppercase tracking-wider text-[10px]">Bonus Eq.</th>
+                            <th className="p-4 uppercase tracking-wider text-[10px] text-orange-600">Sábados</th>
                             <th className="p-4 w-16"></th>
                         </tr>
                     </thead>
@@ -824,6 +837,7 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate }) => {
                                     </td>
                                     <td className="p-4 font-black text-blue-600">{item.priceToClient.toFixed(2)}€</td>
                                     <td className="p-4 font-black text-green-600">{item.bonusToTeam.toFixed(2)}€</td>
+                                    <td className="p-4 font-black text-orange-600">{(item.saturdayPay || 0).toFixed(2)}€</td>
                                     <td className="p-4">
                                         <div className="flex gap-1 justify-end">
                                             <button onClick={() => handleEditClick(item)} className="text-slate-400 hover:text-amber-500 p-2 transition-colors">

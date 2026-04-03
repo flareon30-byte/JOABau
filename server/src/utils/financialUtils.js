@@ -185,22 +185,11 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
 
     let bonusCost = 0;
     
-    // A. Saturday Pay
-    const saturdayDates = new Set();
-    activations.filter(a => a.isSaturday).forEach(a => saturdayDates.add(new Date(a.createdAt).toDateString()));
-    const saturdaysWorkedCount = saturdayDates.size;
-
-    const fixedSaturdayCost = saturdaysWorkedCount * (financialConfig.saturdayRate || 0) * teamSize;
-    const baseSatBonusRate = financialConfig.saturdayBonusPerUnit !== undefined
-        ? financialConfig.saturdayBonusPerUnit
-        : (financialConfig.bonusPerUnit || 0) * 2;
-
-    const varSaturdayCost =
-        (saturdayInstalls * baseSatBonusRate) +
-        (saturdaySp * (financialConfig.bonusPerMulti || 0) * 2) +
-        (saturdayTa * (financialConfig.bonusPerTa || 0) * 2);
-
-    const saturdayCostTotal = fixedSaturdayCost + varSaturdayCost;
+    // A. Saturday Pay (Using capture snapshot prices)
+    const saturdayCostTotal = activations
+        .filter(a => a.isSaturday)
+        .reduce((sum, a) => sum + (a.saturdayPay || 0), 0);
+    
     stats.saturdayPay = saturdayCostTotal;
 
     // B. Production Bonus (M-F)
@@ -229,12 +218,13 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
 
     // --- 5. RESULTS ---
     const targetRevenue = totalDebtToCover; // Salaries + SS + OpCosts + Share of Company Deficit
-    const revenueMf = totalRevenue - (activations.filter(a => a.isSaturday).reduce((sum, act) => {
-        // Simple Revenue extraction for Saturday exclusion
-        const type = act.activationType || 'BP';
-        const price = (financialConfig.pricePerUnit || (type === 'BP' ? 250 : 60)); // Approximate check for safety
-        return sum + price;
-    }, 0));
+    // Statistics: Revenue from Monday to Friday only (excludes Saturday)
+    const revenueMf = activations
+        .filter(a => !a.isSaturday)
+        .reduce((sum, act) => {
+            const snap = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+            return sum + snap;
+        }, 0);
 
     stats.totalTargetRevenue = targetRevenue;
     stats.currentRevenueMf = revenueMf;

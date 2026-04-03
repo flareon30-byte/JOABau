@@ -183,6 +183,8 @@ model SopladoInfo {
   // Si fallido
   failureReason String?
   photos        String[]
+  
+  saturdayPay   Float   @default(0.0) // Captured earnings for technician if isSaturday
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -282,6 +284,8 @@ model ActivationInfo {
   taPrice     Float @default(0.0)
   mduPrice    Float @default(0.0)
   repairPrice Float @default(0.0)
+
+  saturdayPay Float @default(0.0) // Captured earnings for technician if isSaturday
 
   isSaturday Boolean @default(false)
 
@@ -398,7 +402,8 @@ model ClientPriceItem {
   name             String
   department       Department    // ACTIVATION, BLOWING, etc.
   priceToClient    Float         @default(0.0) // What Joa charges the client
-  bonusToTeam      Float         @default(0.0) // Extra pay for the team
+  bonusToTeam      Float         @default(0.0) // Extra pay for the team (Standard)
+  saturdayPay      Float         @default(0.0) // Specific extra pay for technician on SATURDAY
   
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt

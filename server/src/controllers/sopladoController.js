@@ -62,11 +62,22 @@ exports.submitSopladoReport = async (req, res) => {
     try {
         const photoPaths = files ? files.map(f => f.path) : [];
         const isSaturday = new Date().getDay() === 6;
-
         let teamId = null;
+        let saturdayPay = 0;
+
         if (req.userId) {
-            const user = await prisma.user.findUnique({ where: { id: req.userId } });
+            const user = await prisma.user.findUnique({ 
+                where: { id: req.userId },
+                include: { team: { include: { activeClientCompany: { include: { priceItems: true } } } } }
+            });
             teamId = user?.teamId || null;
+
+            if (isSaturday && user.team?.activeClientCompany?.priceItems) {
+                const sopladoItem = user.team.activeClientCompany.priceItems.find(item => item.department === 'BLOWING' || item.name.toLowerCase().includes('soplado'));
+                if (sopladoItem) {
+                    saturdayPay = sopladoItem.saturdayPay;
+                }
+            }
         }
 
         // 1. Get the target address details to identify the physical location
@@ -109,7 +120,8 @@ exports.submitSopladoReport = async (req, res) => {
                 failureReason: status === 'FALLIDO' ? failureReason : null,
                 photos: photoPaths,
                 teamId: teamId,
-                isSaturday: isSaturday
+                isSaturday: isSaturday,
+                saturdayPay: saturdayPay
             };
 
             // We must upsert one by one because sopladoInfo is 1:1 unique on addressId
@@ -153,9 +165,21 @@ exports.toggleSopladoStatus = async (req, res) => {
 
         const isSaturday = new Date().getDay() === 6;
         let teamId = null;
+        let saturdayPay = 0;
+
         if (req.userId) {
-            const user = await prisma.user.findUnique({ where: { id: req.userId } });
+            const user = await prisma.user.findUnique({ 
+                where: { id: req.userId },
+                include: { team: { include: { activeClientCompany: { include: { priceItems: true } } } } }
+            });
             teamId = user?.teamId || null;
+
+            if (isSaturday && user.team?.activeClientCompany?.priceItems) {
+                const sopladoItem = user.team.activeClientCompany.priceItems.find(item => item.department === 'BLOWING' || item.name.toLowerCase().includes('soplado'));
+                if (sopladoItem) {
+                    saturdayPay = sopladoItem.saturdayPay;
+                }
+            }
         }
 
         // Apply to ALL addresses at this location (same street/number logic)
@@ -192,7 +216,8 @@ exports.toggleSopladoStatus = async (req, res) => {
                     failureReason: null,
                     photos: [],
                     teamId: teamId,
-                    isSaturday: isSaturday
+                    isSaturday: isSaturday,
+                    saturdayPay: saturdayPay
                 };
 
                 // We promise.all the upserts

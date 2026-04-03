@@ -581,7 +581,55 @@ const BillingPage = () => {
                 </div>
             </div>
 
-            {/* Filters */}
+            {/* Gross Revenue Dashboard (Top) */}
+            {billingData.totals && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* Grand Total Card */}
+                    <div className="bg-gradient-to-br from-indigo-600 to-joa-blue p-6 rounded-3xl shadow-xl shadow-joa-blue/20 text-white relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+                            <TrendingUp size={80} />
+                        </div>
+                        <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Facturación Total (Bruta)</p>
+                        <h3 className="text-4xl font-black mb-2">
+                            {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.euros || 0)}
+                        </h3>
+                        <div className="flex items-center gap-2 text-xs text-indigo-100/80">
+                            <span className="bg-white/20 px-2 py-0.5 rounded-full font-bold">Consolidado</span>
+                            <span>{billingData.soplado.length + billingData.activation.length + billingData.simpleInstallation.length} trabajos realizados</span>
+                        </div>
+                    </div>
+
+                    {/* Weekday Card */}
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
+                                <Calendar size={20} />
+                            </div>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Lunes a Viernes</p>
+                        </div>
+                        <h3 className="text-3xl font-black text-slate-800">
+                            {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.weekdayGross || 0)}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Ingresos brutos generados en jornada ordinaria</p>
+                    </div>
+
+                    {/* Saturday Card */}
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex flex-col justify-center">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="bg-orange-100 p-2 rounded-xl text-orange-600">
+                                <Sun size={20} />
+                            </div>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Sábados (Extra)</p>
+                        </div>
+                        <h3 className="text-3xl font-black text-slate-800">
+                            {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.saturdayGross || 0)}
+                        </h3>
+                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Facturación adicional por trabajos de sábado</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Existing Filters section starts here... (Line 585 in original) */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                 <div className="flex flex-col gap-1">
                     <label className="text-xs font-bold text-slate-500 uppercase">Proyecto</label>
@@ -710,42 +758,18 @@ const BillingPage = () => {
                 </div>
             </div>
 
-            {/* Totals Summary */}
-            {billingData.totals && filters.clientCompanyId && (
-                <div className="bg-gradient-to-br from-green-500 to-green-600 p-6 rounded-2xl shadow-lg mt-6 text-white grid grid-cols-2 md:grid-cols-6 gap-4 items-center">
-                    <div className="col-span-2 md:col-span-2">
-                        <p className="text-green-100 text-xs font-bold uppercase tracking-wider mb-1">Total a Facturar Automático</p>
-                        <h3 className="text-4xl font-black">{new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.euros || 0)}</h3>
-                        <p className="text-xs text-green-100 mt-1 opacity-80">* Calculado según precios del cliente activo</p>
+            {/* Summary details moved to top or hidden if preferred... keeping simplified count footer if items exist */}
+            {billingData.totals && billingData.totals.itemsSummary && Object.keys(billingData.totals.itemsSummary).length > 0 && (
+                <div className="bg-slate-900 p-6 rounded-2xl shadow-lg mt-6 text-white">
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">Desglose de Unidades Facturadas</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                        {Object.entries(billingData.totals.itemsSummary).map(([name, count]) => (
+                            <div key={name} className="bg-white/5 p-3 rounded-xl border border-white/10 text-center">
+                                <p className="text-[9px] uppercase font-bold text-slate-400 mb-1 truncate px-1" title={name}>{name}</p>
+                                <p className="text-xl font-black">{count}</p>
+                            </div>
+                        ))}
                     </div>
-                    <div className="bg-white/10 p-3 rounded-xl border border-white/20 text-center">
-                        <p className="text-[10px] uppercase font-bold text-green-200 mb-1">Básicas (BP)</p>
-                        <p className="text-xl font-bold">{billingData.totals.bp}</p>
-                    </div>
-                    <div className="bg-white/10 p-3 rounded-xl border border-white/20 text-center">
-                        <p className="text-[10px] uppercase font-bold text-green-200 mb-1">SDU / TA</p>
-                        <p className="text-xl font-bold">{billingData.totals.ta}</p>
-                    </div>
-                    <div className="bg-white/10 p-3 rounded-xl border border-white/20 text-center">
-                        <p className="text-[10px] uppercase font-bold text-green-200 mb-1">Empalmes SP</p>
-                        <p className="text-xl font-bold">{billingData.totals.sp}</p>
-                    </div>
-                    <div className="bg-white/10 p-3 rounded-xl border border-white/20 text-center">
-                        <p className="text-[10px] uppercase font-bold text-green-200 mb-1">MDU's</p>
-                        <p className="text-xl font-bold">{billingData.totals.mdu}</p>
-                    </div>
-
-                    {/* NEW: Dynamic Items Detailed Breakdown */}
-                    {billingData.totals.itemsSummary && Object.keys(billingData.totals.itemsSummary).length > 0 && (
-                        <div className="col-span-2 md:col-span-6 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mt-4 pt-4 border-t border-white/20">
-                            {Object.entries(billingData.totals.itemsSummary).map(([name, count]) => (
-                                <div key={name} className="bg-black/10 p-2 rounded-lg text-center backdrop-blur-sm border border-white/5">
-                                    <p className="text-[9px] uppercase font-bold text-green-100 mb-0.5 truncate px-1" title={name}>{name}</p>
-                                    <p className="text-lg font-black">{count}</p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
                 </div>
             )}
 

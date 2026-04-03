@@ -80,7 +80,7 @@ exports.getClientPriceItems = async (req, res) => {
 exports.addPriceItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, department, priceToClient, bonusToTeam } = req.body;
+    const { name, department, priceToClient, bonusToTeam, saturdayPay } = req.body;
     
     const newItem = await prisma.clientPriceItem.create({
       data: {
@@ -88,7 +88,8 @@ exports.addPriceItem = async (req, res) => {
         name,
         department,
         priceToClient: parseFloat(priceToClient || 0),
-        bonusToTeam: parseFloat(bonusToTeam || 0)
+        bonusToTeam: parseFloat(bonusToTeam || 0),
+        saturdayPay: parseFloat(saturdayPay || 0)
       }
     });
     res.status(201).json(newItem);
@@ -101,7 +102,7 @@ exports.addPriceItem = async (req, res) => {
 exports.updatePriceItem = async (req, res) => {
   try {
     const { itemId } = req.params;
-    const { name, department, priceToClient, bonusToTeam } = req.body;
+    const { name, department, priceToClient, bonusToTeam, saturdayPay } = req.body;
     
     const updated = await prisma.clientPriceItem.update({
       where: { id: itemId },
@@ -109,7 +110,8 @@ exports.updatePriceItem = async (req, res) => {
         name,
         department,
         priceToClient: parseFloat(priceToClient || 0),
-        bonusToTeam: parseFloat(bonusToTeam || 0)
+        bonusToTeam: parseFloat(bonusToTeam || 0),
+        saturdayPay: parseFloat(saturdayPay || 0)
       }
     });
     res.json(updated);

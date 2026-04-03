@@ -249,53 +249,63 @@ exports.getBillingData = async (req, res) => {
         });
 
         // 7. Calculate Totals if client is selected
-        results.totals = { euros: 0, bp: 0, ta: 0, sp: 0, mdu: 0, gk: 0, itemsSummary: {} };
+        results.totals = { 
+            euros: 0, 
+            weekdayGross: 0,
+            saturdayGross: 0,
+            bp: 0, 
+            ta: 0, 
+            sp: 0, 
+            mdu: 0, 
+            gk: 0, 
+            itemsSummary: {} 
+        };
+
         if (clientCompanyId) {
             const client = await prisma.clientCompany.findUnique({ where: { id: clientCompanyId } });
             if (client) {
                 const prices = client.settings || {}; // Standard settings for "Proyectos" (Legacy)
                 
-                // --- Part A: Legancy Installations (Activations Info) ---
+                // --- Part A: Activations (Using Snapshots) ---
                 results.activation.forEach(act => {
                     const t = act.activationType;
-                    if (t === 'BP' || t === 'BP_2_FAM') {
-                        results.totals.bp++;
-                        results.totals.euros += (prices.bpPrice || 0);
-                    } else if (t === 'SDU' || t === 'BR_MULTI') {
-                        let taCount = act.taCount || 1;
-                        if (!act.taInstalled) taCount = 1;
-                        results.totals.ta += taCount;
-                        results.totals.euros += ((prices.taPrice || 0) * taCount);
-
-                        if (act.mduInstalled) {
-                            results.totals.mdu++;
-                            results.totals.euros += (prices.mduPrice || 0);
-                        }
+                    const lineGross = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+                    
+                    results.totals.euros += lineGross;
+                    if (act.isSaturday) {
+                        results.totals.saturdayGross += lineGross;
+                    } else {
+                        results.totals.weekdayGross += lineGross;
                     }
 
-                    if (act.spInstalled) {
-                        const spCount = act.spInstalled;
-                        results.totals.sp += spCount;
-                        results.totals.euros += ((prices.spPrice || 0) * spCount);
+                    // Counts (For display)
+                    if (t === 'BP' || t === 'BP_2_FAM') results.totals.bp++;
+                    if (t === 'SDU' || t === 'BR_MULTI') results.totals.ta += (act.taCount || 1);
+                    if (act.spInstalled) results.totals.sp += act.spInstalled;
+                    if (act.mduInstalled) results.totals.mdu++;
+                });
+
+                // --- Part B: Soplados (Legacy lookup or Snapshot if available) ---
+                const sopladoPrice = parseFloat(prices.apLPrice || 60);
+                results.soplado.forEach(s => {
+                    results.totals.euros += sopladoPrice;
+                    if (s.isSaturday) {
+                        results.totals.saturdayGross += sopladoPrice;
+                    } else {
+                        results.totals.weekdayGross += sopladoPrice;
                     }
                 });
 
-                // Standard soplados from legacy soplado list
-                if (prices.apLPrice) {
-                    results.totals.euros += (results.soplado.length * prices.apLPrice);
-                }
-
-                // --- Part B: New Dynamic Installations (SimpleInstallation) ---
+                // --- Part C: Dynamic Installations (SimpleInstallation) ---
                 results.simpleInstallation.forEach(inst => {
                     results.totals.gk++;
+                    let instGross = 0;
                     
-                    // If it has items, calculate total from items
                     if (inst.items && inst.items.length > 0) {
                         inst.items.forEach(item => {
                             const lineTotal = item.priceAtTime * item.quantity;
-                            results.totals.euros += lineTotal;
+                            instGross += lineTotal;
 
-                            // Keep track of counts by item name
                             const itemName = item.priceItem?.name || 'Varios';
                             if (!results.totals.itemsSummary[itemName]) {
                                 results.totals.itemsSummary[itemName] = 0;
@@ -303,8 +313,16 @@ exports.getBillingData = async (req, res) => {
                             results.totals.itemsSummary[itemName] += item.quantity;
                         });
                     } else {
-                        // Fallback to legacy priceCharged field if no items
-                        results.totals.euros += (inst.priceCharged || 0);
+                        instGross = (inst.priceCharged || 0);
+                    }
+
+                    results.totals.euros += instGross;
+                    // Detect if Saturday for SimpleInstallation (G&K style)
+                    const isSat = inst.createdAt && new Date(inst.createdAt).getDay() === 6;
+                    if (isSat) {
+                        results.totals.saturdayGross += instGross;
+                    } else {
+                        results.totals.weekdayGross += instGross;
                     }
                 });
             }
