@@ -1,16 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const vehicleController = require('../controllers/vehicleController');
-const auth = require('../middleware/auth');
+const { verifyToken } = require('../middleware/authMiddleware');
 
 // Vehicle CRUD (Admin Only)
-router.get('/', auth, vehicleController.getAllVehicles);
-router.post('/', auth, vehicleController.createVehicle);
-router.put('/:id', auth, vehicleController.updateVehicle);
-router.delete('/:id', auth, vehicleController.deleteVehicle);
-router.get('/:id/stats', auth, vehicleController.getVehicleStats);
+router.get('/', verifyToken, vehicleController.getAllVehicles);
+router.post('/', verifyToken, vehicleController.createVehicle);
+router.put('/:id', verifyToken, vehicleController.updateVehicle);
+router.delete('/:id', verifyToken, vehicleController.deleteVehicle);
+router.get('/:id/stats', verifyToken, vehicleController.getVehicleStats);
 
 // Logs (For Techs)
-router.post('/log', auth, vehicleController.addVehicleLog);
+router.post('/log', verifyToken, vehicleController.addVehicleLog);
 
 module.exports = router;
