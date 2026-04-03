@@ -7,6 +7,7 @@ import {
     Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase, Truck
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
+import { usePushNotifications } from '../hooks/usePushNotifications';
 
 // Notification Sound URL (Short subtle beep)
 const BEEP_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
@@ -27,6 +28,9 @@ const Toast = ({ message, onClose }) => (
 );
 
 const DashboardLayout = () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    usePushNotifications(user.id);
+
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [openGroups, setOpenGroups] = useState({
@@ -44,7 +48,7 @@ const DashboardLayout = () => {
 
     const location = useLocation();
     const navigate = useNavigate();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    // user removed here, it's now at the top
 
     // Fetch Notifications
     const fetchNotifications = async () => {

@@ -26,12 +26,7 @@ import MaterialOrdersPage from './pages/MaterialOrdersPage';
 import GnkInstallationForm from './pages/GnkInstallationForm';
 import VehicleManagement from './pages/VehicleManagement';
 import VehicleLogForm from './pages/VehicleLogForm';
-import { usePushNotifications } from './hooks/usePushNotifications';
-
 function App() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  usePushNotifications(user.id);
-
   return (
     <Router>
       <Routes>
