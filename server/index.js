@@ -76,7 +76,8 @@ app.get(/(.*)/, (req, res) => {
 app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
     
-    // Auto-Sync Database Schema on Boot (Crucial for Cloud Deployment/DO)
+    // Auto-Sync Database Schema on Boot Disabled locally to avoid Locks
+    /*
     const { exec } = require('child_process');
     console.log('[DB] Synchronizing schema...');
     exec('npx prisma db push --schema=prisma/schema.prisma --accept-data-loss', (error, stdout, stderr) => {
@@ -86,6 +87,7 @@ app.listen(PORT, async () => {
         }
         console.log(`[DB] Schema synced successfully:\n${stdout}`);
     });
+    */
 
     initBackupJob(); // Start automated backups (Sundays 03:00)
     initCleanupJob(); // Start automated cleanup (1st of each month 04:00)
