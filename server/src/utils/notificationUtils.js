@@ -2,19 +2,23 @@ const webpush = require('web-push');
 const prisma = require('../prisma');
 
 // Setup VAPID keys - Fallback to avoid crashing the server if env vars are missing in DO
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BDJCtQmT834ESeEYwwxn3UuR-_NPhyWRpN9UATYquPel8yYNqteyk8Qco3XhFWmrU9lR4zqr47p3HYBzA4VhqS0';
+const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'WuzEyBtO14ayRZfjJvVYbILAV4XGHvCAGaRE_EMsqns';
+const mailtoVapid = process.env.VAPID_EMAIL || 'mailto:admin@joatechnologien.de';
+
+if (publicVapidKey && privateVapidKey) {
     try {
         webpush.setVapidDetails(
-            process.env.VAPID_EMAIL || 'mailto:admin@joatechnologien.de',
-            process.env.VAPID_PUBLIC_KEY,
-            process.env.VAPID_PRIVATE_KEY
+            mailtoVapid,
+            publicVapidKey,
+            privateVapidKey
         );
-        console.log('[PUSH] WebPush VAPID initialized successfully.');
+        console.log('[PUSH] WebPush VAPID initialized successfully (with fallbacks).');
     } catch (e) {
         console.error('[PUSH] Failed to initialize VAPID keys:', e.message);
     }
 } else {
-    console.warn('[PUSH-WARNING] VAPID keys not found in environment. Push notifications are disabled. Server will continue running without them.');
+    console.warn('[PUSH-WARNING] VAPID keys not found. Push notifications disabled.');
 }
 
 /**
