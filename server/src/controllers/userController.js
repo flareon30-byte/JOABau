@@ -14,6 +14,7 @@ exports.getAllUsers = async (req, res) => {
                 phone: true,
                 vacationDaysTotal: true,
                 activeClientCompanyId: true,
+                baseSalary: true,
                 createdAt: true
             }
         });
@@ -34,6 +35,7 @@ exports.createUser = async (req, res) => {
                 role,
                 teamId: teamId || null,
                 phone: phone || null,
+                baseSalary: (req.body.baseSalary !== undefined && req.body.baseSalary !== '') ? parseFloat(req.body.baseSalary) : 1500.0,
                 vacationDaysTotal: (vacationDaysTotal !== undefined && vacationDaysTotal !== '') ? parseInt(vacationDaysTotal) : 30,
                 isDemo: req.isDemo || false
             }
@@ -55,6 +57,7 @@ exports.updateUser = async (req, res) => {
             role,
             teamId: teamId || null,
             phone: phone || null,
+            baseSalary: (req.body.baseSalary !== undefined && req.body.baseSalary !== '') ? parseFloat(req.body.baseSalary) : 1500.0,
             vacationDaysTotal: (vacationDaysTotal !== undefined && vacationDaysTotal !== '') ? parseInt(vacationDaysTotal) : 30
         };
         if (password) {

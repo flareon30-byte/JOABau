@@ -6,7 +6,7 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState(null); // For editing
-    const [formData, setFormData] = useState({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', vacationDaysTotal: 30 });
+    const [formData, setFormData] = useState({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30 });
 
     const fetchUsers = async () => {
         try {
@@ -30,11 +30,12 @@ const UserManagement = () => {
                 role: user.role,
                 teamId: user.teamId || '',
                 phone: user.phone || '',
+                baseSalary: user.baseSalary || 1500,
                 vacationDaysTotal: user.vacationDaysTotal || 30
             });
         } else {
             setCurrentUser(null);
-            setFormData({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', vacationDaysTotal: 30 });
+            setFormData({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30 });
         }
         setIsModalOpen(true);
     };
@@ -98,6 +99,7 @@ const UserManagement = () => {
                             <th className="px-6 py-4">Teléfono</th>
                             <th className="px-6 py-4">Rol</th>
                             <th className="px-6 py-4">Equipo</th>
+                            <th className="px-6 py-4">Sueldo Base</th>
                             <th className="px-6 py-4 text-right">Acciones</th>
                         </tr>
                     </thead>
@@ -113,6 +115,9 @@ const UserManagement = () => {
                                         }`}>
                                         {user.role}
                                     </span>
+                                </td>
+                                <td className="px-6 py-4 text-slate-700 font-bold text-sm">
+                                    {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(user.baseSalary || 1500)}
                                 </td>
                                 <td className="px-6 py-4 text-slate-500">{user.teamId || '-'}</td>
                                 <td className="px-6 py-4 text-right space-x-2">
@@ -179,6 +184,16 @@ const UserManagement = () => {
                                     <option value="BLOWER">Soplador</option>
                                     <option value="PROTOCOL_MANAGER">Gestor de Protocolos</option>
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Salario Base Mensual (€)</label>
+                                <input
+                                    type="number"
+                                    value={formData.baseSalary}
+                                    onChange={(e) => setFormData({ ...formData, baseSalary: parseFloat(e.target.value) })}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    required
+                                />
                             </div>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Días de Vacaciones Totales</label>

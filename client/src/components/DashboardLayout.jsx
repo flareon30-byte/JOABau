@@ -165,7 +165,7 @@ const DashboardLayout = () => {
             icon: TrendingUp,
             roles: ['SUPER_ADMIN', 'ADMIN', 'ACTIVATOR', 'BLOWER'],
             items: [
-                { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER', 'SUPER_ADMIN'] },
+                { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER'] },
                 { icon: DollarSign, label: 'Facturación Clientes', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Calculator, label: 'Sist. de Rentabilidad', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },

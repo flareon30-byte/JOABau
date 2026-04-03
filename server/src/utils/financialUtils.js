@@ -29,32 +29,40 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
     const pricePerUnit = financialConfig.pricePerUnit || 0;
 
     // --- 1. EXPENSES (Costs) ---
+    let totalSalaries = 0;
+    let totalInsurance = 0;
+    let totalSokaBau = 0;
+    let totalDietas = 0;
+    let totalMaterials = 0;
+    let totalRent = 0;
 
-    // Per Person Expenses (Matching Calculator App.jsx)
-    const salary = financialConfig.salary || 1500;
-    
-    // Calculator Proportional SS: 21.50% and Soka-Bau: 15.10%
-    const ssRate = (financialConfig.insuranceRate !== undefined && financialConfig.insuranceRate !== null) ? financialConfig.insuranceRate : 21.50; 
-    const insurance = (salary * ssRate / 100);
-    
-    const sokaBauPercent = (financialConfig.sokaBauPercent !== undefined && financialConfig.sokaBauPercent !== null) ? financialConfig.sokaBauPercent : 15.10;
-    const sokaBau = (salary * sokaBauPercent / 100);
-    
-    const dietasPerDay = (financialConfig.dietasPerDay !== undefined && financialConfig.dietasPerDay !== null) ? financialConfig.dietasPerDay : 0;
-    const rent = (financialConfig.rent !== undefined && financialConfig.rent !== null) ? financialConfig.rent : 0;
-    const materialsPerPerson = (financialConfig.materials !== undefined && financialConfig.materials !== null) ? financialConfig.materials : 100;
+    const ssRate = (financialConfig.insuranceRate !== undefined && financialConfig.insuranceRate !== null) ? parseFloat(financialConfig.insuranceRate) : 21.50; 
+    const sokaBauRate = (financialConfig.sokaBauPercent !== undefined && financialConfig.sokaBauPercent !== null) ? parseFloat(financialConfig.sokaBauPercent) : 15.10;
+    const dietasPerDay = (financialConfig.dietasPerDay !== undefined && financialConfig.dietasPerDay !== null) ? parseFloat(financialConfig.dietasPerDay) : 0;
+    const rentPerPerson = (financialConfig.rent !== undefined && financialConfig.rent !== null) ? parseFloat(financialConfig.rent) : 0;
+    const materialsPerPerson = (financialConfig.materials !== undefined && financialConfig.materials !== null) ? parseFloat(financialConfig.materials) : 100;
     const totalDietasPerPerson = dietasPerDay * workingDays;
 
-    const perPersonExpenses = salary + insurance + sokaBau + rent + totalDietasPerPerson + materialsPerPerson;
+    teamMembers.forEach(member => {
+        const memberSalary = member.baseSalary || 1500.0;
+        totalSalaries += memberSalary;
+        totalInsurance += (memberSalary * ssRate / 100);
+        totalSokaBau += (memberSalary * sokaBauRate / 100);
+        totalDietas += totalDietasPerPerson;
+        totalMaterials += materialsPerPerson;
+        totalRent += rentPerPerson;
+    });
+
+    const totalPersonnelExpenses = totalSalaries + totalInsurance + totalSokaBau + totalDietas + totalMaterials + totalRent;
 
     // Per Team Expenses
-    const car = (financialConfig.car !== undefined && financialConfig.car !== null) ? financialConfig.car : 400; // Match Calculator
-    const gas = (financialConfig.gas !== undefined && financialConfig.gas !== null) ? financialConfig.gas : 300; // Match Calculator
-    const equipRent = (financialConfig.equipmentRent !== undefined && financialConfig.equipmentRent !== null) ? financialConfig.equipmentRent : 0;
+    const car = (financialConfig.car !== undefined && financialConfig.car !== null) ? parseFloat(financialConfig.car) : 400; // Match Calculator
+    const gas = (financialConfig.gas !== undefined && financialConfig.gas !== null) ? parseFloat(financialConfig.gas) : 300; // Match Calculator
+    const equipRent = (financialConfig.equipmentRent !== undefined && financialConfig.equipmentRent !== null) ? parseFloat(financialConfig.equipmentRent) : 0;
     const perTeamExpenses = car + gas + equipRent;
 
     // Total Fixed Expenses for this Team
-    const groupFixedExpenses = (perPersonExpenses * teamSize) + perTeamExpenses;
+    const groupFixedExpenses = totalPersonnelExpenses + perTeamExpenses;
 
     // --- 2. REVENUE & PRODUCTION (Income) ---
 
@@ -236,7 +244,7 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
     stats.totalRevenue = totalRevenue;
     stats.netResult = totalRevenue - stats.totalCost;
 
-    stats.details.salaryCost = (perPersonExpenses * teamSize);
+    stats.details.salaryCost = totalPersonnelExpenses;
     stats.details.opCost = perTeamExpenses;
     stats.details.bonusCost = bonusCost;
     stats.details.saturdayCost = saturdayCostTotal;

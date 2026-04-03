@@ -84,12 +84,13 @@ exports.getMyPayroll = async (req, res) => {
                     updatedAt: { gte: start, lte: end }
                 }
             });
+            const baseSalary = user.baseSalary || 1500;
             const revenue = apptCount * (config.pricePerAppointment || 15);
             return res.json({
                 role: 'BACK_OFFICE',
-                baseSalary: config.salary || user.baseSalary || 1500,
+                baseSalary: baseSalary,
                 metrics: { appointmentsDone: apptCount, targetDaily: 15, revenueGenerated: revenue },
-                financials: { total: config.salary || 1500 }
+                financials: { total: baseSalary }
             });
         }
 
@@ -148,7 +149,8 @@ exports.getMyPayroll = async (req, res) => {
         const memberCount = teamMembers.length || 1;
         const myBonus = stats.bonusPool / memberCount;
         const mySaturday = stats.saturdayPay / memberCount;
-        const myTotal = (financialConfig?.salary || user.baseSalary) + myBonus + mySaturday;
+        const myBaseSalary = user.baseSalary || 1500;
+        const myTotal = myBaseSalary + myBonus + mySaturday;
 
         const memberCountSafe = memberCount || 1;
 
@@ -163,7 +165,7 @@ exports.getMyPayroll = async (req, res) => {
                 teamName: team?.name || 'Sin Equipo'
             },
             personal: {
-                baseSalary: financialConfig?.salary || user.baseSalary || 0,
+                baseSalary: user.baseSalary || 1500,
                 myBonusShare: myBonus,
                 mySaturdayPay: mySaturday,
                 totalEstimated: myTotal
@@ -318,8 +320,7 @@ exports.getPayrollSummary = async (req, res) => {
         const summary = processedUsers.map(({ user, stats, groupKey, financialConfig }) => {
             // Determine Base Salary
             // Priority: Config Salary -> User Base Salary -> Default 1500
-            const configSalary = financialConfig ? parseFloat(financialConfig.salary) : null;
-            const finalBaseSalary = (configSalary !== null && !isNaN(configSalary)) ? configSalary : (user.baseSalary || 1500);
+            const finalBaseSalary = user.baseSalary || 1500;
 
             // Formating directly for frontend table
             const members = user.team?.members?.length || 1;
