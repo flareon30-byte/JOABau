@@ -73,8 +73,20 @@ app.get(/(.*)/, (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`Server running on port ${PORT}`);
+    
+    // Auto-Sync Database Schema on Boot (Crucial for Cloud Deployment/DO)
+    const { exec } = require('child_process');
+    console.log('[DB] Synchronizing schema...');
+    exec('npx prisma db push --schema=prisma/schema.prisma --accept-data-loss', (error, stdout, stderr) => {
+        if (error) {
+            console.error(`[DB-ERROR] Schema sync failed: ${error.message}`);
+            return;
+        }
+        console.log(`[DB] Schema synced successfully:\n${stdout}`);
+    });
+
     initBackupJob(); // Start automated backups (Sundays 03:00)
     initCleanupJob(); // Start automated cleanup (1st of each month 04:00)
 });
