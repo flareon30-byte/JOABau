@@ -34,23 +34,23 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
     const salary = financialConfig.salary || 1500;
     
     // Calculator Proportional SS: 21.50% and Soka-Bau: 15.10%
-    const ssRate = (financialConfig.insuranceRate !== undefined) ? financialConfig.insuranceRate : 21.50; 
+    const ssRate = (financialConfig.insuranceRate !== undefined && financialConfig.insuranceRate !== null) ? financialConfig.insuranceRate : 21.50; 
     const insurance = (salary * ssRate / 100);
     
-    const sokaBauPercent = (financialConfig.sokaBauPercent !== undefined) ? financialConfig.sokaBauPercent : 15.10;
+    const sokaBauPercent = (financialConfig.sokaBauPercent !== undefined && financialConfig.sokaBauPercent !== null) ? financialConfig.sokaBauPercent : 15.10;
     const sokaBau = (salary * sokaBauPercent / 100);
     
-    const dietasPerDay = financialConfig.dietasPerDay || 0;
-    const rent = financialConfig.rent || 0;
-    const materialsPerPerson = (financialConfig.materials !== undefined) ? financialConfig.materials : 100;
+    const dietasPerDay = (financialConfig.dietasPerDay !== undefined && financialConfig.dietasPerDay !== null) ? financialConfig.dietasPerDay : 0;
+    const rent = (financialConfig.rent !== undefined && financialConfig.rent !== null) ? financialConfig.rent : 0;
+    const materialsPerPerson = (financialConfig.materials !== undefined && financialConfig.materials !== null) ? financialConfig.materials : 100;
     const totalDietasPerPerson = dietasPerDay * workingDays;
 
     const perPersonExpenses = salary + insurance + sokaBau + rent + totalDietasPerPerson + materialsPerPerson;
 
     // Per Team Expenses
-    const car = financialConfig.car || 400; // Match Calculator
-    const gas = financialConfig.gas || 300; // Match Calculator
-    const equipRent = financialConfig.equipmentRent || 0;
+    const car = (financialConfig.car !== undefined && financialConfig.car !== null) ? financialConfig.car : 400; // Match Calculator
+    const gas = (financialConfig.gas !== undefined && financialConfig.gas !== null) ? financialConfig.gas : 300; // Match Calculator
+    const equipRent = (financialConfig.equipmentRent !== undefined && financialConfig.equipmentRent !== null) ? financialConfig.equipmentRent : 0;
     const perTeamExpenses = car + gas + equipRent;
 
     // Total Fixed Expenses for this Team

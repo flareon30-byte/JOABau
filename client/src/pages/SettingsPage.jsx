@@ -7,7 +7,8 @@ const SettingsPage = () => {
     const [financials, setFinancials] = useState({
         installers: {
             salary: 1500,
-            insurance: 330,
+            insuranceRate: 21.50,
+            sokaBauPercent: 15.10,
             dietasPerDay: 0,
             car: 400,
             gas: 300,
@@ -30,7 +31,8 @@ const SettingsPage = () => {
         },
         blowers: {
             salary: 1600,
-            insurance: 352,
+            insuranceRate: 21.50,
+            sokaBauPercent: 15.10,
             dietasPerDay: 0,
             car: 400,
             gas: 300,
@@ -43,7 +45,7 @@ const SettingsPage = () => {
         },
         backOffice: {
             salary: 1500,
-            insurance: 330,
+            insuranceRate: 21.50,
             dietasPerDay: 0,
             opCostPerPerson: 200,
             pricePerAppointment: 15
@@ -167,7 +169,7 @@ const SettingsPage = () => {
         return (
             <div className="space-y-6 animate-fadeIn">
                 <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-xl font-bold text-slate-700">Configuración Back Office</h3>
+                    <h3 className="text-xl font-bold text-slate-700">Gestión Económica Back Office</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -180,9 +182,15 @@ const SettingsPage = () => {
                                 <input type="number" value={data.salary} onChange={(e) => handleFinancialChange(groupKey, 'salary', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (€)</label>
-                                <input type="number" value={data.insurance} onChange={(e) => handleFinancialChange(groupKey, 'insurance', e.target.value)} className="w-full p-2 border rounded-lg" />
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (%)</label>
+                                <input type="number" step="0.01" value={data.insuranceRate} onChange={(e) => handleFinancialChange(groupKey, 'insuranceRate', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
+                            {groupKey !== 'backOffice' && groupKey !== 'protocols' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase">SOKA-BAU (%)</label>
+                                    <input type="number" step="0.01" value={data.sokaBauPercent} onChange={(e) => handleFinancialChange(groupKey, 'sokaBauPercent', e.target.value)} className="w-full p-2 border rounded-lg" />
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase">Dietas (por día) (€)</label>
                                 <input type="number" value={data.dietasPerDay} onChange={(e) => handleFinancialChange(groupKey, 'dietasPerDay', e.target.value)} className="w-full p-2 border rounded-lg" />
@@ -224,7 +232,7 @@ const SettingsPage = () => {
         return (
             <div className="space-y-6 animate-fadeIn">
                 <div className="flex items-center gap-2 mb-4">
-                    <h3 className="text-xl font-bold text-slate-700">Configuración PROTOCOLOS (Verificado)</h3>
+                    <h3 className="text-xl font-bold text-slate-700">Parámetros Económicos de PROTOCOLOS</h3>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -237,9 +245,15 @@ const SettingsPage = () => {
                                 <input type="number" value={data.salary} onChange={(e) => handleFinancialChange(groupKey, 'salary', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (€)</label>
-                                <input type="number" value={data.insurance} onChange={(e) => handleFinancialChange(groupKey, 'insurance', e.target.value)} className="w-full p-2 border rounded-lg" />
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (%)</label>
+                                <input type="number" step="0.01" value={data.insuranceRate} onChange={(e) => handleFinancialChange(groupKey, 'insuranceRate', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
+                            {groupKey !== 'backOffice' && groupKey !== 'protocols' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase">SOKA-BAU (%)</label>
+                                    <input type="number" step="0.01" value={data.sokaBauPercent} onChange={(e) => handleFinancialChange(groupKey, 'sokaBauPercent', e.target.value)} className="w-full p-2 border rounded-lg" />
+                                </div>
+                            )}
                         </div>
                     </div>
 
@@ -276,9 +290,15 @@ const SettingsPage = () => {
                                 <input type="number" value={data.salary} onChange={(e) => handleFinancialChange(groupKey, 'salary', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (€)</label>
-                                <input type="number" value={data.insurance} onChange={(e) => handleFinancialChange(groupKey, 'insurance', e.target.value)} className="w-full p-2 border rounded-lg" />
+                                <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (%)</label>
+                                <input type="number" step="0.01" value={data.insuranceRate} onChange={(e) => handleFinancialChange(groupKey, 'insuranceRate', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
+                            {groupKey !== 'backOffice' && groupKey !== 'protocols' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase">SOKA-BAU (%)</label>
+                                    <input type="number" step="0.01" value={data.sokaBauPercent} onChange={(e) => handleFinancialChange(groupKey, 'sokaBauPercent', e.target.value)} className="w-full p-2 border rounded-lg" />
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase">Dietas (por día) (€)</label>
                                 <input type="number" value={data.dietasPerDay} onChange={(e) => handleFinancialChange(groupKey, 'dietasPerDay', e.target.value)} className="w-full p-2 border rounded-lg" />
@@ -329,7 +349,7 @@ const SettingsPage = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
                 <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
                     <Briefcase className="text-joa-blue" />
-                    Configuración de Rentabilidad (Actualizado)
+                    Gestión de Rentabilidad y Costes
                 </h2>
 
                 {message && (
@@ -367,13 +387,13 @@ const SettingsPage = () => {
                         onClick={() => setActiveTab('protocols')}
                         className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'protocols' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                     >
-                        Costes: Protocolos (Nuevo)
+                        Gestión: Protocolos
                     </button>
                     <button
                         onClick={() => setActiveTab('backOffice')}
                         className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'backOffice' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
                     >
-                        Costes: Back Office
+                        Gestión: Back Office
                     </button>
                 </div>
                 
@@ -408,7 +428,7 @@ const SettingsPage = () => {
                                     className="bg-joa-blue hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-xl transition-colors flex items-center gap-2 shadow-lg shadow-blue-500/20"
                                 >
                                     <Save size={20} />
-                                    Guardar Gastos de este Cliente
+                                    Guardar Parámetros de Rentabilidad
                                 </button>
                             </div>
                         </form>
@@ -521,8 +541,8 @@ const SettingsPage = () => {
                                     />
                                 ) : (
                                     <form onSubmit={handleSubmit}>
-                                        {renderFinancialInputs('installers', 'Configuración de Instaladores')}
-                                        {renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
+                                        {renderFinancialInputs('installers', 'Parámetros Económicos: Instaladores')}
+                                        {renderFinancialInputs('blowers', 'Parámetros Económicos: Soplado')}
                                         {renderBackOfficeInputs()}
 
                                         <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
