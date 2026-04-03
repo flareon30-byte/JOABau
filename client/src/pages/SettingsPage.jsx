@@ -178,8 +178,6 @@ const SettingsPage = () => {
                         <h4 className="font-bold text-slate-600 mb-4 flex items-center gap-2"><Users size={18} /> Costes de Personal (Por Persona/Mes)</h4>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase">Salario Base (€)</label>
-                                <input type="number" value={data.salary} onChange={(e) => handleFinancialChange(groupKey, 'salary', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (%)</label>
@@ -282,8 +280,6 @@ const SettingsPage = () => {
                         <h4 className="font-bold text-slate-600 mb-4 flex items-center gap-2"><Users size={18} /> Costes de Personal (Por Persona/Mes)</h4>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase">Salario Base (€)</label>
-                                <input type="number" value={data.salary} onChange={(e) => handleFinancialChange(groupKey, 'salary', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase">Seguros Sociales (%)</label>
