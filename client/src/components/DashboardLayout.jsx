@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, Folder, Zap, ChevronRight, Settings, Lock, ClipboardList, Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator } from 'lucide-react';
+import { 
+    LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, 
+    Folder, Zap, ChevronRight, ChevronDown, Settings, Lock, ClipboardList, 
+    Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase
+} from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 
 // Notification Sound URL (Short subtle beep)
@@ -25,6 +29,12 @@ const Toast = ({ message, onClose }) => (
 const DashboardLayout = () => {
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+    const [openGroups, setOpenGroups] = useState({
+        production: true,
+        economy: true,
+        hr: false,
+        services: false
+    });
 
     // Notifications State
     const [notifications, setNotifications] = useState([]);
@@ -124,24 +134,64 @@ const DashboardLayout = () => {
         navigate('/login');
     };
 
-    const navItems = [
-        { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
-        { icon: Users, label: 'Usuarios', path: '/dashboard/users', roles: ['SUPER_ADMIN', 'ADMIN'] },
-        { icon: Users, label: 'Equipos', path: '/dashboard/teams', roles: ['SUPER_ADMIN', 'ADMIN'] },
-        { icon: Folder, label: 'Proyectos', path: '/dashboard/projects', roles: ['SUPER_ADMIN', 'ADMIN'] },
-        { icon: Network, label: 'Soplado', path: '/dashboard/blowing', roles: ['BLOWER', 'SUPER_ADMIN', 'ADMIN'] },
-        { icon: Zap, label: 'Fusión', path: '/dashboard/fusion', roles: ['BLOWER', 'SUPER_ADMIN', 'ADMIN'] },
-        { icon: Calendar, label: 'Citas (Back Office)', path: '/dashboard/appointments', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
-        { icon: AlertTriangle, label: 'Averías / Incidencias', path: '/dashboard/issues', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
-        { icon: CheckCircle, label: 'Activaciones', path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
-        { icon: ClipboardList, label: 'Protocolos', path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] }, // New Section
-        { icon: DollarSign, label: 'Facturación Clientes', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
-        { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
-        { icon: Sun, label: 'Vacaciones Personal', path: '/dashboard/vacations-admin', roles: ['SUPER_ADMIN', 'ADMIN'] },
-        { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER', 'SUPER_ADMIN'] },
-        { icon: Package, label: 'Pedidos de Material', path: '/dashboard/material-orders' },
-        { icon: Umbrella, label: 'Mis Vacaciones', path: '/dashboard/vacations' },
-        { icon: Calculator, label: 'Sist. de Rentabilidad', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
+    const toggleGroup = (group) => {
+        setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }));
+    };
+
+    const navGroups = [
+        {
+            id: 'main',
+            items: [
+                { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
+            ]
+        },
+        {
+            id: 'production',
+            label: 'Gestión de Producción',
+            icon: Briefcase,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'BLOWER', 'ACTIVATOR', 'PROTOCOL_MANAGER'],
+            items: [
+                { icon: Network, label: 'Soplado', path: '/dashboard/blowing', roles: ['BLOWER', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: Zap, label: 'Fusión', path: '/dashboard/fusion', roles: ['BLOWER', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: Calendar, label: 'Citas (Back Office)', path: '/dashboard/appointments', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: AlertTriangle, label: 'Averías / Incidencias', path: '/dashboard/issues', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: CheckCircle, label: 'Activaciones', path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: ClipboardList, label: 'Protocolos', path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
+            ]
+        },
+        {
+            id: 'economy',
+            label: 'Área Económica',
+            icon: TrendingUp,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'ACTIVATOR', 'BLOWER'],
+            items: [
+                { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER', 'SUPER_ADMIN'] },
+                { icon: DollarSign, label: 'Facturación Clientes', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Calculator, label: 'Sist. de Rentabilidad', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
+            ]
+        },
+        {
+            id: 'hr',
+            label: 'Recursos Humanos',
+            icon: Users,
+            roles: ['SUPER_ADMIN', 'ADMIN'],
+            items: [
+                { icon: Users, label: 'Usuarios', path: '/dashboard/users', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Users, label: 'Equipos', path: '/dashboard/teams', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Folder, label: 'Proyectos', path: '/dashboard/projects', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Sun, label: 'Vacaciones Personal', path: '/dashboard/vacations-admin', roles: ['SUPER_ADMIN', 'ADMIN'] },
+            ]
+        },
+        {
+            id: 'services',
+            label: 'Servicios y Personal',
+            icon: Package,
+            items: [
+                { icon: Package, label: 'Pedidos de Material', path: '/dashboard/material-orders' },
+                { icon: Umbrella, label: 'Mis Vacaciones', path: '/dashboard/vacations' },
+            ]
+        }
     ];
 
     // Close sidebar on route change on mobile
@@ -222,29 +272,57 @@ const DashboardLayout = () => {
                     </button>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-1 overflow-y-auto custom-scrollbar">
-                    {navItems.map((item) => {
-                        if (item.roles && !item.roles.includes(user.role)) return null;
+                <nav className="flex-1 px-4 space-y-4 overflow-y-auto custom-scrollbar pb-10">
+                    {navGroups.map((group) => {
+                        // Check if group should be visible for this user
+                        if (group.roles && !group.roles.includes(user.role)) return null;
 
-                        const isActive = location.pathname === item.path;
+                        const hasActiveChild = group.items.some(item => location.pathname === item.path);
+                        const isOpen = openGroups[group.id] || hasActiveChild;
+
                         return (
-                            <Link
-                                key={item.path}
-                                to={item.path}
-                                onClick={() => window.innerWidth < 768 && setIsSidebarOpen(false)}
-                                className={`flex items-center p-3.5 rounded-xl transition-all group ${isActive
-                                    ? 'bg-joa-blue text-white shadow-lg shadow-joa-blue/30'
-                                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-                                    }`}
-                            >
-                                <item.icon size={22} className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-joa-blue'} transition-colors ${isSidebarOpen ? 'mr-3' : 'mx-auto'}`} />
-                                {isSidebarOpen && (
-                                    <>
-                                        <span className="font-medium flex-1">{item.label}</span>
-                                        {isActive && <ChevronRight size={16} className="text-white/50" />}
-                                    </>
+                            <div key={group.id} className="space-y-1">
+                                {group.label && isSidebarOpen && (
+                                    <button
+                                        onClick={() => toggleGroup(group.id)}
+                                        className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-joa-blue transition-colors group"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            {group.icon && <group.icon size={12} />}
+                                            {group.label}
+                                        </div>
+                                        {isOpen ? <ChevronDown size={12} className="transition-transform" /> : <ChevronRight size={12} />}
+                                    </button>
                                 )}
-                            </Link>
+
+                                {(isOpen || !group.label || !isSidebarOpen) && (
+                                    <div className="space-y-1">
+                                        {group.items.map((item) => {
+                                            if (item.roles && !item.roles.includes(user.role)) return null;
+
+                                            const isActive = location.pathname === item.path;
+                                            return (
+                                                <Link
+                                                    key={item.path}
+                                                    to={item.path}
+                                                    onClick={() => window.innerWidth < 768 && setIsSidebarOpen(false)}
+                                                    className={`flex items-center p-3 rounded-xl transition-all group ${isActive
+                                                        ? 'bg-joa-blue text-white shadow-lg shadow-joa-blue/30'
+                                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                                        }`}
+                                                >
+                                                    <item.icon size={isSidebarOpen ? 20 : 22} className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-joa-blue'} transition-colors ${isSidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+                                                    {isSidebarOpen && (
+                                                        <span className={`font-medium flex-1 ${isActive ? 'text-white' : 'text-slate-600'}`}>
+                                                            {item.label}
+                                                        </span>
+                                                    )}
+                                                </Link>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         );
                     })}
                 </nav>
@@ -293,7 +371,7 @@ const DashboardLayout = () => {
 
                         <div>
                             <h1 className="text-xl md:text-2xl font-bold text-slate-800">
-                                {navItems.find(i => i.path === location.pathname)?.label || 'Dashboard'}
+                                {navGroups.flatMap(g => g.items).find(i => i.path === location.pathname)?.label || 'Dashboard'}
                             </h1>
                             <p className="text-xs md:text-sm text-slate-500 hidden md:block">Gestión integral de fibra óptica</p>
                         </div>
