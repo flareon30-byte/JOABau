@@ -33,23 +33,23 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
     // Per Person Expenses (Matching Calculator App.jsx)
     const salary = financialConfig.salary || 1500;
     
-    // Calculator Default SS: ~323 for installers, ~344 for blowers
-    const isBlower = teamMembers.some(m => m.role === 'BLOWER');
-    const defaultInsurance = isBlower ? 344 : 323;
-
-    const insurance = (financialConfig.insurance !== undefined) ? financialConfig.insurance : defaultInsurance;
-    const sokaBauPercent = financialConfig.sokaBauPercent || 15.10; // Sync: Vlotho 2025 default 15.10%
-    const sokaBau = (sokaBauPercent > 0) ? (salary * sokaBauPercent / 100) : 0;
+    // Calculator Proportional SS: 21.50% and Soka-Bau: 15.10%
+    const ssRate = (financialConfig.insuranceRate !== undefined) ? financialConfig.insuranceRate : 21.50; 
+    const insurance = (salary * ssRate / 100);
+    
+    const sokaBauPercent = (financialConfig.sokaBauPercent !== undefined) ? financialConfig.sokaBauPercent : 15.10;
+    const sokaBau = (salary * sokaBauPercent / 100);
+    
     const dietasPerDay = financialConfig.dietasPerDay || 0;
     const rent = financialConfig.rent || 0;
-    const materialsPerPerson = (financialConfig.materials !== undefined) ? financialConfig.materials : (isBlower ? 50 : 100);
+    const materialsPerPerson = (financialConfig.materials !== undefined) ? financialConfig.materials : 100;
     const totalDietasPerPerson = dietasPerDay * workingDays;
 
     const perPersonExpenses = salary + insurance + sokaBau + rent + totalDietasPerPerson + materialsPerPerson;
 
     // Per Team Expenses
-    const car = financialConfig.car || 0;
-    const gas = financialConfig.gas || 0;
+    const car = financialConfig.car || 400; // Match Calculator
+    const gas = financialConfig.gas || 300; // Match Calculator
     const equipRent = financialConfig.equipmentRent || 0;
     const perTeamExpenses = car + gas + equipRent;
 
