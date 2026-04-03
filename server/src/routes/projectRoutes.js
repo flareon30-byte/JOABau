@@ -14,6 +14,7 @@ router.get('/', projectController.getAllProjects);
 // Admin only actions
 router.post('/', checkRole(['ADMIN', 'SUPER_ADMIN']), projectController.createProject);
 router.post('/import', checkRole(['ADMIN', 'SUPER_ADMIN']), upload.single('file'), projectController.importProject);
+router.put('/:id', checkRole(['ADMIN', 'SUPER_ADMIN']), projectController.updateProject);
 router.delete('/:id', checkRole(['ADMIN', 'SUPER_ADMIN']), projectController.deleteProject);
 
 module.exports = router;

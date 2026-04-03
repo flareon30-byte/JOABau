@@ -10,6 +10,7 @@ exports.getAllProjects = async (req, res) => {
         const projects = await prisma.project.findMany({
             where: { isDemo },
             include: {
+                clientCompany: true, // Include client to show in cards
                 _count: {
                     select: { addresses: true }
                 }
@@ -22,11 +23,12 @@ exports.getAllProjects = async (req, res) => {
 };
 
 exports.createProject = async (req, res) => {
-    const { name } = req.body;
+    const { name, clientCompanyId } = req.body;
     try {
         const project = await prisma.project.create({
             data: {
                 name,
+                clientCompanyId: clientCompanyId || null,
                 isDemo: req.isDemo || false
             }
         });
@@ -44,7 +46,7 @@ exports.importProject = async (req, res) => {
         return res.status(400).json({ message: 'No file uploaded' });
     }
 
-    const { projectName, importType } = req.body; // importType: 'standard' | 'protocol'
+    const { projectName, importType, clientCompanyId } = req.body; // importType: 'standard' | 'protocol'
     const filePath = req.file.path;
 
     try {
@@ -52,7 +54,10 @@ exports.importProject = async (req, res) => {
         let project;
         try {
             project = await prisma.project.create({
-                data: { name: projectName }
+                data: { 
+                    name: projectName,
+                    clientCompanyId: clientCompanyId || null
+                 }
             });
         } catch (e) {
             if (e.code === 'P2002') {
@@ -240,6 +245,24 @@ exports.importProject = async (req, res) => {
         if (fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
+    }
+};
+
+exports.updateProject = async (req, res) => {
+    const { id } = req.params;
+    const { name, clientCompanyId } = req.body;
+    try {
+        const updated = await prisma.project.update({
+            where: { id },
+            data: {
+                name,
+                clientCompanyId: clientCompanyId || null
+            }
+        });
+        res.json(updated);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error updating project' });
     }
 };
 

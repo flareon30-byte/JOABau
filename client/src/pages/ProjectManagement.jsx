@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Plus, Trash2, Upload, FileSpreadsheet, Folder, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Upload, FileSpreadsheet, Folder, RefreshCw, Pencil, User } from 'lucide-react';
 
 const ProjectManagement = () => {
     const [projects, setProjects] = useState([]);
@@ -14,6 +14,9 @@ const ProjectManagement = () => {
     const [projectToDelete, setProjectToDelete] = useState(null);
     const [confirmName, setConfirmName] = useState('');
     const [importType, setImportType] = useState('standard'); // 'standard' | 'protocol'
+    const [clients, setClients] = useState([]);
+    const [isPropertyMode, setIsPropertyMode] = useState(false);
+    const [editingProject, setEditingProject] = useState(null);
 
     const fetchProjects = async () => {
         try {
@@ -26,28 +29,48 @@ const ProjectManagement = () => {
 
     useEffect(() => {
         fetchProjects();
+        fetchClients();
     }, []);
+
+    const fetchClients = async () => {
+        try {
+            const response = await api.get('/api/clients');
+            setClients(response.data);
+        } catch (error) {
+            console.error('Error fetching clients:', error);
+        }
+    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setUploading(true);
         try {
-            if (isImportMode) {
+            if (isPropertyMode && editingProject) {
+                // Update Project Properties
+                await api.put(`/api/projects/${editingProject.id}`, {
+                    name: formData.name,
+                    clientCompanyId: formData.clientCompanyId
+                });
+            } else if (isImportMode) {
                 const data = new FormData();
                 data.append('projectName', formData.name);
                 data.append('file', formData.file);
                 data.append('importType', importType);
+                data.append('clientCompanyId', formData.clientCompanyId || '');
 
                 const response = await api.post('/api/projects/import', data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 alert(response.data.message || 'Proyecto importado correctamente');
             } else {
-                await api.post('/api/projects', { name: formData.name });
+                await api.post('/api/projects', { 
+                    name: formData.name,
+                    clientCompanyId: formData.clientCompanyId
+                });
             }
             fetchProjects();
             setIsModalOpen(false);
-            setFormData({ name: '', file: null });
+            setFormData({ name: '', file: null, clientCompanyId: '' });
         } catch (error) {
             console.error('Error saving project:', error);
             alert(error.response?.data?.message || 'Error al guardar proyecto');
@@ -83,7 +106,21 @@ const ProjectManagement = () => {
         setIsImportMode(importMode);
         setImportType(type);
         setIsUpdateMode(false);
-        setFormData({ name: '', file: null });
+        setIsPropertyMode(false);
+        setFormData({ name: '', file: null, clientCompanyId: '' });
+        setIsModalOpen(true);
+    };
+
+    const openEditPropertiesModal = (project) => {
+        setIsPropertyMode(true);
+        setIsImportMode(false);
+        setIsUpdateMode(false);
+        setEditingProject(project);
+        setFormData({ 
+            name: project.name, 
+            file: null, 
+            clientCompanyId: project.clientCompanyId || '' 
+        });
         setIsModalOpen(true);
     };
 
@@ -136,6 +173,13 @@ const ProjectManagement = () => {
                             </div>
                             <div className="flex gap-2">
                                 <button
+                                    onClick={() => openEditPropertiesModal(project)}
+                                    className="text-slate-400 hover:text-blue-600 transition-colors"
+                                    title="Editar Propiedades"
+                                >
+                                    <Pencil size={20} />
+                                </button>
+                                <button
                                     onClick={() => openUpdateModal(project)}
                                     className="text-slate-400 hover:text-blue-600 transition-colors"
                                     title="Actualizar / Añadir Datos"
@@ -147,7 +191,13 @@ const ProjectManagement = () => {
                                 </button>
                             </div>
                         </div>
-                        <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-center text-sm text-slate-500">
+                        <div className="mt-4 pt-4 border-t border-slate-200 flex flex-col gap-2 text-sm text-slate-500">
+                            <div className="flex items-center gap-2">
+                                <User size={14} className="text-slate-400" />
+                                <span className={project.clientCompany ? "font-bold text-slate-700" : "italic"}>
+                                    {project.clientCompany?.name || 'Sin Cliente Asignado'}
+                                </span>
+                            </div>
                             <span>Creado: {new Date(project.createdAt).toLocaleDateString()}</span>
                         </div>
                     </div>
@@ -192,9 +242,28 @@ const ProjectManagement = () => {
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         className={`w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none ${isUpdateMode ? 'bg-slate-100 text-slate-500' : ''}`}
+                                        placeholder="Nombre del Proyecto"
                                         required
                                         readOnly={isUpdateMode}
                                     />
+                                </div>
+                            )}
+
+                            {/* Client Selection (For Create and Property Mode) */}
+                            {(!isUpdateMode || isPropertyMode) && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Empresa Cliente (Dueño)</label>
+                                    <select
+                                        value={formData.clientCompanyId}
+                                        onChange={(e) => setFormData({ ...formData, clientCompanyId: e.target.value })}
+                                        className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    >
+                                        <option value="">Ninguno / Sin Asignar</option>
+                                        {clients.map(c => (
+                                            <option key={c.id} value={c.id}>{c.name}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-[10px] text-slate-400 mt-1 italic">Vincular a un cliente permite un filtrado correcto en el Área Económica.</p>
                                 </div>
                             )}
 
@@ -235,7 +304,7 @@ const ProjectManagement = () => {
                                     disabled={uploading}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                                 >
-                                    {uploading ? 'Procesando...' : (isUpdateMode ? 'Actualizar' : (isImportMode ? 'Importar' : 'Crear'))}
+                                    {uploading ? 'Procesando...' : (isPropertyMode ? 'Guardar Cambios' : (isUpdateMode ? 'Actualizar Excel' : (isImportMode ? 'Importar' : 'Crear')))}
                                 </button>
                             </div>
                         </form>
