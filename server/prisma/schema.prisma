@@ -88,6 +88,9 @@ model Team {
   activeClientCompanyId String?
   activeClientCompany   ClientCompany? @relation(fields: [activeClientCompanyId], references: [id])
   
+  vehicleId    String?       @unique
+  vehicle      Vehicle?      @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
@@ -454,4 +457,46 @@ model SimpleInstallationItem {
   quantity             Int               @default(1)
   priceAtTime          Float
   bonusAtTime          Float
+}
+
+model Vehicle {
+  id               String       @id @default(uuid())
+  make             String
+  model            String
+  plate            String       @unique
+  initialKms       Float        @default(0.0)
+  currentKms       Float        @default(0.0)
+  annualKmLimit    Float        @default(10000.0) // Your insurance limit
+  
+  team             Team?
+  logs             VehicleLog[]
+
+  isDemo           Boolean      @default(false)
+  
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+enum VehicleLogType {
+  FUEL
+  ODOMETER
+  MAINTENANCE
+}
+
+model VehicleLog {
+  id               String         @id @default(uuid())
+  vehicleId        String
+  vehicle          Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  
+  type             VehicleLogType @default(FUEL)
+  kms              Float?         // Reading from tachograph
+  amount           Float?         // Price paid for gas
+  liters           Float?
+  
+  photos           String[]       // Tickets, tachograph photos
+  
+  createdById      String?
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
 }

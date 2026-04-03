@@ -24,6 +24,8 @@ import VacationPage from './pages/VacationPage';
 import AdminVacationPage from './pages/AdminVacationPage';
 import MaterialOrdersPage from './pages/MaterialOrdersPage';
 import GnkInstallationForm from './pages/GnkInstallationForm';
+import VehicleManagement from './pages/VehicleManagement';
+import VehicleLogForm from './pages/VehicleLogForm';
 
 function App() {
   return (
@@ -52,6 +54,8 @@ function App() {
           <Route path="debug" element={<BillingDebug />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="gnk-installation" element={<GnkInstallationForm />} />
+          <Route path="vehicles" element={<VehicleManagement />} />
+          <Route path="my-vehicle" element={<VehicleLogForm />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>

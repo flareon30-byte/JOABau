@@ -169,6 +169,7 @@ const DashboardLayout = () => {
                 { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER'] },
                 { icon: DollarSign, label: 'Facturación Clientes', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Truck, label: 'Control de Flota', path: '/dashboard/vehicles', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Calculator, label: 'Sist. de Rentabilidad', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
             ]
         },
@@ -189,6 +190,7 @@ const DashboardLayout = () => {
             icon: Package,
             items: [
                 { icon: Package, label: 'Pedidos de Material', path: '/dashboard/material-orders' },
+                { icon: Truck, label: 'Mi Vehículo', path: '/dashboard/my-vehicle', roles: ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER'] },
                 { icon: Umbrella, label: 'Mis Vacaciones', path: '/dashboard/vacations' },
             ]
         }
