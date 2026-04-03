@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Plus, Trash2, Edit3, AlertCircle, Fuel, Gauge, TrendingUp, Search } from 'lucide-react';
-import api from '../services/api';
+import api from '../api/axios';
 
 const VehicleManagement = () => {
     const [vehicles, setVehicles] = useState([]);
