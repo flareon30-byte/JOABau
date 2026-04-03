@@ -18,16 +18,15 @@ const TeamManagement = () => {
     const fetchData = async () => {
         try {
             const [teamsRes, usersRes, clientsRes, vehiclesRes] = await Promise.all([
-                api.get('/api/teams'),
-                api.get('/api/users'),
-                api.get('/api/clients').catch(() => ({ data: [] })),
-                api.get('/api/vehicles').catch(() => ({ data: [] }))
+                api.get('/api/teams').catch(err => { console.error('Teams load failed', err); return { data: [] }; }),
+                api.get('/api/users').catch(err => { console.error('Users load failed', err); return { data: [] }; }),
+                api.get('/api/clients').catch(err => { console.error('Clients load failed', err); return { data: [] }; }),
+                api.get('/api/vehicles').catch(err => { console.error('Vehicles load failed', err); return { data: [] }; })
             ]);
-            setTeams(teamsRes.data);
-            setClients(clientsRes.data);
-            setVehicles(vehiclesRes.data);
-            // Filter users who are not in a team OR are the ones in the team being edited (so they appear in the list)
-            setUsers(usersRes.data);
+            setTeams(teamsRes.data || []);
+            setClients(clientsRes.data || []);
+            setVehicles(vehiclesRes.data || []);
+            setUsers(usersRes.data || []);
         } catch (error) {
             console.error('Error fetching data:', error);
         }
