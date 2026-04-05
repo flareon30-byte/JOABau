@@ -170,14 +170,12 @@ const CompleteActivationPage = () => {
 
                     // --- DRAW LOGO ---
                     const logoImg = new Image();
-                    logoImg.crossOrigin = "anonymous";
                     logoImg.onload = () => {
-                        const logoHeight = bottomBarHeight * 0.7; // 70% of bar height
+                        const logoHeight = bottomBarHeight * 0.85; // Aumento presencia
                         const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
                         const logoX = img.width - padding - logoWidth;
                         const logoY = img.height - bottomBarHeight + (bottomBarHeight - logoHeight) / 2;
                         
-                        // Add a subtle white glow/background to logo if needed, or just draw
                         ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
 
                         // Finalize
@@ -187,7 +185,7 @@ const CompleteActivationPage = () => {
                                 preview: canvas.toDataURL('image/jpeg', 0.7),
                                 name: file.name
                             });
-                        }, 'image/jpeg', 0.8);
+                        }, 'image/jpeg', 0.82);
                     };
                     logoImg.onerror = () => {
                         // Fallback if logo fails
@@ -197,9 +195,9 @@ const CompleteActivationPage = () => {
                                 preview: canvas.toDataURL('image/jpeg', 0.7),
                                 name: file.name
                             });
-                        }, 'image/jpeg', 0.8);
+                        }, 'image/jpeg', 0.82);
                     };
-                    logoImg.src = '/logo.png'; // Ensure logo.png exists in client/public
+                    logoImg.src = window.location.origin + '/logo.png'; 
                 };
                 img.src = e.target.result;
             };
@@ -622,7 +620,6 @@ const CompleteActivationPage = () => {
                         accept="image/*"
                         multiple
                         className="hidden"
-                        capture="environment" // Prefer rear camera on mobile
                     />
                     <p className="text-xs text-slate-400 text-center">
                         Haz clic en una foto para verla o eliminarla.
