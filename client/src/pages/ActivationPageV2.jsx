@@ -88,24 +88,38 @@ const ActivationPageV2 = () => {
                         setFormData(prev => ({ ...prev, klsId: found.address.klsId }));
                     }
 
-                    // Fetch custom price items (billing concepts) for this client
-                    const clientId = activeClientId || found.address?.project?.clientCompanyId;
-                    if (clientId) {
-                        try {
+                    // Fetch custom price items (billing concepts)
+                    let clientId = activeClientId || found.address?.project?.clientCompanyId;
+                    try {
+                        let finalActivationItems = [];
+                        
+                        if (clientId) {
                             const pRes = await api.get(`/api/clients/${clientId}/price-items`);
-                            const activationItems = pRes.data.filter(item => item.department === 'ACTIVATION');
-                            setPriceItems(activationItems);
-                            
-                            // If no custom value matches current DB value and there are items, default to the first one safely
-                            const info = found.address.activationInfo;
-                            if (!info || (!info.activationType && !info.customActivationName)) {
-                                if (activationItems.length > 0) {
-                                    setFormData(prev => ({ ...prev, activationType: activationItems[0].name }));
-                                }
+                            finalActivationItems = pRes.data.filter(item => item.department === 'ACTIVATION');
+                        } 
+                        
+                        // Fallback: If no client ID was assigned to the project or team, get the first client that has price items set up
+                        if (finalActivationItems.length === 0) {
+                            const allClientsRes = await api.get('/api/clients');
+                            const clientsWithItems = allClientsRes.data.filter(c => c.priceItems && c.priceItems.length > 0);
+                            if (clientsWithItems.length > 0) {
+                                finalActivationItems = clientsWithItems[0].priceItems.filter(item => item.department === 'ACTIVATION');
+                                clientId = clientsWithItems[0].id; // For reference
                             }
-                        } catch (err) {
-                            console.error('Error fetching price items:', err);
                         }
+
+                        setPriceItems(finalActivationItems);
+                        
+                        // If no custom value matches current DB value and there are items, default to the first one safely
+                        const info = found.address.activationInfo;
+                        if (!info || (!info.activationType && !info.customActivationName)) {
+                            if (finalActivationItems.length > 0) {
+                                setFormData(prev => ({ ...prev, activationType: finalActivationItems[0].name }));
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error fetching price items:', err);
+                        // Fallback on error handled by the render method
                     }
 
                 } else {
