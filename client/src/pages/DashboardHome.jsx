@@ -208,6 +208,55 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
     );
 };
 
+const DietaModal = ({ onLogged }) => {
+    const [submitting, setSubmitting] = useState(false);
+
+    const handleLog = async (type) => {
+        setSubmitting(true);
+        try {
+            await api.post('/api/dietas/log', { type });
+            onLogged();
+        } catch (error) {
+            console.error('Error logging diet:', error);
+            alert('Error al registrar la dieta');
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center">
+                <div className="w-16 h-16 bg-joa-blue/10 text-joa-blue rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <Wallet size={32} />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">Registro de Dieta</h3>
+                <p className="text-slate-500 mb-8">Antes de comenzar el día, indícanos dónde te alojas hoy para el cálculo de tus dietas.</p>
+
+                <div className="space-y-4">
+                    <button
+                        onClick={() => handleLog('HOTEL')}
+                        disabled={submitting}
+                        className="w-full py-4 bg-joa-blue text-white rounded-2xl font-bold shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-3 active:scale-95"
+                    >
+                        <Truck size={20} />
+                        Duermo en Hotel (28€)
+                    </button>
+                    <button
+                        onClick={() => handleLog('CASA')}
+                        disabled={submitting}
+                        className="w-full py-4 bg-slate-100 text-slate-700 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-3 active:scale-95"
+                    >
+                        <Navigation size={20} />
+                        Duermo en Casa (14€)
+                    </button>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold font-sans">Joa Technologien System</p>
+            </div>
+        </div>
+    );
+};
+
 const DashboardHome = () => {
     const navigate = useNavigate();
     const [stats, setStats] = useState({
@@ -220,7 +269,9 @@ const DashboardHome = () => {
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'completed'
     const [searchQuery, setSearchQuery] = useState('');
-    const [dateFilter, setDateFilter] = useState('today'); // 'today' | 'tomorrow' | 'next3' | 'week' | 'all'
+    const [dateFilter, setDateFilter] = useState('today');
+    const [showDietaPrompt, setShowDietaPrompt] = useState(false);
+    
     const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val || 0);
 
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -229,6 +280,14 @@ const DashboardHome = () => {
 
     const fetchData = async () => {
         try {
+            // Check for daily dieta log
+            if (isActivator) {
+                const dietaRes = await api.get('/api/dietas/today').catch(() => ({ data: null }));
+                if (!dietaRes.data) {
+                    setShowDietaPrompt(true);
+                }
+            }
+
             // Fetch clients for the dropdown
             const clientsRes = await api.get('/api/clients').catch(() => ({ data: [] }));
             setClients(clientsRes.data);
@@ -251,6 +310,7 @@ const DashboardHome = () => {
             setLoading(false);
         }
     };
+
 
     useEffect(() => {
         fetchData();
@@ -733,6 +793,8 @@ const DashboardHome = () => {
                     </div>
                 </div>
             )}
+            
+            {showDietaPrompt && <DietaModal onLogged={() => setShowDietaPrompt(false)} />}
         </div>
     );
 };

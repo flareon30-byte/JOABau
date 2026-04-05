@@ -180,17 +180,18 @@ const MyEarningsPage = () => {
                     </div>
                 </div>
 
-                {/* 2. Variable (Bonus + Saturday) */}
+                {/* 2. Variable (Bonus + Saturday + Dietas) */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 relative overflow-hidden group">
                     <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
                     <div className="relative">
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-wider mb-1">Variable (Estimado)</p>
-                        <h3 className={`text-3xl font-bold ${accumulatedBonus + (personal?.mySaturdayPay || 0) > 0 ? 'text-green-600' : 'text-slate-300'}`}>
-                            {money(accumulatedBonus + (personal?.mySaturdayPay || 0))}
+                        <h3 className={`text-3xl font-bold ${accumulatedBonus + (personal?.mySaturdayPay || 0) + (personal?.myDietasPay || 0) > 0 ? 'text-green-600' : 'text-slate-300'}`}>
+                            {money(accumulatedBonus + (personal?.mySaturdayPay || 0) + (personal?.myDietasPay || 0))}
                         </h3>
                         <div className="text-xs text-slate-400 mt-2 space-y-0.5">
                             <p>Bonus Producción: {money(accumulatedBonus)}</p>
                             <p>Extras Sábados: {money(personal?.mySaturdayPay)}</p>
+                            <p className="font-bold text-slate-600">Dietas (Hotel/Casa): {money(personal?.myDietasPay)}</p>
                         </div>
                     </div>
                 </div>
