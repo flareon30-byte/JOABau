@@ -14,6 +14,7 @@ const ActivationPageV2 = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [viewingPhotoIndex, setViewingPhotoIndex] = useState(null);
+    const [priceItems, setPriceItems] = useState([]);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -85,6 +86,26 @@ const ActivationPageV2 = () => {
                     } else if (found.address.klsId) {
                         setFormData(prev => ({ ...prev, klsId: found.address.klsId }));
                     }
+
+                    // Fetch custom price items (billing concepts) for this client
+                    const clientId = found.address?.project?.clientCompanyId;
+                    if (clientId) {
+                        try {
+                            const pRes = await api.get(`/api/clients/${clientId}/price-items`);
+                            const activationItems = pRes.data.filter(item => item.department === 'ACTIVATION');
+                            setPriceItems(activationItems);
+                            
+                            // If no custom value matches current DB value and there are items, default to the first one safely
+                            if (!info || !info.activationType) {
+                                if (activationItems.length > 0) {
+                                    setFormData(prev => ({ ...prev, activationType: activationItems[0].name }));
+                                }
+                            }
+                        } catch (err) {
+                            console.error('Error fetching price items:', err);
+                        }
+                    }
+
                 } else {
                     console.error('Appointment not found');
                 }
@@ -502,11 +523,21 @@ const ActivationPageV2 = () => {
                             onChange={handleInputChange}
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
                         >
-                            <option value="BP">BP (Básico)</option>
-                            <option value="BP_2_FAM">BP 2 Familias</option>
-                            <option value="BR_MULTI">SP (BR Multi)</option>
-                            <option value="SDU">SDU</option>
-                            <option value="MDU">MDU</option>
+                            {priceItems.length > 0 ? (
+                                priceItems.map(item => (
+                                    <option key={item.id} value={item.name}>
+                                        {item.name}
+                                    </option>
+                                ))
+                            ) : (
+                                <>
+                                    <option value="BP">BP (Básico)</option>
+                                    <option value="BP_2_FAM">BP 2 Familias</option>
+                                    <option value="BR_MULTI">SP (BR Multi)</option>
+                                    <option value="SDU">SDU</option>
+                                    <option value="MDU">MDU</option>
+                                </>
+                            )}
                         </select>
                     </div>
 
