@@ -368,9 +368,12 @@ const CompleteActivationPage = () => {
                 <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full">
                     <ArrowLeft size={24} className="text-slate-600" />
                 </button>
-                <div>
-                    <h1 className="text-lg font-bold text-slate-800">Finalizar Activación <span className="text-[10px] text-slate-400 font-normal">v2.4</span></h1>
-                    <p className="text-xs text-slate-500">{appointment.address.street} {appointment.address.number}</p>
+                <div className="flex-1">
+                    <h1 className="text-lg font-bold text-slate-800 leading-tight">Finalizar Activación</h1>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">V2.4 ACTIVADA</span>
+                        <p className="text-[10px] text-slate-500 line-clamp-1">{appointment.address.street} {appointment.address.number}</p>
+                    </div>
                 </div>
             </div>
 
