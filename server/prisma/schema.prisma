@@ -273,6 +273,7 @@ model ActivationInfo {
   address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
 
   activationType ActivationType
+  customActivationName String?
   familiesCount  Int
   apPorts        Int
   hasMoreClients Boolean

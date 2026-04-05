@@ -143,13 +143,18 @@ exports.submitActivation = async (req, res) => {
         let saturdayPay = 0;
 
         // Try to find specific prices in ClientPriceItems
-        const matchingItem = priceItems.find(item => {
-            if (activationType === 'BP' || activationType === 'BP_2_FAM') return item.name.includes('Caja') || item.name.includes('BP');
-            if (activationType === 'SDU') return item.name.includes('SDU') || item.name.includes('TA');
-            if (activationType === 'MDU') return item.name.includes('MDU');
-            if (activationType === 'BR_MULTI') return item.name.includes('BR') || item.name.includes('Multi');
-            return false;
-        });
+        // Try to find exact specific prices in ClientPriceItems BY NAME first, then fallback to legacy mapping
+        let matchingItem = priceItems.find(item => item.name === activationType);
+
+        if (!matchingItem) {
+            matchingItem = priceItems.find(item => {
+                if (activationType === 'BP' || activationType === 'BP_2_FAM') return item.name.includes('Caja') || item.name.includes('BP');
+                if (activationType === 'SDU') return item.name.includes('SDU') || item.name.includes('TA');
+                if (activationType === 'MDU') return item.name.includes('MDU');
+                if (activationType === 'BR_MULTI') return item.name.includes('BR') || item.name.includes('Multi');
+                return false;
+            });
+        }
 
         if (matchingItem) {
             basePrice = matchingItem.priceToClient;
@@ -214,8 +219,13 @@ exports.submitActivation = async (req, res) => {
                 });
             }
 
+            const validEnumValues = ['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'];
+            const finalActivationType = validEnumValues.includes(activationType) ? activationType : 'BP';
+            const customActivationName = !validEnumValues.includes(activationType) ? activationType : null;
+
             const data = {
-                activationType,
+                activationType: finalActivationType,
+                customActivationName: customActivationName,
                 familiesCount: famCount,
                 apPorts: apPortsInt,
                 hasMoreClients: hasMoreClients === 'true' || hasMoreClients === true,
