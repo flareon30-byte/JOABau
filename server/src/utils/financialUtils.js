@@ -20,7 +20,7 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
             bonusCost: 0,
             saturdayCost: 0
         },
-        counts: { bp: 0, ta: 0, sp: 0, mdu: 0, saturday: 0 }
+        counts: { bp: 0, ta: 0, mul: 0, mdu: 0, repair: 0, saturday: 0 }
     };
 
     if (!financialConfig) return stats;
@@ -110,7 +110,7 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
                 stats.counts.bp++;
                 const sps = (act.spInstalled || 0);
                 saturdaySp += sps;
-                stats.counts.sp += sps;
+                stats.counts.mul += sps;
                 if (act.taInstalled || (act.taCount && act.taCount > 0)) {
                     saturdayTa++;
                     stats.counts.ta++;
@@ -139,7 +139,7 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
                 stats.counts.bp++;
                 const sps = (act.spInstalled || 0);
                 spUnits += sps;
-                stats.counts.sp += sps;
+                stats.counts.mul += sps;
                 if (act.taInstalled || (act.taCount && act.taCount > 0)) {
                     taUnits++;
                     stats.counts.ta++;
@@ -165,6 +165,11 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
                 mduUnits++;
                 stats.counts.mdu++;
             }
+        }
+
+        // Count Repairs
+        if (type === 'REPAIR' || act.isRepair) {
+            stats.counts.repair++;
         }
     });
 
