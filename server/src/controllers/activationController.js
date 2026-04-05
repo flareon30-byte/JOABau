@@ -159,7 +159,7 @@ exports.submitActivation = async (req, res) => {
         if (matchingItem) {
             basePrice = matchingItem.priceToClient;
             if (isSaturday) {
-                saturdayPay = matchingItem.saturdayPay; // The direct payment to tech
+                saturdayPay += matchingItem.saturdayPay || 0; // Incrementar en vez de asignar
             }
         }
 
@@ -167,12 +167,31 @@ exports.submitActivation = async (req, res) => {
         const totalSpPrice = spCount * pricePerSP;
 
         let taPriceTotal = 0;
-        const pricePerTA = parseFloat(fin.pricePerTA || 25);
-        if (taCountInt > 0) taPriceTotal = taCountInt * pricePerTA;
+        let sduDynamicPrice = parseFloat(fin.pricePerTA || 25);
+        const sduItem = priceItems.find(item => item.name.trim().toUpperCase() === 'SDU');
+        if (sduItem && sduItem.priceToClient !== undefined) {
+            sduDynamicPrice = sduItem.priceToClient;
+        }
+        const finalTaCountCalculated = taCountInt > 0 ? taCountInt : (taInstalledBool ? 1 : 0);
+        if (finalTaCountCalculated > 0) {
+            taPriceTotal = finalTaCountCalculated * sduDynamicPrice;
+            if (isSaturday && sduItem && sduItem.saturdayPay) {
+                saturdayPay += (sduItem.saturdayPay * finalTaCountCalculated);
+            }
+        }
 
         let mduPriceTotal = 0;
-        const pricePerMDU = parseFloat(fin.pricePerMDU || 50);
-        if (isMduBool) mduPriceTotal = pricePerMDU;
+        let mduDynamicPrice = parseFloat(fin.pricePerMDU || 50);
+        const mduItem = priceItems.find(item => item.name.trim().toUpperCase() === 'MDU');
+        if (mduItem && mduItem.priceToClient !== undefined) {
+            mduDynamicPrice = mduItem.priceToClient;
+        }
+        if (isMduBool) {
+            mduPriceTotal = mduDynamicPrice;
+            if (isSaturday && mduItem && mduItem.saturdayPay) {
+                saturdayPay += mduItem.saturdayPay;
+            }
+        }
 
         let repairPriceTotal = 0;
         const priceRepair = parseFloat(settings?.repairPrice || 45);
