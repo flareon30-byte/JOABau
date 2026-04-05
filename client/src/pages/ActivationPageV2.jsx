@@ -240,72 +240,90 @@ const ActivationPageV2 = () => {
                 textY += lineHeight;
                 ctx.fillText(`📍 ${addressStr}`, textX, textY);
 
-                // Final JPEG Data URL
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                let finalBlob = null;
+                const finalizeResult = () => {
+                    // Final JPEG Data URL
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                    let finalBlob = null;
 
-                try {
-                    // Embed GPS if available
-                    let processedDataUrl = dataUrl;
-                    if (gpsCoords) {
-                        const zeroth = {};
-                        const exif = {};
-                        const gps = {};
-                        
-                        // Convert decimal degrees to EXIF rational format [degrees, minutes, seconds]
-                        const toRational = (decimal) => {
-                            const abs = Math.abs(decimal);
-                            const degrees = Math.floor(abs);
-                            const minutesDecimal = (abs - degrees) * 60;
-                            const minutes = Math.floor(minutesDecimal);
-                            const seconds = Math.round((minutesDecimal - minutes) * 60 * 100);
-                            return [[degrees, 1], [minutes, 1], [seconds, 100]];
-                        };
+                    try {
+                        // Embed GPS if available
+                        let processedDataUrl = dataUrl;
+                        if (gpsCoords) {
+                            const zeroth = {};
+                            const exif = {};
+                            const gps = {};
+                            
+                            // Convert decimal degrees to EXIF rational format [degrees, minutes, seconds]
+                            const toRational = (decimal) => {
+                                const abs = Math.abs(decimal);
+                                const degrees = Math.floor(abs);
+                                const minutesDecimal = (abs - degrees) * 60;
+                                const minutes = Math.floor(minutesDecimal);
+                                const seconds = Math.round((minutesDecimal - minutes) * 60 * 100);
+                                return [[degrees, 1], [minutes, 1], [seconds, 100]];
+                            };
 
-                        gps[piexif.GPSIFD.GPSLatitudeRef] = gpsCoords.lat >= 0 ? 'N' : 'S';
-                        gps[piexif.GPSIFD.GPSLatitude] = toRational(gpsCoords.lat);
-                        gps[piexif.GPSIFD.GPSLongitudeRef] = gpsCoords.lng >= 0 ? 'E' : 'W';
-                        gps[piexif.GPSIFD.GPSLongitude] = toRational(gpsCoords.lng);
-                        
-                        const exifObj = {"0th": zeroth, "Exif": exif, "GPS": gps};
-                        const exifBytes = piexif.dump(exifObj);
-                        processedDataUrl = piexif.insert(exifBytes, dataUrl);
+                            gps[piexif.GPSIFD.GPSLatitudeRef] = gpsCoords.lat >= 0 ? 'N' : 'S';
+                            gps[piexif.GPSIFD.GPSLatitude] = toRational(gpsCoords.lat);
+                            gps[piexif.GPSIFD.GPSLongitudeRef] = gpsCoords.lng >= 0 ? 'E' : 'W';
+                            gps[piexif.GPSIFD.GPSLongitude] = toRational(gpsCoords.lng);
+                            
+                            const exifObj = {"0th": zeroth, "Exif": exif, "GPS": gps};
+                            const exifBytes = piexif.dump(exifObj);
+                            processedDataUrl = piexif.insert(exifBytes, dataUrl);
+                        }
+
+                        // Convert DataURL to Blob
+                        const byteString = atob(processedDataUrl.split(',')[1]);
+                        const mimeString = processedDataUrl.split(',')[0].split(':')[1].split(';')[0];
+                        const ab = new ArrayBuffer(byteString.length);
+                        const ia = new Uint8Array(ab);
+                        for (let i = 0; i < byteString.length; i++) {
+                            ia[i] = byteString.charCodeAt(i);
+                        }
+                        finalBlob = new Blob([ab], {type: mimeString});
+
+                    } catch (exifErr) {
+                        console.error("Error embedding EXIF:", exifErr);
+                        // Fallback to standard blob if EXIF fails
+                        const byteString = atob(dataUrl.split(',')[1]);
+                        const ab = new ArrayBuffer(byteString.length);
+                        const ia = new Uint8Array(ab);
+                        for (let i = 0; i < byteString.length; i++) {
+                            ia[i] = byteString.charCodeAt(i);
+                        }
+                        finalBlob = new Blob([ab], {type: 'image/jpeg'});
                     }
 
-                    // Convert DataURL to Blob
-                    const byteString = atob(processedDataUrl.split(',')[1]);
-                    const mimeString = processedDataUrl.split(',')[0].split(':')[1].split(';')[0];
-                    const ab = new ArrayBuffer(byteString.length);
-                    const ia = new Uint8Array(ab);
-                    for (let i = 0; i < byteString.length; i++) {
-                        ia[i] = byteString.charCodeAt(i);
+                    clearTimeout(timeout);
+                    URL.revokeObjectURL(objectUrl);
+
+                    if (finalBlob) {
+                        resolve({
+                            blob: finalBlob,
+                            preview: URL.createObjectURL(finalBlob),
+                            name: file.name
+                        });
+                    } else {
+                        reject(new Error("Photo processing failed"));
                     }
-                    finalBlob = new Blob([ab], {type: mimeString});
+                };
 
-                } catch (exifErr) {
-                    console.error("Error embedding EXIF:", exifErr);
-                    // Fallback to standard blob if EXIF fails
-                    const byteString = atob(dataUrl.split(',')[1]);
-                    const ab = new ArrayBuffer(byteString.length);
-                    const ia = new Uint8Array(ab);
-                    for (let i = 0; i < byteString.length; i++) {
-                        ia[i] = byteString.charCodeAt(i);
-                    }
-                    finalBlob = new Blob([ab], {type: 'image/jpeg'});
-                }
-
-                clearTimeout(timeout);
-                URL.revokeObjectURL(objectUrl);
-
-                if (finalBlob) {
-                    resolve({
-                        blob: finalBlob,
-                        preview: URL.createObjectURL(finalBlob),
-                        name: file.name
-                    });
-                } else {
-                    reject(new Error("Photo processing failed"));
-                }
+                // --- DRAW LOGO ---
+                const logoImg = new Image();
+                logoImg.onload = () => {
+                    const logoHeight = bottomBarHeight * 0.9;
+                    const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
+                    const logoX = width - padding - logoWidth;
+                    const logoY = height - bottomBarHeight + (bottomBarHeight - logoHeight) / 2;
+                    ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
+                    finalizeResult();
+                };
+                logoImg.onerror = () => {
+                    console.error("Logo load err - finishing without it");
+                    finalizeResult();
+                };
+                logoImg.src = '/logo.png';
             };
 
             img.onerror = () => {
@@ -515,13 +533,16 @@ const ActivationPageV2 = () => {
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
             {/* Header */}
-            <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center gap-4">
+            <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center gap-4 border-b border-slate-100">
                 <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full">
                     <ArrowLeft size={24} className="text-slate-600" />
                 </button>
-                <div>
-                    <h1 className="text-lg font-bold text-slate-800">Finalizar Activación (V2)</h1>
-                    <p className="text-xs text-slate-500">{appointment.address.street} {appointment.address.number}</p>
+                <div className="flex-1">
+                    <h1 className="text-lg font-bold text-slate-800 leading-tight">Finalizar Activación</h1>
+                    <div className="flex items-center gap-2 mt-0.5">
+                        <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">V2.4 ACTIVADA</span>
+                        <p className="text-[10px] text-slate-500 line-clamp-1">{appointment.address.street} {appointment.address.number}</p>
+                    </div>
                 </div>
             </div>
 
@@ -874,17 +895,12 @@ const ActivationPageV2 = () => {
                         accept="image/*"
                         multiple
                         className="hidden"
-                        capture="environment" // Prefer rear camera on mobile
                     />
                     <p className="text-xs text-slate-400 text-center">
                         Haz clic en una foto para verla o eliminarla.
                     </p>
                 </div>
 
-                {/* Debug Header - REMOVE LATER */}
-                <div className="bg-red-500 text-white text-center font-bold p-2 rounded mb-4">
-                    DEBUG: VERSIÓN V2 NUEVA FIRMAS ACTIVADA
-                </div>
 
                 {/* Submit Button */}
                 <button
