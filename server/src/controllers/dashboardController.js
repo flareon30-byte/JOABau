@@ -357,6 +357,7 @@ exports.getActivatorDashboard = async (req, res) => {
         const teamSizeInner = user.team?.members?.length || teamSize;
  
          res.json({
+             activeClientId: user.team?.activeClientCompanyId || user.activeClientCompanyId,
              appointments,
              stats: {
                  regularEarnings: isAdmin ? statsFromLib.totalRevenue - statsFromLib.saturdayPay : null,
