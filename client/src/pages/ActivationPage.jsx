@@ -34,6 +34,7 @@ const ActivationPage = () => {
     const [pdfPath, setPdfPath] = useState(null);
     const [signatures, setSignatures] = useState({ client: null, tech: null });
     const [isSigning, setIsSigning] = useState('NONE'); // 'NONE' | 'CLIENT' | 'TECH'
+    const [priceItems, setPriceItems] = useState([]);
 
     // Signature Refs
     const canvasRef = useRef(null);
@@ -104,6 +105,43 @@ const ActivationPage = () => {
                 setPdfPath(null);
                 setPhotos([]);
             }
+
+            // Fetch dynamic concepts based on Client
+            const fetchConcepts = async () => {
+                let clientId = selectedAppointment.address?.project?.clientCompanyId;
+                try {
+                    let finalActivationItems = [];
+                    
+                    if (clientId) {
+                        const pRes = await api.get(`/api/clients/${clientId}/price-items`);
+                        finalActivationItems = pRes.data.filter(item => item.department === 'ACTIVATION');
+                    }
+                    
+                    if (finalActivationItems.length === 0) {
+                        const allClientsRes = await api.get('/api/clients');
+                        const clientsWithItems = allClientsRes.data.filter(c => c.priceItems && c.priceItems.length > 0);
+                        if (clientsWithItems.length > 0) {
+                            finalActivationItems = clientsWithItems[0].priceItems.filter(item => item.department === 'ACTIVATION');
+                        }
+                    }
+
+                    setPriceItems(finalActivationItems);
+
+                    // Re-sync initially loaded custom activation name to the new combo values
+                    const info = selectedAppointment.address.activationInfo;
+                    if (!info || (!info.activationType && !info.customActivationName)) {
+                        if (finalActivationItems.length > 0) {
+                            setFormData(prev => ({ ...prev, activationType: finalActivationItems[0].name }));
+                        }
+                    } else if (info && info.customActivationName) {
+                        setFormData(prev => ({ ...prev, activationType: info.customActivationName }));
+                    }
+
+                } catch(e) {
+                    console.error("Error fetching priceItems in ActivationPage", e);
+                }
+            };
+            fetchConcepts();
         }
     }, [selectedAppointment]);
 
@@ -509,11 +547,15 @@ const ActivationPage = () => {
                             onChange={(e) => setFormData({ ...formData, activationType: e.target.value })}
                             className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none font-bold text-slate-700"
                         >
-                            <option value="BP">BP (Básico)</option>
-                            <option value="BP_2_FAM">BP 2 Familias</option>
-                            <option value="BR_MULTI">SP (BR Multi)</option>
-                            <option value="SDU">SDU</option>
-                            <option value="MDU">MDU</option>
+                            {priceItems.length > 0 ? (
+                                priceItems.map(item => (
+                                    <option key={item.id} value={item.name}>
+                                        {item.name}
+                                    </option>
+                                ))
+                            ) : (
+                                <option value="">No hay conceptos cargados - Revise DB</option>
+                            )}
                         </select>
                     </div>
 
