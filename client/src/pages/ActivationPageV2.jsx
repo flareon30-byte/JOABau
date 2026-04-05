@@ -312,9 +312,9 @@ const ActivationPageV2 = () => {
                 // --- DRAW LOGO ---
                 const logoImg = new Image();
                 logoImg.onload = () => {
-                    const logoHeight = bottomBarHeight * 0.9;
+                    const logoHeight = bottomBarHeight * 0.45; // Más discreto y elegante
                     const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
-                    const logoX = width - padding - logoWidth;
+                    const logoX = width - padding - logoWidth - (padding / 2); // Un poco más de margen
                     const logoY = height - bottomBarHeight + (bottomBarHeight - logoHeight) / 2;
                     ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
                     finalizeResult();
@@ -893,7 +893,6 @@ const ActivationPageV2 = () => {
                         ref={fileInputRef}
                         onChange={handlePhotoSelect}
                         accept="image/*"
-                        multiple
                         className="hidden"
                     />
                     <p className="text-xs text-slate-400 text-center">
