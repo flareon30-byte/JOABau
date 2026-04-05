@@ -20,7 +20,7 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
             bonusCost: 0,
             saturdayCost: 0
         },
-        counts: { bp: 0, ta: 0, mul: 0, mdu: 0, repair: 0, saturday: 0 }
+        counts: { bp: 0, bif: 0, ta: 0, mul: 0, mdu: 0, repair: 0, saturday: 0 }
     };
 
     if (!financialConfig) return stats;
@@ -118,9 +118,12 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
                     saturdayMdu++;
                     stats.counts.mdu++;
                 }
-            } else if (type === 'BP' || type === 'BP_2_FAM') {
+            } else if (type === 'BP') {
                 saturdayInstalls++;
                 stats.counts.bp++;
+            } else if (type === 'BP_2_FAM') {
+                saturdayInstalls++;
+                stats.counts.bif++;
             } else if (type === 'SDU') {
                 saturdayTa++;
                 stats.counts.ta++;
@@ -128,9 +131,9 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
                 saturdayMdu++;
                 stats.counts.mdu++;
             }
-            if (act.taCount > 0 && type !== 'SDU' && type !== 'BR_MULTI') {
-                saturdayTa += act.taCount;
-                stats.counts.ta += act.taCount;
+            if ((act.taCount > 0 || act.taInstalled) && type !== 'SDU' && type !== 'BR_MULTI') {
+                saturdayTa += (act.taCount || 1);
+                stats.counts.ta += (act.taCount || 1);
             }
         } else {
             // M-F
@@ -147,9 +150,12 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
                     mduUnits++;
                     stats.counts.mdu++;
                 }
-            } else if (type === 'BP' || type === 'BP_2_FAM') {
+            } else if (type === 'BP') {
                 standardUnits++;
                 stats.counts.bp++;
+            } else if (type === 'BP_2_FAM') {
+                standardUnits++;
+                stats.counts.bif++;
             } else if (type === 'SDU') {
                 taUnits++;
                 stats.counts.ta++;
@@ -157,9 +163,9 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
                 mduUnits++;
                 stats.counts.mdu++;
             }
-            if (act.taCount > 0 && type !== 'SDU' && type !== 'BR_MULTI') {
-                taUnits += act.taCount;
-                stats.counts.ta += act.taCount;
+            if ((act.taCount > 0 || act.taInstalled) && type !== 'SDU' && type !== 'BR_MULTI') {
+                taUnits += (act.taCount || 1);
+                stats.counts.ta += (act.taCount || 1);
             }
             if (act.mduInstalled && type !== 'MDU' && type !== 'BR_MULTI') {
                 mduUnits++;

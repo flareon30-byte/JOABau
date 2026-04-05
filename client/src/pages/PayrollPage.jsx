@@ -243,26 +243,30 @@ const PayrollPage = () => {
                                 ) : (
                                     <>
                                         <p className="font-bold mb-2 uppercase text-[10px] tracking-wider text-slate-400">Producción del Equipo</p>
-                                        <div className="grid grid-cols-5 gap-2 text-center">
+                                        <div className="grid grid-cols-6 gap-1 text-center">
                                             <div className="bg-white p-1 rounded border border-slate-200">
-                                                <div className="font-bold text-slate-700">{item.production?.counts?.bp || 0}</div>
-                                                <div className="text-[9px] uppercase">BP</div>
+                                                <div className="font-bold text-slate-700 text-xs">{item.production?.counts?.bp || 0}</div>
+                                                <div className="text-[8px] uppercase">UNI</div>
                                             </div>
                                             <div className="bg-white p-1 rounded border border-slate-200">
-                                                <div className="font-bold text-slate-700">{item.production?.counts?.ta || 0}</div>
-                                                <div className="text-[9px] uppercase">TA</div>
+                                                <div className="font-bold text-slate-700 text-xs">{item.production?.counts?.bif || 0}</div>
+                                                <div className="text-[8px] uppercase">BIF</div>
                                             </div>
                                             <div className="bg-white p-1 rounded border border-slate-200">
-                                                <div className="font-bold text-slate-700">{item.production?.counts?.mul || 0}</div>
-                                                <div className="text-[9px] uppercase">MUL</div>
+                                                <div className="font-bold text-slate-700 text-xs">{item.production?.counts?.ta || 0}</div>
+                                                <div className="text-[8px] uppercase">TA</div>
                                             </div>
                                             <div className="bg-white p-1 rounded border border-slate-200">
-                                                <div className="font-bold text-slate-700">{item.production?.counts?.mdu || 0}</div>
-                                                <div className="text-[9px] uppercase">MDU</div>
+                                                <div className="font-bold text-slate-700 text-xs">{item.production?.counts?.mul || 0}</div>
+                                                <div className="text-[8px] uppercase">MUL</div>
                                             </div>
                                             <div className="bg-white p-1 rounded border border-slate-200">
-                                                <div className="font-bold text-slate-700">{item.production?.counts?.repair || 0}</div>
-                                                <div className="text-[9px] uppercase">AVE</div>
+                                                <div className="font-bold text-slate-700 text-xs">{item.production?.counts?.mdu || 0}</div>
+                                                <div className="text-[8px] uppercase">MDU</div>
+                                            </div>
+                                            <div className="bg-white p-1 rounded border border-slate-200">
+                                                <div className="font-bold text-slate-700 text-xs">{item.production?.counts?.repair || 0}</div>
+                                                <div className="text-[8px] uppercase">AVE</div>
                                             </div>
                                         </div>
                                     </>
