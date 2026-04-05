@@ -168,14 +168,38 @@ const CompleteActivationPage = () => {
                     textY += lineHeight;
                     ctx.fillText(`📍 ${addressStr}`, textX, textY);
 
-                    // Convert to Blob
-                    canvas.toBlob((blob) => {
-                        resolve({
-                            blob,
-                            preview: canvas.toDataURL('image/jpeg', 0.7),
-                            name: file.name
-                        });
-                    }, 'image/jpeg', 0.8);
+                    // --- DRAW LOGO ---
+                    const logoImg = new Image();
+                    logoImg.crossOrigin = "anonymous";
+                    logoImg.onload = () => {
+                        const logoHeight = bottomBarHeight * 0.7; // 70% of bar height
+                        const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
+                        const logoX = img.width - padding - logoWidth;
+                        const logoY = img.height - bottomBarHeight + (bottomBarHeight - logoHeight) / 2;
+                        
+                        // Add a subtle white glow/background to logo if needed, or just draw
+                        ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
+
+                        // Finalize
+                        canvas.toBlob((blob) => {
+                            resolve({
+                                blob,
+                                preview: canvas.toDataURL('image/jpeg', 0.7),
+                                name: file.name
+                            });
+                        }, 'image/jpeg', 0.8);
+                    };
+                    logoImg.onerror = () => {
+                        // Fallback if logo fails
+                        canvas.toBlob((blob) => {
+                            resolve({
+                                blob,
+                                preview: canvas.toDataURL('image/jpeg', 0.7),
+                                name: file.name
+                            });
+                        }, 'image/jpeg', 0.8);
+                    };
+                    logoImg.src = '/logo.png'; // Ensure logo.png exists in client/public
                 };
                 img.src = e.target.result;
             };
