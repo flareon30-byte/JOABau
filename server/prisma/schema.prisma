@@ -40,6 +40,7 @@ model User {
   vacationRequests      VacationRequest[]
   materialOrders        MaterialOrder[]
   simpleInstallations   SimpleInstallation[]
+  dietaLogs             DietaLog[] @relation("UserDietas")
   
   activeClientCompanyId String?
   activeClientCompany   ClientCompany? @relation("ActiveClientCompany", fields: [activeClientCompanyId], references: [id])
@@ -517,4 +518,16 @@ model VehicleLog {
   
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
+}
+
+model DietaLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserDietas", fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  type      String   // "HOTEL" or "CASA"
+  amount    Float
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
 }

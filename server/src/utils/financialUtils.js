@@ -2,7 +2,7 @@
  * Shared logic for calculating group and member financials
  */
 
-exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, overhead = 0, workingDays = 21) => {
+exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, overhead = 0, workingDays = 21, teamDietasCost = 0) => {
     // Defaults
     const stats = {
         totalRevenue: 0,
@@ -38,21 +38,19 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
 
     const ssRate = (financialConfig.insuranceRate !== undefined && financialConfig.insuranceRate !== null) ? parseFloat(financialConfig.insuranceRate) : 21.50; 
     const sokaBauRate = (financialConfig.sokaBauPercent !== undefined && financialConfig.sokaBauPercent !== null) ? parseFloat(financialConfig.sokaBauPercent) : 15.10;
-    const dietasPerDay = (financialConfig.dietasPerDay !== undefined && financialConfig.dietasPerDay !== null) ? parseFloat(financialConfig.dietasPerDay) : 0;
     const rentPerPerson = (financialConfig.rent !== undefined && financialConfig.rent !== null) ? parseFloat(financialConfig.rent) : 0;
     const materialsPerPerson = (financialConfig.materials !== undefined && financialConfig.materials !== null) ? parseFloat(financialConfig.materials) : 100;
-    const totalDietasPerPerson = dietasPerDay * workingDays;
 
     teamMembers.forEach(member => {
         const memberSalary = member.baseSalary || 1500.0;
         totalSalaries += memberSalary;
         totalInsurance += (memberSalary * ssRate / 100);
         totalSokaBau += (memberSalary * sokaBauRate / 100);
-        totalDietas += totalDietasPerPerson;
         totalMaterials += materialsPerPerson;
         totalRent += rentPerPerson;
     });
 
+    totalDietas = teamDietasCost; // Use actual logged dietas cost for the team
     const totalPersonnelExpenses = totalSalaries + totalInsurance + totalSokaBau + totalDietas + totalMaterials + totalRent;
 
     // Per Team Expenses

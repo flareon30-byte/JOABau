@@ -59,8 +59,29 @@ exports.getMyPayroll = async (req, res) => {
         }
 
         const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        const end = new Date(); // Today
+        let billingStart = new Date(now.getFullYear(), now.getMonth(), 20);
+        let billingEnd = new Date(now.getFullYear(), now.getMonth() + 1, 20);
+
+        if (now.getDate() < 20) {
+            billingStart.setMonth(billingStart.getMonth() - 1);
+            billingEnd.setMonth(billingEnd.getMonth() - 1);
+        }
+
+        const start = billingStart;
+        const end = new Date(); // To show current progress
+
+        // 0. Fetch Dietas Logged for all team members (affects shared pool)
+        const teamMemberIds = team ? team.members.map(m => m.id) : [userId];
+        const allTeamDietas = await prisma.dietaLog.findMany({
+            where: {
+                userId: { in: teamMemberIds },
+                date: { gte: start, lte: end }
+            }
+        });
+        const teamDietasCost = allTeamDietas.reduce((acc, d) => acc + (d.amount || 0), 0);
+        const myDietasPay = allTeamDietas.filter(d => d.userId === userId).reduce((acc, d) => acc + (d.amount || 0), 0);
+
+
 
         const settings = await prisma.systemSettings.findFirst({
             where: { isDemo: req.isDemo || false }
@@ -166,13 +187,13 @@ exports.getMyPayroll = async (req, res) => {
             overheadToCover = await require('../services/financialService').getGlobalSupportDeficit(req.isDemo || false);
         }
 
-        const stats = calculateGroupFinancials(activations, financialConfig, teamMembers, overheadToCover, getWorkingDays(now.getFullYear(), now.getMonth()));
+        const stats = calculateGroupFinancials(activations, financialConfig, teamMembers, overheadToCover, getWorkingDays(now.getFullYear(), now.getMonth()), teamDietasCost);
 
         const memberCount = teamMembers.length || 1;
         const myBonus = stats.bonusPool / memberCount;
         const mySaturday = stats.saturdayPay / memberCount;
         const myBaseSalary = user.baseSalary || 1500;
-        const myTotal = myBaseSalary + myBonus + mySaturday;
+        const myTotal = myBaseSalary + myBonus + mySaturday + myDietasPay;
 
         const memberCountSafe = memberCount || 1;
 
@@ -182,7 +203,7 @@ exports.getMyPayroll = async (req, res) => {
                 ...stats,
                 myTargetRevenue: stats.totalTargetRevenue / memberCountSafe,
                 myCurrentRevenue: stats.currentRevenueMf / memberCountSafe,
-                myProgressPercent: stats.progressPercent, // FIXED TYPO HERE
+                myProgressPercent: stats.progressPercent,
                 activationsCount: activations.length,
                 teamName: team?.name || 'Sin Equipo'
             },
@@ -190,6 +211,7 @@ exports.getMyPayroll = async (req, res) => {
                 baseSalary: user.baseSalary || 1500,
                 myBonusShare: myBonus,
                 mySaturdayPay: mySaturday,
+                myDietasPay: myDietasPay,
                 totalEstimated: myTotal
             }
         });
