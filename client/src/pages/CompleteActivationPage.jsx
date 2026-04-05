@@ -169,35 +169,38 @@ const CompleteActivationPage = () => {
                     ctx.fillText(`📍 ${addressStr}`, textX, textY);
 
                     // --- DRAW LOGO ---
-                    const logoImg = new Image();
-                    logoImg.onload = () => {
-                        const logoHeight = bottomBarHeight * 0.92; // 92% of bar height
-                        const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
-                        const logoX = img.width - padding - logoWidth;
-                        const logoY = img.height - bottomBarHeight + (bottomBarHeight - logoHeight) / 2;
-                        
-                        ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
+                    const drawLogoAndResolve = () => {
+                        const logoImg = new Image();
+                        logoImg.onload = () => {
+                            const logoHeight = bottomBarHeight * 0.85; 
+                            const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
+                            const logoX = img.width - padding - logoWidth;
+                            const logoY = img.height - bottomBarHeight + (bottomBarHeight - logoHeight) / 2;
+                            
+                            ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
 
-                        // Finalize
-                        canvas.toBlob((blob) => {
-                            resolve({
-                                blob,
-                                preview: canvas.toDataURL('image/jpeg', 0.7),
-                                name: file.name
-                            });
-                        }, 'image/jpeg', 0.82);
+                            canvas.toBlob((blob) => {
+                                resolve({
+                                    blob,
+                                    preview: canvas.toDataURL('image/jpeg', 0.7),
+                                    name: file.name
+                                });
+                            }, 'image/jpeg', 0.82);
+                        };
+                        logoImg.onerror = () => {
+                            console.error('Logo failed to load (Final Fallback)');
+                            canvas.toBlob((blob) => {
+                                resolve({
+                                    blob,
+                                    preview: canvas.toDataURL('image/jpeg', 0.7),
+                                    name: file.name
+                                });
+                            }, 'image/jpeg', 0.82);
+                        };
+                        logoImg.src = '/logo.png'; 
                     };
-                    logoImg.onerror = () => {
-                        console.error('Logo failed to load from public.');
-                        canvas.toBlob((blob) => {
-                            resolve({
-                                blob,
-                                preview: canvas.toDataURL('image/jpeg', 0.7),
-                                name: file.name
-                            });
-                        }, 'image/jpeg', 0.82);
-                    };
-                    logoImg.src = window.location.origin + '/logo.png?v=1'; 
+
+                    drawLogoAndResolve();
                 };
                 img.src = e.target.result;
             };
@@ -617,7 +620,6 @@ const CompleteActivationPage = () => {
                         type="file"
                         ref={fileInputRef}
                         onChange={handlePhotoSelect}
-                        accept="image/*"
                         className="hidden"
                     />
                     <p className="text-xs text-slate-400 text-center">
