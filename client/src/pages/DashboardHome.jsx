@@ -225,8 +225,9 @@ const DietaModal = ({ onLogged }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-            <div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center">
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[999] p-4">
+            <div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center border-4 border-joa-blue">
+
                 <div className="w-16 h-16 bg-joa-blue/10 text-joa-blue rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <Wallet size={32} />
                 </div>
@@ -278,7 +279,10 @@ const DashboardHome = () => {
     const isActivator = ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER'].includes(user.role);
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user.role);
 
+    console.log("Rendering DashboardHome. showDietaPrompt:", showDietaPrompt);
+
     const fetchData = async () => {
+
         try {
             console.log("Checking dieta for user role:", user.role);
             // Check for daily dieta log
@@ -675,6 +679,7 @@ const DashboardHome = () => {
                 </div>
 
                 <AppointmentModal appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} onUpdate={fetchData} />
+                {showDietaPrompt && <DietaModal onLogged={() => setShowDietaPrompt(false)} />}
             </div>
         );
     }
