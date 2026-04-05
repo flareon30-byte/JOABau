@@ -48,6 +48,7 @@ const ActivationPageV2 = () => {
         const fetchAppointment = async () => {
             try {
                 const res = await api.get('/api/dashboard/activator');
+                const activeClientId = res.data.activeClientId;
                 const found = res.data.appointments.find(a => a.id === id);
                 if (found) {
                     setAppointment(found);
@@ -57,7 +58,7 @@ const ActivationPageV2 = () => {
                         const info = found.address.activationInfo;
                         console.log('Pre-filling with info:', info);
                         setFormData({
-                            activationType: info.activationType || 'BP',
+                            activationType: info.customActivationName || info.activationType || 'BP',
                             familiesCount: info.familiesCount || 1,
                             apPorts: info.apPorts ? String(info.apPorts) : '2',
                             hasMoreClients: info.hasMoreClients || false,
@@ -88,7 +89,7 @@ const ActivationPageV2 = () => {
                     }
 
                     // Fetch custom price items (billing concepts) for this client
-                    const clientId = found.address?.project?.clientCompanyId;
+                    const clientId = activeClientId || found.address?.project?.clientCompanyId;
                     if (clientId) {
                         try {
                             const pRes = await api.get(`/api/clients/${clientId}/price-items`);
@@ -96,7 +97,8 @@ const ActivationPageV2 = () => {
                             setPriceItems(activationItems);
                             
                             // If no custom value matches current DB value and there are items, default to the first one safely
-                            if (!info || !info.activationType) {
+                            const info = found.address.activationInfo;
+                            if (!info || (!info.activationType && !info.customActivationName)) {
                                 if (activationItems.length > 0) {
                                     setFormData(prev => ({ ...prev, activationType: activationItems[0].name }));
                                 }
