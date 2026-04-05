@@ -171,7 +171,7 @@ const CompleteActivationPage = () => {
                     // --- DRAW LOGO ---
                     const logoImg = new Image();
                     logoImg.onload = () => {
-                        const logoHeight = bottomBarHeight * 0.85; // Aumento presencia
+                        const logoHeight = bottomBarHeight * 0.92; // 92% of bar height
                         const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
                         const logoX = img.width - padding - logoWidth;
                         const logoY = img.height - bottomBarHeight + (bottomBarHeight - logoHeight) / 2;
@@ -188,7 +188,7 @@ const CompleteActivationPage = () => {
                         }, 'image/jpeg', 0.82);
                     };
                     logoImg.onerror = () => {
-                        // Fallback if logo fails
+                        console.error('Logo failed to load from public.');
                         canvas.toBlob((blob) => {
                             resolve({
                                 blob,
@@ -197,7 +197,7 @@ const CompleteActivationPage = () => {
                             });
                         }, 'image/jpeg', 0.82);
                     };
-                    logoImg.src = window.location.origin + '/logo.png'; 
+                    logoImg.src = window.location.origin + '/logo.png?v=1'; 
                 };
                 img.src = e.target.result;
             };
@@ -618,7 +618,6 @@ const CompleteActivationPage = () => {
                         ref={fileInputRef}
                         onChange={handlePhotoSelect}
                         accept="image/*"
-                        multiple
                         className="hidden"
                     />
                     <p className="text-xs text-slate-400 text-center">
