@@ -223,7 +223,7 @@ exports.getMyPayroll = async (req, res) => {
 };
 
 exports.getPayrollSummary = async (req, res) => {
-    const { startDate, endDate } = req.query; // Removed userId as it's for all
+    const { startDate, endDate, userId } = req.query;
     try {
         const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         if (startDate && !startDate.includes('T')) start.setHours(0, 0, 0, 0);
@@ -238,10 +238,21 @@ exports.getPayrollSummary = async (req, res) => {
             where: { isDemo: req.isDemo || false }
         });
 
-        // Fetch Users & Activations
+        // 1. Fetch Users
+        const userFilters = { isDemo: req.isDemo || false };
+        if (userId && userId !== 'all') {
+            userFilters.id = userId;
+        }
+
         const users = await prisma.user.findMany({
-            where: { isDemo: req.isDemo || false },
-            include: { team: { include: { members: true, activeClientCompany: true } }, activeClientCompany: true }
+            where: userFilters,
+            include: { 
+                team: { include: { members: true, activeClientCompany: true } }, 
+                activeClientCompany: true,
+                dietaLogs: {
+                    where: { date: { gte: start, lte: end } }
+                }
+            }
         });
 
         const activations = await prisma.activationInfo.findMany({
@@ -373,7 +384,10 @@ exports.getPayrollSummary = async (req, res) => {
             const shareBonus = (stats && stats.bonusPool) ? (stats.bonusPool / members) : 0;
             const shareSaturday = (stats && stats.saturdayPay) ? (stats.saturdayPay / members) : 0;
 
-            const total = finalBaseSalary + shareBonus + shareSaturday;
+            const dietaPay = user.dietaLogs?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
+            const dietasCount = user.dietaLogs?.length || 0;
+
+            const total = finalBaseSalary + shareBonus + shareSaturday + dietaPay;
 
             return {
                 id: user.id,
@@ -384,6 +398,8 @@ exports.getPayrollSummary = async (req, res) => {
                 baseSalary: finalBaseSalary,
                 bonus: shareBonus,
                 saturday: shareSaturday,
+                dietaPay: dietaPay,
+                dietasCount: dietasCount,
                 total: total,
 
                 // Production & Details

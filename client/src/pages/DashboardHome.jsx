@@ -208,7 +208,7 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
     );
 };
 
-const DietaModal = ({ onLogged }) => {
+const DietaModal = ({ onLogged, onClose }) => {
     const [submitting, setSubmitting] = useState(false);
 
     const handleLog = async (type) => {
@@ -225,14 +225,20 @@ const DietaModal = ({ onLogged }) => {
     };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center z-[999] p-4">
-            <div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center border-4 border-joa-blue">
-
+        <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-md flex items-center justify-center z-[9999] p-4">
+            <div className="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl text-center border-4 border-joa-blue relative">
+                <button 
+                    onClick={onClose}
+                    className="absolute top-4 right-4 text-slate-400 hover:text-slate-800 transition-colors"
+                >
+                    <X size={24} />
+                </button>
                 <div className="w-16 h-16 bg-joa-blue/10 text-joa-blue rounded-2xl flex items-center justify-center mx-auto mb-6">
                     <Wallet size={32} />
                 </div>
                 <h3 className="text-2xl font-bold text-slate-800 mb-2">Registro de Dieta</h3>
-                <p className="text-slate-500 mb-8">Antes de comenzar el día, indícanos dónde te alojas hoy para el cálculo de tus dietas.</p>
+                <p className="text-slate-500 mb-8 px-2 text-sm italic">Opcional: Si hoy estás enfermo o no trabajas, puedes cerrar esta ventana con la (X).</p>
+                <p className="text-slate-500 mb-8 font-medium">¿Dónde duermes hoy?</p>
 
                 <div className="space-y-4">
                     <button
@@ -289,7 +295,7 @@ const DashboardHome = () => {
             if (isActivator) {
                 const dietaRes = await api.get('/api/dietas/today').catch(() => ({ data: null }));
                 console.log("Dieta data found:", dietaRes.data);
-                if (!dietaRes.data || dietaRes.data === "") {
+                if (!dietaRes.data?.onVacation && (!dietaRes.data || dietaRes.data === "")) {
                     setShowDietaPrompt(true);
                 }
             }
@@ -395,7 +401,14 @@ const DashboardHome = () => {
 
         return (
             <div className="space-y-8">
+                {showDietaPrompt && (
+                    <DietaModal 
+                        onLogged={() => setShowDietaPrompt(false)} 
+                        onClose={() => setShowDietaPrompt(false)} 
+                    />
+                )}
                 {/* Welcome & Status */}
+
                 <div className="bg-gradient-to-r from-joa-dark to-slate-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-joa-cyan/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
                     <div className="relative z-10">
@@ -801,7 +814,12 @@ const DashboardHome = () => {
                 </div>
             )}
             
-            {showDietaPrompt && <DietaModal onLogged={() => setShowDietaPrompt(false)} />}
+            {showDietaPrompt && (
+                <DietaModal 
+                    onLogged={() => setShowDietaPrompt(false)} 
+                    onClose={() => setShowDietaPrompt(false)} 
+                />
+            )}
         </div>
     );
 };

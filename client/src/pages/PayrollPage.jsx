@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Calendar, Euro, Users, Download, Filter, Search, Wallet, CheckCircle } from 'lucide-react';
+import { Calendar, Euro, Users, Download, Filter, Search, Wallet, CheckCircle, X, Truck, Navigation, Trash2 } from 'lucide-react';
 
 const PayrollPage = () => {
     // 1. Calculate Default Date Range (21st Prev - 20th Current)
@@ -43,6 +43,19 @@ const PayrollPage = () => {
     const [summary, setSummary] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [showDietaEditor, setShowDietaEditor] = useState(false);
+    const [selectedUserForDieta, setSelectedUserForDieta] = useState(null);
+
+    const handleAdminDietaLog = async (userId, date, type) => {
+        try {
+            await api.post('/api/dietas/admin/log', { userId, date, type });
+            fetchPayrollData(); // Refresh summary after override
+        } catch (error) {
+            console.error('Error in admin dieta log:', error);
+            alert('Error al gestionar dieta');
+        }
+    };
+
 
     useEffect(() => {
         fetchUsers();
@@ -184,6 +197,15 @@ const PayrollPage = () => {
                                         +{money(item.saturday)}
                                     </span>
                                 </div>
+                                <div className="flex justify-between items-center text-sm">
+                                    <div className="flex flex-col">
+                                        <span className="text-slate-500">Dietas Acumuladas</span>
+                                        <span className="text-[10px] text-slate-400">{item.dietasCount} días registrados</span>
+                                    </div>
+                                    <span className={`font-bold ${item.dietaPay > 0 ? 'text-joa-blue' : 'text-slate-400'}`}>
+                                        +{money(item.dietaPay)}
+                                    </span>
+                                </div>
 
                                 <div className="pt-4 border-t border-slate-100 mt-2">
                                     <div className="flex justify-between items-center bg-slate-800 text-white p-3 rounded-xl shadow-lg shadow-slate-200">
@@ -191,6 +213,16 @@ const PayrollPage = () => {
                                         <span className="text-lg font-bold">{money(item.total)}</span>
                                     </div>
                                 </div>
+
+                                <button 
+                                    onClick={() => {
+                                        setSelectedUserForDieta(item);
+                                        setShowDietaEditor(true);
+                                    }}
+                                    className="w-full mt-3 py-2 bg-slate-100 text-slate-600 rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-joa-blue hover:text-white transition-all transform active:scale-95"
+                                >
+                                    Corregir / Añadir Dietas
+                                </button>
                             </div>
 
                             {/* Production Detail (Team Contribution) */}
@@ -236,8 +268,86 @@ const PayrollPage = () => {
                     ))}
                 </div>
             )}
+
+            {showDietaEditor && selectedUserForDieta && (
+                <DietaEditorModal 
+                    user={selectedUserForDieta} 
+                    onClose={() => setShowDietaEditor(false)} 
+                    onSave={handleAdminDietaLog}
+                />
+            )}
+        </div>
+    );
+};
+
+const DietaEditorModal = ({ user, onClose, onSave }) => {
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    const [type, setType] = useState('HOTEL');
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
+            <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl relative">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-800"><X size={24} /></button>
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="w-12 h-12 bg-joa-blue/10 text-joa-blue rounded-xl flex items-center justify-center">
+                        <Wallet size={24} />
+                    </div>
+                    <div>
+                        <h3 className="text-xl font-bold text-slate-800">Gestionar Dieta</h3>
+                        <p className="text-sm text-slate-500">Editando entradas para: <b>{user.username}</b></p>
+                    </div>
+                </div>
+
+                <div className="space-y-6">
+                    <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Fecha a modificar</label>
+                        <input 
+                            type="date" 
+                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-joa-blue outline-none font-bold"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                        />
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-3">
+                        <button 
+                            onClick={() => { onSave(user.id, date, 'HOTEL'); onClose(); }}
+                            className="w-full flex items-center justify-between p-4 bg-blue-50 text-joa-blue rounded-2xl hover:bg-joa-blue hover:text-white transition-all font-bold group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <Truck size={20} />
+                                <span>Hotel (Extranjero/Fuera)</span>
+                            </div>
+                            <span className="text-xs opacity-60">28,00 €</span>
+                        </button>
+
+                        <button 
+                            onClick={() => { onSave(user.id, date, 'CASA'); onClose(); }}
+                            className="w-full flex items-center justify-between p-4 bg-slate-50 text-slate-700 rounded-2xl hover:bg-slate-200 transition-all font-bold group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <Navigation size={20} />
+                                <span>Casa (Estándar)</span>
+                            </div>
+                            <span className="text-xs opacity-60">14,00 €</span>
+                        </button>
+
+                        <button 
+                            onClick={() => { if(confirm('¿Eliminar registro de dieta?')) { onSave(user.id, date, 'DELETE'); onClose(); } }}
+                            className="w-full flex items-center justify-between p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all font-bold group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <Trash2 size={20} />
+                                <span>Eliminar Registro</span>
+                            </div>
+                            <span className="text-xs opacity-60">0,00 €</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };
 
 export default PayrollPage;
+
