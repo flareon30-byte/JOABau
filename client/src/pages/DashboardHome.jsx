@@ -280,10 +280,12 @@ const DashboardHome = () => {
 
     const fetchData = async () => {
         try {
+            console.log("Checking dieta for user role:", user.role);
             // Check for daily dieta log
             if (isActivator) {
                 const dietaRes = await api.get('/api/dietas/today').catch(() => ({ data: null }));
-                if (!dietaRes.data) {
+                console.log("Dieta data found:", dietaRes.data);
+                if (!dietaRes.data || dietaRes.data === "") {
                     setShowDietaPrompt(true);
                 }
             }
