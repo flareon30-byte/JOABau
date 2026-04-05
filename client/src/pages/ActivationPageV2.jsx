@@ -546,13 +546,7 @@ const ActivationPageV2 = () => {
                                     </option>
                                 ))
                             ) : (
-                                <>
-                                    <option value="BP">BP (Básico)</option>
-                                    <option value="BP_2_FAM">BP 2 Familias</option>
-                                    <option value="BR_MULTI">SP (BR Multi)</option>
-                                    <option value="SDU">SDU</option>
-                                    <option value="MDU">MDU</option>
-                                </>
+                                <option value="">No hay conceptos cargados - Revise DB</option>
                             )}
                         </select>
                     </div>
