@@ -171,33 +171,42 @@ const CompleteActivationPage = () => {
                     // --- DRAW LOGO ---
                     const drawLogoAndResolve = () => {
                         const logoImg = new Image();
+                        logoImg.crossOrigin = "anonymous";
+                        
+                        const timeout = setTimeout(() => {
+                            console.error('Logo timeout. Saving without logo.');
+                            saveBlob();
+                        }, 2500);
+
+                        const saveBlob = () => {
+                            canvas.toBlob((blob) => {
+                                resolve({
+                                    blob,
+                                    preview: canvas.toDataURL('image/jpeg', 0.7),
+                                    name: file.name
+                                });
+                            }, 'image/jpeg', 0.82);
+                        };
+
                         logoImg.onload = () => {
-                            const logoHeight = bottomBarHeight * 0.85; 
+                            clearTimeout(timeout);
+                            const logoHeight = bottomBarHeight * 0.95; 
                             const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
                             const logoX = img.width - padding - logoWidth;
                             const logoY = img.height - bottomBarHeight + (bottomBarHeight - logoHeight) / 2;
                             
                             ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
+                            saveBlob();
+                        };
 
-                            canvas.toBlob((blob) => {
-                                resolve({
-                                    blob,
-                                    preview: canvas.toDataURL('image/jpeg', 0.7),
-                                    name: file.name
-                                });
-                            }, 'image/jpeg', 0.82);
-                        };
                         logoImg.onerror = () => {
-                            console.error('Logo failed to load (Final Fallback)');
-                            canvas.toBlob((blob) => {
-                                resolve({
-                                    blob,
-                                    preview: canvas.toDataURL('image/jpeg', 0.7),
-                                    name: file.name
-                                });
-                            }, 'image/jpeg', 0.82);
+                            clearTimeout(timeout);
+                            console.error('Logo error loading.');
+                            saveBlob();
                         };
-                        logoImg.src = '/logo.png'; 
+                        
+                        // Full source path to avoid PWA relative issues
+                        logoImg.src = window.location.origin + '/logo.png?v=' + Date.now(); 
                     };
 
                     drawLogoAndResolve();
@@ -360,7 +369,7 @@ const CompleteActivationPage = () => {
                     <ArrowLeft size={24} className="text-slate-600" />
                 </button>
                 <div>
-                    <h1 className="text-lg font-bold text-slate-800">Finalizar Activación</h1>
+                    <h1 className="text-lg font-bold text-slate-800">Finalizar Activación <span className="text-[10px] text-slate-400 font-normal">v2.4</span></h1>
                     <p className="text-xs text-slate-500">{appointment.address.street} {appointment.address.number}</p>
                 </div>
             </div>
@@ -620,6 +629,8 @@ const CompleteActivationPage = () => {
                         type="file"
                         ref={fileInputRef}
                         onChange={handlePhotoSelect}
+                        accept="image/*"
+                        multiple
                         className="hidden"
                     />
                     <p className="text-xs text-slate-400 text-center">
