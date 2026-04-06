@@ -14,6 +14,9 @@ const VehicleManagement = () => {
         annualKmLimit: 10000
     });
     const [searchTerm, setSearchTerm] = useState('');
+    const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
+    const [selectedVehicleStats, setSelectedVehicleStats] = useState(null);
+    const [loadingStats, setLoadingStats] = useState(false);
 
     const fetchVehicles = async () => {
         try {
@@ -21,6 +24,20 @@ const VehicleManagement = () => {
             setVehicles(data);
         } catch (error) {
             console.error('Error fetching vehicles', error);
+        }
+    };
+
+    const fetchVehicleHistory = async (id) => {
+        setLoadingStats(true);
+        setIsLogsModalOpen(true);
+        try {
+            const { data } = await api.get(`/api/vehicles/${id}/stats`);
+            setSelectedVehicleStats(data);
+        } catch (error) {
+            console.error('Error fetching vehicle stats', error);
+            alert('Error cargando historial');
+        } finally {
+            setLoadingStats(false);
         }
     };
 
@@ -76,6 +93,8 @@ const VehicleManagement = () => {
         return 'bg-green-500';
     };
 
+    const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val || 0);
+
     const filteredVehicles = vehicles.filter(v => 
         v.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
         v.make.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -87,9 +106,9 @@ const VehicleManagement = () => {
             <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <Truck className="text-blue-600" /> Control de Flota
+                        <Truck className="text-blue-600" /> Control de Flota (Admin)
                     </h1>
-                    <p className="text-slate-500 text-sm">Gestión de vehículos, kilometraje y seguro dental (Límite 10K km)</p>
+                    <p className="text-slate-500 text-sm">Auditoría de gastos, tickets y kilometraje real.</p>
                 </div>
                 <button 
                     onClick={() => handleOpenModal()}
@@ -127,6 +146,13 @@ const VehicleManagement = () => {
                                     <Truck className={isAlert ? 'text-red-600' : 'text-blue-600'} />
                                 </div>
                                 <div className="flex gap-1">
+                                    <button 
+                                        onClick={() => fetchVehicleHistory(v.id)}
+                                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg flex items-center gap-1 text-xs font-bold" 
+                                        title="Ver historial y fotos"
+                                    >
+                                        <Search size={14} /> Bitácora
+                                    </button>
                                     <button onClick={() => handleOpenModal(v)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
                                         <Edit3 size={18} />
                                     </button>
@@ -248,6 +274,95 @@ const VehicleManagement = () => {
                                 <button type="submit" className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">Guardar</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* History and Photos Modal */}
+            {isLogsModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[85vh] shadow-2xl overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-blue-600 p-2 rounded-xl text-white shadow-lg shadow-blue-100">
+                                    <TrendingUp size={20} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-slate-800">Bitácora de Actividad</h2>
+                                    <p className="text-xs text-slate-500">Repasando: <b>{selectedVehicleStats?.vehicle.plate}</b></p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsLogsModalOpen(false)} className="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-all">
+                                <AlertCircle size={24} />
+                            </button>
+                        </div>
+
+                        <div className="flex-grow overflow-y-auto p-6">
+                            {loadingStats ? (
+                                <div className="text-center py-12 text-slate-400 font-bold animate-pulse">Sincronizando registros...</div>
+                            ) : selectedVehicleStats?.vehicle.logs.length === 0 ? (
+                                <div className="text-center py-12 text-slate-400 italic">No hay registros de actividad para este vehículo.</div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {/* Stats Mini Banner */}
+                                    <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Gasto Acumulado Gasolina</p>
+                                            <h4 className="text-2xl font-black text-blue-700">{money(selectedVehicleStats?.stats.totalFuelCost)}</h4>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 text-right">Kms Recorridos</p>
+                                            <h4 className="text-2xl font-black text-blue-700 text-right">{selectedVehicleStats?.stats.kmsDriven.toFixed(0)} km</h4>
+                                        </div>
+                                    </div>
+
+                                    <div className="divide-y divide-slate-100">
+                                        {selectedVehicleStats?.vehicle.logs.map((log, idx) => (
+                                            <div key={log.id} className="py-4 first:pt-0">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={`p-2 rounded-lg ${log.type === 'FUEL' ? 'bg-orange-100 text-orange-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                            {log.type === 'FUEL' ? <Fuel size={18} /> : <Gauge size={18} />}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-black text-slate-400 uppercase tracking-tight">
+                                                                {new Date(log.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                                                            </p>
+                                                            <h5 className="font-bold text-slate-800">
+                                                                {log.type === 'FUEL' ? `Repostaje: ${money(log.amount)}` : `Odométro: ${log.kms} km`}
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Photos Row */}
+                                                {log.photos && log.photos.length > 0 && (
+                                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                                        {log.photos.map((photo, pIdx) => (
+                                                            <a 
+                                                                key={pIdx} 
+                                                                href={photo} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                className="relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 group flex-shrink-0"
+                                                            >
+                                                                <img src={photo} alt="Log" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                    <Search className="text-white" size={20} />
+                                                                </div>
+                                                            </a>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Joa Technologien Auditoría de Flota</p>
+                        </div>
                     </div>
                 </div>
             )}
