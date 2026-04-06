@@ -326,9 +326,24 @@ const InvoicingPage = () => {
                                 </div>
                                 <div className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center mb-6">
                                     <div className="text-lg font-black text-slate-800">{money(invoice.total)}</div>
-                                    <a href={invoice.pdfPath} target="_blank" rel="noreferrer" className="p-3 bg-white text-blue-600 rounded-xl shadow-md hover:bg-blue-600 hover:text-white transition-all">
-                                        <Download size={20} />
-                                    </a>
+                                    <div className="flex gap-2">
+                                        <a href={invoice.pdfPath} target="_blank" rel="noreferrer" className="p-3 bg-white text-blue-600 rounded-xl shadow-md hover:bg-blue-600 hover:text-white transition-all">
+                                            <Download size={18} />
+                                        </a>
+                                        <button 
+                                            onClick={async () => {
+                                                if (window.confirm(`¿Seguro que quieres borrar la factura ${invoice.number}? Los trabajos incluidos se liberarán para poder facturarlos de nuevo.`)) {
+                                                    try {
+                                                        await api.delete(`/api/invoices/${invoice.id}`);
+                                                        fetchData();
+                                                    } catch (e) { alert('Error al borrar factura'); }
+                                                }
+                                            }}
+                                            className="p-3 bg-white text-red-600 rounded-xl shadow-md hover:bg-red-600 hover:text-white transition-all"
+                                        >
+                                            <Trash2 size={18} />
+                                        </button>
+                                    </div>
                                 </div>
                                 {invoice.status !== 'PAID' && (
                                     <button onClick={() => updateInvoiceStatus(invoice.id, 'PAID')} className="w-full py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg">Marcar como Pagada</button>

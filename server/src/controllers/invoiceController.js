@@ -251,3 +251,23 @@ exports.updateStatus = async (req, res) => {
         res.status(500).json({ message: 'Error actualizando estado' });
     }
 };
+
+exports.deleteInvoice = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        // 1. Liberar todos los items vinculados
+        await prisma.activationInfo.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
+        await prisma.sopladoInfo.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
+        await prisma.fusionWork.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
+        await prisma.simpleInstallation.updateMany({ where: { id: { in: [] }, invoiceId: id }, data: { invoiceId: null } }); // Caso genérico
+
+        // 2. Borrar la factura física (el registro en DB)
+        await prisma.invoice.delete({ where: { id } });
+
+        res.json({ message: 'Factura eliminada y producción liberada correctamente' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error eliminando factura' });
+    }
+};

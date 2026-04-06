@@ -7,5 +7,6 @@ router.get('/pending', verifyToken, invoiceController.getPendingWork);
 router.post('/', verifyToken, invoiceController.createInvoice);
 router.get('/', verifyToken, invoiceController.getInvoices);
 router.patch('/:id/status', verifyToken, invoiceController.updateStatus);
+router.delete('/:id', verifyToken, invoiceController.deleteInvoice);
 
 module.exports = router;
