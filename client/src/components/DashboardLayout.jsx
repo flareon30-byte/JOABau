@@ -4,7 +4,8 @@ import api from '../api/axios';
 import { 
     LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, 
     Folder, Zap, ChevronRight, ChevronDown, Settings, Lock, ClipboardList, 
-    Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase, Truck
+    Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase, Truck, 
+    FileText, Building2
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -171,9 +172,10 @@ const DashboardLayout = () => {
             roles: ['SUPER_ADMIN', 'ADMIN', 'ACTIVATOR', 'BLOWER'],
             items: [
                 { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER'] },
-                { icon: DollarSign, label: 'Facturación Clientes', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: FileText, label: 'Facturación Clientes', path: '/dashboard/invoicing', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Truck, label: 'Control de Flota', path: '/dashboard/vehicles', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Building2, label: 'Empresa (JOA)', path: '/dashboard/company-settings', roles: ['SUPER_ADMIN'] },
                 { icon: Calculator, label: 'Sist. de Rentabilidad', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
             ]
         },

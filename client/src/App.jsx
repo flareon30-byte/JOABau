@@ -26,6 +26,8 @@ import MaterialOrdersPage from './pages/MaterialOrdersPage';
 import GnkInstallationForm from './pages/GnkInstallationForm';
 import VehicleManagement from './pages/VehicleManagement';
 import VehicleLogForm from './pages/VehicleLogForm';
+import InvoicingPage from './pages/InvoicingPage';
+import CompanySettingsPage from './pages/CompanySettingsPage';
 function App() {
   return (
     <Router>
@@ -55,6 +57,8 @@ function App() {
           <Route path="gnk-installation" element={<GnkInstallationForm />} />
           <Route path="vehicles" element={<VehicleManagement />} />
           <Route path="my-vehicle" element={<VehicleLogForm />} />
+          <Route path="invoicing" element={<InvoicingPage />} />
+          <Route path="company-settings" element={<CompanySettingsPage />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>

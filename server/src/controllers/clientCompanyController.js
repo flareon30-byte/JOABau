@@ -16,12 +16,19 @@ exports.getAllClients = async (req, res) => {
 
 exports.createClient = async (req, res) => {
   try {
-    const { name, isActive, settings } = req.body;
+    const { name, isActive, settings, taxId, address, city, postalCode, country, billingEmail, defaultVat } = req.body;
     const newClient = await prisma.clientCompany.create({
       data: {
         name,
         isActive: isActive !== undefined ? isActive : true,
-        settings: settings || {}
+        settings: settings || {},
+        taxId,
+        address,
+        city,
+        postalCode,
+        country: country || 'ES',
+        billingEmail,
+        defaultVat: parseFloat(defaultVat || 21.0)
       }
     });
     res.status(201).json(newClient);
@@ -34,14 +41,21 @@ exports.createClient = async (req, res) => {
 exports.updateClient = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, isActive, settings } = req.body;
+    const { name, isActive, settings, taxId, address, city, postalCode, country, billingEmail, defaultVat } = req.body;
     
     const updatedClient = await prisma.clientCompany.update({
       where: { id },
       data: {
         name,
         isActive,
-        settings
+        settings,
+        taxId,
+        address,
+        city,
+        postalCode,
+        country,
+        billingEmail,
+        defaultVat: parseFloat(defaultVat || 21.0)
       }
     });
     res.json(updatedClient);

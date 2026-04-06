@@ -199,6 +199,10 @@ model SopladoInfo {
   
   saturdayPay   Float   @default(0.0) // Captured earnings for technician if isSaturday
 
+  // Invoicing
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -303,6 +307,10 @@ model ActivationInfo {
 
   isSaturday Boolean @default(false)
 
+  // Invoicing
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -358,6 +366,10 @@ model FusionWork {
 
   createdById String?
 
+  // Invoicing
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 }
 
@@ -393,20 +405,72 @@ model MaterialOrder {
 }
 
 model ClientCompany {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  isActive  Boolean  @default(true)
-  settings  Json?    // Store client-specific financial/bonus/rates config
+  id           String   @id @default(uuid())
+  name         String   @unique
+  isActive     Boolean  @default(true)
+  settings     Json?    // Store client-specific financial/bonus/rates config
   
-  teams     Team[]
+  // Fiscal Data
+  taxId        String?  // CIF/VAT
+  address      String?
+  city         String?
+  postalCode   String?
+  country      String   @default("ES") // ES, DE, etc.
+  billingEmail String?
+  defaultVat   Float    @default(21.0)
   
-  users     User[]   @relation("ActiveClientCompany")
-  projects  Project[]
+  teams        Team[]
   
-  priceItems ClientPriceItem[] // Dynamic pricing items
+  users        User[]   @relation("ActiveClientCompany")
+  projects     Project[]
   
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  priceItems   ClientPriceItem[] // Dynamic pricing items
+  invoices     Invoice[]
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Invoice {
+  id              String        @id @default(uuid())
+  number          String        @unique // e.g. JOA-2026-001
+  clientId        String
+  client          ClientCompany @relation(fields: [clientId], references: [id])
+  
+  date            DateTime      @default(now())
+  dueDate         DateTime?
+  
+  subtotal        Float
+  vatAmount       Float
+  total           Float
+  status          String        @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
+  
+  pdfPath         String?
+  items           Json          // Exploded view of items at generation time
+  
+  // Traceability links
+  activations     ActivationInfo[]
+  installations   SimpleInstallation[]
+  soplados        SopladoInfo[]
+  fusions         FusionWork[]
+
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+model CompanySettings {
+  id          String   @id @default(uuid())
+  name        String   @default("JOA Technologien")
+  taxId       String?  // Your CIF/VAT
+  address     String?
+  city        String?
+  country     String   @default("ES") // ES, DE, etc.
+  phone       String?
+  email       String?
+  bankDetails String?  // IBAN / SWIFT
+  logoPath    String?
+  
+  updatedAt   DateTime @updatedAt
 }
 
 model ClientPriceItem {
@@ -462,6 +526,10 @@ model SimpleInstallation {
   
   createdById String?
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  // Invoicing
+  invoiceId   String?
+  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

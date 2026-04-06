@@ -60,6 +60,8 @@ app.use('/api/clients', require('./src/routes/clientCompanyRoutes'));
 app.use('/api/simple-installations', require('./src/routes/simpleInstallationRoutes'));
 app.use('/api/vehicles', require('./src/routes/vehicleRoutes'));
 app.use('/api/dietas', require('./src/routes/dietaRoutes'));
+app.use('/api/company', require('./src/routes/companyRoutes'));
+app.use('/api/invoices', require('./src/routes/invoiceRoutes'));
 
 
 // Serve static files from React app
