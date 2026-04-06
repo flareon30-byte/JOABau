@@ -242,7 +242,9 @@ const InvoicingPage = () => {
                                 </div>
 
                                 <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                                    {pendingWork.activations.map(act => (
+                                    {pendingWork.activations
+                                        .filter(act => (act.basePrice || 250) > 0)
+                                        .map(act => (
                                         <div key={act.id} className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 hover:bg-white border border-transparent hover:border-blue-100 transition-all">
                                             <input 
                                                 type="checkbox" 
@@ -257,7 +259,9 @@ const InvoicingPage = () => {
                                             <span className="font-black text-blue-600 text-sm">{money(act.basePrice || 250)}</span>
                                         </div>
                                     ))}
-                                    {pendingWork.soplados.map(s => (
+                                    {pendingWork.soplados
+                                        .filter(s => (s.meters * 0.4) > 0)
+                                        .map(s => (
                                         <div key={s.id} className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 hover:bg-white border border-transparent hover:border-blue-100 transition-all">
                                             <input 
                                                 type="checkbox" 
