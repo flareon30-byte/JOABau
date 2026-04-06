@@ -41,7 +41,8 @@ exports.login = async (req, res) => {
                 activeClientCompany: true,
                 team: {
                     include: {
-                        activeClientCompany: true
+                        activeClientCompany: true,
+                        vehicle: true
                     }
                 }
             }
@@ -91,6 +92,7 @@ exports.login = async (req, res) => {
                 role: user.role, 
                 isDemo: user.isDemo,
                 teamId: user.teamId,
+                team: user.team,
                 activeClientCompanyId,
                 activeClientCompany
             } 
@@ -140,7 +142,8 @@ exports.getMe = async (req, res) => {
                 activeClientCompany: true,
                 team: {
                     include: {
-                        activeClientCompany: true
+                        activeClientCompany: true,
+                        vehicle: true
                     }
                 }
             }
@@ -170,6 +173,7 @@ exports.getMe = async (req, res) => {
             role: user.role,
             isDemo: user.isDemo,
             teamId: user.teamId,
+            team: user.team,
             activeClientCompanyId,
             activeClientCompany
         });
