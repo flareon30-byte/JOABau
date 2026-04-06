@@ -107,3 +107,25 @@ exports.adminLogDieta = async (req, res) => {
         res.status(500).json({ message: 'Error al gestionar la dieta' });
     }
 };
+
+exports.getUserDietas = async (req, res) => {
+    const { userId, startDate, endDate } = req.query;
+    if (!userId) return res.status(400).json({ message: 'userId es requerido' });
+
+    try {
+        const logs = await prisma.dietaLog.findMany({
+            where: {
+                userId,
+                date: {
+                    gte: startDate ? new Date(startDate) : undefined,
+                    lte: endDate ? new Date(endDate) : undefined
+                }
+            },
+            orderBy: { date: 'asc' }
+        });
+        res.json(logs);
+    } catch (error) {
+        console.error('Error fetching user dietas:', error);
+        res.status(500).json({ message: 'Error al obtener historial de dietas' });
+    }
+};

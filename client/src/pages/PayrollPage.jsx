@@ -278,7 +278,7 @@ const PayrollPage = () => {
             )}
 
             {showDietaEditor && selectedUserForDieta && (
-                <DietaEditorModal 
+                <DietaCalendarModal 
                     user={selectedUserForDieta} 
                     onClose={() => setShowDietaEditor(false)} 
                     onSave={handleAdminDietaLog}
@@ -288,74 +288,170 @@ const PayrollPage = () => {
     );
 };
 
-const DietaEditorModal = ({ user, onClose, onSave }) => {
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [type, setType] = useState('HOTEL');
+const DietaCalendarModal = ({ user, onClose, onSave }) => {
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [dietas, setDietas] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [savingDate, setSavingDate] = useState(null);
+
+    const fetchUserDietas = async () => {
+        setLoading(true);
+        try {
+            const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).toISOString();
+            const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).toISOString();
+            const res = await api.get(`/api/dietas/user?userId=${user.id}&startDate=${start}&endDate=${end}`);
+            setDietas(res.data);
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUserDietas();
+    }, [currentMonth, user.id]);
+
+    const daysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
+    const firstDayOfMonth = (month, year) => new Date(year, month, 1).getDay();
+
+    const renderCalendar = () => {
+        const month = currentMonth.getMonth();
+        const year = currentMonth.getFullYear();
+        const totalDays = daysInMonth(month, year);
+        const startDay = (firstDayOfMonth(month, year) + 6) % 7; // Adjust for Monday start
+        
+        const days = [];
+        // Empty slots for padding
+        for (let i = 0; i < startDay; i++) {
+            days.push(<div key={`empty-${i}`} className="p-4 border border-slate-50 opacity-20"></div>);
+        }
+
+        for (let d = 1; d <= totalDays; d++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+            const dieta = dietas.find(log => {
+                const logDate = new Date(log.date);
+                return logDate.getDate() === d && logDate.getMonth() === month;
+            });
+
+            const isToday = new Date().toDateString() === new Date(year, month, d).toDateString();
+
+            days.push(
+                <div 
+                    key={d} 
+                    onClick={() => setSavingDate(dateStr)}
+                    className={`relative p-3 h-20 border border-slate-100 transition-all cursor-pointer hover:bg-joa-blue/5 flex flex-col items-center justify-between
+                        ${isToday ? 'bg-blue-50/50' : ''}
+                        ${dieta?.type === 'HOTEL' ? 'bg-blue-600/10' : ''}
+                        ${dieta?.type === 'CASA' ? 'bg-slate-100' : ''}
+                    `}
+                >
+                    <span className={`text-xs font-bold ${isToday ? 'text-joa-blue underline decoration-2' : 'text-slate-400'}`}>{d}</span>
+                    {dieta && (
+                        <div className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-sm text-center w-full truncate
+                            ${dieta.type === 'HOTEL' ? 'bg-blue-600 text-white' : 'bg-slate-400 text-white'}
+                        `}>
+                            {dieta.type === 'HOTEL' ? '🏨 Hotel' : '🏠 Casa'}
+                        </div>
+                    )}
+                    {!dieta && <div className="h-4"></div>}
+                </div>
+            );
+        }
+        return days;
+    };
+
+    const handleAction = async (type) => {
+        await onSave(user.id, savingDate, type);
+        setSavingDate(null);
+        fetchUserDietas(); // Refresh inner calendar
+    };
 
     return (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-in fade-in duration-300">
-            <div className="bg-white rounded-3xl w-full max-w-md p-8 shadow-2xl relative">
-                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-800"><X size={24} /></button>
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="w-12 h-12 bg-joa-blue/10 text-joa-blue rounded-xl flex items-center justify-center">
-                        <Wallet size={24} />
-                    </div>
-                    <div>
-                        <h3 className="text-xl font-bold text-slate-800">Gestionar Dieta</h3>
-                        <p className="text-sm text-slate-500">Editando entradas para: <b>{user.username}</b></p>
-                    </div>
-                </div>
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[100] p-4">
+            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative border-4 border-joa-blue animate-in zoom-in-95 duration-200">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-800 z-50">
+                    <X size={24} />
+                </button>
 
-                <div className="space-y-6">
-                    <div>
-                        <label className="text-xs font-bold text-slate-500 uppercase block mb-2">Fecha a modificar</label>
-                        <input 
-                            type="date" 
-                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-joa-blue outline-none font-bold"
-                            value={date}
-                            onChange={(e) => setDate(e.target.value)}
-                        />
+                <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-joa-blue p-2 rounded-xl text-white">
+                            <Calendar size={20} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-800">Calendario de Dietas</h3>
+                            <p className="text-xs text-slate-500">Repasando: <b className="text-slate-700">{user.username}</b></p>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="flex items-center gap-4">
                         <button 
-                            onClick={() => { onSave(user.id, date, 'HOTEL'); onClose(); }}
-                            className="w-full flex items-center justify-between p-4 bg-blue-50 text-joa-blue rounded-2xl hover:bg-joa-blue hover:text-white transition-all font-bold group"
+                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                            className="p-1 hover:bg-slate-200 rounded-lg"
                         >
-                            <div className="flex items-center gap-3">
-                                <Truck size={20} />
-                                <span>Hotel (Extranjero/Fuera)</span>
-                            </div>
-                            <span className="text-xs opacity-60">28,00 €</span>
+                            &larr;
                         </button>
-
+                        <span className="text-sm font-black text-slate-700 uppercase">
+                            {currentMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                        </span>
                         <button 
-                            onClick={() => { onSave(user.id, date, 'CASA'); onClose(); }}
-                            className="w-full flex items-center justify-between p-4 bg-slate-50 text-slate-700 rounded-2xl hover:bg-slate-200 transition-all font-bold group"
+                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                            className="p-1 hover:bg-slate-200 rounded-lg"
                         >
-                            <div className="flex items-center gap-3">
-                                <Navigation size={20} />
-                                <span>Casa (Estándar)</span>
-                            </div>
-                            <span className="text-xs opacity-60">14,00 €</span>
-                        </button>
-
-                        <button 
-                            onClick={() => { if(confirm('¿Eliminar registro de dieta?')) { onSave(user.id, date, 'DELETE'); onClose(); } }}
-                            className="w-full flex items-center justify-between p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-600 hover:text-white transition-all font-bold group"
-                        >
-                            <div className="flex items-center gap-3">
-                                <Trash2 size={20} />
-                                <span>Eliminar Registro</span>
-                            </div>
-                            <span className="text-xs opacity-60">0,00 €</span>
+                            &rarr;
                         </button>
                     </div>
                 </div>
+
+                <div className="p-1 bg-slate-100">
+                    <div className="grid grid-cols-7 text-center py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200">
+                        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => <div key={d}>{d}</div>)}
+                    </div>
+                    <div className="grid grid-cols-7 bg-white">
+                        {loading ? (
+                            <div className="col-span-7 h-64 flex items-center justify-center text-slate-400 text-sm italic">
+                                Sincronizando historial...
+                            </div>
+                        ) : renderCalendar()}
+                    </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-600 rounded"></div> Hotel (28€)</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-400 rounded"></div> Casa (14€)</div>
+                    </div>
+                    <span>Pulsa en un día para editar o borrar</span>
+                </div>
+
+                {savingDate && (
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60] animate-in fade-in duration-200">
+                        <div className="bg-white rounded-2xl w-full max-w-xs p-6 shadow-2xl scale-in-center">
+                            <h4 className="text-center font-bold text-slate-800 mb-4">
+                                GESTIÓN: {new Date(savingDate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}
+                            </h4>
+                            <div className="space-y-3">
+                                <button onClick={() => handleAction('HOTEL')} className="w-full py-3 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 flex items-center justify-center gap-2">
+                                    <Truck size={18} /> Asignar Hotel (28€)
+                                </button>
+                                <button onClick={() => handleAction('CASA')} className="w-full py-3 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 flex items-center justify-center gap-2">
+                                    <Navigation size={18} /> Asignar Casa (14€)
+                                </button>
+                                <button onClick={() => handleAction('DELETE')} className="w-full py-3 bg-red-50 text-red-600 rounded-xl font-bold hover:bg-red-100 flex items-center justify-center gap-2">
+                                    <Trash2 size={18} /> Eliminar Registro
+                                </button>
+                                <button onClick={() => setSavingDate(null)} className="w-full py-2 text-slate-400 text-sm font-bold mt-2">
+                                    Cancelar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
-};
+}
 
 export default PayrollPage;
 

@@ -692,7 +692,6 @@ const DashboardHome = () => {
                 </div>
 
                 <AppointmentModal appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} onUpdate={fetchData} />
-                {showDietaPrompt && <DietaModal onLogged={() => setShowDietaPrompt(false)} />}
             </div>
         );
     }

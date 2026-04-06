@@ -6,5 +6,6 @@ const auth = require('../middleware/authMiddleware');
 router.post('/log', auth.verifyToken, dietaController.logDieta);
 router.get('/today', auth.verifyToken, dietaController.getTodayDieta);
 router.post('/admin/log', auth.verifyToken, auth.checkRole(['ADMIN', 'SUPER_ADMIN']), dietaController.adminLogDieta);
+router.get('/user', auth.verifyToken, auth.checkRole(['ADMIN', 'SUPER_ADMIN']), dietaController.getUserDietas);
 
 module.exports = router;
