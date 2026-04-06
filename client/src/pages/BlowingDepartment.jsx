@@ -346,21 +346,55 @@ const BlowingDepartment = () => {
                     )}
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Fotos (Opcional)</label>
-                        <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
-                            <input
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                onChange={handleFileChange}
-                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <Camera className="mx-auto text-slate-400 mb-2" size={32} />
-                            <p className="text-sm text-slate-500">
-                                {formData.photos.length > 0
-                                    ? `${formData.photos.length} archivos seleccionados`
-                                    : 'Toca para tomar o subir fotos'}
-                            </p>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">Fotos / Evidencias</label>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            {/* Camera Button */}
+                            <div className="border-2 border-dashed border-blue-400 bg-blue-50/50 rounded-xl flex flex-col items-center justify-center p-4 hover:bg-blue-100 transition-colors cursor-pointer relative aspect-square">
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    capture="environment"
+                                    onChange={(e) => {
+                                        const newFiles = Array.from(e.target.files);
+                                        setFormData(prev => ({ ...prev, photos: [...prev.photos, ...newFiles] }));
+                                    }}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <Camera className="text-blue-600 mb-2" size={28} />
+                                <div className="text-[10px] text-blue-700 font-extrabold uppercase text-center leading-tight">
+                                    Hacer
+                                    <br />
+                                    Foto
+                                </div>
+                            </div>
+
+                            {/* Gallery Button (Multiple) */}
+                            <div className="border-2 border-dashed border-slate-300 bg-white rounded-xl flex flex-col items-center justify-center p-4 hover:bg-slate-50 transition-colors cursor-pointer relative aspect-square">
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                        const newFiles = Array.from(e.target.files);
+                                        setFormData(prev => ({ ...prev, photos: [...prev.photos, ...newFiles] }));
+                                    }}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                />
+                                <Upload className="text-slate-500 mb-2" size={28} />
+                                <div className="text-[10px] text-slate-600 font-extrabold uppercase text-center leading-tight">
+                                    Galería
+                                    <br />
+                                    Varios
+                                </div>
+                            </div>
+
+                            {/* Preview Counter */}
+                            {formData.photos.length > 0 && (
+                                <div className="col-span-2 p-2 bg-slate-50 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-500 flex justify-between items-center">
+                                    <span>{formData.photos.length} fotos seleccionadas</span>
+                                    <button type="button" onClick={() => setFormData({ ...formData, photos: [] })} className="text-red-500 font-extrabold uppercase">Limpiar</button>
+                                </div>
+                            )}
                         </div>
                     </div>
 

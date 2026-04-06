@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Fuel, Gauge, Camera, Save, CheckCircle, AlertTriangle, Loader, TrendingUp, Search } from 'lucide-react';
+import { Truck, Fuel, Gauge, Camera, Save, CheckCircle, AlertTriangle, Loader, TrendingUp, Search, Image as ImageIcon } from 'lucide-react';
 import api from '../api/axios';
 
 const VehicleLogForm = () => {
@@ -165,20 +165,43 @@ const VehicleLogForm = () => {
             <form onSubmit={handleSubmit} className="space-y-6">
                 {/* Upload Section */}
                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-4">
-                    <label className="block text-center cursor-pointer group">
-                        <div className="border-2 border-dashed border-slate-200 rounded-3xl p-8 group-hover:border-blue-400 transition-all bg-slate-50/50">
-                            {photos.length > 0 ? (
-                                <img src={photos[0]} alt="Log" className="w-full h-40 object-contain rounded-2xl" />
-                            ) : (
-                                <>
-                                    <Camera size={48} className="mx-auto text-slate-300 mb-3 group-hover:scale-110 transition-transform" />
-                                    <p className="text-slate-500 font-bold">Pulsa para hacer foto al {type === 'FUEL' ? 'Ticket' : 'Tacógrafo'}</p>
-                                    <p className="text-slate-400 text-xs mt-1">Sube una imagen clara para el sistema de IA</p>
-                                </>
-                            )}
+                    {photos.length > 0 ? (
+                        <div className="relative group">
+                            <img src={photos[0]} alt="Log" className="w-full h-56 object-contain rounded-2xl bg-slate-900 border border-slate-700 shadow-xl" />
+                            <button 
+                                type="button"
+                                onClick={() => setPhotos([])}
+                                className="absolute top-3 right-3 bg-red-600 text-white p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                                <Trash2 size={18} />
+                            </button>
+                            <p className="text-center text-[10px] font-black text-slate-400 mt-2 uppercase">VISTA PREVIA DEL REPORTE</p>
                         </div>
-                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
-                    </label>
+                    ) : (
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Camera Option */}
+                            <label className="border-2 border-dashed border-blue-400 bg-blue-50/50 rounded-3xl p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-blue-100 transition-all group scale-100 active:scale-95">
+                                <Camera size={36} className="text-blue-600 mb-3 group-hover:scale-110 transition-transform" />
+                                <div className="text-[10px] font-black text-blue-700 uppercase text-center leading-tight">
+                                    Hacer
+                                    <br />
+                                    Foto
+                                </div>
+                                <input type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} />
+                            </label>
+
+                            {/* Gallery Option */}
+                            <label className="border-2 border-dashed border-slate-200 bg-white rounded-3xl p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-50 transition-all group scale-100 active:scale-95">
+                                <ImageIcon size={36} className="text-slate-400 mb-3 group-hover:scale-110 transition-transform" />
+                                <div className="text-[10px] font-black text-slate-500 uppercase text-center leading-tight">
+                                    Abrir
+                                    <br />
+                                    Galería
+                                </div>
+                                <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                            </label>
+                        </div>
+                    )}
 
                 </div>
 

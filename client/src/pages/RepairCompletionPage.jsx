@@ -209,25 +209,42 @@ const RepairCompletionPage = () => {
                             </div>
                         ))}
 
-                        <button
-                            type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-joa-blue hover:text-joa-blue transition-colors bg-slate-50"
-                        >
-                            <Camera size={24} className="mb-1" />
-                            <span className="text-xs font-medium">Añadir Foto</span>
-                        </button>
-                    </div>
+                        {/* Camera Button (Force Camera) */}
+                        <div className="border-2 border-dashed border-blue-400 bg-blue-50/50 rounded-xl flex flex-col items-center justify-center p-4 hover:bg-blue-100 transition-colors cursor-pointer relative aspect-square">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                onChange={handlePhotoSelect}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <Camera className="text-blue-600 mb-2" size={28} />
+                            <div className="text-[10px] text-blue-700 font-extrabold uppercase text-center leading-tight">
+                                Hacer
+                                <br />
+                                Foto
+                            </div>
+                        </div>
 
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handlePhotoSelect}
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                        capture="environment"
-                    />
+                        {/* Gallery Button (Multiple) */}
+                        <div className="border-2 border-dashed border-slate-300 bg-white rounded-xl flex flex-col items-center justify-center p-4 hover:bg-slate-50 transition-colors cursor-pointer relative aspect-square">
+                            <input
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                onChange={handlePhotoSelect}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <div className="w-7 h-7 bg-slate-100 rounded-full flex items-center justify-center mb-2">
+                                <span className="text-slate-400 text-lg">+</span>
+                            </div>
+                            <div className="text-[10px] text-slate-600 font-extrabold uppercase text-center leading-tight">
+                                Galería
+                                <br />
+                                Varios
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Submit Button */}

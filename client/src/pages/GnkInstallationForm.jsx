@@ -587,20 +587,32 @@ const GnkInstallationForm = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                             {/* PHOTO HUEP */}
                             <div className="space-y-2">
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Foto HÜP (Offen)</label>
-                                <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Foto HÜP (Offen)</label>
+                                <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center group shadow-sm transition-all hover:border-joa-blue/40">
                                     {specialPhotos.photoHuep ? (
                                         <>
                                             <img src={specialPhotos.photoHuep.preview} className="w-full h-full object-cover" />
-                                            <button onClick={() => setSpecialPhotos({...specialPhotos, photoHuep: null})} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => setSpecialPhotos({...specialPhotos, photoHuep: null})} className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Trash2 size={16} />
                                             </button>
                                         </>
                                     ) : (
-                                        <button onClick={() => huepInputRef.current.click()} className="flex flex-col items-center text-slate-400 hover:text-joa-blue transition-colors">
-                                            <CameraIcon size={32} />
-                                            <span className="text-[10px] font-bold mt-1">CAPTURAR</span>
-                                        </button>
+                                        <div className="flex flex-col gap-2 w-full px-4 text-center">
+                                            <button onClick={() => huepInputRef.current.click()} className="flex flex-col items-center justify-center py-2 bg-blue-50 text-joa-blue rounded-xl hover:bg-blue-100 transition-colors border border-blue-100">
+                                                <CameraIcon size={24} />
+                                                <span className="text-[9px] font-black mt-1 uppercase">Cámara</span>
+                                            </button>
+                                            <button onClick={() => {
+                                                const input = document.createElement('input');
+                                                input.type = 'file';
+                                                input.accept = 'image/*';
+                                                input.onchange = (e) => handlePhotoSelect(e, 'photoHuep');
+                                                input.click();
+                                            }} className="flex flex-col items-center justify-center py-2 bg-white text-slate-400 rounded-xl hover:bg-slate-100 transition-colors border border-slate-200">
+                                                <ImageIcon size={20} />
+                                                <span className="text-[9px] font-black mt-1 uppercase">Galería</span>
+                                            </button>
+                                        </div>
                                     )}
                                     <input type="file" accept="image/*" capture="environment" className="hidden" ref={huepInputRef} onChange={(e) => handlePhotoSelect(e, 'photoHuep')} />
                                 </div>
@@ -608,20 +620,32 @@ const GnkInstallationForm = () => {
 
                             {/* PHOTO MODEM */}
                             <div className="space-y-2">
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Foto Modem</label>
-                                <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Foto Modem</label>
+                                <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center group shadow-sm transition-all hover:border-joa-blue/40">
                                     {specialPhotos.photoModem ? (
                                         <>
                                             <img src={specialPhotos.photoModem.preview} className="w-full h-full object-cover" />
-                                            <button onClick={() => setSpecialPhotos({...specialPhotos, photoModem: null})} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => setSpecialPhotos({...specialPhotos, photoModem: null})} className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Trash2 size={16} />
                                             </button>
                                         </>
                                     ) : (
-                                        <button onClick={() => modemInputRef.current.click()} className="flex flex-col items-center text-slate-400 hover:text-joa-blue transition-colors">
-                                            <CameraIcon size={32} />
-                                            <span className="text-[10px] font-bold mt-1">CAPTURAR</span>
-                                        </button>
+                                        <div className="flex flex-col gap-2 w-full px-4 text-center">
+                                            <button onClick={() => modemInputRef.current.click()} className="flex flex-col items-center justify-center py-2 bg-blue-50 text-joa-blue rounded-xl hover:bg-blue-100 transition-colors border border-blue-100">
+                                                <CameraIcon size={24} />
+                                                <span className="text-[9px] font-black mt-1 uppercase">Cámara</span>
+                                            </button>
+                                            <button onClick={() => {
+                                                const input = document.createElement('input');
+                                                input.type = 'file';
+                                                input.accept = 'image/*';
+                                                input.onchange = (e) => handlePhotoSelect(e, 'photoModem');
+                                                input.click();
+                                            }} className="flex flex-col items-center justify-center py-2 bg-white text-slate-400 rounded-xl hover:bg-slate-100 transition-colors border border-slate-200">
+                                                <ImageIcon size={20} />
+                                                <span className="text-[9px] font-black mt-1 uppercase">Galería</span>
+                                            </button>
+                                        </div>
                                     )}
                                     <input type="file" accept="image/*" capture="environment" className="hidden" ref={modemInputRef} onChange={(e) => handlePhotoSelect(e, 'photoModem')} />
                                 </div>
@@ -629,20 +653,32 @@ const GnkInstallationForm = () => {
 
                             {/* PHOTO OTDR */}
                             <div className="space-y-2">
-                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Foto OTDR</label>
-                                <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center group">
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Foto OTDR</label>
+                                <div className="relative aspect-square rounded-2xl overflow-hidden border-2 border-slate-200 bg-slate-50 flex items-center justify-center group shadow-sm transition-all hover:border-joa-blue/40">
                                     {specialPhotos.photoOtdr ? (
                                         <>
                                             <img src={specialPhotos.photoOtdr.preview} className="w-full h-full object-cover" />
-                                            <button onClick={() => setSpecialPhotos({...specialPhotos, photoOtdr: null})} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <button onClick={() => setSpecialPhotos({...specialPhotos, photoOtdr: null})} className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity">
                                                 <Trash2 size={16} />
                                             </button>
                                         </>
                                     ) : (
-                                        <button onClick={() => otdrInputRef.current.click()} className="flex flex-col items-center text-slate-400 hover:text-joa-blue transition-colors">
-                                            <CameraIcon size={32} />
-                                            <span className="text-[10px] font-bold mt-1">CAPTURAR</span>
-                                        </button>
+                                        <div className="flex flex-col gap-2 w-full px-4 text-center">
+                                            <button onClick={() => otdrInputRef.current.click()} className="flex flex-col items-center justify-center py-2 bg-blue-50 text-joa-blue rounded-xl hover:bg-blue-100 transition-colors border border-blue-100">
+                                                <CameraIcon size={24} />
+                                                <span className="text-[9px] font-black mt-1 uppercase">Cámara</span>
+                                            </button>
+                                            <button onClick={() => {
+                                                const input = document.createElement('input');
+                                                input.type = 'file';
+                                                input.accept = 'image/*';
+                                                input.onchange = (e) => handlePhotoSelect(e, 'photoOtdr');
+                                                input.click();
+                                            }} className="flex flex-col items-center justify-center py-2 bg-white text-slate-400 rounded-xl hover:bg-slate-100 transition-colors border border-slate-200">
+                                                <ImageIcon size={20} />
+                                                <span className="text-[9px] font-black mt-1 uppercase">Galería</span>
+                                            </button>
+                                        </div>
                                     )}
                                     <input type="file" accept="image/*" capture="environment" className="hidden" ref={otdrInputRef} onChange={(e) => handlePhotoSelect(e, 'photoOtdr')} />
                                 </div>
@@ -665,19 +701,39 @@ const GnkInstallationForm = () => {
                                     </div>
                                 ))}
 
-                                <label className="border-2 border-dashed border-slate-300 hover:border-joa-blue hover:bg-blue-50 rounded-2xl aspect-square flex flex-col items-center justify-center text-slate-400 hover:text-joa-blue cursor-pointer transition-colors">
-                                    <CameraIcon size={24} className="mb-1" />
-                                    <span className="text-[10px] font-bold">Añadir</span>
+                                {/* Camera Button (Force Camera) */}
+                                <div className="border-2 border-dashed border-blue-400 bg-blue-50/50 rounded-2xl aspect-square flex flex-col items-center justify-center p-4 hover:bg-blue-100 transition-colors cursor-pointer relative shadow-sm hover:shadow-md transition-all">
                                     <input 
                                         type="file" 
                                         accept="image/*" 
                                         capture="environment" 
-                                        multiple 
-                                        className="hidden" 
-                                        ref={fileInputRef}
                                         onChange={handlePhotoSelect} 
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
                                     />
-                                </label>
+                                    <CameraIcon className="text-blue-600 mb-1" size={28} />
+                                    <div className="text-[9px] text-blue-700 font-extrabold uppercase text-center leading-tight">
+                                        Hacer
+                                        <br />
+                                        Foto
+                                    </div>
+                                </div>
+
+                                {/* Gallery Button (Multiple) */}
+                                <div className="border-2 border-dashed border-slate-300 bg-white rounded-2xl aspect-square flex flex-col items-center justify-center p-4 hover:bg-slate-50 transition-colors cursor-pointer relative shadow-sm hover:shadow-md transition-all">
+                                    <input 
+                                        type="file" 
+                                        multiple 
+                                        accept="image/*" 
+                                        onChange={handlePhotoSelect} 
+                                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                                    />
+                                    <ImageIcon className="text-slate-500 mb-1" size={28} />
+                                    <div className="text-[9px] text-slate-600 font-extrabold uppercase text-center leading-tight">
+                                        Galería
+                                        <br />
+                                        Varios
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
