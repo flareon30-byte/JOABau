@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool } from 'lucide-react';
+import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIcon } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
 
@@ -42,6 +42,8 @@ const ActivationPageV2 = () => {
 
     const [photos, setPhotos] = useState([]);
     const fileInputRef = useRef(null);
+    const cameraInputRef = useRef(null);
+    const galleryInputRef = useRef(null);
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
     useEffect(() => {
@@ -871,32 +873,56 @@ const ActivationPageV2 = () => {
                             </div>
                         ))}
 
+                        {/* Camera Option */}
                         <button
                             type="button"
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => cameraInputRef.current?.click()}
                             disabled={processingPhotos}
-                            className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-joa-blue hover:text-joa-blue transition-colors bg-slate-50 disabled:opacity-50"
+                            className="aspect-square rounded-xl border-2 border-dashed border-blue-400 flex flex-col items-center justify-center text-blue-600 hover:bg-blue-50 transition-all bg-blue-50/20 disabled:opacity-50 group"
                         >
-                            {processingPhotos ? (
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-joa-blue"></div>
-                            ) : (
-                                <>
-                                    <Camera size={24} className="mb-1" />
-                                    <span className="text-xs font-medium">Añadir Foto</span>
-                                </>
-                            )}
+                            <Camera size={28} className="mb-1 group-hover:scale-110 transition-transform" />
+                            <span className="text-[10px] font-black uppercase">Hacer Foto</span>
+                        </button>
+
+                        {/* Gallery Option */}
+                        <button
+                            type="button"
+                            onClick={() => galleryInputRef.current?.click()}
+                            disabled={processingPhotos}
+                            className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-joa-blue hover:text-joa-blue transition-all bg-white disabled:opacity-50 group"
+                        >
+                            <ImageIcon size={28} className="mb-1 group-hover:scale-110 transition-transform" />
+                            <span className="text-[10px] font-black uppercase">Galería</span>
                         </button>
                     </div>
 
+                    {/* Hidden Inputs */}
                     <input
                         type="file"
-                        ref={fileInputRef}
+                        ref={cameraInputRef}
                         onChange={handlePhotoSelect}
                         accept="image/*"
+                        capture="environment"
                         className="hidden"
                     />
+                    <input
+                        type="file"
+                        ref={galleryInputRef}
+                        onChange={handlePhotoSelect}
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                    />
+
+                    {processingPhotos && (
+                        <div className="flex items-center justify-center gap-2 py-2 text-joa-blue animate-pulse">
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-joa-blue"></div>
+                            <span className="text-[10px] font-black uppercase">Procesando evidencias...</span>
+                        </div>
+                    )}
+
                     <p className="text-xs text-slate-400 text-center">
-                        Haz clic en una foto para verla o eliminarla.
+                        Toca una foto para verla o eliminarla.
                     </p>
                 </div>
 
