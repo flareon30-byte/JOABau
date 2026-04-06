@@ -35,14 +35,16 @@ const InvoicingPage = () => {
 
     const fetchData = async () => {
         try {
+            console.log('Solicitando datos de facturación...');
             const [clientsRes, invoicesRes] = await Promise.all([
-                api.get('/api/clients'),
-                api.get('/api/invoices')
+                api.get('/api/clients').catch(e => { console.error('Error clientes:', e); return { data: [] }; }),
+                api.get('/api/invoices').catch(e => { console.error('Error facturas:', e); return { data: [] }; })
             ]);
+            console.log('Clientes recibidos:', clientsRes.data);
             setClients(clientsRes.data);
-            setInvoices(invoicesRes.data);
+            setInvoices(clientsRes.data.invoices || invoicesRes.data || []);
         } catch (error) {
-            console.error('Error loading data', error);
+            console.error('Error cargando datos', error);
         }
     };
 
