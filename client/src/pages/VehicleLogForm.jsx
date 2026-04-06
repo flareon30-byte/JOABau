@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Fuel, Gauge, Camera, Save, CheckCircle, AlertTriangle, Loader } from 'lucide-react';
+import { Truck, Fuel, Gauge, Camera, Save, CheckCircle, AlertTriangle, Loader, TrendingUp, Search } from 'lucide-react';
 import api from '../api/axios';
 
 const VehicleLogForm = () => {
