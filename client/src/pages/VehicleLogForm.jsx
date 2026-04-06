@@ -12,7 +12,7 @@ const VehicleLogForm = () => {
     const [kms, setKms] = useState('');
     const [amount, setAmount] = useState('');
     const [photos, setPhotos] = useState([]);
-    const [isScanning, setIsScanning] = useState(false);
+    const [liters, setLiters] = useState('');
 
     const fetchMyVehicle = async () => {
         try {
@@ -92,23 +92,6 @@ const VehicleLogForm = () => {
         }
     };
 
-    const simulateOCR = () => {
-        if (photos.length === 0) {
-            alert('Sube una foto primero');
-            return;
-        }
-        setIsScanning(true);
-        // Simulate AI recognition processing
-        setTimeout(() => {
-            if (type === 'FUEL') {
-                setAmount((Math.random() * 50 + 20).toFixed(2)); // Random simulation
-            } else {
-                const nextKm = (vehicle?.currentKms || 0) + (Math.random() * 100 + 50);
-                setKms(Math.floor(nextKm));
-            }
-            setIsScanning(false);
-        }, 2000);
-    };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -122,11 +105,13 @@ const VehicleLogForm = () => {
                 type,
                 kms: kms ? parseFloat(kms) : (lastLog?.kms || vehicle.currentKms),
                 amount: amount ? parseFloat(amount) : null,
+                liters: liters ? parseFloat(liters) : null,
                 photos
             });
             alert('¡Reporte guardado con éxito!');
             setKms('');
             setAmount('');
+            setLiters('');
             setPhotos([]);
             fetchMyVehicle();
         } catch (error) {
@@ -195,35 +180,40 @@ const VehicleLogForm = () => {
                         <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
                     </label>
 
-                    {photos.length > 0 && (
-                        <button 
-                            type="button"
-                            onClick={simulateOCR}
-                            disabled={isScanning}
-                            className="w-full py-3 bg-slate-800 text-white rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-slate-900 transition-all shadow-lg"
-                        >
-                            {isScanning ? <Loader className="animate-spin" size={20} /> : <TrendingUp size={20} />}
-                            {isScanning ? 'Analizando Imagen...' : 'Escanear Datos con IA'}
-                        </button>
-                    )}
                 </div>
 
                 {/* Data Input Section */}
                 <div className="space-y-4">
                     {type === 'FUEL' && (
-                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-                            <label className="block text-sm font-bold text-slate-500 mb-2 uppercase">Importe Total (€)</label>
-                            <div className="relative">
-                                <input 
-                                    type="number" 
-                                    step="0.01"
-                                    required
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    placeholder="0.00"
-                                    className="w-full text-3xl font-bold text-slate-800 outline-none p-2 border-b-2 border-slate-100 focus:border-blue-500 transition-all"
-                                />
-                                <Fuel className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300" size={24} />
+                        <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-slate-500 mb-2 uppercase">Importe Total (€)</label>
+                                <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        step="0.01"
+                                        required
+                                        value={amount}
+                                        onChange={(e) => setAmount(e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-full text-3xl font-bold text-slate-800 outline-none p-2 border-b-2 border-slate-100 focus:border-blue-500 transition-all"
+                                    />
+                                    <Fuel className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300" size={24} />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-slate-500 mb-2 uppercase">Litros (Opcional)</label>
+                                <div className="relative">
+                                    <input 
+                                        type="number" 
+                                        step="0.01"
+                                        value={liters}
+                                        onChange={(e) => setLiters(e.target.value)}
+                                        placeholder="0.00"
+                                        className="w-full text-2xl font-bold text-slate-800 outline-none p-2 border-b-2 border-slate-100 focus:border-blue-500 transition-all"
+                                    />
+                                    <Truck className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
+                                </div>
                             </div>
                         </div>
                     )}
