@@ -245,7 +245,9 @@ const InvoicingPage = () => {
                                         <p className="text-xs font-bold text-slate-400 uppercase">Total Seleccionado</p>
                                         <p className="text-2xl font-black text-blue-600">
                                             {money(
-                                                (pendingWork.activations.filter(i => selectedItems.activations.includes(i.id)).reduce((acc, a) => acc + (a.basePrice || 250), 0)) +
+                                                (pendingWork.activations.filter(i => selectedItems.activations.includes(i.id)).reduce((acc, a) => {
+                                                    return acc + (a.basePrice || 0) + (a.taPrice || 0) + (a.spPrice || 0) + (a.mduPrice || 0) + (a.repairPrice || 0);
+                                                }, 0)) +
                                                 (pendingWork.soplados.filter(i => selectedItems.soplados.includes(i.id)).reduce((acc, s) => acc + (s.meters * 0.4), 0))
                                             )}
                                         </p>
@@ -254,7 +256,7 @@ const InvoicingPage = () => {
 
                                 <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                                     {pendingWork.activations
-                                        .filter(act => (act.basePrice || 250) > 0)
+                                        .filter(act => ((act.basePrice || 0) + (act.taPrice || 0) + (act.spPrice || 0)) > 0)
                                         .map(act => (
                                         <div key={act.id} className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 hover:bg-white border border-transparent hover:border-blue-100 transition-all">
                                             <input 
@@ -267,7 +269,9 @@ const InvoicingPage = () => {
                                                 <p className="font-bold text-slate-800 text-sm">{act.address.street} {act.address.number}</p>
                                                 <p className="text-[10px] text-slate-400 uppercase">{act.activationType}</p>
                                             </div>
-                                            <span className="font-black text-blue-600 text-sm">{money(act.basePrice || 250)}</span>
+                                            <span className="font-black text-blue-600 text-sm">
+                                                {money((act.basePrice || 0) + (act.taPrice || 0) + (act.spPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0))}
+                                            </span>
                                         </div>
                                     ))}
                                     {pendingWork.soplados
