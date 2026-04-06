@@ -407,6 +407,7 @@ model MaterialOrder {
 model ClientCompany {
   id           String   @id @default(uuid())
   name         String   @unique
+  legalName    String?  // Razón Social para facturas
   isActive     Boolean  @default(true)
   settings     Json?    // Store client-specific financial/bonus/rates config
   

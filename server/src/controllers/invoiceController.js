@@ -31,7 +31,7 @@ const generatePdfFile = (invoice, client, company) => {
 
         // 2. Datos del Cliente (A la derecha)
         doc.fillColor('#000000').fontSize(12).text('FACTURAR A:', 50, 160);
-        doc.fontSize(14).text(client.name, 50, 180);
+        doc.fontSize(14).text(client.legalName || client.name, 50, 180);
         doc.fontSize(10).text(client.address || '', 50, 200);
         doc.text(`${client.city || ''}, ${client.postalCode || ''}, ${client.country || ''}`, 50, 215);
         doc.text(`CIF/VAT: ${client.taxId || ''}`, 50, 230);

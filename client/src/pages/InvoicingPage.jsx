@@ -22,7 +22,7 @@ const InvoicingPage = () => {
     // Client Edit State
     const [editingClient, setEditingClient] = useState(null);
     const [clientForm, setClientForm] = useState({
-        name: '', taxId: '', address: '', city: '', postalCode: '', country: 'ES', billingEmail: '', defaultVat: 21
+        name: '', legalName: '', taxId: '', address: '', city: '', postalCode: '', country: 'ES', billingEmail: '', defaultVat: 21
     });
 
     // UI State
@@ -75,6 +75,7 @@ const InvoicingPage = () => {
         setEditingClient(client);
         setClientForm({
             name: client.name,
+            legalName: client.legalName || '',
             taxId: client.taxId || '',
             address: client.address || '',
             city: client.city || '',
@@ -332,6 +333,14 @@ const InvoicingPage = () => {
                                 <button onClick={() => setEditingClient(null)} className="text-slate-400 font-bold">Cancelar</button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-bold text-slate-600">
+                                <div className="space-y-1">
+                                    <label className="uppercase text-[9px] text-slate-400">Nombre Descriptivo</label>
+                                    <input className="w-full bg-slate-50 p-3 rounded-xl border-none outline-none" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="uppercase text-[9px] text-slate-400">Razón Social (Para facturas)</label>
+                                    <input className="w-full bg-slate-50 p-3 rounded-xl border-none outline-none" placeholder="EJ: Glasfaser Plus GMBH" value={clientForm.legalName} onChange={e => setClientForm({...clientForm, legalName: e.target.value})} />
+                                </div>
                                 <div className="md:col-span-2 space-y-1">
                                     <label className="uppercase text-[9px] text-slate-400">Dirección Fiscal</label>
                                     <textarea className="w-full bg-slate-50 p-3 rounded-xl border-none outline-none" rows="2" value={clientForm.address} onChange={e => setClientForm({...clientForm, address: e.target.value})} />

@@ -16,10 +16,11 @@ exports.getAllClients = async (req, res) => {
 
 exports.createClient = async (req, res) => {
   try {
-    const { name, isActive, settings, taxId, address, city, postalCode, country, billingEmail, defaultVat } = req.body;
+    const { name, legalName, isActive, settings, taxId, address, city, postalCode, country, billingEmail, defaultVat } = req.body;
     const newClient = await prisma.clientCompany.create({
       data: {
         name,
+        legalName,
         isActive: isActive !== undefined ? isActive : true,
         settings: settings || {},
         taxId,
@@ -41,12 +42,13 @@ exports.createClient = async (req, res) => {
 exports.updateClient = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, isActive, settings, taxId, address, city, postalCode, country, billingEmail, defaultVat } = req.body;
+    const { name, legalName, isActive, settings, taxId, address, city, postalCode, country, billingEmail, defaultVat } = req.body;
     
     const updatedClient = await prisma.clientCompany.update({
       where: { id },
       data: {
         name,
+        legalName,
         isActive,
         settings,
         taxId,
