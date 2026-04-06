@@ -34,16 +34,55 @@ const VehicleLogForm = () => {
         fetchMyVehicle();
     }, []);
 
-    const handlePhotoUpload = (e) => {
-        const files = Array.from(e.target.files);
-        const readers = files.map(file => {
-            return new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(file);
-            });
+    const processPhoto = (file) => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const MAX_SIZE = 1280;
+
+                    if (width > height) {
+                        if (width > MAX_SIZE) {
+                            height *= MAX_SIZE / width;
+                            width = MAX_SIZE;
+                        }
+                    } else {
+                        if (height > MAX_SIZE) {
+                            width *= MAX_SIZE / height;
+                            height = MAX_SIZE;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    // WebP or JPEG with 0.7 quality is plenty for tickets
+                    resolve(canvas.toDataURL('image/jpeg', 0.7));
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
         });
-        Promise.all(readers).then(setPhotos);
+    };
+
+    const handlePhotoUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        setSubmitting(true);
+        try {
+            const processed = await Promise.all(files.map(file => processPhoto(file)));
+            setPhotos(processed);
+        } catch (err) {
+            console.error("Error processing photos:", err);
+            alert("Error al procesar la foto");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const simulateOCR = () => {
@@ -146,7 +185,7 @@ const VehicleLogForm = () => {
                                 </>
                             )}
                         </div>
-                        <input type="file" capture="environment" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+                        <input type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
                     </label>
 
                     {photos.length > 0 && (
