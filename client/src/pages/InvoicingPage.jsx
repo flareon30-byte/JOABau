@@ -267,7 +267,18 @@ const InvoicingPage = () => {
                                             />
                                             <div className="flex-1">
                                                 <p className="font-bold text-slate-800 text-sm">{act.address.street} {act.address.number}</p>
-                                                <p className="text-[10px] text-slate-400 uppercase">{act.activationType}</p>
+                                                <p className="text-[10px] text-slate-400 uppercase font-black">{act.activationType}</p>
+                                                <div className="flex gap-2 text-[|9px] font-black uppercase">
+                                                    {((act.taCount > 0) || (act.taInstalled || (act.taPrice > 0) || act.activationType === 'SDU')) && (
+                                                        <span className="text-blue-600">TA:{(act.taCount > 0) ? act.taCount : 1}</span>
+                                                    )}
+                                                    {(act.spInstalled > 0 || (act.spPrice > 0)) && (
+                                                        <span className="text-purple-600">SP:{act.spInstalled || 1}</span>
+                                                    )}
+                                                    {(act.mduInstalled || (act.mduPrice > 0)) && (
+                                                        <span className="text-orange-600">MDU</span>
+                                                    )}
+                                                </div>
                                             </div>
                                             <span className="font-black text-blue-600 text-sm">
                                                 {money((act.basePrice || 0) + (act.taPrice || 0) + (act.spPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0))}

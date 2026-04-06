@@ -309,8 +309,20 @@ const BillingPage = () => {
                                         <td className="p-4">
                                             <div className="flex flex-col gap-1">
                                                 <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold w-fit">{row.activationType}</span>
-                                                <div className="text-[10px] text-slate-500 font-medium">
-                                                    TA:{row.taInstalled ? row.taCount : 0} | SP:{row.spInstalled} {row.mduInstalled ? '| MDU' : ''}
+                                                <div className="text-[10px] text-slate-500 font-black flex items-center gap-2">
+                                                    <span className={(row.taInstalled || row.taPrice > 0 || row.activationType === 'SDU') ? 'text-blue-600' : ''}>
+                                                        TA:{(row.taCount > 0) ? row.taCount : ((row.taInstalled || row.taPrice > 0 || row.activationType === 'SDU') ? 1 : 0)}
+                                                    </span>
+                                                    <span className="text-slate-300">|</span>
+                                                    <span className={row.spInstalled > 0 ? 'text-purple-600' : ''}>
+                                                        SP:{row.spInstalled || 0}
+                                                    </span>
+                                                    {row.mduInstalled && (
+                                                        <>
+                                                            <span className="text-slate-300">|</span>
+                                                            <span className="text-orange-600">MDU</span>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </td>
