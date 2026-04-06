@@ -41,6 +41,19 @@ const VehicleManagement = () => {
         }
     };
 
+    const handleDeleteLog = async (logId, vehicleId) => {
+        if (!window.confirm('¿Eliminar este registro de bitácora? Esto recalculará el kilometraje actual del coche.')) return;
+        try {
+            await api.delete(`/api/vehicles/log/${logId}`);
+            // Refresh both lists
+            fetchVehicles();
+            fetchVehicleHistory(vehicleId);
+        } catch (error) {
+            console.error('Error deleting log', error);
+            alert('Error al eliminar registro');
+        }
+    };
+
     useEffect(() => {
         fetchVehicles();
     }, []);
@@ -332,6 +345,13 @@ const VehicleManagement = () => {
                                                             </h5>
                                                         </div>
                                                     </div>
+                                                    <button 
+                                                        onClick={() => handleDeleteLog(log.id, selectedVehicleStats.vehicle.id)}
+                                                        className="p-2 text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Borrar registro"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
                                                 </div>
 
                                                 {/* Photos Row */}

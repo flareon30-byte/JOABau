@@ -12,5 +12,6 @@ router.get('/:id/stats', verifyToken, vehicleController.getVehicleStats);
 
 // Logs (For Techs)
 router.post('/log', verifyToken, vehicleController.addVehicleLog);
+router.delete('/log/:id', verifyToken, vehicleController.deleteVehicleLog);
 
 module.exports = router;

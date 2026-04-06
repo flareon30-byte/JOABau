@@ -132,3 +132,38 @@ exports.getVehicleStats = async (req, res) => {
         res.status(500).json({ message: 'Error fetching stats' });
     }
 };
+
+exports.deleteVehicleLog = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const logToDelete = await prisma.vehicleLog.findUnique({ where: { id } });
+        if (!logToDelete) return res.status(404).json({ message: 'Log not found' });
+
+        const vehicleId = logToDelete.vehicleId;
+
+        // 1. Delete the log
+        await prisma.vehicleLog.delete({ where: { id } });
+
+        // 2. Recalculate Vehicle currentKms (get the most recent remaining log with Kms)
+        const lastValidLog = await prisma.vehicleLog.findFirst({
+            where: { 
+                vehicleId,
+                kms: { not: null }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+        const newCurrentKms = lastValidLog ? lastValidLog.kms : vehicle.initialKms;
+
+        await prisma.vehicle.update({
+            where: { id: vehicleId },
+            data: { currentKms: newCurrentKms }
+        });
+
+        res.json({ success: true, message: 'Log deleted and vehicle kms updated', newCurrentKms });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error deleting vehicle log' });
+    }
+};
