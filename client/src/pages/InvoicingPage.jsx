@@ -56,15 +56,26 @@ const InvoicingPage = () => {
         if (!selectedClient) return;
         setLoading(true);
         try {
+            console.log('Buscando producción pendiente...');
             const { data } = await api.get(`/api/invoices/pending?clientId=${selectedClient}&startDate=${dateRange.start}&endDate=${dateRange.end}`);
-            setPendingWork(data);
+            
+            // Filtro de exclusión de valor 0
+            const filteredData = {
+                activations: (data.activations || []).filter(act => (act.basePrice || 250) > 0),
+                soplados: (data.soplados || []).filter(s => (s.meters * 0.4) > 0),
+                fusions: (data.fusions || []).filter(f => (f.priceToClient || 0) > 0),
+                installations: (data.installations || []).filter(i => (i.priceToClient || 0) > 0)
+            };
+
+            setPendingWork(filteredData);
             setSelectedItems({
-                activations: data.activations.map(i => i.id),
-                soplados: data.soplados.map(i => i.id),
-                fusions: data.fusions.map(i => i.id),
-                installations: data.installations.map(i => i.id)
+                activations: filteredData.activations.map(i => i.id),
+                soplados: filteredData.soplados.map(i => i.id),
+                fusions: filteredData.fusions.map(i => i.id),
+                installations: filteredData.installations.map(i => i.id)
             });
         } catch (error) {
+            console.error('Error factura:', error);
             alert('Error cargando producción pendiente');
         } finally {
             setLoading(false);
