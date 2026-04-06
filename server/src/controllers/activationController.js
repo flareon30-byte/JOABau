@@ -121,7 +121,15 @@ exports.submitActivation = async (req, res) => {
         const apPortsInt = parseInt(apPorts || 0) || 1;
         const isMduBool = mduInstalled === 'true' || mduInstalled === true;
         const isRepairBool = isRepair === 'true' || isRepair === true;
-        const taInstalledBool = taInstalled === 'true' || taInstalled === true;
+        
+        // 🔴 UNIFICACIÓN SDU/TA: Si el técnico marca SDU, por definición hay una TA instalada.
+        let taInstalledBool = taInstalled === 'true' || taInstalled === true;
+        let finalTaCount = taCountInt > 0 ? taCountInt : (taInstalledBool ? 1 : 0);
+        
+        if (activationType === 'SDU') {
+            taInstalledBool = true;
+            if (finalTaCount === 0) finalTaCount = 1;
+        }
 
         // 1. Fetch User and Team (to know the client rates)
         const user = await prisma.user.findUnique({
@@ -214,7 +222,6 @@ exports.submitActivation = async (req, res) => {
         // Add SP points (usually extras)
         if (spCount > 0) points += (spCount * pointsConfig['SP']);
 
-        const finalTaCount = taCountInt > 0 ? taCountInt : (taInstalledBool ? 1 : 0);
         // Only add TA points as EXTRA if the base type is NOT SDU
         if (activationType !== 'SDU' && finalTaCount > 0) {
             let taPointValue = pointsConfig['TA'] || pointsConfig['SDU'];
@@ -249,8 +256,8 @@ exports.submitActivation = async (req, res) => {
                 apPorts: apPortsInt,
                 hasMoreClients: hasMoreClients === 'true' || hasMoreClients === true,
                 spInstalled: spCount,
-                taInstalled: taInstalledBool || taCountInt > 0,
-                taCount: taCountInt,
+                taInstalled: taInstalledBool,
+                taCount: finalTaCount,
                 mduInstalled: isMduBool,
                 isRepair: isRepairBool,
                 homeIds: homeIdsArray,

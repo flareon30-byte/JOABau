@@ -281,6 +281,12 @@ const ActivationPage = () => {
         if (viewingPhotoIndex !== null) setViewingPhotoIndex(null);
     };
 
+    useEffect(() => {
+        if (formData.activationType === 'SDU' && !formData.taInstalled) {
+            setFormData(prev => ({ ...prev, taInstalled: true }));
+        }
+    }, [formData.activationType]);
+
     // Initialize Signature Pad when modal opens
     useEffect(() => {
         if (isSigning !== 'NONE' && canvasRef.current) {
