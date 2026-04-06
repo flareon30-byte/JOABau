@@ -35,51 +35,58 @@ const VehicleLogForm = () => {
     }, []);
 
     const processPhoto = (file) => {
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const img = new Image();
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const MAX_SIZE = 1280;
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+            
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                const MAX_SIZE = 1280;
 
-                    if (width > height) {
-                        if (width > MAX_SIZE) {
-                            height *= MAX_SIZE / width;
-                            width = MAX_SIZE;
-                        }
-                    } else {
-                        if (height > MAX_SIZE) {
-                            width *= MAX_SIZE / height;
-                            height = MAX_SIZE;
-                        }
+                if (width > height) {
+                    if (width > MAX_SIZE) {
+                        height *= MAX_SIZE / width;
+                        width = MAX_SIZE;
                     }
+                } else {
+                    if (height > MAX_SIZE) {
+                        width *= MAX_SIZE / height;
+                        height = MAX_SIZE;
+                    }
+                }
 
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
 
-                    // WebP or JPEG with 0.7 quality is plenty for tickets
-                    resolve(canvas.toDataURL('image/jpeg', 0.7));
-                };
-                img.src = e.target.result;
+                const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                URL.revokeObjectURL(objectUrl); // Clean up memory pointer
+                resolve(dataUrl);
             };
-            reader.readAsDataURL(file);
+
+            img.onerror = () => {
+                URL.revokeObjectURL(objectUrl);
+                reject(new Error("Error al cargar la imagen seleccionada."));
+            };
+
+            img.src = objectUrl;
         });
     };
 
     const handlePhotoUpload = async (e) => {
         const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+        
         setSubmitting(true);
         try {
             const processed = await Promise.all(files.map(file => processPhoto(file)));
             setPhotos(processed);
         } catch (err) {
-            console.error("Error processing photos:", err);
-            alert("Error al procesar la foto");
+            console.error("Photo Error:", err);
+            alert("No se pudo procesar la foto. Prueba a hacerla con menos resolución o elegir otra.");
         } finally {
             setSubmitting(false);
         }
