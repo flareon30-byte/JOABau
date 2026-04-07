@@ -348,18 +348,45 @@ const AppointmentsPage = () => {
 
                             {/* Alert for Recite */}
                             {address.appointment?.status === 'RECITAR' && (
-                                <div className="mb-4 bg-red-50 border border-red-100 p-3 rounded-lg flex items-start gap-3">
-                                    <MessageSquare size={16} className="text-red-500 mt-0.5 shrink-0" />
-                                    <div>
-                                        <p className="text-xs font-bold text-red-700 uppercase tracking-wider mb-1">Solicitud de Recita</p>
-                                        <p className="text-sm text-red-800">
+                                <div className="mb-4 bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-4">
+                                    <div className="bg-red-500 p-2 rounded-lg text-white">
+                                        <MessageSquare size={18} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="text-xs font-black text-red-700 uppercase tracking-widest">Solicitud de Recita / Incidencia</p>
+                                            <p className="text-[10px] text-red-400 font-bold">
+                                                {address.appointment.comments && address.appointment.comments.length > 0 ? address.appointment.comments[address.appointment.comments.length - 1].authorName : 'Técnico'}
+                                            </p>
+                                        </div>
+                                        <p className="text-sm text-red-900 font-medium mb-3">
                                             {address.appointment.comments && address.appointment.comments.length > 0
                                                 ? address.appointment.comments[address.appointment.comments.length - 1].content
                                                 : 'Sin motivo especificado'}
                                         </p>
-                                        <p className="text-xs text-red-500 mt-1">
-                                            Por: {address.appointment.comments && address.appointment.comments.length > 0 ? address.appointment.comments[address.appointment.comments.length - 1].authorName : 'Desconocido'}
-                                        </p>
+
+                                        {/* FOTOS DE LA RECITA */}
+                                        {address.appointment.comments && 
+                                         address.appointment.comments.length > 0 && 
+                                         address.appointment.comments[address.appointment.comments.length - 1].photos?.length > 0 && (
+                                            <div className="flex gap-2 flex-wrap mt-2">
+                                                {address.appointment.comments[address.appointment.comments.length - 1].photos.map((photo, pIdx) => (
+                                                    <a 
+                                                        key={pIdx} 
+                                                        href={`http://localhost:3000${photo.startsWith('/') ? photo : '/' + photo}`} 
+                                                        target="_blank" 
+                                                        rel="noreferrer"
+                                                        className="block w-16 h-16 rounded-lg overflow-hidden border-2 border-red-200 hover:border-red-500 transition-all shadow-sm"
+                                                    >
+                                                        <img 
+                                                            src={`http://localhost:3000${photo.startsWith('/') ? photo : '/' + photo}`} 
+                                                            alt="Evidencia recita" 
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
