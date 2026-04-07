@@ -341,6 +341,7 @@ const PayrollPage = () => {
 };
 
 const DietaCalendarModal = ({ user, onClose, onSave }) => {
+    const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val || 0);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [dietas, setDietas] = useState([]);
     const [loading, setLoading] = useState(true);
