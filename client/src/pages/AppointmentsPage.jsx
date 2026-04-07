@@ -230,6 +230,8 @@ const AppointmentsPage = () => {
         });
     };
 
+    const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.joatechnologien.de';
+
     const allPendingFiltered = filterAppointments(pendingAddresses);
 
     // Addresses that NEED Protocol check
@@ -373,13 +375,13 @@ const AppointmentsPage = () => {
                                                 {address.appointment.comments[address.appointment.comments.length - 1].photos.map((photo, pIdx) => (
                                                     <a 
                                                         key={pIdx} 
-                                                        href={`http://localhost:3000${photo.startsWith('/') ? photo : '/' + photo}`} 
+                                                        href={`${BASE_URL}${photo.startsWith('/') ? photo : '/' + photo}`} 
                                                         target="_blank" 
                                                         rel="noreferrer"
                                                         className="block w-16 h-16 rounded-lg overflow-hidden border-2 border-red-200 hover:border-red-500 transition-all shadow-sm"
                                                     >
                                                         <img 
-                                                            src={`http://localhost:3000${photo.startsWith('/') ? photo : '/' + photo}`} 
+                                                            src={`${BASE_URL}${photo.startsWith('/') ? photo : '/' + photo}`} 
                                                             alt="Evidencia recita" 
                                                             className="w-full h-full object-cover"
                                                         />
