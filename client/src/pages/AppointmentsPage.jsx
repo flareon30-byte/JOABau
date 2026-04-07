@@ -953,7 +953,7 @@ const AppointmentsPage = () => {
                                 disabled={isSavingComment}
                                 className="w-full py-4 bg-blue-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
                             >
-                                {isSavingComment ? <Loader className="animate-spin" /> : <CheckCircle2 size={20} />}
+                                {isSavingComment ? <Loader className="animate-spin" /> : <CheckCircle size={20} />}
                                 Guardar Cambios en Reporte
                             </button>
                         </form>

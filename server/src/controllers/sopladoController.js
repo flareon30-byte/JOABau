@@ -1,4 +1,5 @@
 const prisma = require('../prisma');
+const { processImages } = require('../utils/imageProcessor');
 
 // Get addresses for a specific project
 exports.getProjectAddresses = async (req, res) => {
@@ -58,6 +59,10 @@ exports.submitSopladoReport = async (req, res) => {
     const { addressId } = req.params;
     const { status, meters, tk, tubeColor, failureReason } = req.body;
     const files = req.files; // Array of files from multer
+
+    if (files && files.length > 0) {
+        await processImages(files);
+    }
 
     try {
         const photoPaths = files ? files.map(f => f.path) : [];
