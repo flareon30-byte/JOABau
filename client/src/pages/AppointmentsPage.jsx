@@ -230,7 +230,10 @@ const AppointmentsPage = () => {
         });
     };
 
-    const BASE_URL = import.meta.env.VITE_API_URL || 'https://api.joatechnologien.de';
+    // Dynamic BASE_URL detection to avoid DNS issues
+    const BASE_URL = window.location.origin.includes('localhost') 
+        ? 'http://localhost:3000' 
+        : window.location.origin;
 
     const allPendingFiltered = filterAppointments(pendingAddresses);
 
