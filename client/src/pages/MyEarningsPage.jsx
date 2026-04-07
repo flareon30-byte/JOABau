@@ -4,6 +4,8 @@ import { Wallet, TrendingUp, Calendar, AlertCircle, Calculator, CheckCircle, Tar
 
 const MyEarningsPage = () => {
     const [data, setData] = useState(null);
+    const [history, setHistory] = useState([]);
+    const [showHistory, setShowHistory] = useState(false);
     const [loading, setLoading] = useState(true);
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -12,7 +14,17 @@ const MyEarningsPage = () => {
 
     useEffect(() => {
         fetchMyEarnings();
+        fetchHistory();
     }, []);
+
+    const fetchHistory = async () => {
+        try {
+            const res = await api.get('/api/payroll/history');
+            setHistory(res.data);
+        } catch (error) {
+            console.error('Error fetching history:', error);
+        }
+    };
 
     const fetchMyEarnings = async () => {
         try {
@@ -150,18 +162,78 @@ const MyEarningsPage = () => {
     const isGoalMet = progressPercent >= 100;
     const progressColor = isGoalMet ? 'bg-green-500' : 'bg-blue-500';
 
+    const cycleStart = data?.cycle?.start ? new Date(data.cycle.start).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) : '';
+    const cycleEnd = data?.cycle?.end ? new Date(data.cycle.end).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' }) : '';
+
     return (
         <div className="max-w-5xl mx-auto space-y-8 pb-20 animate-fadeIn">
+            {showHistory && (
+                <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[110] p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[80vh] overflow-hidden shadow-2xl relative flex flex-col border-4 border-slate-100">
+                        <div className="p-8 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                            <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                                <Calendar className="text-joa-blue" size={28} /> Mis Nóminas Cerradas
+                            </h3>
+                            <button onClick={() => setShowHistory(false)} className="text-slate-400 hover:text-slate-800">
+                                <AlertCircle size={28} />
+                            </button>
+                        </div>
+                        <div className="flex-grow overflow-y-auto p-8">
+                            {history.length === 0 ? (
+                                <div className="text-center py-20 text-slate-400 italic">No tienes ciclos cerrados todavía.</div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {history.map(log => (
+                                        <div key={log.id} className="bg-white border-2 border-slate-100 rounded-2xl p-5">
+                                            <div className="text-lg font-black text-slate-800 uppercase mb-4">
+                                                {new Date(log.year, log.month - 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                                <div className="bg-slate-50 p-3 rounded-xl">
+                                                    <div className="text-[9px] text-slate-400 font-bold uppercase">Puntos</div>
+                                                    <div className="text-sm font-black text-slate-700">{log.points} pts</div>
+                                                </div>
+                                                <div className="bg-slate-50 p-3 rounded-xl">
+                                                    <div className="text-[9px] text-slate-400 font-bold uppercase">Dietas</div>
+                                                    <div className="text-sm font-black text-slate-700">{money(log.dietasAmount)}</div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-slate-900 text-white p-3 rounded-xl flex justify-between items-center text-sm font-black">
+                                                <span>Total Percibido</span>
+                                                <span>{money(log.totalEuros)}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+                            <button onClick={() => setShowHistory(false)} className="px-8 py-3 bg-slate-800 text-white rounded-2xl font-black uppercase text-xs tracking-widest">
+                                Cerrar Visor
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <Wallet className="text-joa-blue" /> Mis Ganancias
                     </h2>
-                    <p className="text-slate-500 text-sm">{stats?.teamName || 'Mi Equipo'} - Cálculo de Rentabilidad Real</p>
+                    <p className="text-slate-500 text-sm">{stats?.teamName || 'Mi Equipo'} - Ciclo {cycleStart} al {cycleEnd}</p>
                 </div>
-                <div className="bg-slate-800 text-white px-4 py-2 rounded-full text-sm font-bold shadow-lg">
-                    {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => setShowHistory(true)}
+                        className="bg-white border-2 border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all flex items-center gap-2"
+                    >
+                        <Calendar size={16} /> Ver Pasadas
+                    </button>
+                    <div className="bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg">
+                        {new Date().toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                    </div>
                 </div>
             </div>
 

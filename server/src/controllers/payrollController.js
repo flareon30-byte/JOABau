@@ -287,7 +287,7 @@ exports.getArchiveHistory = async (req, res) => {
 };
 
 // Internal Helper for Summary (Unified logic for Export, View and Archive)
-exports.getPayrollSummaryInternal = async (req, start, end) => {
+exports.getPayrollSummaryInternal = async (req, start, end, userIdFilter = 'all') => {
     const settings = await prisma.systemSettings.findFirst({
         where: { isDemo: req.isDemo || false }
     });
@@ -295,14 +295,25 @@ exports.getPayrollSummaryInternal = async (req, start, end) => {
     const monthForDays = start.getMonth();
     const yearForDays = start.getFullYear();
 
-    // 1. Fetch Users
+    // 1. Fetch Users (With Filter)
+    const userConditions = { isDemo: req.isDemo || false };
+    if (userIdFilter && userIdFilter !== 'all') {
+        userConditions.id = userIdFilter;
+    }
+
     const users = await prisma.user.findMany({
-        where: { isDemo: req.isDemo || false },
+        where: userConditions,
         include: { 
             team: { include: { members: true, activeClientCompany: true } }, 
             activeClientCompany: true,
             dietaLogs: {
                 where: { date: { gte: start, lte: end } }
+            },
+            scheduledAppointments: {
+                where: { 
+                    status: { in: ['CITADO', 'COMPLETADO'] },
+                    updatedAt: { gte: start, lte: end }
+                }
             }
         }
     });
@@ -363,7 +374,12 @@ exports.getPayrollSummaryInternal = async (req, start, end) => {
         let stats = null;
         if (user.role === 'BACK_OFFICE') {
             const baseSalary = financialConfig?.salary || user.baseSalary || 1500;
-            stats = { netResult: 0 - baseSalary };
+            const apptCount = user.scheduledAppointments ? user.scheduledAppointments.length : 0; // Simplified
+            stats = { 
+                netResult: 0 - baseSalary, 
+                appointmentsDone: apptCount,
+                totalRevenue: apptCount * (financialConfig?.pricePerAppointment || 15)
+            };
         } else if (team) {
             const acts = teamActs[teamId] || [];
             stats = calculateGroupFinancials(acts, financialConfig, team.members, 0, getWorkingDays(yearForDays, monthForDays));
@@ -418,7 +434,7 @@ exports.getPayrollSummaryInternal = async (req, start, end) => {
 };
 
 exports.getPayrollSummary = async (req, res) => {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, userId } = req.query;
     try {
         let start, end;
         if (startDate && endDate) {
@@ -430,7 +446,7 @@ exports.getPayrollSummary = async (req, res) => {
             end = cycle.end;
         }
 
-        const result = await exports.getPayrollSummaryInternal(req, start, end);
+        const result = await exports.getPayrollSummaryInternal(req, start, end, userId);
         res.json(result);
     } catch (error) {
         console.error(error);
