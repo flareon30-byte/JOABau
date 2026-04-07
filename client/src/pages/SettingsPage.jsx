@@ -27,7 +27,8 @@ const SettingsPage = () => {
             bonusPerMulti: 10,
             bonusPerMDU: 15,
 
-            saturdayRate: 40
+            saturdayRate: 40,
+            extraSaturday: 50 // Added Extra Saturday for Dietas
         },
         blowers: {
             salary: 1600,
@@ -41,14 +42,23 @@ const SettingsPage = () => {
             pricePerUnit: 15, // Vivienda Soplada
             bonusPerUnit: 3,
             saturdayRate: 0,
-            saturdayBonusPerUnit: 5
+            saturdayBonusPerUnit: 5,
+            extraSaturday: 50 // Added Extra Saturday for Dietas
         },
         backOffice: {
             salary: 1500,
             insuranceRate: 21.50,
             dietasPerDay: 0,
             opCostPerPerson: 200,
-            pricePerAppointment: 15
+            pricePerAppointment: 15,
+            extraSaturday: 50 // Added Extra Saturday for Dietas
+        },
+        protocols: {
+            salary: 1500,
+            insuranceRate: 21.50,
+            dietasPerDay: 0,
+            opCostPerPerson: 200,
+            extraSaturday: 50 // Added Extra Saturday for Dietas
         }
     });
 

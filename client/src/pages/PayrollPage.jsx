@@ -401,9 +401,9 @@ const DietaCalendarModal = ({ user, onClose, onSave }) => {
                     <span className={`text-xs font-bold ${isToday ? 'text-joa-blue underline decoration-2' : 'text-slate-400'}`}>{d}</span>
                     {dieta && (
                         <div className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-sm text-center w-full truncate
-                            ${dieta.type === 'HOTEL' ? 'bg-blue-600 text-white' : 'bg-slate-400 text-white'}
+                            ${dieta.isSaturday ? 'bg-orange-500 text-white animate-pulse' : (dieta.type === 'HOTEL' ? 'bg-blue-600 text-white' : 'bg-slate-400 text-white')}
                         `}>
-                            {dieta.type === 'HOTEL' ? '🏨 Hotel' : '🏠 Casa'}
+                            {dieta.isSaturday ? `✨ SÁBADO (${money(dieta.amount)})` : (dieta.type === 'HOTEL' ? `🏨 HOTEL (${money(dieta.amount)})` : `🏠 CASA (${money(dieta.amount)})`)}
                         </div>
                     )}
                     {!dieta && <div className="h-4"></div>}

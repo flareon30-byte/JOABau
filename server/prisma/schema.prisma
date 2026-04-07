@@ -597,6 +597,7 @@ model DietaLog {
   date      DateTime
   type      String   // "HOTEL" or "CASA"
   amount    Float
+  isSaturday Boolean @default(false)
   createdAt DateTime @default(now())
 
   @@unique([userId, date])

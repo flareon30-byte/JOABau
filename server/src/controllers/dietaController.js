@@ -7,13 +7,36 @@ exports.logDieta = async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const isSaturday = today.getDay() === 6;
+
     if (!['HOTEL', 'CASA'].includes(type)) {
         return res.status(400).json({ message: 'Tipo de dieta inválido' });
     }
 
-    const amount = type === 'HOTEL' ? 28.0 : 14.0;
-
     try {
+        // 1. Fetch user to get financial settings
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { 
+                team: { include: { activeClientCompany: true } },
+                activeClientCompany: true
+            }
+        });
+
+        let baseAmount = type === 'HOTEL' ? 28.0 : 14.0;
+        let extra = 0;
+
+        if (isSaturday) {
+            let groupKey = user.role === 'BLOWER' ? 'blowers' : (user.role === 'BACK_OFFICE' ? 'backOffice' : 'installers');
+            const teamSettings = user.team?.activeClientCompany?.settings;
+            const userSettings = user.activeClientCompany?.settings;
+            const config = teamSettings?.[groupKey] || userSettings?.[groupKey];
+            
+            extra = config?.extraSaturday || 40.0; // Use config or 40€ as requested
+        }
+
+        const finalAmount = baseAmount + extra;
+
         const entry = await prisma.dietaLog.upsert({
             where: {
                 userId_date: {
@@ -21,12 +44,13 @@ exports.logDieta = async (req, res) => {
                     date: today
                 }
             },
-            update: { type, amount },
+            update: { type, amount: finalAmount, isSaturday },
             create: {
                 userId,
                 date: today,
                 type,
-                amount
+                amount: finalAmount,
+                isSaturday
             }
         });
         res.json({ success: true, entry });
@@ -82,7 +106,7 @@ exports.adminLogDieta = async (req, res) => {
 
     const logDate = new Date(date);
     logDate.setHours(0, 0, 0, 0);
-    const amount = type === 'HOTEL' ? 28.0 : (type === 'CASA' ? 14.0 : 0.0);
+    const isSaturday = logDate.getDay() === 6;
 
     try {
         if (type === 'DELETE') {
@@ -94,12 +118,35 @@ exports.adminLogDieta = async (req, res) => {
             return res.json({ success: true, message: 'Dieta eliminada' });
         }
 
+        // Fetch user financial settings for the bonus
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { 
+                team: { include: { activeClientCompany: true } },
+                activeClientCompany: true
+            }
+        });
+
+        let baseAmount = type === 'HOTEL' ? 28.0 : (type === 'CASA' ? 14.0 : 0.0);
+        let extra = 0;
+
+        if (isSaturday && type !== 'DELETE') {
+            let groupKey = user.role === 'BLOWER' ? 'blowers' : (user.role === 'BACK_OFFICE' ? 'backOffice' : 'installers');
+            const teamSettings = user.team?.activeClientCompany?.settings;
+            const userSettings = user.activeClientCompany?.settings;
+            const config = teamSettings?.[groupKey] || userSettings?.[groupKey];
+            
+            extra = config?.extraSaturday || 40.0;
+        }
+
+        const finalAmount = baseAmount + extra;
+
         const entry = await prisma.dietaLog.upsert({
             where: {
                 userId_date: { userId, date: logDate }
             },
-            update: { type, amount },
-            create: { userId, date: logDate, type, amount }
+            update: { type, amount: finalAmount, isSaturday },
+            create: { userId, date: logDate, type, amount: finalAmount, isSaturday }
         });
         res.json({ success: true, entry });
     } catch (error) {
