@@ -3,34 +3,34 @@ const { calculateGroupFinancials } = require('../utils/financialUtils');
 
 // Helper: Calculate working days for a given month/year (Default current)
 // Simplified version of the calendar utils
+// Helper: Calculate working days for a given month/year
 const getWorkingDays = (year, month) => {
-    // 0 = Jan, 11 = Dec
     const startDate = new Date(year, month, 1);
     const endDate = new Date(year, month + 1, 0);
     let count = 0;
-
-    // Holidays NRW 2026 (simplified set for example)
-    // In a real app, use a robust holiday library or DB table
-    const holidays2026 = [
-        '0-1', '2-29', '3-2', '4-1', '4-10', '4-21', '5-1', '5-11', '7-15', '9-3', '10-1', '11-25', '11-26'
-        // Note: Month is 0-indexed in JS date, but let's use M-D strings
-        // Adjust as needed for specific strictness. 
-        // For now, let's use a standard approximation or the fixed value from the user's calculator if possible.
-        // User calculator uses a util. Let's approximate to ~21 or calculate weekdays.
-    ];
-
-    // Simple Weekday Count
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
         const day = d.getDay();
-        if (day !== 0 && day !== 6) { // Not Sunday (0) or Saturday (6)
-            count++;
-        }
+        if (day !== 0 && day !== 6) count++;
     }
     return count;
 };
 
-// (Redundant calculation logic moved to financialUtils.js)
+// Helper: Accurate Cycle Calculation (21st to 20th)
+const getCycleDates = (dateInput = new Date()) => {
+    const date = new Date(dateInput);
+    let start = new Date(date.getFullYear(), date.getMonth(), 21);
+    let end = new Date(date.getFullYear(), date.getMonth() + 1, 20);
 
+    if (date.getDate() <= 20) {
+        start.setMonth(start.getMonth() - 1);
+        end.setMonth(end.getMonth() - 1);
+    }
+    
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
+    
+    return { start, end };
+};
 
 exports.getMyPayroll = async (req, res) => {
     const userId = req.userId;
@@ -58,17 +58,8 @@ exports.getMyPayroll = async (req, res) => {
             team = { id: 'virtual', name: 'Modo Administrador', members: [user] };
         }
 
-        const now = new Date();
-        let billingStart = new Date(now.getFullYear(), now.getMonth(), 20);
-        let billingEnd = new Date(now.getFullYear(), now.getMonth() + 1, 20);
-
-        if (now.getDate() < 20) {
-            billingStart.setMonth(billingStart.getMonth() - 1);
-            billingEnd.setMonth(billingEnd.getMonth() - 1);
-        }
-
-        const start = billingStart;
-        const end = new Date(); // To show current progress
+        // --- NEW CYCLE LOGIC (21 TO 20) ---
+        const { start, end } = getCycleDates();
 
         // 0. Fetch Dietas Logged for all team members (affects shared pool)
         const teamMemberIds = team ? team.members.map(m => m.id) : [userId];
@@ -87,7 +78,7 @@ exports.getMyPayroll = async (req, res) => {
             where: { isDemo: req.isDemo || false }
         });
 
-        // 1. Back Office Special Case (Individual view, no overhead calc needed for them usually)
+        // 1. Back Office Special Case
         if (user.role === 'BACK_OFFICE') {
             let config = null;
             if (team?.activeClientCompany?.settings) {
@@ -111,7 +102,8 @@ exports.getMyPayroll = async (req, res) => {
                 role: 'BACK_OFFICE',
                 baseSalary: baseSalary,
                 metrics: { appointmentsDone: apptCount, targetDaily: 15, revenueGenerated: revenue },
-                financials: { total: baseSalary }
+                financials: { total: baseSalary },
+                cycle: { start, end }
             });
         }
 
@@ -157,7 +149,7 @@ exports.getMyPayroll = async (req, res) => {
             }
         }
 
-        // 2b. Add SimpleInstallations (G&K) for parity with Dashboard
+        // 2b. Add SimpleInstallations (G&K)
         const simples = await prisma.simpleInstallation.findMany({
             where: {
                 createdAt: { gte: start, lte: end },
@@ -174,20 +166,21 @@ exports.getMyPayroll = async (req, res) => {
                 isSaturday: gk.createdAt && new Date(gk.createdAt).getDay() === 6,
                 activationType: 'GK',
                 createdAt: gk.createdAt,
-                basePrice: bonusToCredit, // Simplified for calculateGroupFinancials parity
+                basePrice: bonusToCredit,
                 spPrice: 0, taPrice: 0, mduPrice: 0, repairPrice: 0
             });
         });
 
         const teamMembers = team ? team.members : [user];
+        const now = new Date();
 
-        // --- OVERHEAD CALCULATION (Global Deficit) ---
+        // --- OVERHEAD CALCULATION ---
         let overheadToCover = 0;
         if (groupKey === 'installers') {
             overheadToCover = await require('../services/financialService').getGlobalSupportDeficit(req.isDemo || false);
         }
 
-        const stats = calculateGroupFinancials(activations, financialConfig, teamMembers, overheadToCover, getWorkingDays(now.getFullYear(), now.getMonth()), teamDietasCost);
+        const stats = calculateGroupFinancials(activations, financialConfig, teamMembers, overheadToCover, getWorkingDays(start.getFullYear(), start.getMonth()), teamDietasCost);
 
         const memberCount = teamMembers.length || 1;
         const myBonus = stats.bonusPool / memberCount;
@@ -195,14 +188,12 @@ exports.getMyPayroll = async (req, res) => {
         const myBaseSalary = user.baseSalary || 1500;
         const myTotal = myBaseSalary + myBonus + mySaturday + myDietasPay;
 
-        const memberCountSafe = memberCount || 1;
-
         res.json({
             financials: financialConfig,
             stats: {
                 ...stats,
-                myTargetRevenue: stats.totalTargetRevenue / memberCountSafe,
-                myCurrentRevenue: stats.currentRevenueMf / memberCountSafe,
+                myTargetRevenue: stats.totalTargetRevenue / memberCount,
+                myCurrentRevenue: stats.currentRevenueMf / memberCount,
                 myProgressPercent: stats.progressPercent,
                 activationsCount: activations.length,
                 teamName: team?.name || 'Sin Equipo'
@@ -213,7 +204,8 @@ exports.getMyPayroll = async (req, res) => {
                 mySaturdayPay: mySaturday,
                 myDietasPay: myDietasPay,
                 totalEstimated: myTotal
-            }
+            },
+            cycle: { start, end }
         });
 
     } catch (error) {
@@ -222,203 +214,226 @@ exports.getMyPayroll = async (req, res) => {
     }
 };
 
-exports.getPayrollSummary = async (req, res) => {
-    const { startDate, endDate, userId } = req.query;
+exports.archiveCurrentCycle = async (req, res) => {
     try {
-        const start = startDate ? new Date(startDate) : new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-        if (startDate && !startDate.includes('T')) start.setHours(0, 0, 0, 0);
+        const { start, end } = getCycleDates();
+        const month = end.getMonth() + 1;
+        const year = end.getFullYear();
 
-        const end = endDate ? new Date(endDate) : new Date();
-        if (endDate && !endDate.includes('T')) end.setHours(23, 59, 59, 999);
+        // 1. Fetch current payroll summary
+        const summaryResponse = await exports.getPayrollSummaryInternal(req, start, end);
+        const data = summaryResponse.data;
 
-        const monthForDays = start.getMonth();
-        const yearForDays = start.getFullYear();
+        console.log(`[Archive] Guardando Foto Finish del ciclo ${month}/${year}...`);
 
-        const settings = await prisma.systemSettings.findFirst({
-            where: { isDemo: req.isDemo || false }
-        });
-
-        // 1. Fetch Users
-        const userFilters = { isDemo: req.isDemo || false };
-        if (userId && userId !== 'all') {
-            userFilters.id = userId;
+        let count = 0;
+        for (const item of data) {
+            try {
+                await prisma.payrollLog.upsert({
+                    where: {
+                        userId_month_year: { userId: item.id, month, year }
+                    },
+                    update: {
+                        points: item.production?.pointsTotal || 0,
+                        pointEarnings: item.bonus || 0,
+                        dietasCount: item.dietasCount || 0,
+                        dietasAmount: item.dietaPay || 0,
+                        saturdayPay: item.saturday || 0,
+                        totalEuros: item.total || 0,
+                        cycleStart: start,
+                        cycleEnd: end
+                    },
+                    create: {
+                        userId: item.id,
+                        month,
+                        year,
+                        points: item.production?.pointsTotal || 0,
+                        pointEarnings: item.bonus || 0,
+                        dietasCount: item.dietasCount || 0,
+                        dietasAmount: item.dietaPay || 0,
+                        saturdayPay: item.saturday || 0,
+                        totalEuros: item.total || 0,
+                        cycleStart: start,
+                        cycleEnd: end
+                    }
+                });
+                count++;
+            } catch (e) {
+                console.error(`[Archive Error] Error for user ${item.username}:`, e);
+            }
         }
 
-        const users = await prisma.user.findMany({
-            where: userFilters,
-            include: { 
-                team: { include: { members: true, activeClientCompany: true } }, 
-                activeClientCompany: true,
-                dietaLogs: {
-                    where: { date: { gte: start, lte: end } }
-                }
-            }
+        res.json({ success: true, message: `Foto finish completada para ${count} trabajadores.` });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: 'Error archiving cycle' });
+    }
+};
+
+exports.getArchiveHistory = async (req, res) => {
+    const { userId: filterUserId } = req.query; // Admin can filter by userId
+    const userId = (req.role === 'SUPER_ADMIN' || req.role === 'ADMIN') && filterUserId ? filterUserId : req.userId;
+
+    try {
+        const logs = await prisma.payrollLog.findMany({
+            where: { userId: userId },
+            orderBy: [{ year: 'desc' }, { month: 'desc' }]
         });
+        res.json(logs);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching payroll history' });
+    }
+};
 
-        const activations = await prisma.activationInfo.findMany({
-            where: {
-                createdAt: { gte: start, lte: end },
-                address: { project: { isDemo: req.isDemo || false } }
-            },
-            include: {
-                address: { include: { appointment: { include: { assignedTeam: true } } } }
+// Internal Helper for Summary (Unified logic for Export, View and Archive)
+exports.getPayrollSummaryInternal = async (req, start, end) => {
+    const settings = await prisma.systemSettings.findFirst({
+        where: { isDemo: req.isDemo || false }
+    });
+
+    const monthForDays = start.getMonth();
+    const yearForDays = start.getFullYear();
+
+    // 1. Fetch Users
+    const users = await prisma.user.findMany({
+        where: { isDemo: req.isDemo || false },
+        include: { 
+            team: { include: { members: true, activeClientCompany: true } }, 
+            activeClientCompany: true,
+            dietaLogs: {
+                where: { date: { gte: start, lte: end } }
             }
-        });
+        }
+    });
 
-        const soplados = await prisma.sopladoInfo.findMany({
-            where: {
-                createdAt: { gte: start, lte: end },
-                address: { project: { isDemo: req.isDemo || false } }
-            }
-        });
+    const activations = await prisma.activationInfo.findMany({
+        where: {
+            createdAt: { gte: start, lte: end },
+            address: { project: { isDemo: req.isDemo || false } }
+        },
+        include: {
+            address: { include: { appointment: { include: { assignedTeam: true } } } }
+        }
+    });
 
-        // Map Activations to Team
-        const teamActs = {};
-        activations.forEach(act => {
-            const tid = act.address?.appointment?.assignedTeamId;
-            if (tid) {
-                if (!teamActs[tid]) teamActs[tid] = [];
-                teamActs[tid].push(act);
-            }
-        });
-        soplados.forEach(s => {
-            const tid = s.teamId;
-            if (tid) {
-                if (!teamActs[tid]) teamActs[tid] = [];
-                teamActs[tid].push({
-                    isSaturday: s.isSaturday,
-                    activationType: 'BP',
-                    createdAt: s.createdAt,
-                    basePrice: 0
-                });
-            }
-        });
+    const soplados = await prisma.sopladoInfo.findMany({
+        where: {
+            createdAt: { gte: start, lte: end },
+            address: { project: { isDemo: req.isDemo || false } }
+        }
+    });
 
-        // We need to calculate Support Groups First to find Deficit (Overhead)
-        // Group users by "Financial Type"
-        const supportGroups = ['blowers', 'replanners', 'backoffice']; // Roles mapped to these keys
-        let supportProfit = 0;
+    const teamActs = {};
+    activations.forEach(act => {
+        const tid = act.address?.appointment?.assignedTeamId;
+        if (tid) {
+            if (!teamActs[tid]) teamActs[tid] = [];
+            teamActs[tid].push(act);
+        }
+    });
+    soplados.forEach(s => {
+        const tid = s.teamId;
+        if (tid) {
+            if (!teamActs[tid]) teamActs[tid] = [];
+            teamActs[tid].push({
+                isSaturday: s.isSaturday,
+                activationType: 'BP',
+                createdAt: s.createdAt,
+                basePrice: 0
+            });
+        }
+    });
 
-        // This is tricky because users are individual rows but calculation is by Team/Group.
-        // We will calc per-user for the list, but for overhead we need conceptual "Groups".
-        // Let's just calculate per-user/team stats normally and sum their NetResult.
-        // If a team is "Blower", their profit adds to supportProfit.
+    const processedUsers = users.map(user => {
+        const team = user.team;
+        const teamId = team?.id;
+        let groupKey = user.role === 'BLOWER' ? 'blowers' : (user.role === 'BACK_OFFICE' ? 'backOffice' : 'installers');
 
-        const processedUsers = users.map(user => {
-            const team = user.team;
-            const teamId = team?.id;
+        let financialConfig = null;
+        if (team?.activeClientCompany?.settings) {
+            financialConfig = team.activeClientCompany.settings[groupKey];
+        } else if (user.activeClientCompany?.settings) {
+            financialConfig = user.activeClientCompany.settings[groupKey];
+        }
+        if (!financialConfig && settings?.financials) {
+            financialConfig = settings.financials[groupKey];
+        }
 
-            // Determine Role/Group Key
-            let groupKey = 'installers'; // Default
-            if (user.role === 'BLOWER') groupKey = 'blowers';
-            if (user.role === 'BACK_OFFICE') groupKey = 'backOffice';
+        let stats = null;
+        if (user.role === 'BACK_OFFICE') {
+            const baseSalary = financialConfig?.salary || user.baseSalary || 1500;
+            stats = { netResult: 0 - baseSalary };
+        } else if (team) {
+            const acts = teamActs[teamId] || [];
+            stats = calculateGroupFinancials(acts, financialConfig, team.members, 0, getWorkingDays(yearForDays, monthForDays));
+        } else {
+            stats = { netResult: 0 - (user.baseSalary || 1500) };
+        }
 
-            // Fetch Config (Per Client Priority)
-            let financialConfig = null;
-            if (team?.activeClientCompany?.settings) {
-                financialConfig = team.activeClientCompany.settings[groupKey];
-            } else if (user.activeClientCompany?.settings) {
-                financialConfig = user.activeClientCompany.settings[groupKey];
-            }
-            if (!financialConfig && settings?.financials) {
-                financialConfig = settings.financials[groupKey];
-            }
+        return { user, stats, groupKey, financialConfig };
+    });
 
-            let stats = null;
-
-            if (user.role === 'BACK_OFFICE') {
-                // Simplified Back Office Calc
-                const baseSalary = financialConfig?.salary || user.baseSalary || 1500;
-                stats = { netResult: 0 - baseSalary }; // Cost center initially
-            } else if (team) {
-                const acts = teamActs[teamId] || [];
-                // Calculate stats for the TEAM (shared)
-                // We pass 0 overhead here initially, we might adjust later if we want perfect per-row deficit display
-                stats = calculateGroupFinancials(acts, financialConfig, team.members, 0, getWorkingDays(yearForDays, monthForDays));
-            } else {
-                // Unassigned or Virtual
-                const baseSalary = financialConfig?.salary || user.baseSalary || 1500;
-                stats = { netResult: 0 - baseSalary };
-            }
-
-            return { user, stats, groupKey, financialConfig };
-        });
-
-        // Calc Deficit (Global)
-        // Filter "Support" types to sum their Net Result. 
-        // Note: This logic sums per USER if they are processed individually, 
-        // but if they are in a TEAM, `stats` is calculated per TEAM effectively (repeated for members). 
-        // We need to be careful not to double count team stats if iterating users.
-        // Actually `processedUsers` maps 1:1 to users. 
-        // `stats` for team members serves as their "share" view or identical team view.
-        // For deficit calc, we should sum UNIQUE teams + independent users.
-
-        const uniqueTeamsProcessed = new Set();
-        let netOthers = 0;
-
-        processedUsers.forEach(item => {
-            if (item.groupKey !== 'installers') {
-                if (item.user.teamId) {
-                    if (!uniqueTeamsProcessed.has(item.user.teamId)) {
-                        uniqueTeamsProcessed.add(item.user.teamId);
-                        netOthers += (item.stats.netResult || 0);
-                    }
-                } else {
+    const uniqueTeamsProcessed = new Set();
+    let netOthers = 0;
+    processedUsers.forEach(item => {
+        if (item.groupKey !== 'installers') {
+            if (item.user.teamId) {
+                if (!uniqueTeamsProcessed.has(item.user.teamId)) {
+                    uniqueTeamsProcessed.add(item.user.teamId);
                     netOthers += (item.stats.netResult || 0);
                 }
+            } else {
+                netOthers += (item.stats.netResult || 0);
             }
-        });
+        }
+    });
 
-        // "If the total is negative, Installers need to cover that remaining hole."
-        const totalDeficit = netOthers < 0 ? Math.abs(netOthers) : 0;
+    const totalDeficit = netOthers < 0 ? Math.abs(netOthers) : 0;
 
-        const summary = processedUsers.map(({ user, stats, groupKey, financialConfig }) => {
-            // Determine Base Salary
-            // Priority: Config Salary -> User Base Salary -> Default 1500
-            const finalBaseSalary = user.baseSalary || 1500;
+    const data = processedUsers.map(({ user, stats, groupKey, financialConfig }) => {
+        const finalBaseSalary = user.baseSalary || 1500;
+        const members = user.team?.members?.length || 1;
+        const shareBonus = (stats && stats.bonusPool) ? (stats.bonusPool / members) : 0;
+        const shareSaturday = (stats && stats.saturdayPay) ? (stats.saturdayPay / members) : 0;
+        const dietaPay = user.dietaLogs?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
+        const dietasCount = user.dietaLogs?.length || 0;
+        const total = finalBaseSalary + shareBonus + shareSaturday + dietaPay;
 
-            // Formating directly for frontend table
-            const members = user.team?.members?.length || 1;
+        return {
+            id: user.id,
+            username: user.username,
+            role: user.role,
+            baseSalary: finalBaseSalary,
+            bonus: shareBonus,
+            saturday: shareSaturday,
+            dietaPay: dietaPay,
+            dietasCount: dietasCount,
+            total: total,
+            production: { ...stats, type: groupKey, teamName: user.team?.name || 'Sin Equipo' }
+        };
+    });
 
-            // Per-person bonus share
-            const shareBonus = (stats && stats.bonusPool) ? (stats.bonusPool / members) : 0;
-            const shareSaturday = (stats && stats.saturdayPay) ? (stats.saturdayPay / members) : 0;
+    return { data, meta: { range: { start, end }, globalDeficit: totalDeficit } };
+};
 
-            const dietaPay = user.dietaLogs?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
-            const dietasCount = user.dietaLogs?.length || 0;
+exports.getPayrollSummary = async (req, res) => {
+    const { startDate, endDate } = req.query;
+    try {
+        let start, end;
+        if (startDate && endDate) {
+            start = new Date(startDate);
+            end = new Date(endDate);
+        } else {
+            const cycle = getCycleDates();
+            start = cycle.start;
+            end = cycle.end;
+        }
 
-            const total = finalBaseSalary + shareBonus + shareSaturday + dietaPay;
-
-            return {
-                id: user.id,
-                username: user.username,
-                role: user.role,
-
-                // Financials (Top Level for Table)
-                baseSalary: finalBaseSalary,
-                bonus: shareBonus,
-                saturday: shareSaturday,
-                dietaPay: dietaPay,
-                dietasCount: dietasCount,
-                total: total,
-
-                // Production & Details
-                production: {
-                    ...stats,
-                    type: groupKey,
-                    teamName: user.team?.name || 'Sin Equipo',
-                    appointmentsDone: stats?.appointmentsDone || 0
-                }
-            };
-        });
-
-        res.json({
-            meta: { range: { start, end }, globalDeficit: totalDeficit },
-            data: summary
-        });
-
+        const result = await exports.getPayrollSummaryInternal(req, start, end);
+        res.json(result);
     } catch (error) {
-        console.error('Error getting payroll summary:', error);
+        console.error(error);
         res.status(500).json({ message: 'Error fetching payroll summary' });
     }
 };

@@ -57,8 +57,39 @@ const PayrollPage = () => {
     };
 
 
+    const [history, setHistory] = useState([]);
+    const [showHistory, setShowHistory] = useState(false);
+    const [isArchiving, setIsArchiving] = useState(false);
+
+    const fetchHistory = async () => {
+        try {
+            const res = await api.get('/api/payroll/history');
+            setHistory(res.data);
+        } catch (error) {
+            console.error('Error fetching history:', error);
+        }
+    };
+
+    const handleArchiveCycle = async () => {
+        if (!window.confirm('¿Deseas realizar la FOTO FINISH del ciclo actual? Esto guardará los datos de todos los trabajadores (puntos, dietas, bonus) y sellará el periodo del 21 al 20.')) return;
+        
+        setIsArchiving(true);
+        try {
+            const res = await api.post('/api/payroll/archive');
+            alert(res.data.message);
+            fetchPayrollData();
+            fetchHistory();
+        } catch (error) {
+            console.error('Error archiving cycle:', error);
+            alert('Error al cerrar el ciclo');
+        } finally {
+            setIsArchiving(false);
+        }
+    };
+
     useEffect(() => {
         fetchUsers();
+        fetchHistory();
     }, []);
 
     useEffect(() => {
@@ -96,6 +127,12 @@ const PayrollPage = () => {
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-20">
+            {showHistory && (
+                <PayrollHistoryModal 
+                    history={history} 
+                    onClose={() => setShowHistory(false)} 
+                />
+            )}
             {/* Header */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
@@ -105,9 +142,24 @@ const PayrollPage = () => {
                     <p className="text-slate-500 text-sm">Cálculo preciso para gestoría (Ciclo 21 - 20)</p>
                 </div>
 
-                <button className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors">
-                    <Download size={16} /> Exportar CSV
-                </button>
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={() => setShowHistory(true)}
+                        className="flex items-center gap-2 bg-slate-100 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-200 transition-colors"
+                    >
+                        <Calendar size={16} /> Ver Historial
+                    </button>
+                    <button 
+                        onClick={handleArchiveCycle}
+                        disabled={isArchiving}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold text-white shadow-lg transition-all ${isArchiving ? 'bg-slate-400' : 'bg-red-600 hover:bg-red-700 shadow-red-200'}`}
+                    >
+                        {isArchiving ? 'Cerrando...' : <><CheckCircle size={16} /> Cerrar Ciclo (20) </>}
+                    </button>
+                    <button className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors">
+                        <Download size={16} /> Exportar CSV
+                    </button>
+                </div>
             </div>
 
             {/* Filters */}
@@ -452,6 +504,73 @@ const DietaCalendarModal = ({ user, onClose, onSave }) => {
         </div>
     );
 }
+
+const PayrollHistoryModal = ({ history, onClose }) => {
+    const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val || 0);
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[110] p-4">
+            <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[80vh] overflow-hidden shadow-2xl relative flex flex-col border-4 border-slate-100">
+                <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-slate-800 z-50">
+                    <X size={28} />
+                </button>
+
+                <div className="p-8 bg-slate-50 border-b border-slate-100">
+                    <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                        <Calendar className="text-joa-blue" size={28} /> Archivo de Nóminas Cerradas
+                    </h3>
+                    <p className="text-slate-500 text-sm font-medium">Historial de Foto Finish (Ciclos 21-20)</p>
+                </div>
+
+                <div className="flex-grow overflow-y-auto p-4 md:p-8">
+                    {history.length === 0 ? (
+                        <div className="text-center py-20 text-slate-400 italic">No hay ciclos cerrados todavía.</div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {history.map(log => (
+                                <div key={log.id} className="bg-white border-2 border-slate-100 rounded-2xl p-5 hover:border-joa-blue/30 transition-all group">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div>
+                                            <div className="text-[10px] font-black text-joa-blue uppercase tracking-widest">{log.user?.username || 'Usuario'}</div>
+                                            <div className="text-lg font-black text-slate-800 uppercase">
+                                                {new Date(log.year, log.month - 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                                            </div>
+                                        </div>
+                                        <div className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-black text-slate-500">
+                                            {new Date(log.cycleStart).toLocaleDateString()} - {new Date(log.cycleEnd).toLocaleDateString()}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3 mb-4">
+                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            <div className="text-[9px] text-slate-400 font-bold uppercase">Puntos</div>
+                                            <div className="text-sm font-black text-slate-700">{log.points} pts</div>
+                                        </div>
+                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                            <div className="text-[9px] text-slate-400 font-bold uppercase">Dietas ({log.dietasCount})</div>
+                                            <div className="text-sm font-black text-slate-700">{money(log.dietasAmount)}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center bg-slate-900 text-white p-3 rounded-xl">
+                                        <span className="text-[10px] font-bold uppercase">Neto Foto Finish</span>
+                                        <span className="text-lg font-black">{money(log.totalEuros)}</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+                    <button onClick={onClose} className="px-8 py-3 bg-slate-800 text-white rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-slate-900 transition-all">
+                        Cerrar Visor
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export default PayrollPage;
 

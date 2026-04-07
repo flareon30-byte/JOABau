@@ -46,6 +46,7 @@ model User {
   activeClientCompany   ClientCompany? @relation("ActiveClientCompany", fields: [activeClientCompanyId], references: [id])
   
   pushSubscriptions     PushSubscription[]
+  payrollLogs           PayrollLog[]
 
   createdAt             DateTime      @default(now())
   updatedAt             DateTime      @updatedAt
@@ -599,4 +600,29 @@ model DietaLog {
   createdAt DateTime @default(now())
 
   @@unique([userId, date])
+}
+
+model PayrollLog {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  month           Int
+  year            Int
+  cycleStart      DateTime
+  cycleEnd        DateTime
+  
+  // Snapshot Totals
+  points          Float    @default(0.0)
+  pointEarnings   Float    @default(0.0)
+  dietasCount     Int      @default(0)
+  dietasAmount    Float    @default(0.0)
+  saturdayPay     Float    @default(0.0)
+  totalEuros      Float    @default(0.0)
+  
+  status          String   @default("CLOSED") // CLOSED, PAID
+  
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, month, year])
 }
