@@ -3,8 +3,16 @@ dotenv.config();
 
 const express = require('express');
 const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+
+// Ensure uploads directory exists
+if (!fs.existsSync('uploads')) {
+    console.log('[Init] Creating uploads directory...');
+    fs.mkdirSync('uploads');
+}
+
 const authRoutes = require('./src/routes/authRoutes');
 const userRoutes = require('./src/routes/userRoutes');
 const teamRoutes = require('./src/routes/teamRoutes');

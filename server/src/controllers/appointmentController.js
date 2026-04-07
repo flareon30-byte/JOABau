@@ -259,16 +259,20 @@ exports.updateStatus = async (req, res) => {
     }
 };
 
-// Recite appointment (Request reschedule)
+// Recite appointment (Request reschedule or escalate)
 exports.reciteAppointment = async (req, res) => {
-    const { id } = req.params;
+    const { id } = req.params; // Can be Appointment ID or Address ID
     const { reason } = req.body;
     const userId = req.userId;
     const photosRaw = req.files || [];
     
-    // 🟢 COMPRESIÓN DE IMÁGENES
+    // 🟢 IMAGE COMPRESSION
     if (photosRaw.length > 0) {
-        await processImages(photosRaw);
+        try {
+            await processImages(photosRaw);
+        } catch (procErr) {
+            console.error("[Recite] Image processing failed, continuing anyway:", procErr);
+        }
     }
 
     const photos = photosRaw.map(f => `/uploads/${f.filename}`);
@@ -280,8 +284,31 @@ exports.reciteAppointment = async (req, res) => {
         });
         const authorName = user ? user.username : 'Unknown';
 
-        const appointment = await prisma.appointment.update({
-            where: { id },
+        // 🟢 SMART RESOLUTION: Find if ID is Address or Appointment
+        let appointment = await prisma.appointment.findFirst({
+            where: {
+                OR: [
+                    { id: id },
+                    { addressId: id }
+                ]
+            }
+        });
+
+        // 🟢 AUTO-CREATE: If no appointment record exists yet, create it!
+        // This solves the crash when "reciting" a pending address directly
+        if (!appointment) {
+            console.log(`[Recite] Creating new appointment record for address ${id}`);
+            appointment = await prisma.appointment.create({
+                data: {
+                    addressId: id, // Assuming ID was addressId
+                    status: 'PENDIENTE'
+                }
+            });
+        }
+
+        // 🟢 UPDATE: Mark as RECITE and add comment with photos
+        const updatedAppointment = await prisma.appointment.update({
+            where: { id: appointment.id },
             data: {
                 status: 'RECITAR',
                 comments: {
@@ -295,21 +322,23 @@ exports.reciteAppointment = async (req, res) => {
         });
 
         // Create Notification for Back Office
-        // We target BACK_OFFICE as the primary recipient
         await prisma.notification.create({
             data: {
                 type: 'RECITE_REQUEST',
                 message: `Solicitud de recita: ${reason.substring(0, 50)}${reason.length > 50 ? '...' : ''}`,
-                addressId: appointment.addressId,
+                addressId: updatedAppointment.addressId,
                 createdById: userId,
                 targetRole: 'BACK_OFFICE'
             }
         });
 
-        res.json(appointment);
+        res.json(updatedAppointment);
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error submitting recite request' });
+        console.error("[Recite Error]", error);
+        res.status(500).json({ 
+            message: 'Error al solicitar recita',
+            details: error.message 
+        });
     }
 };
 
