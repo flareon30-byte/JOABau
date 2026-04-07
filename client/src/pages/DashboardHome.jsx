@@ -365,11 +365,11 @@ const DashboardHome = () => {
                 app.address.project.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 (app.address.city && app.address.city.toLowerCase().includes(searchQuery.toLowerCase()));
 
-            const isCompleted = app.status === 'COMPLETADO';
-
+            const isReported = ['COMPLETADO', 'RECITAR', 'CANCELADO'].includes(app.status);
+            
             // Date Filtering for Pending
             let matchesDate = true;
-            if (activeTab === 'pending' && !isCompleted && dateFilter !== 'all') {
+            if (activeTab === 'pending' && !isReported && dateFilter !== 'all') {
                 const appDate = new Date(app.assignedDate);
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -390,8 +390,8 @@ const DashboardHome = () => {
             }
 
             return activeTab === 'pending'
-                ? (!isCompleted && matchesSearch && matchesDate)
-                : (isCompleted && matchesSearch);
+                ? (!isReported && matchesSearch && matchesDate)
+                : (isReported && matchesSearch);
         });
 
         const progress = stats.moneyProgressPercent || 0;
