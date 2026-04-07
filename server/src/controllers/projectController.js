@@ -133,20 +133,20 @@ exports.importProject = async (req, res) => {
         let updatedCount = 0;
 
         for (const addrData of addressesToProcess) {
-            // Updated matching logic to be case-insensitive
+            // Find existing by address + name + kls to distinguish multi-client buildings
             const existing = await prisma.address.findFirst({
                 where: {
                     projectId: project.id,
                     street: { equals: addrData.street, mode: 'insensitive' },
-                    number: { equals: addrData.number, mode: 'insensitive' }
+                    number: { equals: (addrData.number || ''), mode: 'insensitive' },
+                    clientName: { equals: (addrData.clientName || ''), mode: 'insensitive' },
+                    klsId: { equals: (addrData.klsId || ''), mode: 'insensitive' }
                 }
             });
 
             if (existing) {
                 const updateData = {
-                    klsId: addrData.klsId || existing.klsId,
                     city: addrData.city || existing.city,
-                    clientName: addrData.clientName || existing.clientName,
                     nvt: addrData.nvt || existing.nvt,
                     orderStatus: addrData.status || existing.orderStatus
                 };
@@ -194,10 +194,12 @@ exports.importProject = async (req, res) => {
         let missingInExcelCount = 0;
 
         for (const dbAddr of existingAddresses) {
-            // Robust matching: trim and case-insensitive
+            // Robust matching: trim and case-insensitive + client/kls
             const isInNewFile = addressesToProcess.some(newData => 
                 newData.street.trim().toLowerCase() === dbAddr.street.trim().toLowerCase() &&
-                (newData.number || '').trim().toLowerCase() === (dbAddr.number || '').trim().toLowerCase()
+                (newData.number || '').trim().toLowerCase() === (dbAddr.number || '').trim().toLowerCase() &&
+                (newData.clientName || '').trim().toLowerCase() === (dbAddr.clientName || '').trim().toLowerCase() &&
+                (newData.klsId || '').trim().toLowerCase() === (dbAddr.klsId || '').trim().toLowerCase()
             );
 
             if (!isInNewFile) {
