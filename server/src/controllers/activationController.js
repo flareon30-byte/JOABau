@@ -31,7 +31,7 @@ exports.getMyAppointments = async (req, res) => {
         const appointments = await prisma.appointment.findMany({
             where: {
                 assignedTeamId: user.teamId,
-                status: { in: ['CITADO', 'COMPLETADO'] }
+                status: 'CITADO' // Only show what is currently pending to be done
             },
             include: {
                 address: {
