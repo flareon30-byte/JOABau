@@ -385,3 +385,43 @@ exports.updateOrderStatus = async (req, res) => {
         res.status(500).json({ message: 'Error updating order status' });
     }
 };
+
+// Update a specific comment (used for fixing recite info from backoffice)
+exports.updateComment = async (req, res) => {
+    const { commentId } = req.params;
+    const { content, photosToRemove } = req.body;
+    const newPhotosRaw = req.files || [];
+
+    try {
+        const comment = await prisma.comment.findUnique({ where: { id: commentId } });
+        if (!comment) return res.status(404).json({ message: 'Comentario no encontrado' });
+
+        let currentPhotos = [...(comment.photos || [])];
+
+        // 1. Remove photos
+        if (photosToRemove) {
+            const toRemove = Array.isArray(photosToRemove) ? photosToRemove : [photosToRemove];
+            currentPhotos = currentPhotos.filter(p => !toRemove.includes(p));
+        }
+
+        // 2. Add new photos
+        if (newPhotosRaw.length > 0) {
+            await processImages(newPhotosRaw);
+            const newPhotoPaths = newPhotosRaw.map(f => `/uploads/${f.filename}`);
+            currentPhotos = [...currentPhotos, ...newPhotoPaths];
+        }
+
+        const updatedComment = await prisma.comment.update({
+            where: { id: commentId },
+            data: {
+                content,
+                photos: currentPhotos
+            }
+        });
+
+        res.json(updatedComment);
+    } catch (error) {
+        console.error("[Update Comment Error]", error);
+        res.status(500).json({ message: 'Error al actualizar el comentario' });
+    }
+};

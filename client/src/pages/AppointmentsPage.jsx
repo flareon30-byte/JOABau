@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare } from 'lucide-react';
+import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 
 const AppointmentsPage = () => {
@@ -27,6 +27,13 @@ const AppointmentsPage = () => {
     // Forms
     const [contactForm, setContactForm] = useState({ result: 'No contesta', comment: '' });
     const [scheduleForm, setScheduleForm] = useState({ date: '', teamId: '', clientName: '', apartmentCount: '' });
+
+    // New Edit Comment States
+    const [isEditCommentModalOpen, setIsEditCommentModalOpen] = useState(false);
+    const [editingComment, setEditingComment] = useState(null);
+    const [editCommentForm, setEditCommentForm] = useState({ content: '', photosToRemove: [] });
+    const [newEditPhotos, setNewEditPhotos] = useState([]);
+    const [isSavingComment, setIsSavingComment] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -198,6 +205,42 @@ const AppointmentsPage = () => {
         setIsScheduleModalOpen(true);
     };
 
+    const openEditCommentModal = (address) => {
+        if (!address.appointment || !address.appointment.comments || address.appointment.comments.length === 0) return;
+        
+        const lastComment = address.appointment.comments[address.appointment.comments.length - 1];
+        setEditingComment(lastComment);
+        setEditCommentForm({ 
+            content: lastComment.content || '', 
+            photosToRemove: [] 
+        });
+        setNewEditPhotos([]);
+        setIsEditCommentModalOpen(true);
+    };
+
+    const handleUpdateComment = async (e) => {
+        e.preventDefault();
+        setIsSavingComment(true);
+        try {
+            const formData = new FormData();
+            formData.append('content', editCommentForm.content);
+            editCommentForm.photosToRemove.forEach(p => formData.append('photosToRemove', p));
+            newEditPhotos.forEach(file => formData.append('photos', file));
+
+            await api.put(`/api/appointments/comments/${editingComment.id}`, formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            setIsEditCommentModalOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            alert('Error al actualizar el comentario');
+        } finally {
+            setIsSavingComment(false);
+        }
+    };
+
     // Filter Logic
     const filterAppointments = (list) => {
         if (!Array.isArray(list)) return [];
@@ -360,9 +403,18 @@ const AppointmentsPage = () => {
                                     <div className="flex-1">
                                         <div className="flex justify-between items-center mb-1">
                                             <p className="text-xs font-black text-red-700 uppercase tracking-widest">Solicitud de Recita / Incidencia</p>
-                                            <p className="text-[10px] text-red-400 font-bold">
-                                                {address.appointment.comments && address.appointment.comments.length > 0 ? address.appointment.comments[address.appointment.comments.length - 1].authorName : 'Técnico'}
-                                            </p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-[10px] text-red-400 font-bold">
+                                                    {address.appointment.comments && address.appointment.comments.length > 0 ? address.appointment.comments[address.appointment.comments.length - 1].authorName : 'Técnico'}
+                                                </p>
+                                                <button 
+                                                    onClick={() => openEditCommentModal(address)}
+                                                    className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                                                    title="Editar incidencia / fotos"
+                                                >
+                                                    <Pencil size={10} />
+                                                </button>
+                                            </div>
                                         </div>
                                         <p className="text-sm text-red-900 font-medium mb-3">
                                             {address.appointment.comments && address.appointment.comments.length > 0
@@ -808,6 +860,103 @@ const AppointmentsPage = () => {
                                 }}
                             />
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Edit Comment/Photos Modal */}
+            {isEditCommentModalOpen && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="bg-slate-800 p-6 text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-black flex items-center gap-2">
+                                    <Pencil size={20} className="text-blue-400" />
+                                    Editar Evidencias
+                                </h3>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Refinar Reporte Técnico</p>
+                            </div>
+                            <button onClick={() => setIsEditCommentModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleUpdateComment} className="p-8 space-y-6">
+                            {/* TEXT CONTENT */}
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Motivo / Comentario</label>
+                                <textarea 
+                                    className="w-full bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-blue-500 transition-all font-medium text-slate-700 min-h-[120px]"
+                                    value={editCommentForm.content}
+                                    onChange={(e) => setEditCommentForm({ ...editCommentForm, content: e.target.value })}
+                                    required
+                                />
+                            </div>
+
+                            {/* CURRENT PHOTOS WITH DELETE OPTION */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Fotos Actuales</label>
+                                <div className="grid grid-cols-4 gap-3">
+                                    {editingComment?.photos?.filter(p => !editCommentForm.photosToRemove.includes(p)).map((photo, pIdx) => (
+                                        <div key={pIdx} className="relative aspect-square group">
+                                            <img src={`${BASE_URL}${photo}`} className="w-full h-full object-cover rounded-xl shadow-md" alt="Preview" />
+                                            <button 
+                                                type="button"
+                                                onClick={() => setEditCommentForm({
+                                                    ...editCommentForm,
+                                                    photosToRemove: [...editCommentForm.photosToRemove, photo]
+                                                })}
+                                                className="absolute -top-2 -right-2 bg-red-600 text-white p-1.5 rounded-full shadow-lg hover:scale-110 transition-all"
+                                            >
+                                                <Trash size={12} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {editingComment?.photos?.length === 0 && (
+                                        <div className="col-span-full py-4 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest border-2 border-dashed border-slate-100 rounded-2xl">
+                                            Sin fotos adjuntas
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* ADD NEW PHOTOS */}
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Agregar Nuevas Evidencias</label>
+                                <div className="flex gap-2 flex-wrap">
+                                    {newEditPhotos.map((file, fIdx) => (
+                                        <div key={fIdx} className="relative w-16 h-16">
+                                            <img src={URL.createObjectURL(file)} className="w-full h-full object-cover rounded-lg border-2 border-blue-200" alt="New" />
+                                            <button 
+                                                type="button"
+                                                onClick={() => setNewEditPhotos(newEditPhotos.filter((_, i) => i !== fIdx))}
+                                                className="absolute -top-1 -right-1 bg-slate-800 text-white p-1 rounded-full shadow-md"
+                                            >
+                                                <X size={10} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <label className="w-16 h-16 flex flex-col items-center justify-center border-2 border-dashed border-blue-200 text-blue-500 rounded-lg cursor-pointer hover:bg-blue-50 transition-all">
+                                        <Plus size={20} />
+                                        <input 
+                                            type="file" 
+                                            multiple 
+                                            accept="image/*" 
+                                            className="hidden" 
+                                            onChange={(e) => setNewEditPhotos([...newEditPhotos, ...Array.from(e.target.files)])}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isSavingComment}
+                                className="w-full py-4 bg-blue-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
+                            >
+                                {isSavingComment ? <Loader className="animate-spin" /> : <CheckCircle2 size={20} />}
+                                Guardar Cambios en Reporte
+                            </button>
+                        </form>
                     </div>
                 </div>
             )}
