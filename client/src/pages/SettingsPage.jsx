@@ -203,6 +203,10 @@ const SettingsPage = () => {
                                 <label className="block text-xs font-bold text-slate-500 uppercase">Dietas (por día) (€)</label>
                                 <input type="number" value={data.dietasPerDay} onChange={(e) => handleFinancialChange(groupKey, 'dietasPerDay', e.target.value)} className="w-full p-2 border rounded-lg" />
                             </div>
+                            <div>
+                                <label className="block text-xs font-bold text-orange-600 uppercase">Extra Sábado (dieta) (€)</label>
+                                <input type="number" value={data.extraSaturday || 40} onChange={(e) => handleFinancialChange(groupKey, 'extraSaturday', e.target.value)} className="w-full p-2 border border-orange-200 rounded-lg bg-orange-50 font-bold outline-none" />
+                            </div>
                         </div>
                     </div>
 
@@ -304,6 +308,10 @@ const SettingsPage = () => {
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase">Dietas (por día) (€)</label>
                                 <input type="number" value={data.dietasPerDay} onChange={(e) => handleFinancialChange(groupKey, 'dietasPerDay', e.target.value)} className="w-full p-2 border rounded-lg" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-orange-600 uppercase">Extra Sábado (dieta) (€)</label>
+                                <input type="number" value={data.extraSaturday || 40} onChange={(e) => handleFinancialChange(groupKey, 'extraSaturday', e.target.value)} className="w-full p-2 border border-orange-200 rounded-lg bg-orange-50 font-bold outline-none" />
                             </div>
                         </div>
                     </div>
