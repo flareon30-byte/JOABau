@@ -425,3 +425,26 @@ exports.updateComment = async (req, res) => {
         res.status(500).json({ message: 'Error al actualizar el comentario' });
     }
 };
+
+// Update address master data (Back Office usage)
+exports.updateAddressDetails = async (req, res) => {
+    const { addressId } = req.params;
+    const { clientName, street, number, nvt, klsId } = req.body;
+
+    try {
+        const address = await prisma.address.update({
+            where: { id: addressId },
+            data: {
+                clientName,
+                street,
+                number,
+                nvt,
+                klsId
+            }
+        });
+        res.json(address);
+    } catch (error) {
+        console.error("[Update Master Data Error]", error);
+        res.status(500).json({ message: 'Error al actualizar los datos de la ficha' });
+    }
+};

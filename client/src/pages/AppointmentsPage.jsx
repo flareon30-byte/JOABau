@@ -34,6 +34,18 @@ const AppointmentsPage = () => {
     const [editCommentForm, setEditCommentForm] = useState({ content: '', photosToRemove: [] });
     const [newEditPhotos, setNewEditPhotos] = useState([]);
     const [isSavingComment, setIsSavingComment] = useState(false);
+    
+    // Edit Address Master Data
+    const [isEditAddressModalOpen, setIsEditAddressModalOpen] = useState(false);
+    const [editAddressForm, setEditAddressForm] = useState({
+        id: '',
+        clientName: '',
+        street: '',
+        number: '',
+        nvt: '',
+        klsId: ''
+    });
+    const [isSavingAddress, setIsSavingAddress] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -241,6 +253,33 @@ const AppointmentsPage = () => {
         }
     };
 
+    const openEditAddressModal = (address) => {
+        setEditAddressForm({
+            id: address.id,
+            clientName: address.clientName || '',
+            street: address.street || '',
+            number: address.number || '',
+            nvt: address.nvt || '',
+            klsId: address.klsId || ''
+        });
+        setIsEditAddressModalOpen(true);
+    };
+
+    const handleEditAddressSubmit = async (e) => {
+        e.preventDefault();
+        setIsSavingAddress(true);
+        try {
+            await api.put(`/api/appointments/address/${editAddressForm.id}/details`, editAddressForm);
+            setIsEditAddressModalOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            alert('Error al actualizar los datos de la ficha');
+        } finally {
+            setIsSavingAddress(false);
+        }
+    };
+
     // Filter Logic
     const filterAppointments = (list) => {
         if (!Array.isArray(list)) return [];
@@ -357,8 +396,17 @@ const AppointmentsPage = () => {
                     {filteredPending.map(address => (
                         <div key={address.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
                             <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="font-bold text-lg text-slate-800">{address.street} {address.number}</h3>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-lg text-slate-800">{address.street} {address.number}</h3>
+                                        <button 
+                                            onClick={() => openEditAddressModal(address)}
+                                            className="text-slate-400 hover:text-blue-600 transition-colors p-1"
+                                            title="Editar ficha (Nombre, KLS, NVT)"
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                    </div>
                                     {address.clientName && (
                                         <p className="text-sm font-semibold text-blue-600 mb-1">{address.clientName}</p>
                                     )}
@@ -508,8 +556,17 @@ const AppointmentsPage = () => {
                             </div>
 
                             <div className="flex justify-between items-start mb-4">
-                                <div>
-                                    <h3 className="font-bold text-lg text-slate-800">{address.street} {address.number}</h3>
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-lg text-slate-800">{address.street} {address.number}</h3>
+                                        <button 
+                                            onClick={() => openEditAddressModal(address)}
+                                            className="text-slate-400 hover:text-purple-600 transition-colors p-1"
+                                            title="Editar ficha (Nombre, KLS, NVT)"
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                    </div>
                                     {address.clientName && (
                                         <p className="text-sm font-semibold text-purple-700 mb-1">{address.clientName}</p>
                                     )}
@@ -600,7 +657,16 @@ const AppointmentsPage = () => {
                                                 <div className="text-xs text-slate-400">{new Date(app.assignedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                                             </td>
                                             <td className="p-4">
-                                                <div className="font-bold text-slate-800">{app.address.street} {app.address.number}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="font-bold text-slate-800">{app.address.street} {app.address.number}</div>
+                                                    <button 
+                                                        onClick={() => openEditAddressModal(app.address)}
+                                                        className="text-slate-400 hover:text-blue-600 transition-colors p-1"
+                                                        title="Editar ficha"
+                                                    >
+                                                        <Pencil size={12} />
+                                                    </button>
+                                                </div>
                                                 <div className="text-xs">{app.address.project.name}</div>
                                             </td>
                                             <td className="p-4">
@@ -651,7 +717,16 @@ const AppointmentsPage = () => {
                             {filteredEscalated.map(address => (
                                 <tr key={address.id} className="hover:bg-slate-50">
                                     <td className="p-4">
-                                        <div className="font-bold text-slate-800">{address.street} {address.number}</div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="font-bold text-slate-800">{address.street} {address.number}</div>
+                                            <button 
+                                                onClick={() => openEditAddressModal(address)}
+                                                className="text-slate-400 hover:text-blue-600 transition-colors p-1"
+                                                title="Editar ficha"
+                                            >
+                                                <Pencil size={12} />
+                                            </button>
+                                        </div>
                                     </td>
                                     <td className="p-4">
                                         <div className="text-slate-600">{address.clientName || 'N/A'}</div>
@@ -955,6 +1030,103 @@ const AppointmentsPage = () => {
                             >
                                 {isSavingComment ? <Loader className="animate-spin" /> : <CheckCircle size={20} />}
                                 Guardar Cambios en Reporte
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Edit Address Master Data Modal */}
+            {isEditAddressModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-xl shadow-2xl overflow-hidden animate-slideUp">
+                        <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold flex items-center gap-2">
+                                    <Pencil size={20} className="text-blue-400" /> Editar Datos de la Ficha
+                                </h3>
+                                <p className="text-slate-400 text-xs mt-1 uppercase font-black tracking-widest">Corrección de datos maestros y contacto</p>
+                            </div>
+                            <button onClick={() => setIsEditAddressModalOpen(false)} className="bg-slate-800 p-2 rounded-xl text-slate-400 hover:text-white transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleEditAddressSubmit} className="p-8 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nombre del Cliente / Referencia</label>
+                                        <input 
+                                            type="text" 
+                                            value={editAddressForm.clientName} 
+                                            onChange={(e) => setEditAddressForm({ ...editAddressForm, clientName: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800"
+                                            placeholder="Nombre completo..."
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        <div className="col-span-3">
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Calle</label>
+                                            <input 
+                                                type="text" 
+                                                value={editAddressForm.street} 
+                                                onChange={(e) => setEditAddressForm({ ...editAddressForm, street: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Núm.</label>
+                                            <input 
+                                                type="text" 
+                                                value={editAddressForm.number} 
+                                                onChange={(e) => setEditAddressForm({ ...editAddressForm, number: e.target.value })}
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800 text-center"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">ID KLS</label>
+                                        <input 
+                                            type="text" 
+                                            value={editAddressForm.klsId} 
+                                            onChange={(e) => setEditAddressForm({ ...editAddressForm, klsId: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800"
+                                            placeholder="Ej: 5900000"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">NVT / Referencia Técnica</label>
+                                        <input 
+                                            type="text" 
+                                            value={editAddressForm.nvt} 
+                                            onChange={(e) => setEditAddressForm({ ...editAddressForm, nvt: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800 uppercase"
+                                            placeholder="Ej: 4V4500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="bg-blue-50 p-4 rounded-3xl border border-blue-100 flex gap-3">
+                                <div className="bg-blue-600 p-2 rounded-2xl text-white shadow-lg">
+                                    <FileText size={20} />
+                                </div>
+                                <div className="text-xs text-blue-800">
+                                    <p className="font-bold">⚠️ Nota Importante</p>
+                                    <p className="opacity-80">Estos cambios actualizarán la base de datos maestra. Todo el equipo de Joa verá los nuevos datos al instante.</p>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={isSavingAddress}
+                                className="w-full py-4 bg-slate-900 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3"
+                            >
+                                {isSavingAddress ? <Loader className="animate-spin" /> : <Save size={20} />}
+                                Guardar Cambios en la Ficha
                             </button>
                         </form>
                     </div>
