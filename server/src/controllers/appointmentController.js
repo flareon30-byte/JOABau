@@ -79,7 +79,7 @@ exports.logContactAttempt = async (req, res) => {
         });
         const authorName = user ? user.username : 'Unknown';
         const timestamp = new Date().toLocaleString();
-        const historyEntry = `${timestamp}: ${result}`;
+        const historyEntry = comment ? `${timestamp}: ${result} - ${comment}` : `${timestamp}: ${result}`;
 
         // Upsert appointment to ensure it exists
         const appointment = await prisma.appointment.upsert({

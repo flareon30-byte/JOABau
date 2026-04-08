@@ -498,9 +498,13 @@ const AppointmentsPage = () => {
 
                             {/* History Preview */}
                             {address.appointment?.contactHistory?.length > 0 && (
-                                <div className="mb-4 bg-slate-50 p-3 rounded-lg text-xs text-slate-600 space-y-1">
-                                    {address.appointment.contactHistory.slice(-2).map((entry, i) => (
-                                        <div key={i}>{entry}</div>
+                                <div className="mb-4 bg-slate-50 p-3 rounded-xl text-[11px] text-slate-600 space-y-2 border border-slate-100 shadow-inner">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Últimas gestiones:</p>
+                                    {address.appointment.contactHistory.slice(-5).map((entry, i) => (
+                                        <div key={i} className="flex gap-2">
+                                            <span className="text-blue-400 font-bold">•</span>
+                                            <span>{entry}</span>
+                                        </div>
                                     ))}
                                 </div>
                             )}
