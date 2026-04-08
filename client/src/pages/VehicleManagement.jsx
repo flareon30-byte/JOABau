@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Plus, Trash2, Edit3, AlertCircle, Fuel, Gauge, TrendingUp, Search } from 'lucide-react';
 import api from '../api/axios';
+const BASE_URL = api.defaults.baseURL === '/' ? '' : api.defaults.baseURL;
 
 const VehicleManagement = () => {
     const [vehicles, setVehicles] = useState([]);
@@ -357,20 +358,23 @@ const VehicleManagement = () => {
                                                 {/* Photos Row */}
                                                 {log.photos && log.photos.length > 0 && (
                                                     <div className="flex gap-2 overflow-x-auto pb-2">
-                                                        {log.photos.map((photo, pIdx) => (
-                                                            <a 
-                                                                key={pIdx} 
-                                                                href={photo} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer"
-                                                                className="relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 group flex-shrink-0"
-                                                            >
-                                                                <img src={photo} alt="Log" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                                    <Search className="text-white" size={20} />
-                                                                </div>
-                                                            </a>
-                                                        ))}
+                                                        {log.photos.map((photo, pIdx) => {
+                                                            const photoUrl = `${BASE_URL}${photo.startsWith('/') ? photo : '/' + photo}`;
+                                                            return (
+                                                                <a 
+                                                                    key={pIdx} 
+                                                                    href={photoUrl} 
+                                                                    target="_blank" 
+                                                                    rel="noopener noreferrer"
+                                                                    className="relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 group flex-shrink-0"
+                                                                >
+                                                                    <img src={photoUrl} alt="Log" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                        <Search className="text-white" size={20} />
+                                                                    </div>
+                                                                </a>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
                                             </div>
