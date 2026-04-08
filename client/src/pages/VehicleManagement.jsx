@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Plus, Trash2, Edit3, AlertCircle, Fuel, Gauge, TrendingUp, Search } from 'lucide-react';
+import { Truck, Plus, Trash2, Edit3, AlertCircle, Fuel, Gauge, TrendingUp, Search, X } from 'lucide-react';
 import api from '../api/axios';
-const BASE_URL = api.defaults.baseURL === '/' ? '' : api.defaults.baseURL;
 
 const VehicleManagement = () => {
     const [vehicles, setVehicles] = useState([]);
@@ -18,6 +17,9 @@ const VehicleManagement = () => {
     const [isLogsModalOpen, setIsLogsModalOpen] = useState(false);
     const [selectedVehicleStats, setSelectedVehicleStats] = useState(null);
     const [loadingStats, setLoadingStats] = useState(false);
+
+    // Image Viewer Modal
+    const [viewerImage, setViewerImage] = useState(null);
 
     const fetchVehicles = async () => {
         try {
@@ -358,23 +360,18 @@ const VehicleManagement = () => {
                                                 {/* Photos Row */}
                                                 {log.photos && log.photos.length > 0 && (
                                                     <div className="flex gap-2 overflow-x-auto pb-2">
-                                                        {log.photos.map((photo, pIdx) => {
-                                                            const photoUrl = `${BASE_URL}${photo.startsWith('/') ? photo : '/' + photo}`;
-                                                            return (
-                                                                <a 
-                                                                    key={pIdx} 
-                                                                    href={photoUrl} 
-                                                                    target="_blank" 
-                                                                    rel="noopener noreferrer"
-                                                                    className="relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 group flex-shrink-0"
-                                                                >
-                                                                    <img src={photoUrl} alt="Log" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
-                                                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                                        <Search className="text-white" size={20} />
-                                                                    </div>
-                                                                </a>
-                                                            );
-                                                        })}
+                                                        {log.photos.map((photo, pIdx) => (
+                                                            <div 
+                                                                key={pIdx} 
+                                                                onClick={() => setViewerImage(photo)}
+                                                                className="relative w-32 h-24 rounded-xl overflow-hidden border border-slate-200 group flex-shrink-0 cursor-pointer"
+                                                            >
+                                                                <img src={photo} alt="Log" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                                    <Search className="text-white" size={20} />
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 )}
                                             </div>
@@ -387,6 +384,28 @@ const VehicleManagement = () => {
                         <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
                             <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Joa Technologien Auditoría de Flota</p>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* FULL IMAGE VIEWER MODAL */}
+            {viewerImage && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/95 backdrop-blur-xl z-[100] flex items-center justify-center p-4 animate-fadeIn"
+                    onClick={() => setViewerImage(null)}
+                >
+                    <button 
+                        onClick={() => setViewerImage(null)}
+                        className="absolute top-6 right-6 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-all border border-white/10"
+                    >
+                        <X size={24} />
+                    </button>
+                    <div className="max-w-4xl w-full max-h-[90vh] flex items-center justify-center animate-scaleIn">
+                        <img 
+                            src={viewerImage} 
+                            alt="Full Ticket" 
+                            className="max-w-full max-h-full object-contain rounded-2xl shadow-2xl border border-white/10 shadow-black/50"
+                        />
                     </div>
                 </div>
             )}
