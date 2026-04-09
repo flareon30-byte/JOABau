@@ -372,17 +372,60 @@ exports.deleteAppointment = async (req, res) => {
 
 // Update order status (for Derivar / Cerrar)
 exports.updateOrderStatus = async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
+    const { id } = req.params; // addressId
+    const { status, reason } = req.body;
+    const userId = req.userId;
+
     try {
-        const address = await prisma.address.update({
-            where: { id },
-            data: { orderStatus: status }
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { username: true }
         });
-        res.json(address);
+        const authorName = user ? user.username : 'Back Office';
+
+        await prisma.$transaction(async (tx) => {
+            // 1. Update address status
+            await tx.address.update({
+                where: { id },
+                data: { orderStatus: status }
+            });
+
+            // 2. If there's a reason, log it!
+            if (reason) {
+                const timestamp = new Date().toLocaleString();
+                const historyEntry = `${timestamp}: [${status}] Motivo: ${reason}`;
+
+                // Upsert appointment to ensure we have a place for the comment/history
+                await tx.appointment.upsert({
+                    where: { addressId: id },
+                    update: {
+                        contactHistory: { push: historyEntry },
+                        comments: {
+                            create: {
+                                content: `[CAMBIO ESTADO: ${status}] ${reason}`,
+                                authorName
+                            }
+                        }
+                    },
+                    create: {
+                        addressId: id,
+                        status: 'PENDIENTE',
+                        contactHistory: [historyEntry],
+                        comments: {
+                            create: {
+                                content: `[CAMBIO ESTADO: ${status}] ${reason}`,
+                                authorName
+                            }
+                        }
+                    }
+                });
+            }
+        });
+
+        res.json({ success: true, message: `Estado actualizado a ${status}` });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error updating order status' });
+        console.error("[UpdateOrderStatus Error]", error);
+        res.status(500).json({ message: 'Error updating order status', details: error.message });
     }
 };
 

@@ -45,7 +45,12 @@ const AppointmentsPage = () => {
         nvt: '',
         klsId: ''
     });
-    const [isSavingAddress, setIsSavingAddress] = useState(false);
+    // Derivation and History States
+    const [isDeriveModalOpen, setIsDeriveModalOpen] = useState(false);
+    const [deriveForm, setDeriveForm] = useState({ addressId: '', status: '', reason: '' });
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [selectedHistory, setSelectedHistory] = useState([]);
+    const [historyAddressName, setHistoryAddressName] = useState('');
 
     useEffect(() => {
         fetchData();
@@ -154,19 +159,32 @@ const AppointmentsPage = () => {
         }
     };
 
-    const handleOrderStatusUpdate = async (addressId, newStatus) => {
-        let msg = newStatus === 'DERIVADA'
-            ? '¿Seguro que deseas derivar esta dirección a la empresa colaboradora? Desaparecerá de las pendientes.'
-            : '¿Seguro que deseas marcar esta orden como CERRADA? Significa que la empresa colaboradora ya la ha terminado. Desaparecerá de las pendientes.';
+    const openDeriveModal = (address, status) => {
+        setDeriveForm({
+            addressId: address.id,
+            status: status,
+            reason: ''
+        });
+        setIsDeriveModalOpen(true);
+    };
 
-        if (!window.confirm(msg)) return;
+    const handleDeriveSubmit = async (e) => {
+        e.preventDefault();
+        if (!deriveForm.reason.trim()) {
+            alert('Por favor, indica un motivo.');
+            return;
+        }
 
         try {
-            await api.put(`/api/appointments/address/${addressId}/order-status`, { status: newStatus });
+            await api.put(`/api/appointments/address/${deriveForm.addressId}/order-status`, { 
+                status: deriveForm.status,
+                reason: deriveForm.reason
+            });
+            setIsDeriveModalOpen(false);
             fetchData();
         } catch (err) {
             console.error(err);
-            alert(`Error al cambiar el estado a ${newStatus}`);
+            alert(`Error al cambiar el estado a ${deriveForm.status}`);
         }
     };
 
@@ -180,6 +198,13 @@ const AppointmentsPage = () => {
             console.error(err);
             alert('Error al restaurar el estado de la dirección');
         }
+    };
+
+    const openHistoryModal = (address) => {
+        const history = address.appointment?.contactHistory || [];
+        setSelectedHistory(history);
+        setHistoryAddressName(`${address.street} ${address.number}`);
+        setIsHistoryModalOpen(true);
     };
 
     const openContactModal = (address) => {
@@ -526,14 +551,14 @@ const AppointmentsPage = () => {
                                 </div>
                                 <div className="flex gap-3">
                                     <button
-                                        onClick={() => handleOrderStatusUpdate(address.id, 'DERIVADA')}
+                                        onClick={() => openDeriveModal(address, 'DERIVADA')}
                                         className="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
                                         title="Avisar a la empresa colaboradora para que envíen responsable"
                                     >
                                         <Send size={14} /> Derivar
                                     </button>
                                     <button
-                                        onClick={() => handleOrderStatusUpdate(address.id, 'CERRADA')}
+                                        onClick={() => openDeriveModal(address, 'CERRADA')}
                                         className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
                                         title="Marcar como terminada por la empresa colaboradora"
                                     >
@@ -595,14 +620,14 @@ const AppointmentsPage = () => {
                                 </div>
                                 <div className="flex gap-3">
                                     <button
-                                        onClick={() => handleOrderStatusUpdate(address.id, 'DERIVADA')}
+                                        onClick={() => openDeriveModal(address, 'DERIVADA')}
                                         className="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
                                         title="Avisar a la empresa colaboradora para que envíen responsable"
                                     >
                                         <Send size={14} /> Derivar
                                     </button>
                                     <button
-                                        onClick={() => handleOrderStatusUpdate(address.id, 'CERRADA')}
+                                        onClick={() => openDeriveModal(address, 'CERRADA')}
                                         className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
                                         title="Marcar como terminada por la empresa colaboradora"
                                     >
@@ -747,13 +772,22 @@ const AppointmentsPage = () => {
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
-                                        <button
-                                            onClick={() => handleResetOrder(address.id)}
-                                            className="px-3 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-colors"
-                                            title="Devolver a lista de Pendientes"
-                                        >
-                                            Restaurar
-                                        </button>
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                onClick={() => openHistoryModal(address)}
+                                                className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition-colors"
+                                                title="Ver Historial y Motivo de Deriva"
+                                            >
+                                                <Clock size={16} />
+                                            </button>
+                                            <button
+                                                onClick={() => handleResetOrder(address.id)}
+                                                className="px-3 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-colors"
+                                                title="Devolver a lista de Pendientes"
+                                            >
+                                                Restaurar
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}
@@ -1133,6 +1167,96 @@ const AppointmentsPage = () => {
                                 Guardar Cambios en la Ficha
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Derivation / Order Status Modal with Reason */}
+            {isDeriveModalOpen && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[70] backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-slideUp">
+                        <div className={`p-6 text-white flex justify-between items-center ${deriveForm.status === 'DERIVADA' ? 'bg-orange-600' : 'bg-green-600'}`}>
+                            <div>
+                                <h3 className="text-xl font-bold flex items-center gap-2">
+                                    <Send size={20} /> {deriveForm.status === 'DERIVADA' ? 'Derivación de Orden' : 'Cierre de Orden'}
+                                </h3>
+                                <p className="text-white/80 text-[10px] mt-1 uppercase font-black tracking-widest">Se requiere justificación para el archivo</p>
+                            </div>
+                            <button onClick={() => setIsDeriveModalOpen(false)} className="bg-white/10 p-2 rounded-xl hover:bg-white/20 transition-all text-white">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <form onSubmit={handleDeriveSubmit} className="p-8 space-y-6">
+                            <div>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Especifique el motivo</label>
+                                <textarea 
+                                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 outline-none focus:border-orange-500 transition-all font-bold text-slate-800 h-32 resize-none"
+                                    placeholder={deriveForm.status === 'DERIVADA' ? "Ej: Acometida no instalada por obra civil..." : "Ej: Trabajo terminado por empresa colaboradora..."}
+                                    value={deriveForm.reason}
+                                    onChange={(e) => setDeriveForm({ ...deriveForm, reason: e.target.value })}
+                                    required
+                                />
+                                <p className="text-[10px] text-slate-400 mt-2 px-1">Este motivo quedará guardado permanentemente en el historial de la ficha.</p>
+                            </div>
+                            <button
+                                type="submit"
+                                className={`w-full py-4 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-3 ${deriveForm.status === 'DERIVADA' ? 'bg-orange-600 shadow-orange-100 hover:bg-orange-700' : 'bg-green-600 shadow-green-100 hover:bg-green-700'}`}
+                            >
+                                <CheckCircle size={20} />
+                                {deriveForm.status === 'DERIVADA' ? 'Confirmar Derivación' : 'Confirmar Cierre'}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* History Modal */}
+            {isHistoryModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[80] backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-slideUp">
+                        <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
+                            <div>
+                                <h3 className="text-xl font-bold flex items-center gap-2">
+                                    <Clock size={20} className="text-blue-400" /> Historial de Gestiones
+                                </h3>
+                                <p className="text-slate-400 text-[10px] mt-1 uppercase font-black tracking-widest">{historyAddressName}</p>
+                            </div>
+                            <button onClick={() => setIsHistoryModalOpen(false)} className="bg-slate-800 p-2 rounded-xl text-slate-400 hover:text-white transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-8 max-h-[60vh] overflow-y-auto">
+                            {selectedHistory.length > 0 ? (
+                                <div className="space-y-6">
+                                    {selectedHistory.map((entry, idx) => (
+                                        <div key={idx} className="relative pl-6 border-l-2 border-slate-100 py-1">
+                                            <div className={`absolute left-[-9px] top-1 w-4 h-4 rounded-full border-2 border-white shadow-sm ${entry.includes('DERIVADA') || entry.includes('CERRADA') ? 'bg-orange-500' : 'bg-blue-500'}`} />
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                {entry.split(':')[0]}:{entry.split(':')[1]}
+                                            </p>
+                                            <div className={`p-4 rounded-2xl ${entry.includes('DERIVADA') || entry.includes('CERRADA') ? 'bg-orange-50 border border-orange-100 text-orange-900' : 'bg-slate-50 border border-slate-100 text-slate-700'}`}>
+                                                <p className="text-sm font-bold leading-relaxed">{entry.split(':').slice(2).join(':').trim()}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12">
+                                    <div className="bg-slate-50 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300">
+                                        <Clock size={32} />
+                                    </div>
+                                    <p className="text-slate-400 font-bold">Sin historial registrado en el sistema.</p>
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end">
+                            <button 
+                                onClick={() => setIsHistoryModalOpen(false)}
+                                className="px-6 py-2 bg-white border border-slate-300 rounded-2xl text-slate-700 font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all"
+                            >
+                                Cerrar Visor
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
