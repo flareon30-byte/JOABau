@@ -21,12 +21,13 @@ const getEaster = (year) => {
     return new Date(year, month - 1, day);
 };
 
-// Returns an array of YYYY-MM-DD strings for German national holidays
+// Returns an array of YYYY-MM-DD strings for German national holidays + NRW Specifics
 const getGermanHolidays = (year) => {
     const holidays = [
         `${year}-01-01`, // Neujahr
         `${year}-05-01`, // Tag der Arbeit
         `${year}-10-03`, // Tag der Deutschen Unidad
+        `${year}-11-01`, // Allerheiligen (NRW Specific)
         `${year}-12-25`, // 1. Weihnachtstag
         `${year}-12-26`, // 2. Weihnachtstag
     ];
@@ -36,7 +37,8 @@ const getGermanHolidays = (year) => {
         -2, // Karfreitag
         1,  // Ostermontag
         39, // Christi Himmelfahrt
-        50  // Pfingstmontag
+        50, // Pfingstmontag
+        60  // Fronleichnam (NRW Specific)
     ];
 
     dates.forEach(offset => {
@@ -49,8 +51,9 @@ const getGermanHolidays = (year) => {
 };
 
 const calculateBusinessDays = (start, end) => {
-    if (!start || !end) return 0;
+    if (!start || !end) return { count: 0, holidaysFound: [] };
     let count = 0;
+    const holidaysFound = [];
     const curDate = new Date(start);
     const endDate = new Date(end);
     
@@ -67,12 +70,16 @@ const calculateBusinessDays = (start, end) => {
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const isHoliday = holidayCache[year].includes(dateString);
 
+        if (isHoliday) {
+            holidaysFound.push(dateString);
+        }
+
         if (!isWeekend && !isHoliday) {
             count++;
         }
         curDate.setDate(curDate.getDate() + 1);
     }
-    return count;
+    return { count, holidaysFound };
 };
 
 const VacationPage = () => {
@@ -207,7 +214,7 @@ const VacationPage = () => {
                                             {request.type === 'VACATION' ? 'Vacaciones' : 'Día Libre'}
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">
-                                            {calculateBusinessDays(request.startDate, request.endDate)}
+                                            {calculateBusinessDays(request.startDate, request.endDate).count}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusStyle(request.status)}`}>
@@ -239,7 +246,7 @@ const VacationPage = () => {
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="px-8 py-6 bg-joa-blue text-white">
                             <h3 className="text-xl font-bold">Solicitud de Vacaciones</h3>
-                            <p className="text-blue-100 text-sm">Completa el formulario para enviar la solicitud</p>
+                            <p className="text-blue-100 text-sm">NRW (Renania del Norte-Westfalia) Calendar Sync</p>
                         </div>
                         <form onSubmit={handleSubmit} className="p-8 space-y-6">
                             <div className="grid grid-cols-2 gap-4">
@@ -264,6 +271,37 @@ const VacationPage = () => {
                                     />
                                 </div>
                             </div>
+                            
+                            {formData.startDate && formData.endDate && (() => {
+                                const { count, holidaysFound } = calculateBusinessDays(formData.startDate, formData.endDate);
+                                return (
+                                    <div className="space-y-3">
+                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fadeIn">
+                                            <div className="flex justify-between items-center text-blue-800">
+                                                <span className="text-sm font-bold lowercase tracking-wider">Días laborables a descontar:</span>
+                                                <span className="text-lg font-black">{count} días</span>
+                                            </div>
+                                        </div>
+                                        
+                                        {holidaysFound.length > 0 && (
+                                            <div className="bg-red-50 p-4 rounded-xl border border-red-100 animate-fadeIn">
+                                                <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-2 flex items-center gap-1">
+                                                    <Info size={12} /> Días Festivos Detectados (NRW)
+                                                </p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {holidaysFound.map(d => (
+                                                        <span key={d} className="px-2 py-1 bg-red-600 text-white text-[10px] font-black rounded-lg shadow-sm">
+                                                            {new Date(d).toLocaleDateString()}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <p className="text-[9px] text-red-400 mt-2 font-bold italic">Estos días no se restarán de tu saldo de vacaciones.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tipo de Solicitud</label>
                                 <select
@@ -284,18 +322,6 @@ const VacationPage = () => {
                                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                                 />
                             </div>
-                            {formData.startDate && formData.endDate && (
-                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fadeIn">
-                                    <div className="flex justify-between items-center text-blue-800">
-                                        <span className="text-sm font-bold lowercase tracking-wider">Días laborables a descontar:</span>
-                                        <span className="text-lg font-black">{calculateBusinessDays(formData.startDate, formData.endDate)} días</span>
-                                    </div>
-                                    <p className="text-[10px] text-blue-600 mt-1 uppercase font-black tracking-widest leading-tight">
-                                        * Sincronizado con calendario de festivos de Alemania y fines de semana excluidos.
-                                    </p>
-                                </div>
-                            )}
-
                             <div className="flex gap-3 pt-2">
                                 <button
                                     type="button"

@@ -11,6 +11,7 @@ router.get('/my', vacationController.getMyVacations);
 
 // Admin routes
 router.get('/all', checkRole(['SUPER_ADMIN', 'ADMIN']), vacationController.getAllVacations);
+router.get('/stats', checkRole(['SUPER_ADMIN', 'ADMIN']), vacationController.getUsersVacationStats);
 router.put('/:id/status', checkRole(['SUPER_ADMIN', 'ADMIN']), vacationController.updateVacationStatus);
 
 module.exports = router;

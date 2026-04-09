@@ -2,18 +2,57 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Calendar as CalendarIcon, Clock, CheckCircle, XCircle, User, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 
+// Helper for Easter Calculation (Meeus/Jones/Butcher algorithm)
+const getEaster = (year) => {
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(year, month - 1, day);
+};
+
+// Returns an array of YYYY-MM-DD strings for German national holidays + NRW Specifics
+const getGermanHolidays = (year) => {
+    const holidays = [
+        `${year}-01-01`, `${year}-05-01`, `${year}-10-03`, `${year}-11-01`,
+        `${year}-12-25`, `${year}-12-26`,
+    ];
+    const easter = getEaster(year);
+    const dates = [-2, 1, 39, 50, 60];
+    dates.forEach(o => {
+        const d = new Date(easter); d.setDate(easter.getDate() + o);
+        holidays.push(d.toISOString().split('T')[0]);
+    });
+    return holidays;
+};
+
 const AdminVacationPage = () => {
     const [requests, setRequests] = useState([]);
+    const [userStats, setUserStats] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('list'); // 'list' or 'calendar'
+    const [activeTab, setActiveTab] = useState('list'); // 'list', 'calendar' or 'stats'
     const [currentMonth, setCurrentMonth] = useState(new Date());
 
     const fetchAllRequests = async () => {
         try {
-            const res = await api.get('/api/vacations/all');
-            setRequests(res.data);
+            const [reqs, stats] = await Promise.all([
+                api.get('/api/vacations/all'),
+                api.get('/api/vacations/stats')
+            ]);
+            setRequests(reqs.data);
+            setUserStats(stats.data);
         } catch (error) {
-            console.error('Error fetching all requests:', error);
+            console.error('Error fetching data:', error);
         } finally {
             setLoading(false);
         }
@@ -31,6 +70,8 @@ const AdminVacationPage = () => {
             alert('Error al actualizar el estado.');
         }
     };
+
+    // ... (calendar logic starts)
 
     const getStatusStyle = (status) => {
         switch (status) {
@@ -86,14 +127,14 @@ const AdminVacationPage = () => {
             <div className="flex justify-between items-center mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-slate-800">Gestión de Vacaciones</h1>
-                    <p className="text-slate-500">Supervisa y aprueba las solicitudes del personal</p>
+                    <p className="text-slate-500">Supervisa saldos de Renania del Norte-Westfalia (NRW) y aprueba solicitudes</p>
                 </div>
                 <div className="flex bg-slate-100 p-1 rounded-xl">
                     <button
                         onClick={() => setActiveTab('list')}
                         className={`px-4 py-2 rounded-lg font-bold text-sm transition ${activeTab === 'list' ? 'bg-white text-joa-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        Lista
+                        Solicitudes
                     </button>
                     <button
                         onClick={() => setActiveTab('calendar')}
@@ -101,10 +142,17 @@ const AdminVacationPage = () => {
                     >
                         Calendario
                     </button>
+                    <button
+                        onClick={() => setActiveTab('stats')}
+                        className={`px-4 py-2 rounded-lg font-bold text-sm transition ${activeTab === 'stats' ? 'bg-white text-joa-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                        Saldos Equipo
+                    </button>
                 </div>
             </div>
 
             {activeTab === 'list' ? (
+                // ... (existing list code)
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="p-6 border-b border-slate-200 flex justify-between items-center">
                         <h2 className="text-xl font-bold text-slate-800">Solicitudes Recientes</h2>
@@ -173,12 +221,16 @@ const AdminVacationPage = () => {
                         </table>
                     </div>
                 </div>
-            ) : (
+            ) : activeTab === 'calendar' ? (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-bold text-slate-800 capitalize">
                             {currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
                         </h2>
+                        <div className="flex gap-2 text-[10px] items-center mr-4">
+                            <span className="w-3 h-3 bg-red-500 rounded-full"></span>
+                            <span className="text-slate-500 font-bold uppercase">Festivo NRW</span>
+                        </div>
                         <div className="flex gap-2">
                             <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><ChevronLeft size={20} /></button>
                             <button onClick={() => changeMonth(1)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition"><ChevronRight size={20} /></button>
@@ -190,10 +242,15 @@ const AdminVacationPage = () => {
                         ))}
                         {calendarDays.map((dateObj, i) => {
                             const dayVacations = getVacationsForDay(dateObj.day);
+                            const year = dateObj.day.getFullYear();
+                            const holidayList = getGermanHolidays(year);
+                            const isHoliday = holidayList.includes(dateObj.day.toISOString().split('T')[0]);
+
                             return (
-                                <div key={i} className={`min-h-[120px] bg-white p-2 ${dateObj.current ? '' : 'bg-slate-50/50 opacity-40'}`}>
-                                    <div className={`text-sm font-bold mb-2 ${dateObj.day.toDateString() === new Date().toDateString() ? 'bg-joa-blue text-white w-6 h-6 flex items-center justify-center rounded-full' : 'text-slate-500'}`}>
-                                        {dateObj.day.getDate()}
+                                <div key={i} className={`min-h-[120px] bg-white p-2 ${dateObj.current ? '' : 'bg-slate-50/50 opacity-40'} ${isHoliday ? 'bg-red-50/50' : ''}`}>
+                                    <div className={`text-sm font-bold mb-2 flex justify-between ${dateObj.day.toDateString() === new Date().toDateString() ? 'bg-joa-blue text-white w-6 h-6 flex items-center justify-center rounded-full' : 'text-slate-500'}`}>
+                                        <span className={isHoliday ? 'text-red-600 font-black' : ''}>{dateObj.day.getDate()}</span>
+                                        {isHoliday && <div className="w-1.5 h-1.5 bg-red-500 rounded-full"></div>}
                                     </div>
                                     <div className="space-y-1">
                                         {dayVacations.map(v => (
@@ -207,7 +264,55 @@ const AdminVacationPage = () => {
                         })}
                     </div>
                 </div>
+            ) : (
+                /* Stats Tab */
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fadeIn">
+                    <div className="p-6 border-b border-slate-200">
+                        <h2 className="text-xl font-bold text-slate-800">Saldos de Vacaciones del Equipo</h2>
+                        <p className="text-sm text-slate-500">Días restantes calculados excluyendo festivos de Renania del Norte</p>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50 border-b border-slate-200">
+                                <tr>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Usuario</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Total Anual</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Días Usados</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Días Restantes</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Progreso</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {userStats.map((stat) => {
+                                    const percent = Math.min(100, (stat.used / stat.total) * 100);
+                                    return (
+                                        <tr key={stat.id} className="hover:bg-slate-50/50 transition duration-150">
+                                            <td className="px-6 py-4">
+                                                <div className="font-bold text-slate-800">{stat.username}</div>
+                                            </td>
+                                            <td className="px-6 py-4 text-slate-600">{stat.total}</td>
+                                            <td className="px-6 py-4 text-slate-600 font-bold">{stat.used}</td>
+                                            <td className="px-6 py-4">
+                                                <span className={`px-2.5 py-1 rounded-lg text-sm font-black ${stat.remaining > 5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {stat.remaining} días
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4">
+                                                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden max-w-[100px]">
+                                                    <div className="bg-joa-blue h-full" style={{ width: `${percent}%` }}></div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             )}
+        </div>
+    );
+};
         </div>
     );
 };

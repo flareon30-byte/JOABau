@@ -19,37 +19,31 @@ const getEaster = (year) => {
     return new Date(year, month - 1, day);
 };
 
-// Returns an array of YYYY-MM-DD strings for German national holidays
+// Returns an array of YYYY-MM-DD strings for German national holidays + NRW Specifics
 const getGermanHolidays = (year) => {
     const holidays = [
         `${year}-01-01`, // Neujahr
         `${year}-05-01`, // Tag der Arbeit
         `${year}-10-03`, // Tag der Deutschen Einheit
+        `${year}-11-01`, // Allerheiligen (NRW Specific)
         `${year}-12-25`, // 1. Weihnachtstag
         `${year}-12-26`, // 2. Weihnachtstag
     ];
 
     const easter = getEaster(year);
-    
-    // Karfreitag (Easter - 2 days)
-    const karfreitag = new Date(easter);
-    karfreitag.setDate(easter.getDate() - 2);
-    holidays.push(karfreitag.toISOString().split('T')[0]);
+    const offsets = [
+        -2, // Karfreitag
+        1,  // Ostermontag
+        39, // Christi Himmelfahrt
+        50, // Pfingstmontag
+        60  // Fronleichnam (NRW Specific)
+    ];
 
-    // Ostermontag (Easter + 1 day)
-    const ostermontag = new Date(easter);
-    ostermontag.setDate(easter.getDate() + 1);
-    holidays.push(ostermontag.toISOString().split('T')[0]);
-
-    // Christi Himmelfahrt (Easter + 39 days)
-    const himmelfahrt = new Date(easter);
-    himmelfahrt.setDate(easter.getDate() + 39);
-    holidays.push(himmelfahrt.toISOString().split('T')[0]);
-
-    // Pfingstmontag (Easter + 50 days)
-    const pfingstmontag = new Date(easter);
-    pfingstmontag.setDate(easter.getDate() + 50);
-    holidays.push(pfingstmontag.toISOString().split('T')[0]);
+    offsets.forEach(offset => {
+        const d = new Date(easter);
+        d.setDate(easter.getDate() + offset);
+        holidays.push(d.toISOString().split('T')[0]);
+    });
 
     return holidays;
 };
@@ -172,6 +166,44 @@ exports.getAllVacations = async (req, res) => {
     }
 };
 
+// Get all users' vacation statistics (Admin)
+exports.getUsersVacationStats = async (req, res) => {
+    try {
+        const users = await prisma.user.findMany({
+            select: {
+                id: true,
+                username: true,
+                vacationDaysTotal: true,
+                vacationRequests: {
+                    where: { status: 'APPROVED' },
+                    select: { startDate: true, endDate: true }
+                }
+            }
+        });
+
+        const stats = users.map(user => {
+            const total = user.vacationDaysTotal || 30;
+            let used = 0;
+            user.vacationRequests.forEach(req => {
+                used += calculateBusinessDays(req.startDate, req.endDate);
+            });
+
+            return {
+                id: user.id,
+                username: user.username,
+                total,
+                used,
+                remaining: total - used
+            };
+        });
+
+        res.json(stats);
+    } catch (error) {
+        console.error('Error fetching user vacation stats:', error);
+        res.status(500).json({ message: 'Error al obtener estadísticas de vacaciones' });
+    }
+};
+
 // Update vacation status (Admin)
 exports.updateVacationStatus = async (req, res) => {
     const { id } = req.params;
@@ -189,14 +221,6 @@ exports.updateVacationStatus = async (req, res) => {
             data: {
                 type: 'VACATION_UPDATE',
                 message: `Tu solicitud de vacaciones ha sido ${status === 'APPROVED' ? 'APROBADA' : 'DENEGADA'}.`,
-                // We need to target the specific user, but our Notification model has targetRole.
-                // Let's check the schema again. 
-                // Ah, Notification schema has addressId, createdById, targetRole. 
-                // It doesn't have a targetUserId! That's a limitation.
-                // However, I can still send it to their role, but they all will see it.
-                // Wait, I should probably add targetUserId to Notification model if I want clean private notices.
-                // But for now, I'll use targetRole or just a general message.
-                // Let's check the schema one more time.
                 targetRole: request.user.role // They will see it in their notifications
             }
         });
