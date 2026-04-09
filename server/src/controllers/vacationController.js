@@ -1,13 +1,82 @@
 const prisma = require('../prisma');
 
-// Helper to calculate working days (simple version, could be improved)
+// Helper for Easter Calculation (Meeus/Jones/Butcher algorithm)
+const getEaster = (year) => {
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(year, month - 1, day);
+};
+
+// Returns an array of YYYY-MM-DD strings for German national holidays
+const getGermanHolidays = (year) => {
+    const holidays = [
+        `${year}-01-01`, // Neujahr
+        `${year}-05-01`, // Tag der Arbeit
+        `${year}-10-03`, // Tag der Deutschen Einheit
+        `${year}-12-25`, // 1. Weihnachtstag
+        `${year}-12-26`, // 2. Weihnachtstag
+    ];
+
+    const easter = getEaster(year);
+    
+    // Karfreitag (Easter - 2 days)
+    const karfreitag = new Date(easter);
+    karfreitag.setDate(easter.getDate() - 2);
+    holidays.push(karfreitag.toISOString().split('T')[0]);
+
+    // Ostermontag (Easter + 1 day)
+    const ostermontag = new Date(easter);
+    ostermontag.setDate(easter.getDate() + 1);
+    holidays.push(ostermontag.toISOString().split('T')[0]);
+
+    // Christi Himmelfahrt (Easter + 39 days)
+    const himmelfahrt = new Date(easter);
+    himmelfahrt.setDate(easter.getDate() + 39);
+    holidays.push(himmelfahrt.toISOString().split('T')[0]);
+
+    // Pfingstmontag (Easter + 50 days)
+    const pfingstmontag = new Date(easter);
+    pfingstmontag.setDate(easter.getDate() + 50);
+    holidays.push(pfingstmontag.toISOString().split('T')[0]);
+
+    return holidays;
+};
+
+// Improved helper to calculate working days (excludes Weekends and German Holidays)
 const calculateBusinessDays = (startDate, endDate) => {
     let count = 0;
     const curDate = new Date(startDate);
     const end = new Date(endDate);
+    
+    // Cache holidays for years involved in range
+    const holidayCache = {};
+    
     while (curDate <= end) {
+        const year = curDate.getFullYear();
+        if (!holidayCache[year]) holidayCache[year] = getGermanHolidays(year);
+
         const dayOfWeek = curDate.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+        const dateString = curDate.toISOString().split('T')[0];
+        
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        const isHoliday = holidayCache[year].includes(dateString);
+
+        if (!isWeekend && !isHoliday) {
+            count++;
+        }
+        
         curDate.setDate(curDate.getDate() + 1);
     }
     return count;

@@ -2,13 +2,74 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Calendar, Plus, Clock, CheckCircle, XCircle, Trash2, Info } from 'lucide-react';
 
+// Helper for Easter Calculation (Meeus/Jones/Butcher algorithm)
+const getEaster = (year) => {
+    const a = year % 19;
+    const b = Math.floor(year / 100);
+    const c = year % 100;
+    const d = Math.floor(b / 4);
+    const e = b % 4;
+    const f = Math.floor((b + 8) / 25);
+    const g = Math.floor((b - f + 1) / 3);
+    const h = (19 * a + b - d - g + 15) % 30;
+    const i = Math.floor(c / 4);
+    const k = c % 4;
+    const l = (32 + 2 * e + 2 * i - h - k) % 7;
+    const m = Math.floor((a + 11 * h + 22 * l) / 451);
+    const month = Math.floor((h + l - 7 * m + 114) / 31);
+    const day = ((h + l - 7 * m + 114) % 31) + 1;
+    return new Date(year, month - 1, day);
+};
+
+// Returns an array of YYYY-MM-DD strings for German national holidays
+const getGermanHolidays = (year) => {
+    const holidays = [
+        `${year}-01-01`, // Neujahr
+        `${year}-05-01`, // Tag der Arbeit
+        `${year}-10-03`, // Tag der Deutschen Unidad
+        `${year}-12-25`, // 1. Weihnachtstag
+        `${year}-12-26`, // 2. Weihnachtstag
+    ];
+
+    const easter = getEaster(year);
+    const dates = [
+        -2, // Karfreitag
+        1,  // Ostermontag
+        39, // Christi Himmelfahrt
+        50  // Pfingstmontag
+    ];
+
+    dates.forEach(offset => {
+        const d = new Date(easter);
+        d.setDate(easter.getDate() + offset);
+        holidays.push(d.toISOString().split('T')[0]);
+    });
+
+    return holidays;
+};
+
 const calculateBusinessDays = (start, end) => {
+    if (!start || !end) return 0;
     let count = 0;
     const curDate = new Date(start);
     const endDate = new Date(end);
+    
+    // Cache holidays for performance
+    const holidayCache = {};
+
     while (curDate <= endDate) {
+        const year = curDate.getFullYear();
+        if (!holidayCache[year]) holidayCache[year] = getGermanHolidays(year);
+
         const dayOfWeek = curDate.getDay();
-        if (dayOfWeek !== 0 && dayOfWeek !== 6) count++;
+        const dateString = curDate.toISOString().split('T')[0];
+        
+        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+        const isHoliday = holidayCache[year].includes(dateString);
+
+        if (!isWeekend && !isHoliday) {
+            count++;
+        }
         curDate.setDate(curDate.getDate() + 1);
     }
     return count;
@@ -223,6 +284,18 @@ const VacationPage = () => {
                                     onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                                 />
                             </div>
+                            {formData.startDate && formData.endDate && (
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fadeIn">
+                                    <div className="flex justify-between items-center text-blue-800">
+                                        <span className="text-sm font-bold lowercase tracking-wider">Días laborables a descontar:</span>
+                                        <span className="text-lg font-black">{calculateBusinessDays(formData.startDate, formData.endDate)} días</span>
+                                    </div>
+                                    <p className="text-[10px] text-blue-600 mt-1 uppercase font-black tracking-widest leading-tight">
+                                        * Sincronizado con calendario de festivos de Alemania y fines de semana excluidos.
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="flex gap-3 pt-2">
                                 <button
                                     type="button"
