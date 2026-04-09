@@ -313,8 +313,5 @@ const AdminVacationPage = () => {
         </div>
     );
 };
-        </div>
-    );
-};
 
 export default AdminVacationPage;
