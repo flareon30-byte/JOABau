@@ -341,10 +341,10 @@ const VehicleManagement = () => {
                                                         </div>
                                                         <div>
                                                             <p className="text-xs font-black text-slate-400 uppercase tracking-tight">
-                                                                {new Date(log.createdAt).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                                                                {new Date(log.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                                                             </p>
                                                             <h5 className="font-bold text-slate-800">
-                                                                {log.type === 'FUEL' ? `Repostaje: ${money(log.amount)}` : `Odométro: ${log.kms} km`}
+                                                                {log.type === 'FUEL' ? `Repostaje: ${money(log.amount)} - ${log.kms} km` : `Odométro: ${log.kms} km`}
                                                             </h5>
                                                         </div>
                                                     </div>
