@@ -4,7 +4,7 @@ exports.getAllVehicles = async (req, res) => {
     try {
         const vehicles = await prisma.vehicle.findMany({
             where: { isDemo: req.isDemo || false },
-            include: { team: true, logs: { take: 5, orderBy: { createdAt: 'desc' } } }
+            include: { team: true, logs: { take: 5, orderBy: { date: 'desc' } } }
         });
         res.json(vehicles);
     } catch (error) {
@@ -65,7 +65,7 @@ exports.deleteVehicle = async (req, res) => {
 
 // Logs for Technicians
 exports.addVehicleLog = async (req, res) => {
-    const { vehicleId, type, kms, amount, liters, photos } = req.body;
+    const { vehicleId, type, kms, amount, liters, photos, date } = req.body;
     const userId = req.userId;
 
     try {
@@ -78,16 +78,20 @@ exports.addVehicleLog = async (req, res) => {
                 amount: amount ? parseFloat(amount) : null,
                 liters: liters ? parseFloat(liters) : null,
                 photos: photos || [],
+                date: date ? new Date(date) : new Date(),
                 createdById: userId
             }
         });
 
-        // Update Vehicle current mileage if provided
+        // Update Vehicle current mileage ONLY if the new kms are HIGHER than current ones
         if (kms) {
-            await prisma.vehicle.update({
-                where: { id: vehicleId },
-                data: { currentKms: parseFloat(kms) }
-            });
+            const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+            if (parseFloat(kms) > vehicle.currentKms) {
+                await prisma.vehicle.update({
+                    where: { id: vehicleId },
+                    data: { currentKms: parseFloat(kms) }
+                });
+            }
         }
 
         res.status(201).json({ message: 'Log registered', log });
@@ -104,7 +108,7 @@ exports.getVehicleStats = async (req, res) => {
             where: { id },
             include: {
                 logs: {
-                    orderBy: { createdAt: 'desc' }
+                    orderBy: { date: 'desc' }
                 }
             }
         });
@@ -150,7 +154,7 @@ exports.deleteVehicleLog = async (req, res) => {
                 vehicleId,
                 kms: { not: null }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { kms: 'desc' }
         });
 
         const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });

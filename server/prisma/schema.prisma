@@ -583,6 +583,7 @@ model VehicleLog {
   liters           Float?
   
   photos           String[]       // Tickets, tachograph photos
+  date             DateTime       @default(now())
   
   createdById      String?
   

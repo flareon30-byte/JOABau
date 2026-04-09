@@ -13,6 +13,7 @@ const VehicleLogForm = () => {
     const [amount, setAmount] = useState('');
     const [photos, setPhotos] = useState([]);
     const [liters, setLiters] = useState('');
+    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
     const fetchMyVehicle = async () => {
         try {
@@ -106,7 +107,8 @@ const VehicleLogForm = () => {
                 kms: kms ? parseFloat(kms) : (lastLog?.kms || vehicle.currentKms),
                 amount: amount ? parseFloat(amount) : null,
                 liters: liters ? parseFloat(liters) : null,
-                photos
+                photos,
+                date: new Date(date).toISOString()
             });
             alert('¡Reporte guardado con éxito!');
             setKms('');
@@ -160,6 +162,22 @@ const VehicleLogForm = () => {
                 >
                     <Gauge size={20} /> Kilometraje
                 </button>
+            </div>
+
+            {/* Fecha del Reporte */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
+                <label className="block text-sm font-bold text-slate-500 mb-2 uppercase">Fecha del Reporte/Ticket</label>
+                <div className="relative">
+                    <input 
+                        type="date" 
+                        required
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-full text-xl font-bold text-slate-800 outline-none p-2 border-b-2 border-slate-100 focus:border-blue-500 transition-all bg-transparent"
+                    />
+                    <Calendar className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={20} />
+                </div>
+                <p className="text-[10px] text-slate-400 font-bold mt-2 italic uppercase">Indica la fecha que marca el ticket físico</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
