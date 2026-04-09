@@ -37,6 +37,7 @@ const AppointmentsPage = () => {
     
     // Edit Address Master Data
     const [isEditAddressModalOpen, setIsEditAddressModalOpen] = useState(false);
+    const [isSavingAddress, setIsSavingAddress] = useState(false);
     const [editAddressForm, setEditAddressForm] = useState({
         id: '',
         clientName: '',
