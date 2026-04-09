@@ -142,7 +142,17 @@ exports.submitActivation = async (req, res) => {
 
         // Fetch Global System Settings (Fallback)
         const settings = await prisma.systemSettings.findFirst();
-        const fin = settings?.financials?.installers || {};
+        let fin = {};
+        try {
+            if (settings && settings.financials) {
+                // financials can be an object or a string depending on DB driver/version
+                const rawFin = typeof settings.financials === 'string' ? JSON.parse(settings.financials) : settings.financials;
+                fin = rawFin.installers || {};
+            }
+        } catch (e) {
+            console.error("[SubmitActivation] Error parsing financials:", e);
+            fin = {};
+        }
 
         const isSaturday = req.body.isSaturday === 'true' || req.body.isSaturday === true || (new Date().getDay() === 6);
 
@@ -167,7 +177,7 @@ exports.submitActivation = async (req, res) => {
         if (matchingItem) {
             basePrice = matchingItem.priceToClient;
             if (isSaturday) {
-                saturdayPay += matchingItem.saturdayPay || 0; // Incrementar en vez de asignar
+                saturdayPay += (matchingItem.saturdayPay || 0); // Incrementar en vez de asignar
             }
         }
 
@@ -184,7 +194,7 @@ exports.submitActivation = async (req, res) => {
         if (finalTaCountCalculated > 0) {
             taPriceTotal = finalTaCountCalculated * sduDynamicPrice;
             if (isSaturday && sduItem && sduItem.saturdayPay) {
-                saturdayPay += (sduItem.saturdayPay * finalTaCountCalculated);
+                saturdayPay += ((sduItem.saturdayPay || 0) * finalTaCountCalculated);
             }
         }
 
@@ -197,7 +207,7 @@ exports.submitActivation = async (req, res) => {
         if (isMduBool) {
             mduPriceTotal = mduDynamicPrice;
             if (isSaturday && mduItem && mduItem.saturdayPay) {
-                saturdayPay += mduItem.saturdayPay;
+                saturdayPay += (mduItem.saturdayPay || 0);
             }
         }
 
