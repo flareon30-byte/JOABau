@@ -95,22 +95,26 @@ exports.addVehicleLog = async (req, res) => {
             }
         }
 
-        // --- NEW NOTIFICATION FOR SUPER ADMIN ---
-        const creatingUser = await prisma.user.findUnique({ where: { id: userId } });
-        const notificationMsg = `⛽ ${creatingUser.username} ha registrado un ${type === 'FUEL' ? 'Ticket de Gasolina' : 'Log'} para el vehículo ${vehicle.plate} (${amount || 0}€)`;
-        
-        await prisma.notification.create({
-            data: {
-                type: 'VEHICLE_LOG_ADDED',
-                message: notificationMsg,
-                targetRole: 'SUPER_ADMIN'
-            }
-        });
+        // --- NEW NOTIFICATION FOR SUPER ADMIN (WRAPPED IN TRY-CATCH) ---
+        try {
+            const creatingUser = await prisma.user.findUnique({ where: { id: userId } });
+            const notificationMsg = `⛽ ${creatingUser.username} ha registrado un ${type === 'FUEL' ? 'Ticket de Gasolina' : 'Log'} para el vehículo ${vehicle.plate} (${amount || 0}€)`;
+            
+            await prisma.notification.create({
+                data: {
+                    type: 'VEHICLE_LOG_ADDED',
+                    message: notificationMsg,
+                    targetRole: 'SUPER_ADMIN'
+                }
+            });
 
-        sendPushToRole('SUPER_ADMIN', {
-            title: '⛽ Nuevo Gasto de Vehículo',
-            body: notificationMsg
-        }).catch(e => console.error('Push error:', e.message));
+            sendPushToRole('SUPER_ADMIN', {
+                title: '⛽ Nuevo Gasto de Vehículo',
+                body: notificationMsg
+            }).catch(e => console.error('Push error:', e.message));
+        } catch (notifErr) {
+            console.error('Non-critical vehicle notification error:', notifErr.message);
+        }
 
         res.status(201).json({ message: 'Log registered', log });
     } catch (error) {
