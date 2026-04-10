@@ -724,16 +724,14 @@ const BillingPage = () => {
                         <div className="relative">
                             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <select
-                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-sm font-bold"
                                 value={filters.type}
                                 onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                             >
                                 <option value="">Todos los tipos</option>
-                                <option value="BP">BP</option>
-                                <option value="BP_2_FAM">BP 2 FAM</option>
-                                <option value="BR_MULTI">BR MULTI</option>
-                                <option value="SDU">SDU</option>
-                                <option value="MDU">MDU</option>
+                                {[...new Set(billingData.activation.map(a => a.activationType))].sort().map(type => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
                             </select>
                         </div>
                     </div>

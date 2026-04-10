@@ -286,39 +286,80 @@ exports.getBillingData = async (req, res) => {
             if (act.isSaturday) results.totals.saturdayGross += lineGross;
             else results.totals.weekdayGross += lineGross;
 
-            // Counts
-            const t = act.activationType;
-            if (t === 'BP' || t === 'BP_2_FAM') results.totals.bp++;
-            if (t === 'SDU' || t === 'BR_MULTI') results.totals.ta += (act.taCount || 1);
-            if (act.spInstalled) results.totals.sp += act.spInstalled;
-            if (act.mduInstalled) results.totals.mdu++;
+            // Accurate Counts and Summary
+            const type = act.activationType || 'Sin Tipo';
+            results.totals.itemsSummary[type] = (results.totals.itemsSummary[type] || 0) + 1;
+            
+            if (type === 'BP' || type === 'BP_2_FAM') results.totals.bp++;
+            
+            // Count TA/SDU units
+            const taCount = (act.taCount > 0) ? act.taCount : ((act.taInstalled || act.taPrice > 0 || type === 'SDU') ? 1 : 0);
+            if (taCount > 0) {
+                results.totals.ta += taCount;
+                results.totals.itemsSummary['Equipos (TA/SDU)'] = (results.totals.itemsSummary['Equipos (TA/SDU)'] || 0) + taCount;
+            }
+
+            // Count SP units
+            if (act.spInstalled > 0) {
+                results.totals.sp += act.spInstalled;
+                results.totals.itemsSummary['Splits (SP)'] = (results.totals.itemsSummary['Splits (SP)'] || 0) + act.spInstalled;
+            }
+
+            // Count MDU units
+            if (act.mduInstalled) {
+                results.totals.mdu++;
+                results.totals.itemsSummary['MDU Extras'] = (results.totals.itemsSummary['MDU Extras'] || 0) + 1;
+            }
         });
 
-        // --- Part B: Soplados (Need client lookup for price) ---
+        // --- Part B: Soplados (Need client lookup for price or stored price) ---
         results.soplado.forEach(s => {
-            const client = clientCompanyId ? { settings: (results.soplado[0]?.address?.project?.clientCompany?.settings || {}) } : getClientForWork(s);
-            const prices = client?.settings || {};
-            const sopladoPrice = parseFloat(prices.apLPrice || 60);
+            const client = clientCompanyId ? { id: clientCompanyId } : getClientForWork(s);
+            const prices = client?.settings || clientsMap[client?.id]?.settings || {};
+            
+            // Use stored price if available (snapshot), otherwise fallback to current client price, otherwise 60
+            const sopladoPrice = parseFloat(s.priceCharged || prices.apLPrice || 60);
 
             results.totals.euros += sopladoPrice;
             if (s.isSaturday) results.totals.saturdayGross += sopladoPrice;
             else results.totals.weekdayGross += sopladoPrice;
+
+            results.totals.itemsSummary['Soplado (Trabajo)'] = (results.totals.itemsSummary['Soplado (Trabajo)'] || 0) + 1;
         });
 
         // --- Part C: Dynamic Installations (SimpleInstallation) ---
         results.simpleInstallation.forEach(inst => {
-            results.totals.gk++;
             let instGross = 0;
             if (inst.items && inst.items.length > 0) {
-                inst.items.forEach(item => { instGross += (item.priceAtTime * item.quantity); });
+                inst.items.forEach(item => { 
+                    const itemTotal = (item.priceAtTime * item.quantity);
+                    instGross += itemTotal;
+                    
+                    const itemName = item.priceItem?.name || 'Item G&K';
+                    results.totals.itemsSummary[itemName] = (results.totals.itemsSummary[itemName] || 0) + item.quantity;
+                });
             } else {
                 instGross = (inst.priceCharged || 0);
+                results.totals.itemsSummary['G&K (Legacy)'] = (results.totals.itemsSummary['G&K (Legacy)'] || 0) + 1;
             }
 
             results.totals.euros += instGross;
             const isSat = inst.createdAt && new Date(inst.createdAt).getDay() === 6;
             if (isSat) results.totals.saturdayGross += instGross;
             else results.totals.weekdayGross += instGross;
+        });
+
+        // --- Part D: Protocols (If they have a price set in client settings) ---
+        results.protocol.forEach(p => {
+            const client = getClientForWork(p);
+            const prices = client?.settings || clientsMap[client?.id]?.settings || {};
+            const protocolPrice = parseFloat(prices.protocolPrice || 0);
+            
+            if (protocolPrice > 0) {
+                results.totals.euros += protocolPrice;
+                results.totals.weekdayGross += protocolPrice; // Protocols are usually weekdays
+                results.totals.itemsSummary['Protocolos'] = (results.totals.itemsSummary['Protocolos'] || 0) + 1;
+            }
         });
 
         res.json(results);
