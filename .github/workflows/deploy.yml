@@ -29,9 +29,10 @@ jobs:
             docker compose build --parallel=false client
             
             echo "3. Deteniendo y limpiando contenedores previos..."
-            docker compose down || true
-            # Eliminamos forzosamente si se quedó alguno colgado con el mismo nombre para evitar el error de Conflict
-            docker rm -f app-server-1 app-client-1 || true
+            docker compose down --remove-orphans || true
+            # Eliminamos forzosamente cualquier residuo para evitar errores de Conflict
+            docker rm -f app-server-1 app-client-1 app-postgres-1 || true
+            docker network prune -f || true
             
             echo "4. Encendiendo aplicación inmediatamente..."
             # Forzamos la recreación para asegurar que carguen los nuevos cambios
