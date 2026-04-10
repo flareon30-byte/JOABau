@@ -522,8 +522,8 @@ const ActivationPageV2 = () => {
             navigate('/dashboard');
         } catch (error) {
             console.error('Error submitting activation:', error);
-            const serverMsg = error.response?.data?.message || error.message;
-            alert('Error al guardar la activación: ' + serverMsg);
+            const serverMsg = error.response?.data?.error || error.response?.data?.message || JSON.stringify(error.response?.data) || error.message;
+            alert('Error al guardar la activación (V2.5 ERROR): ' + serverMsg);
         } finally {
             setSubmitting(false);
         }
@@ -542,7 +542,7 @@ const ActivationPageV2 = () => {
                 <div className="flex-1">
                     <h1 className="text-lg font-bold text-slate-800 leading-tight">Finalizar Activación</h1>
                     <div className="flex items-center gap-2 mt-0.5">
-                        <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">V2.4 ACTIVADA</span>
+                        <span className="bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">V2.5 DIAGNOSTIC</span>
                         <p className="text-[10px] text-slate-500 line-clamp-1">{appointment.address.street} {appointment.address.number}</p>
                     </div>
                 </div>
