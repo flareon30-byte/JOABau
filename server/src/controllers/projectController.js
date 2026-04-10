@@ -133,25 +133,48 @@ exports.importProject = async (req, res) => {
         let updatedCount = 0;
 
         for (const addrData of addressesToProcess) {
-            // Find existing by address + name + kls to distinguish multi-client buildings
-            const existing = await prisma.address.findFirst({
-                where: {
-                    projectId: project.id,
-                    street: { equals: addrData.street, mode: 'insensitive' },
-                    number: { equals: (addrData.number || ''), mode: 'insensitive' },
-                    clientName: { equals: (addrData.clientName || ''), mode: 'insensitive' },
-                    klsId: { equals: (addrData.klsId || ''), mode: 'insensitive' }
-                }
-            });
+            // Find existing prioritising KLS ID (which is stable)
+            let existing = null;
+            if (addrData.klsId) {
+                existing = await prisma.address.findFirst({
+                    where: {
+                        projectId: project.id,
+                        klsId: { equals: addrData.klsId, mode: 'insensitive' }
+                    }
+                });
+            }
+
+            // Fallback to address matching if KLS is missing or wasn't found (for old projects or consistency)
+            if (!existing) {
+                existing = await prisma.address.findFirst({
+                    where: {
+                        projectId: project.id,
+                        street: { equals: addrData.street, mode: 'insensitive' },
+                        number: { equals: (addrData.number || ''), mode: 'insensitive' }
+                    }
+                });
+            }
 
             if (existing) {
+                const statusFromExcel = addrData.status || 'geplant';
+                
+                // CRITICAL PROTECTION: Do NOT revert addresses that are already in "Archivo" (DERIVADA, CERRADA, etc.)
+                // Only update status if the current DB status is 'geplant' or 'RECITAR' (pending states)
+                const isAlreadyArchived = ['DERIVADA', 'CERRADA'].includes(existing.orderStatus);
+                
                 const updateData = {
                     city: addrData.city || existing.city,
                     nvt: addrData.nvt || existing.nvt,
-                    orderStatus: addrData.status || existing.orderStatus
+                    // Only update clientName if it's null in DB, to avoid overwriting user edits
+                    clientName: existing.clientName || addrData.clientName
                 };
 
-                // Only if importing protocol list, we enforce protocol flag
+                // Update status ONLY if not archived. We respect the girl's work in Back Office.
+                if (!isAlreadyArchived) {
+                    updateData.orderStatus = statusFromExcel;
+                }
+
+                // If importing protocol list, we enforce protocol flag
                 if (isProtocol) {
                     updateData.requiresProtocol = true;
                 }
@@ -194,24 +217,26 @@ exports.importProject = async (req, res) => {
         let missingInExcelCount = 0;
 
         for (const dbAddr of existingAddresses) {
-            // Robust matching: trim and case-insensitive + client/kls
-            const isInNewFile = addressesToProcess.some(newData => 
-                newData.street.trim().toLowerCase() === dbAddr.street.trim().toLowerCase() &&
-                (newData.number || '').trim().toLowerCase() === (dbAddr.number || '').trim().toLowerCase() &&
-                (newData.clientName || '').trim().toLowerCase() === (dbAddr.clientName || '').trim().toLowerCase() &&
-                (newData.klsId || '').trim().toLowerCase() === (dbAddr.klsId || '').trim().toLowerCase()
-            );
+            // Robust matching using KLS prioritisation
+            const isInNewFile = addressesToProcess.some(newData => {
+                if (newData.klsId && dbAddr.klsId) {
+                    return newData.klsId.trim().toLowerCase() === dbAddr.klsId.trim().toLowerCase();
+                }
+                return newData.street.trim().toLowerCase() === dbAddr.street.trim().toLowerCase() &&
+                       (newData.number || '').trim().toLowerCase() === (dbAddr.number || '').trim().toLowerCase();
+            });
 
             if (!isInNewFile) {
                 missingInExcelCount++;
-                // Did we do any work on it?
-                const hasWork = dbAddr.activationInfo || dbAddr.sopladoInfo || dbAddr.fusionInfo;
+                // Did we do any work on it? (Activation, Soplado, or if it is ARCHIVED manually)
+                const isArchivedManually = ['DERIVADA', 'CERRADA'].includes(dbAddr.orderStatus);
+                const hasWork = dbAddr.activationInfo || dbAddr.sopladoInfo || dbAddr.fusionInfo || isArchivedManually;
                 
                 if (hasWork) {
-                    // It has work; keep it to preserve billing/history
+                    // It has work or was deliberately archived; keep it to preserve billing/history
                     keptWithWorkCount++;
                 } else {
-                    // No work was done by us, and it disappeared from the Excel. Delete it.
+                    // No work was done by us, it's just a pending entry that disappeared from the Excel. Delete it.
                     const appointments = await prisma.appointment.findMany({
                         where: { addressId: dbAddr.id },
                         select: { id: true }
