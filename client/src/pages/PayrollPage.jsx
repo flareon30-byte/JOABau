@@ -538,7 +538,7 @@ const PayrollHistoryModal = ({ history, onClose }) => {
                                             </div>
                                         </div>
                                         <div className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-black text-slate-500">
-                                            {new Date(log.cycleStart).toLocaleDateString()} - {new Date(log.cycleEnd).toLocaleDateString()}
+                                            {new Date(log.cycleStart).toLocaleDateString('es-ES')} - {new Date(log.cycleEnd).toLocaleDateString('es-ES')}
                                         </div>
                                     </div>
 

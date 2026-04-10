@@ -435,7 +435,7 @@ const DashboardLayout = () => {
 
                         <div className="text-right">
                             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden md:block">Fecha</p>
-                            <p className="text-xs md:text-sm font-medium text-slate-700">{new Date().toLocaleDateString()}</p>
+                            <p className="text-xs md:text-sm font-medium text-slate-700">{new Date().toLocaleDateString('es-ES')}</p>
                         </div>
                     </div>
                 </header>

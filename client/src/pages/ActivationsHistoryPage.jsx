@@ -70,7 +70,7 @@ const ActivationsHistoryPage = () => {
 
         const headers = ['Fecha', 'Dirección', 'Proyecto', 'Equipo', 'Técnico', 'Tipo', 'Detalles', 'Home IDs', 'Comentarios', 'Puntos'];
         const rows = activations.map(act => [
-            new Date(act.createdAt).toLocaleDateString(),
+            new Date(act.createdAt).toLocaleDateString('es-ES'),
             `${act.address.street} ${act.address.number}`,
             act.address.project.name,
             act.address.appointment?.assignedTeam?.name || 'N/A',
@@ -169,7 +169,7 @@ const ActivationsHistoryPage = () => {
         if (!isRepairModalOpen || !selectedActivation) return null;
 
         const originalTeamName = selectedActivation.address.appointment?.assignedTeam?.name || 'Desconocido';
-        const originalDate = new Date(selectedActivation.createdAt).toLocaleDateString();
+        const originalDate = new Date(selectedActivation.createdAt).toLocaleDateString('es-ES');
 
         return (
             <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
@@ -364,7 +364,7 @@ const ActivationsHistoryPage = () => {
                                 activations.map(act => (
                                     <tr key={act.id} className="hover:bg-slate-50">
                                         <td className="p-4 whitespace-nowrap">
-                                            {new Date(act.createdAt).toLocaleDateString()}
+                                            {new Date(act.createdAt).toLocaleDateString('es-ES')}
                                             <div className="text-xs text-slate-400">{new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                                         </td>
                                         <td className="p-4">

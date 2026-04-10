@@ -273,7 +273,7 @@ const BillingPage = () => {
 
                                 {activeTab === 'soplado' && (
                                     <>
-                                        <td className="p-4">{new Date(row.createdAt).toLocaleDateString()}</td>
+                                        <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.address?.project?.name}</td>
                                         <td className="p-4">{row.address?.street} {row.address?.number}</td>
                                         <td className="p-4 font-bold text-blue-600">{row.address?.nvt || '-'}</td>
@@ -284,7 +284,7 @@ const BillingPage = () => {
                                 )}
                                 {activeTab === 'fusion' && (
                                     <>
-                                        <td className="p-4">{new Date(row.createdAt).toLocaleDateString()}</td>
+                                        <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.project?.name}</td>
                                         <td className="p-4 font-bold text-purple-600">{row.nvtName}</td>
                                         <td className="p-4">{row.fusionCount}</td>
@@ -302,7 +302,7 @@ const BillingPage = () => {
                                                 className="w-4 h-4 rounded border-slate-300"
                                             />
                                         </td>
-                                        <td className="p-4">{new Date(row.createdAt).toLocaleDateString()}</td>
+                                        <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.address?.project?.name}</td>
                                         <td className="p-4">{row.address?.street} {row.address?.number} <div className="text-[10px] text-blue-600 font-bold">ID: {row.homeIds?.[0] || '-'}</div></td>
                                         <td className="p-4">{row.address?.clientName || 'Sin Nombre'}</td>
@@ -445,7 +445,7 @@ const BillingPage = () => {
                                 )}
                                 {activeTab === 'protocol' && (
                                     <>
-                                        <td className="p-4">{new Date(row.updatedAt).toLocaleDateString()}</td>
+                                        <td className="p-4">{new Date(row.updatedAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.address?.project?.name}</td>
                                         <td className="p-4">{row.address?.street} {row.address?.number}</td>
                                         <td className="p-4 font-bold text-purple-600">{row.address?.nvt || '-'}</td>
@@ -455,7 +455,7 @@ const BillingPage = () => {
                                 )}
                                 {activeTab === 'repair' && (
                                     <>
-                                        <td className="p-4">{new Date(row.updatedAt).toLocaleDateString()}</td>
+                                        <td className="p-4">{new Date(row.updatedAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.address?.project?.name}</td>
                                         <td className="p-4">{row.address?.street} {row.address?.number}</td>
                                         <td className="p-4 font-bold text-red-600">{row.address?.nvt || '-'}</td>

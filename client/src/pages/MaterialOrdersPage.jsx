@@ -176,7 +176,7 @@ const MaterialOrdersPage = () => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-sm text-slate-500">
-                                            {new Date(order.createdAt).toLocaleDateString()}
+                                            {new Date(order.createdAt).toLocaleDateString('es-ES')}
                                         </td>
                                         <td className="p-4">
                                             {renderStatusBadge(order.status)}
