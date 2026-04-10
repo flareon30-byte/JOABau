@@ -28,11 +28,12 @@ const processImages = async (files) => {
 
     const today = new Date().toLocaleDateString('de-DE');
 
-    const promises = filesArray.map(async (file) => {
+    // Use sequential processing instead of Promise.all to save RAM on small droplets
+    for (const file of filesArray) {
         const filePath = file.path;
         const ext = path.extname(filePath).toLowerCase();
 
-        if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) return;
+        if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) continue;
 
         try {
             // 1. Get metadata of original image
@@ -81,13 +82,12 @@ const processImages = async (files) => {
                 .toBuffer();
 
             fs.writeFileSync(filePath, buffer);
-            console.log(`[ImageProcessor] Sello aplicado: ${file.originalname}`);
+            console.log(`[ImageProcessor] Sello aplicado y comprimido: ${file.originalname}`);
         } catch (err) {
             console.error(`[ImageProcessor] Error procesando ${file.originalname}:`, err);
         }
-    });
-
-    await Promise.all(promises);
+    }
+    console.log('[ImageProcessor] Procesamiento completado en serie (Ahorro de RAM).');
     console.log('[ImageProcessor] Finalizado con éxito.');
 };
 

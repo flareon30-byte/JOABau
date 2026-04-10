@@ -81,9 +81,13 @@ exports.submitActivation = async (req, res) => {
         pdfPath = signedPdfFile.path.replace(/\\/g, '/');
     }
 
-    // 🟢 COMPRESIÓN DE IMÁGENES
-    if (photos.length > 0) {
-        await processImages(photos);
+    // 🟢 COMPRESIÓN DE IMÁGENES (Dentro de try-catch para evitar Error 500 si falla el procesamiento)
+    try {
+        if (photos.length > 0) {
+            await processImages(photos);
+        }
+    } catch (procErr) {
+        console.error("Image processing error, continuing:", procErr);
     }
 
     try {
@@ -294,7 +298,8 @@ exports.submitActivation = async (req, res) => {
                 }
             });
 
-            await tx.appointment.update({
+            // Use updateMany to safely update if exists, or do nothing if not, preventing 500 errors
+            await tx.appointment.updateMany({
                 where: { addressId },
                 data: { status: 'COMPLETADO' }
             });
