@@ -132,10 +132,7 @@ exports.submitActivation = async (req, res) => {
         let taInstalledBool = taInstalled === 'true' || taInstalled === true;
         let finalTaCount = taCountInt > 0 ? taCountInt : (taInstalledBool ? 1 : 0);
         
-        if (activationType === 'SDU') {
-            taInstalledBool = true;
-            if (finalTaCount === 0) finalTaCount = 1;
-        }
+        // El precio de TA y MDU ya no se fuerza por tipo de activación, solo por selector manual.
 
         // 1. Fetch User and Team (to know the client rates)
         const user = await prisma.user.findUnique({

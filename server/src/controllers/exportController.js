@@ -292,11 +292,11 @@ exports.getBillingData = async (req, res) => {
             
             if (type === 'BP' || type === 'BP_2_FAM') results.totals.bp++;
             
-            // Count TA/SDU units
-            const taCount = (act.taCount > 0) ? act.taCount : ((act.taInstalled || act.taPrice > 0 || type === 'SDU') ? 1 : 0);
+            // Count TA units strictly from technician marking
+            const taCount = act.taCount > 0 ? act.taCount : (act.taInstalled ? 1 : 0);
             if (taCount > 0) {
                 results.totals.ta += taCount;
-                results.totals.itemsSummary['Equipos (TA/SDU)'] = (results.totals.itemsSummary['Equipos (TA/SDU)'] || 0) + taCount;
+                results.totals.itemsSummary['Equipos (TA)'] = (results.totals.itemsSummary['Equipos (TA)'] || 0) + taCount;
             }
 
             // Count SP units
@@ -305,10 +305,10 @@ exports.getBillingData = async (req, res) => {
                 results.totals.itemsSummary['Splits (SP)'] = (results.totals.itemsSummary['Splits (SP)'] || 0) + act.spInstalled;
             }
 
-            // Count MDU units
+            // Count MDU units strictly from technician marking
             if (act.mduInstalled) {
                 results.totals.mdu++;
-                results.totals.itemsSummary['MDU Extras'] = (results.totals.itemsSummary['MDU Extras'] || 0) + 1;
+                results.totals.itemsSummary['Equipos (MDU)'] = (results.totals.itemsSummary['Equipos (MDU)'] || 0) + 1;
             }
         });
 
