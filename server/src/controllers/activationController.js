@@ -74,8 +74,9 @@ exports.submitActivation = async (req, res) => {
         homeId
     } = req.body;
 
-    const photos = req.files && req.files['photos'] ? req.files['photos'] : [];
-    const signedPdfFile = req.files && req.files['signedPdf'] ? req.files['signedPdf'][0] : null;
+    // Con upload.any(), req.files es un array plano en lugar de un objeto con claves
+    const photos = Array.isArray(req.files) ? req.files.filter(f => f.fieldname === 'photos') : [];
+    const signedPdfFile = Array.isArray(req.files) ? req.files.find(f => f.fieldname === 'signedPdf') : null;
 
     if (signedPdfFile) {
         pdfPath = signedPdfFile.path.replace(/\\/g, '/');

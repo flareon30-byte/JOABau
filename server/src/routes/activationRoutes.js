@@ -26,9 +26,6 @@ router.get('/billing/data', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), 
 router.get('/billing/export', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), exportController.exportBillingExcel);
 router.get('/all', checkRole(['ADMIN', 'SUPER_ADMIN']), activationController.getAllActivations);
 router.post('/generate-pdf', activationController.generatePdf);
-router.post('/report/:addressId', upload.fields([
-    { name: 'photos', maxCount: 10 },
-    { name: 'signedPdf', maxCount: 1 }
-]), activationController.submitActivation);
+router.post('/report/:addressId', upload.any(), activationController.submitActivation);
 
 module.exports = router;
