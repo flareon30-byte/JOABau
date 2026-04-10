@@ -1,4 +1,5 @@
 const prisma = require('../prisma');
+const { sendPushToRole } = require('../utils/notificationUtils');
 
 exports.getAllVehicles = async (req, res) => {
     try {
@@ -84,8 +85,8 @@ exports.addVehicleLog = async (req, res) => {
         });
 
         // Update Vehicle current mileage ONLY if the new kms are HIGHER than current ones
+        const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
         if (kms) {
-            const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
             if (parseFloat(kms) > vehicle.currentKms) {
                 await prisma.vehicle.update({
                     where: { id: vehicleId },
@@ -93,6 +94,23 @@ exports.addVehicleLog = async (req, res) => {
                 });
             }
         }
+
+        // --- NEW NOTIFICATION FOR SUPER ADMIN ---
+        const creatingUser = await prisma.user.findUnique({ where: { id: userId } });
+        const notificationMsg = `⛽ ${creatingUser.username} ha registrado un ${type === 'FUEL' ? 'Ticket de Gasolina' : 'Log'} para el vehículo ${vehicle.plate} (${amount || 0}€)`;
+        
+        await prisma.notification.create({
+            data: {
+                type: 'VEHICLE_LOG_ADDED',
+                message: notificationMsg,
+                targetRole: 'SUPER_ADMIN'
+            }
+        });
+
+        sendPushToRole('SUPER_ADMIN', {
+            title: '⛽ Nuevo Gasto de Vehículo',
+            body: notificationMsg
+        }).catch(e => console.error('Push error:', e.message));
 
         res.status(201).json({ message: 'Log registered', log });
     } catch (error) {

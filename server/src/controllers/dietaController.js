@@ -53,6 +53,17 @@ exports.logDieta = async (req, res) => {
                 isSaturday
             }
         });
+
+        // --- NEW NOTIFICATION FOR SUPER ADMIN ---
+        await prisma.notification.create({
+            data: {
+                type: 'DIETA_LOGGED',
+                message: `🍽️ Dieta registrada: ${user.username} ha marcado ${type} para hoy (${finalAmount}€)`,
+                createdById: userId,
+                targetRole: 'SUPER_ADMIN'
+            }
+        });
+
         res.json({ success: true, entry });
     } catch (error) {
         console.error('Error logging dieta:', error);

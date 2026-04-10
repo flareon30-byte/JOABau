@@ -83,3 +83,24 @@ exports.sendPushToTeam = async (teamId, payload) => {
         return [];
     }
 };
+
+/**
+ * Sends a push notification to all users with a specific role
+ * @param {string} role - Role name (e.g., 'SUPER_ADMIN')
+ * @param {object} payload - { title: string, body: string, data: object }
+ */
+exports.sendPushToRole = async (role, payload) => {
+    try {
+        const users = await prisma.user.findMany({
+            where: { role },
+            select: { id: true }
+        });
+
+        return await Promise.all(
+            users.map(u => exports.sendPushToUser(u.id, payload))
+        );
+    } catch (error) {
+        console.error('Error in sendPushToRole:', error);
+        return [];
+    }
+};

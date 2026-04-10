@@ -3,6 +3,7 @@ const { PDFDocument } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
 const { processImages } = require('../utils/imageProcessor');
+const { sendPushToRole } = require('../utils/notificationUtils');
 
 // Points System Configuration
 const POINTS_MAP = {
@@ -305,6 +306,26 @@ exports.submitActivation = async (req, res) => {
 
             return activation;
         });
+
+        // --- NEW NOTIFICATION FOR SUPER ADMIN ---
+        const address = await prisma.address.findUnique({ where: { id: addressId }, include: { project: true } });
+        const notificationMsg = `⚡ ¡Activación Exitosa! ${user.username} ha terminado en ${address.street} ${address.number} (${address.project.name}). Tipo: ${activationType}`;
+        
+        await prisma.notification.create({
+            data: {
+                type: 'ACTIVATION_COMPLETED',
+                message: notificationMsg,
+                addressId: addressId,
+                createdById: req.userId,
+                targetRole: 'SUPER_ADMIN'
+            }
+        });
+
+        sendPushToRole('SUPER_ADMIN', {
+            title: '⚡ ¡Suministro Finalizado!',
+            body: notificationMsg,
+            data: { addressId: addressId }
+        }).catch(e => console.error('Push error:', e.message));
 
         res.json(result);
     } catch (error) {

@@ -20,6 +20,15 @@ exports.createOrder = async (req, res) => {
             }
         });
 
+        // --- NEW NOTIFICATION FOR SUPER ADMIN ---
+        await prisma.notification.create({
+            data: {
+                type: 'MATERIAL_ORDER_CREATED',
+                message: `🛒 Nuevo pedido de material: ${newOrder.user.username} solicita "${materialDescription.substring(0, 30)}..." - Urgencia: ${timeRemaining}`,
+                targetRole: 'SUPER_ADMIN'
+            }
+        });
+
         res.status(201).json(newOrder);
     } catch (error) {
         console.error('Error creating material order:', error);

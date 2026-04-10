@@ -331,6 +331,16 @@ exports.submitRepair = async (req, res) => {
             await prisma.notification.create({
                 data: {
                     type: 'REPAIR_COMPLETED',
+                    message: `🛠️ Reparación finalizada: ${address.street} ${address.number} - Por: ${address.clientName}. Desc: ${description.substring(0, 50)}...`,
+                    addressId,
+                    targetRole: 'SUPER_ADMIN',
+                    createdById: userId
+                }
+            });
+
+            await prisma.notification.create({
+                data: {
+                    type: 'REPAIR_COMPLETED',
                     message: `Reparación completada: ${address.street} - ${description}`,
                     addressId,
                     targetRole: 'BACK_OFFICE', // or ADMIN

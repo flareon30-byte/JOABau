@@ -1,6 +1,6 @@
 const prisma = require('../prisma');
 const { processImages } = require('../utils/imageProcessor');
-const { sendPushToTeam } = require('../utils/notificationUtils');
+const { sendPushToTeam, sendPushToRole } = require('../utils/notificationUtils');
 
 // Get addresses ready for appointment (Soplado OK, Appointment Pending/Null)
 exports.getPendingAppointments = async (req, res) => {
@@ -321,14 +321,26 @@ exports.reciteAppointment = async (req, res) => {
             }
         });
 
-        // Create Notification for Back Office
+        // Create Notifications for Back Office and Super Admin
+        const msg = `Solicitud de recita: ${reason.substring(0, 50)}${reason.length > 50 ? '...' : ''}`;
+        
         await prisma.notification.create({
             data: {
                 type: 'RECITE_REQUEST',
-                message: `Solicitud de recita: ${reason.substring(0, 50)}${reason.length > 50 ? '...' : ''}`,
+                message: msg,
                 addressId: updatedAppointment.addressId,
                 createdById: userId,
                 targetRole: 'BACK_OFFICE'
+            }
+        });
+
+        await prisma.notification.create({
+            data: {
+                type: 'RECITE_REQUEST',
+                message: `🚩 ${authorName} solicita recita: ${reason.substring(0, 50)}...`,
+                addressId: updatedAppointment.addressId,
+                createdById: userId,
+                targetRole: 'SUPER_ADMIN'
             }
         });
 
@@ -421,6 +433,26 @@ exports.updateOrderStatus = async (req, res) => {
                 });
             }
         });
+
+        // --- NEW NOTIFICATION FOR SUPER ADMIN ---
+        const address = await prisma.address.findUnique({ where: { id }, include: { project: true } });
+        const notificationMsg = `📢 Orden ${status} en ${address.street} ${address.number} (${address.project.name}) - Por: ${authorName}${reason ? ' - Motivo: ' + reason : ''}`;
+        
+        await prisma.notification.create({
+            data: {
+                type: 'ORDER_STATUS_CHANGED',
+                message: notificationMsg,
+                addressId: id,
+                createdById: userId,
+                targetRole: 'SUPER_ADMIN'
+            }
+        });
+
+        sendPushToRole('SUPER_ADMIN', {
+            title: `📋 Orden ${status}`,
+            body: notificationMsg,
+            data: { addressId: id }
+        }).catch(e => console.error('Push error:', e.message));
 
         res.json({ success: true, message: `Estado actualizado a ${status}` });
     } catch (error) {
