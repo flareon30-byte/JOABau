@@ -42,7 +42,10 @@ const getGermanHolidays = (year) => {
     offsets.forEach(offset => {
         const d = new Date(easter);
         d.setDate(easter.getDate() + offset);
-        holidays.push(d.toISOString().split('T')[0]);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        holidays.push(`${y}-${m}-${day}`);
     });
 
     return holidays;
@@ -62,7 +65,10 @@ const calculateBusinessDays = (startDate, endDate) => {
         if (!holidayCache[year]) holidayCache[year] = getGermanHolidays(year);
 
         const dayOfWeek = curDate.getDay();
-        const dateString = curDate.toISOString().split('T')[0];
+        const y = curDate.getFullYear();
+        const m = String(curDate.getMonth() + 1).padStart(2, '0');
+        const day = String(curDate.getDate()).padStart(2, '0');
+        const dateString = `${y}-${m}-${day}`;
         
         const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
         const isHoliday = holidayCache[year].includes(dateString);

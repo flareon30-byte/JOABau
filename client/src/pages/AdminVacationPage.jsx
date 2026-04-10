@@ -31,7 +31,11 @@ const getGermanHolidays = (year) => {
     const dates = [-2, 1, 39, 50, 60];
     dates.forEach(o => {
         const d = new Date(easter); d.setDate(easter.getDate() + o);
-        holidays.push(d.toISOString().split('T')[0]);
+        // Use local date parts to avoid UTC shifting
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        holidays.push(`${y}-${m}-${day}`);
     });
     return holidays;
 };
@@ -244,7 +248,12 @@ const AdminVacationPage = () => {
                             const dayVacations = getVacationsForDay(dateObj.day);
                             const year = dateObj.day.getFullYear();
                             const holidayList = getGermanHolidays(year);
-                            const isHoliday = holidayList.includes(dateObj.day.toISOString().split('T')[0]);
+                            // Format local date to YYYY-MM-DD
+                            const y = dateObj.day.getFullYear();
+                            const m = String(dateObj.day.getMonth() + 1).padStart(2, '0');
+                            const d = String(dateObj.day.getDate()).padStart(2, '0');
+                            const dateStr = `${y}-${m}-${d}`;
+                            const isHoliday = holidayList.includes(dateStr);
 
                             return (
                                 <div key={i} className={`min-h-[120px] bg-white p-2 ${dateObj.current ? '' : 'bg-slate-50/50 opacity-40'} ${isHoliday ? 'bg-red-50/50' : ''}`}>
