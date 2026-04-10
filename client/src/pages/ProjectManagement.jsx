@@ -198,7 +198,7 @@ const ProjectManagement = () => {
                                     {project.clientCompany?.name || 'Sin Cliente Asignado'}
                                 </span>
                             </div>
-                            <span>Creado: {new Date(project.createdAt).toLocaleDateString()}</span>
+                            <span>Creado: {new Date(project.createdAt).toLocaleDateString('es-ES')}</span>
                         </div>
                     </div>
                 ))}

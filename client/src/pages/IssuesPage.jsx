@@ -466,7 +466,7 @@ const IssuesPage = () => {
                                                     <CheckCircle size={14} /> Activación Exitosa
                                                 </div>
                                                 <p className="text-green-700">
-                                                    Fecha: {new Date(result.activationInfo.createdAt).toLocaleDateString()}
+                                                    Fecha: {new Date(result.activationInfo.createdAt).toLocaleDateString('es-ES')}
                                                 </p>
                                                 <p className="text-green-600 text-xs text-ellipsis overflow-hidden">
                                                     Técnico: {result.activationInfo.assignedTeam?.name || 'Técnico'}
@@ -480,7 +480,7 @@ const IssuesPage = () => {
                                                     <AlertTriangle size={14} /> Reparación Realizada
                                                 </div>
                                                 <p className="text-purple-700">
-                                                    {new Date(repair.createdAt).toLocaleDateString()}
+                                                    {new Date(repair.createdAt).toLocaleDateString('es-ES')}
                                                 </p>
                                                 <p className="italic text-purple-600 text-xs truncate">{repair.description}</p>
                                             </div>
@@ -676,7 +676,7 @@ const IssuesPage = () => {
                                             <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                                                 <td className="p-4">
                                                     <div className="font-bold text-slate-700">
-                                                        {new Date(date).toLocaleDateString()}
+                                                        {new Date(date).toLocaleDateString('es-ES')}
                                                     </div>
                                                     <div className="text-xs text-slate-400">
                                                         {new Date(date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -771,7 +771,7 @@ const IssuesPage = () => {
                             {/* Date Info */}
                             <div className="flex gap-4 text-sm text-slate-500">
                                 <div className="flex items-center gap-2">
-                                    <Calendar size={16} /> Fecha: {new Date(selectedRepair.createdAt).toLocaleDateString()}
+                                    <Calendar size={16} /> Fecha: {new Date(selectedRepair.createdAt).toLocaleDateString('es-ES')}
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Clock size={16} /> Hora: {new Date(selectedRepair.createdAt).toLocaleTimeString()}

@@ -78,7 +78,7 @@ exports.logContactAttempt = async (req, res) => {
             select: { username: true }
         });
         const authorName = user ? user.username : 'Unknown';
-        const timestamp = new Date().toLocaleString();
+        const timestamp = new Date().toLocaleString('es-ES', { timeZone: 'Europe/Berlin' });
         const historyEntry = comment ? `${timestamp}: ${result} - ${comment}` : `${timestamp}: ${result}`;
 
         // Upsert appointment to ensure it exists
@@ -404,7 +404,7 @@ exports.updateOrderStatus = async (req, res) => {
 
             // 2. If there's a reason, log it!
             if (reason) {
-                const timestamp = new Date().toLocaleString();
+                const timestamp = new Date().toLocaleString('es-ES', { timeZone: 'Europe/Berlin' });
                 const historyEntry = `${timestamp}: [${status}] Motivo: ${reason}`;
 
                 // Upsert appointment to ensure we have a place for the comment/history

@@ -184,7 +184,7 @@ const AdminVacationPage = () => {
                                             </div>
                                         </td>
                                         <td className="px-6 py-4 font-medium text-slate-700">
-                                            {new Date(request.startDate).toLocaleDateString()} - {new Date(request.endDate).toLocaleDateString()}
+                                            {new Date(request.startDate).toLocaleDateString('es-ES')} - {new Date(request.endDate).toLocaleDateString('es-ES')}
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">
                                             {request.type === 'VACATION' ? 'Vacaciones' : 'Día Libre'}

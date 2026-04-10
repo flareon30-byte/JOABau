@@ -209,8 +209,8 @@ const VacationPage = () => {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {requests.map((request) => {
-                                const start = new Date(request.startDate).toLocaleDateString();
-                                const end = new Date(request.endDate).toLocaleDateString();
+                                const start = new Date(request.startDate).toLocaleDateString('es-ES');
+                                const end = new Date(request.endDate).toLocaleDateString('es-ES');
                                 return (
                                     <tr key={request.id} className="hover:bg-slate-50/50 transition duration-150">
                                         <td className="px-6 py-4">
@@ -297,7 +297,7 @@ const VacationPage = () => {
                                                 <div className="flex flex-wrap gap-2">
                                                     {holidaysFound.map(d => (
                                                         <span key={d} className="px-2 py-1 bg-red-600 text-white text-[10px] font-black rounded-lg shadow-sm">
-                                                            {new Date(d).toLocaleDateString()}
+                                                            {new Date(d).toLocaleDateString('es-ES')}
                                                         </span>
                                                     ))}
                                                 </div>
