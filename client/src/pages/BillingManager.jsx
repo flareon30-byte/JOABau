@@ -230,7 +230,7 @@ const BillingPage = () => {
                 // Add Checkbox column header if activation tab
                 columns = [
                     <div key="chk" className="flex items-center"><input type="checkbox" checked={data.length > 0 && selectedIds.length === data.length} onChange={() => toggleSelectAll(data)} className="w-4 h-4 rounded border-slate-300" /></div>,
-                    'Fecha', 'Proyecto', 'Dirección', 'Cliente', 'Detalles', 'Fotos', 'PDF', 'Comentarios', 'Acciones'
+                    'Fecha', 'Proyecto', 'Dirección', 'Cliente', 'Detalles', 'Fotos', 'PDF', 'Total€', 'Comentarios', 'Acciones'
                 ];
                 emptyMsg = "No hay activaciones";
                 break;
@@ -370,6 +370,12 @@ const BillingPage = () => {
                                                         <FileText size={18} /> PDF
                                                     </a>
                                                 );
+                                            })()}
+                                        </td>
+                                        <td className="p-4">
+                                            {(() => {
+                                                const total = (row.basePrice || 0) + (row.taPrice || 0) + (row.spPrice || 0) + (row.mduPrice || 0) + (row.repairPrice || 0);
+                                                return <span className="font-black text-slate-800">{total}€</span>;
                                             })()}
                                         </td>
                                         <td className="p-4">
