@@ -314,13 +314,14 @@ exports.submitActivation = async (req, res) => {
 
         // --- NEW NOTIFICATION FOR SUPER ADMIN (WRAPPED IN TRY-CATCH TO PREVENT 500s) ---
         try {
-            const [address, user] = await Promise.all([
+            const [notifAddress, notifUser] = await Promise.all([
                 prisma.address.findUnique({ where: { id: addressId }, include: { project: true } }),
                 prisma.user.findUnique({ where: { id: req.userId }, select: { username: true } })
             ]);
 
-            if (address && user) {
-                const notificationMsg = `⚡ ¡Activación Exitosa! ${user.username} ha terminado en ${address.street} ${address.number} (${address.project.name}). Tipo: ${activationType}`;
+            if (notifAddress && notifUser) {
+                const projectName = notifAddress.project?.name || 'Proyecto Desconocido';
+                const notificationMsg = `⚡ ¡Activación Exitosa! ${notifUser.username} ha terminado en ${notifAddress.street} ${notifAddress.number} (${projectName}). Tipo: ${activationType}`;
                 
                 await prisma.notification.create({
                     data: {
