@@ -421,7 +421,8 @@ const ActivationPage = () => {
             fetchAppointments();
         } catch (error) {
             console.error('Error submitting activation:', error);
-            alert('Error al enviar reporte');
+            const serverMsg = error.response?.data?.error || error.response?.data?.message || error.message;
+            alert(`Error al enviar reporte: ${serverMsg}`);
         } finally {
             setSubmitting(false);
         }
