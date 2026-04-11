@@ -306,10 +306,19 @@ const DashboardHome = () => {
             setClients(clientsRes.data);
 
             if (isActivator) {
-                const res = await api.get('/api/dashboard/activator');
-                setActivatorData(res.data);
-                // CACHE FOR OFFLINE
-                localStorage.setItem('cachedAgenda', JSON.stringify(res.data));
+                if (navigator.onLine) {
+                    try {
+                        const res = await api.get('/api/dashboard/activator');
+                        setActivatorData(res.data);
+                        localStorage.setItem('cachedAgenda', JSON.stringify(res.data));
+                    } catch (err) {
+                        const cached = JSON.parse(localStorage.getItem('cachedAgenda') || 'null');
+                        if (cached) setActivatorData(cached);
+                    }
+                } else {
+                    const cached = JSON.parse(localStorage.getItem('cachedAgenda') || 'null');
+                    if (cached) setActivatorData(cached);
+                }
             } else {
                 const statsRes = await api.get('/api/dashboard/stats');
                 setStats(statsRes.data);
