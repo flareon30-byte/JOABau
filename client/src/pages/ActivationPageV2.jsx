@@ -50,9 +50,20 @@ const ActivationPageV2 = () => {
     useEffect(() => {
         const fetchAppointment = async () => {
             try {
-                const res = await api.get('/api/dashboard/activator');
-                const activeClientId = res.data.activeClientId;
-                const found = res.data.appointments.find(a => a.id === id);
+                let found = null;
+                let activeClientId = null;
+
+                if (navigator.onLine) {
+                    const res = await api.get('/api/dashboard/activator');
+                    activeClientId = res.data.activeClientId;
+                    found = res.data.appointments.find(a => a.id === id);
+                } else {
+                    console.warn("Offline mode: Loading from cache...");
+                    const cached = JSON.parse(localStorage.getItem('cachedAgenda') || '{}');
+                    activeClientId = cached.activeClientId;
+                    found = cached.appointments?.find(a => a.id === id);
+                }
+
                 if (found) {
                     setAppointment(found);
 
@@ -96,18 +107,21 @@ const ActivationPageV2 = () => {
                     try {
                         let finalActivationItems = [];
                         
-                        if (clientId) {
+                        if (navigator.onLine && clientId) {
                             const pRes = await api.get(`/api/clients/${clientId}/price-items`);
                             finalActivationItems = pRes.data.filter(item => item.department === 'ACTIVATION');
-                        } 
+                            localStorage.setItem(`cachedPriceItems_${clientId}`, JSON.stringify(finalActivationItems));
+                        } else if (clientId) {
+                            console.warn("Offline mode: Loading price items from cache...");
+                            finalActivationItems = JSON.parse(localStorage.getItem(`cachedPriceItems_${clientId}`) || '[]');
+                        }
                         
-                        // Fallback: If no client ID was assigned to the project or team, get the first client that has price items set up
-                        if (finalActivationItems.length === 0) {
+                        // Fallback: If no local or remote items, get general ones if online
+                        if (finalActivationItems.length === 0 && navigator.onLine) {
                             const allClientsRes = await api.get('/api/clients');
                             const clientsWithItems = allClientsRes.data.filter(c => c.priceItems && c.priceItems.length > 0);
                             if (clientsWithItems.length > 0) {
                                 finalActivationItems = clientsWithItems[0].priceItems.filter(item => item.department === 'ACTIVATION');
-                                clientId = clientsWithItems[0].id; // For reference
                             }
                         }
 

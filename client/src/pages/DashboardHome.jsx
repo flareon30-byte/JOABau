@@ -189,9 +189,9 @@ const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
                             <button
                                 onClick={() => {
                                     if (appointment.type === 'REPAIR') {
-                                        window.location.href = `/repair/${appointment.id}/complete`;
+                                        navigate(`/repair/${appointment.id}/complete`);
                                     } else {
-                                        window.location.href = `/activation/${appointment.id}/complete`;
+                                        navigate(`/activation/${appointment.id}/complete`);
                                     }
                                 }}
                                 className={`flex-1 py-3 rounded-xl font-bold transition-colors shadow-lg ${appointment.status === 'COMPLETADO'
@@ -308,6 +308,8 @@ const DashboardHome = () => {
             if (isActivator) {
                 const res = await api.get('/api/dashboard/activator');
                 setActivatorData(res.data);
+                // CACHE FOR OFFLINE
+                localStorage.setItem('cachedAgenda', JSON.stringify(res.data));
             } else {
                 const statsRes = await api.get('/api/dashboard/stats');
                 setStats(statsRes.data);
