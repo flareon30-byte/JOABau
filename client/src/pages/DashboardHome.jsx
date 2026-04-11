@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target, Camera, Trash2, Navigation, Calculator, Truck, Percent, Wallet } from 'lucide-react';
+import OfflineSyncManager from '../components/OfflineSyncManager';
 
 const StatCard = ({ title, value, icon: Icon, colorClass, subtext }) => (
     <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group">
@@ -407,6 +408,10 @@ const DashboardHome = () => {
                         onClose={() => setShowDietaPrompt(false)} 
                     />
                 )}
+                
+                {/* Offline Sync Manager for Technicians */}
+                <OfflineSyncManager onSyncComplete={fetchData} />
+
                 {/* Welcome & Status */}
 
                 <div className="bg-gradient-to-r from-joa-dark to-slate-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">

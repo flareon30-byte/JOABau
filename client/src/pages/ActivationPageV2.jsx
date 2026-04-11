@@ -4,6 +4,7 @@ import api from '../api/axios';
 import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIcon } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
+import { savePendingActivation } from '../utils/offlineStorage';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
@@ -516,6 +517,27 @@ const ActivationPageV2 = () => {
         data.append('existingPhotos', JSON.stringify(existingPaths));
 
         try {
+            if (!navigator.onLine) {
+                // OFFLINE MODE
+                const offlineData = {
+                    addressId: appointment.addressId,
+                    formData: { ...formData },
+                    photos: photos.filter(p => !p.isExisting).map(p => ({ blob: p.blob, name: p.name })),
+                    existingPhotos: photos.filter(p => p.isExisting).map(p => p.originalPath),
+                    signatures: { ...signatures },
+                    type: 'ACTIVATION',
+                    addressInfo: {
+                        street: appointment.address.street,
+                        number: appointment.address.number
+                    }
+                };
+                
+                await savePendingActivation(offlineData);
+                alert('⚠️ SIN CONEXIÓN: La activación se ha guardado en tu móvil. No olvides sincronizarla en el menú principal cuando tengas internet.');
+                navigate('/dashboard');
+                return;
+            }
+
             await api.post(`/api/activations/report/${appointment.addressId}`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
