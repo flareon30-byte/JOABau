@@ -1,7 +1,18 @@
-import { precacheAndRoute } from 'workbox-precaching';
+import { precacheAndRoute, createHandlerBoundToURL } from 'workbox-precaching';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
+
+// Force immediate activation
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(clients.claim()));
 
 // Built-in PWA precaching
 precacheAndRoute(self.__WB_MANIFEST || []);
+
+// Navigation Route (SPA Fallback)
+// This ensures that any navigation request (URL in address bar) returns the cached index.html
+const handler = createHandlerBoundToURL('/index.html');
+const navigationRoute = new NavigationRoute(handler);
+registerRoute(navigationRoute);
 
 /**
  * Handle incoming Push Notifications
