@@ -423,7 +423,7 @@ const DashboardHome = () => {
                             <div>
                                 <h2 className="text-3xl font-bold mb-2">Hola, {user.username?.split('.')[0]}! 👋</h2>
                                 <p className="text-slate-300">
-                                    {isBlower ? 'Panel de Soplado - Resumen de rendimiento.' : 'Resumen de tu rendimiento económico.'}
+                                    {isBlower ? 'Panel de Soplado - Resumen de rendimiento.' : 'Resumen económico • v3.0 OFFLINE READY'}
                                 </p>
                             </div>
                             
