@@ -10,6 +10,7 @@ import BlowingDepartment from './pages/BlowingDepartment';
 import FusionDepartment from './pages/FusionDepartment';
 import AppointmentsPage from './pages/AppointmentsPage';
 import ActivationPage from './pages/ActivationPage';
+import ActivationPageV2 from './pages/ActivationPageV2';
 import SettingsPage from './pages/SettingsPage';
 
 import BillingPage from './pages/BillingManager';

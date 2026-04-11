@@ -19,7 +19,7 @@ const StatCard = ({ title, value, icon: Icon, colorClass, subtext }) => (
     </div>
 );
 
-const AppointmentModal = ({ appointment, onClose, onUpdate }) => {
+const AppointmentModal = ({ appointment, onClose, onUpdate, navigate }) => {
     const [reciteReason, setReciteReason] = useState('');
     const [isReciting, setIsReciting] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -707,7 +707,7 @@ const DashboardHome = () => {
                     </div>
                 </div>
 
-                <AppointmentModal appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} onUpdate={fetchData} />
+                <AppointmentModal appointment={selectedAppointment} onClose={() => setSelectedAppointment(null)} onUpdate={fetchData} navigate={navigate} />
             </div>
         );
     }
