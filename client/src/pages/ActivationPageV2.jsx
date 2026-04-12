@@ -447,6 +447,16 @@ const ActivationPageV2 = () => {
             return;
         }
 
+        if (!navigator.onLine || (error && error.message === 'Network Error')) {
+            setPdfPath('OFFLINE_PENDING');
+            return;
+        }
+
+        if (!navigator.onLine) {
+            setPdfPath('OFFLINE_PENDING');
+            return;
+        }
+
         const klsIdToUse = formData.klsId || appointment.address.klsId;
 
         if (!klsIdToUse) {
@@ -966,7 +976,7 @@ const ActivationPageV2 = () => {
                 {/* Submit Button */}
                 <button
                     type="submit"
-                    disabled={submitting || !pdfPath}
+                    disabled={submitting || (!pdfPath && navigator.onLine)}
                     className="w-full py-4 bg-joa-blue text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {submitting ? (
@@ -978,7 +988,7 @@ const ActivationPageV2 = () => {
                         </>
                     )}
                 </button>
-                {!pdfPath && (
+                {!pdfPath && navigator.onLine && (
                     <p className="text-center text-xs text-red-400 mt-2">
                         Debes firmar y generar el PDF antes de finalizar.
                     </p>

@@ -60,8 +60,14 @@ exports.createTeam = async (req, res) => {
 
         res.status(201).json({ message: 'Team created', team });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error creating team' });
+        console.error('ERROR CREATING TEAM:', error);
+        let message = 'Error al crear equipo';
+        if (error.code === 'P2002') {
+            message = `Dato duplicado: El ${error.meta?.target.includes('plate') ? 'vehículo' : 'nombre'} ya está en uso.`;
+        } else {
+            message += ': ' + error.message;
+        }
+        res.status(500).json({ message });
     }
 };
 
@@ -74,20 +80,20 @@ exports.updateTeam = async (req, res) => {
         const busyMembers = await prisma.user.findMany({
             where: {
                 id: { in: memberIds },
-                teamId: { not: null, not: id } // Busy in another team
+                AND: [
+                    { teamId: { not: null } },
+                    { teamId: { not: id } }
+                ]
             }
         });
 
         if (busyMembers.length > 0) {
             return res.status(400).json({
-                message: `Users ${busyMembers.map(u => u.username).join(', ')} are already in another team`
+                message: `Los usuarios ${busyMembers.map(u => u.username).join(', ')} ya están en otro equipo`
             });
         }
 
         // Update
-        // 1. Disconnect all current members (optional if using 'set', but explicit is safer for logic)
-        // With Prisma 'set', it replaces relations.
-
         const team = await prisma.team.update({
             where: { id },
             data: {
@@ -106,8 +112,14 @@ exports.updateTeam = async (req, res) => {
         res.json({ message: 'Team updated', team });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error updating team' });
+        console.error('ERROR UPDATING TEAM:', error);
+        let message = 'Error al actualizar equipo';
+        if (error.code === 'P2002') {
+            message = `Dato duplicado: El ${error.meta?.target.includes('plate') ? 'vehículo' : 'nombre'} ya está en uso.`;
+        } else {
+            message += ': ' + error.message;
+        }
+        res.status(500).json({ message });
     }
 };
 
