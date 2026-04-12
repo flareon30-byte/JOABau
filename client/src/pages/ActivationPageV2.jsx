@@ -4,7 +4,7 @@ import api from '../api/axios';
 import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIcon } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
-import { savePendingActivation } from '../utils/offlineStorage';
+import { savePendingActivation, saveActivationDraft, getActivationDraft, deleteActivationDraft } from '../utils/offlineStorage';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
@@ -134,6 +134,23 @@ const ActivationPageV2 = () => {
                                 setFormData(prev => ({ ...prev, activationType: finalActivationItems[0].name }));
                             }
                         }
+
+                        // --- NEW: Load draft if exists ---
+                        try {
+                            const draft = await getActivationDraft(id);
+                            if (draft) {
+                                console.log('🔄 Draft found, recovering...', draft);
+                                if (draft.formData) setFormData(prev => ({ ...prev, ...draft.formData }));
+                                if (draft.photos && draft.photos.length > 0) {
+                                    // Make sure blobs are recovered correctly
+                                    setPhotos(draft.photos);
+                                }
+                                if (draft.signatures) setSignatures(draft.signatures);
+                                if (draft.pdfPath) setPdfPath(draft.pdfPath);
+                            }
+                        } catch (draftErr) {
+                            console.error('Error loading draft:', draftErr);
+                        }
                     } catch (err) {
                         console.error('Error fetching price items:', err);
                         // Fallback on error handled by the render method
@@ -150,6 +167,29 @@ const ActivationPageV2 = () => {
         };
         fetchAppointment();
     }, [id]);
+
+    // --- NEW: Auto-save draft effect ---
+    useEffect(() => {
+        if (!id || loading || !appointment) return;
+
+        const saveDraft = async () => {
+            try {
+                // We don't save existing photos (server paths) in draft to save space
+                // But we definitely save new ones with blobs
+                await saveActivationDraft(id, {
+                    formData,
+                    photos,
+                    signatures,
+                    pdfPath
+                });
+            } catch (err) {
+                console.error('Error auto-saving draft:', err);
+            }
+        };
+
+        const timeout = setTimeout(saveDraft, 1000); // Debounce save
+        return () => clearTimeout(timeout);
+    }, [formData, photos, signatures, pdfPath, id, loading, appointment]);
 
     // PRE-REQUEST GPS PERMISSION on page load to avoid silent failures
     useEffect(() => {
@@ -557,6 +597,14 @@ const ActivationPageV2 = () => {
                 };
                 
                 await savePendingActivation(offlineData);
+                
+                // CLEAR DRAFT ON OFFLINE SAVE
+                try {
+                    await deleteActivationDraft(id);
+                } catch (err) {
+                    console.error('Error clearing draft offline:', err);
+                }
+
                 alert('⚠️ SIN CONEXIÓN: La activación se ha guardado en tu móvil. No olvides sincronizarla en el menú principal cuando tengas internet.');
                 navigate('/dashboard');
                 return;
@@ -565,6 +613,14 @@ const ActivationPageV2 = () => {
             await api.post(`/api/activations/report/${appointment.addressId}`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
+
+            // CLEAR DRAFT ON SUCCESS
+            try {
+                await deleteActivationDraft(id);
+            } catch (err) {
+                console.error('Error clearing draft:', err);
+            }
+
             navigate('/dashboard');
         } catch (error) {
             console.error('Error submitting activation:', error);
