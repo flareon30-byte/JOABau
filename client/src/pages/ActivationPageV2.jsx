@@ -142,8 +142,14 @@ const ActivationPageV2 = () => {
                                 console.log('🔄 Draft found, recovering...', draft);
                                 if (draft.formData) setFormData(prev => ({ ...prev, ...draft.formData }));
                                 if (draft.photos && draft.photos.length > 0) {
-                                    // Make sure blobs are recovered correctly
-                                    setPhotos(draft.photos);
+                                    // Make sure blobs are recovered correctly and previews regenerated
+                                    const recoveredPhotos = draft.photos.map(p => {
+                                        if (p.blob && !p.isExisting) {
+                                            return { ...p, preview: URL.createObjectURL(p.blob) };
+                                        }
+                                        return p;
+                                    });
+                                    setPhotos(recoveredPhotos);
                                 }
                                 if (draft.signatures) setSignatures(draft.signatures);
                                 if (draft.pdfPath) setPdfPath(draft.pdfPath);
