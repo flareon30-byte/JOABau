@@ -493,11 +493,6 @@ const ActivationPageV2 = () => {
             return;
         }
 
-        if (!navigator.onLine || (error && error.message === 'Network Error')) {
-            setPdfPath('OFFLINE_PENDING');
-            return;
-        }
-
         if (!navigator.onLine) {
             setPdfPath('OFFLINE_PENDING');
             return;
