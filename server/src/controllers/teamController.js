@@ -63,8 +63,9 @@ exports.createTeam = async (req, res) => {
         console.error('ERROR CREATING TEAM:', error);
         let message = 'Error al crear equipo';
         if (error.code === 'P2002') {
-            const field = error.meta?.target?.includes('plate') ? 'el coche (matrícula)' : 'el nombre';
-            message = `Dato duplicado: Ya existe un equipo con ${field}. Revisa si lo creaste en modo Demo o con otro departamento.`;
+            const target = error.meta?.target ? `(Campo: ${error.meta.target})` : '';
+            const fieldDescription = error.meta?.target?.includes('plate') ? 'el coche (matrícula)' : 'el nombre u otro dato único';
+            message = `Dato duplicado ${target}: Ya existe un equipo con este dato. Revisa si lo creaste en modo Demo o con otro departamento.`;
         } else {
             message += ': ' + error.message;
         }
