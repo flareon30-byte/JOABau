@@ -37,6 +37,7 @@ const BillingPage = () => {
     // 6. Photo Modal State
     const [selectedPhotos, setSelectedPhotos] = useState([]);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+    const [zoomPhoto, setZoomPhoto] = useState(null);
 
     // Photo Viewer Handler
     const handleViewPhotos = (photos) => {
@@ -521,53 +522,62 @@ const BillingPage = () => {
         };
 
         return (
-            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4" onClick={() => setIsPhotoModalOpen(false)}>
-                <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col" onClick={e => e.stopPropagation()}>
-                    <div className="p-4 border-b border-slate-200 flex justify-between items-center">
-                        <h3 className="font-bold text-lg">Galería de Fotos ({selectedPhotos.length})</h3>
-                        <button onClick={() => setIsPhotoModalOpen(false)} className="text-slate-500 hover:text-black font-bold text-xl">×</button>
-                    </div>
-                    <div className="p-4 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-4">
-                        {selectedPhotos.map((photo, idx) => (
-                            <div key={idx} className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group">
-                                <div key={idx} className="relative aspect-video bg-slate-100 rounded-lg overflow-hidden border border-slate-200 group">
-                                    {(() => {
-                                        const isLegacy = photo.includes('/tmp/') || photo.match(/^[a-zA-Z]:/);
-                                        if (isLegacy) {
-                                            return (
-                                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 p-2 text-center">
-                                                    <span className="text-xs">Imagen no disponible (Formato antiguo)</span>
-                                                </div>
-                                            );
-                                        }
-                                        return (
-                                            <img
-                                                src={getUrl(photo)}
-                                                alt={`Evidencia ${idx}`}
-                                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                                onClick={() => {
-                                                    const url = getUrl(photo);
-                                                    const a = document.createElement('a');
-                                                    a.href = url;
-                                                    a.target = '_blank';
-                                                    // For images, we try to open, but if it's PWA it might still be tricky. 
-                                                    // Download is the safest fallback if window.open is blocked/blank.
-                                                    document.body.appendChild(a);
-                                                    a.click();
-                                                    document.body.removeChild(a);
-                                                }}
-                                            />
-                                        );
-                                    })()}
-                                </div>
+            <>
+                <div className="fixed inset-0 bg-slate-900/95 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setIsPhotoModalOpen(false)}>
+                    <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200" onClick={e => e.stopPropagation()}>
+                        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div>
+                                <h3 className="font-bold text-slate-800">Galería de Fotos</h3>
+                                <p className="text-xs text-slate-500">{selectedPhotos.length} imágenes encontradas</p>
                             </div>
-                        ))}
-                    </div>
-                    <div className="p-4 border-t border-slate-200 text-right">
-                        <button onClick={() => setIsPhotoModalOpen(false)} className="px-4 py-2 bg-slate-200 hover:bg-slate-300 rounded-lg font-medium text-slate-700">Cerrar</button>
+                            <button onClick={() => setIsPhotoModalOpen(false)} className="bg-slate-200 hover:bg-slate-300 text-slate-600 p-2 rounded-full transition-colors">
+                                <Trash2 size={20} className="rotate-45" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-4 custom-scrollbar">
+                            {selectedPhotos.map((photo, idx) => {
+                                const isLegacy = photo.includes('/tmp/') || photo.match(/^[a-zA-Z]:/);
+                                if (isLegacy) return null;
+                                
+                                const url = getUrl(photo);
+                                return (
+                                    <div 
+                                        key={idx} 
+                                        className="relative aspect-video bg-slate-100 rounded-2xl overflow-hidden border border-slate-200 group cursor-zoom-in"
+                                        onClick={() => setZoomPhoto(url)}
+                                    >
+                                        <img
+                                            src={url}
+                                            alt={`Evidencia ${idx}`}
+                                            className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
+                                        />
+                                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold text-white text-xs">
+                                            Click para ampliar
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="p-4 border-t border-slate-100 text-center bg-slate-50">
+                            <button onClick={() => setIsPhotoModalOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-all shadow-lg">Cerrar Galería</button>
+                        </div>
                     </div>
                 </div>
-            </div>
+
+                {/* ZOOM LIGHTBOX */}
+                {zoomPhoto && (
+                    <div className="fixed inset-0 bg-black/98 z-[99999] flex items-center justify-center p-2" onClick={() => setZoomPhoto(null)}>
+                        <button className="absolute top-6 right-6 text-white bg-white/10 p-4 rounded-full transition-all hover:bg-white/20 z-[100001]">
+                            <Trash2 size={28} className="rotate-45" />
+                        </button>
+                        <img 
+                            src={`${zoomPhoto}${zoomPhoto.includes('?') ? '&' : '?'}cb=${Date.now()}`} 
+                            alt="Full Zoom" 
+                            className="max-w-full max-h-full object-contain shadow-2xl"
+                        />
+                    </div>
+                )}
+            </>
         );
     };
 
