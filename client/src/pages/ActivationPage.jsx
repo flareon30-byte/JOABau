@@ -536,6 +536,9 @@ const ActivationPage = () => {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
+            <div className="bg-orange-100 text-orange-800 p-2 text-[10px] font-bold text-center rounded-lg border border-orange-200">
+                ARCHIVO: ActivationPage.jsx (Técnico-Historial)
+            </div>
             <div className="flex items-center gap-4 mb-6">
                 <button onClick={() => setSelectedAppointment(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                     <ArrowLeft size={24} className="text-slate-600" />

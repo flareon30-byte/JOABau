@@ -361,6 +361,24 @@ const DashboardLayout = () => {
 
             {/* Main Content */}
             <main className="flex-1 min-h-screen bg-slate-50 relative overflow-y-auto w-full">
+                
+                {/* GLOBAL DIAGNOSTIC BANNER */}
+                <div className="sticky top-0 z-[99999] bg-red-700 text-white p-2 flex items-center justify-between text-[10px] font-bold shadow-xl">
+                    <span>DIAGNÓSTICO JOA v1.5 - RUTA: {location.pathname}</span>
+                    <button 
+                        onClick={() => {
+                            if (window.confirm('¿Deseas limpiar la caché técnica de la app y reiniciar?')) {
+                                navigator.serviceWorker.getRegistrations().then(registrations => {
+                                    for(let registration of registrations) { registration.unregister(); }
+                                    window.location.reload(true);
+                                });
+                            }
+                        }}
+                        className="bg-white text-red-700 px-3 py-1 rounded-full hover:bg-red-50"
+                    >
+                        FORZAR ACTUALIZACIÓN APP
+                    </button>
+                </div>
 
                 {/* Centered Diffused Logo (Watermark) */}
                 <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.03]">

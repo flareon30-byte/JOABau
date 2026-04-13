@@ -688,6 +688,9 @@ const ActivationPageV2 = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
+            <div className="bg-orange-100 text-orange-800 p-2 text-[10px] font-bold text-center border-b border-orange-200">
+                ARCHIVO: ActivationPageV2.jsx (Cierre de Activación)
+            </div>
             {/* Header */}
             <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center gap-4 border-b border-slate-100">
                 <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full">
