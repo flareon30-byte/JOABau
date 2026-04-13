@@ -491,7 +491,7 @@ const ActivationsHistoryPage = () => {
                         <X size={28} />
                     </button>
                     <img 
-                        src={zoomPhoto} 
+                        src={zoomPhoto.startsWith('blob:') ? zoomPhoto : `${zoomPhoto}${zoomPhoto.includes('?') ? '&' : '?'}cb=${Date.now()}`} 
                         alt="Zoom" 
                         className="max-w-full max-h-full object-contain rounded-lg shadow-2xl zoom-in"
                     />

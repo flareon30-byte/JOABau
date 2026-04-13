@@ -1177,7 +1177,7 @@ const ActivationPageV2 = () => {
 
                         <div className="relative max-w-full max-h-[85vh] flex items-center justify-center">
                             <img
-                                src={photos[viewingPhotoIndex].preview}
+                                src={photos[viewingPhotoIndex].preview.startsWith('blob:') ? photos[viewingPhotoIndex].preview : `${photos[viewingPhotoIndex].preview}${photos[viewingPhotoIndex].preview.includes('?') ? '&' : '?'}cb=${Date.now()}`}
                                 alt="Full viewing"
                                 className="max-w-full max-h-[80vh] object-contain rounded shadow-2xl"
                             />
