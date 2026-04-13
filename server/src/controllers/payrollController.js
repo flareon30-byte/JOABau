@@ -121,32 +121,38 @@ exports.getMyPayroll = async (req, res) => {
         }
 
         let activations = [];
-        if (teamId && teamId !== 'virtual') {
-            if (groupKey === 'blowers') {
-                const soplados = await prisma.sopladoInfo.findMany({
-                    where: {
-                        createdAt: { gte: start, lte: end },
-                        teamId: teamId,
-                        address: { project: { isDemo: req.isDemo || false } }
-                    }
-                });
-                activations = soplados.map(s => ({
-                    isSaturday: s.isSaturday,
-                    activationType: 'BP',
-                    createdAt: s.createdAt,
-                    basePrice: 0
-                }));
-            } else {
-                activations = await prisma.activationInfo.findMany({
-                    where: {
-                        createdAt: { gte: start, lte: end },
-                        address: {
-                            project: { isDemo: req.isDemo || false },
-                            appointment: { assignedTeamId: teamId }
+        if (groupKey === 'blowers') {
+            const soplados = await prisma.sopladoInfo.findMany({
+                where: {
+                    createdAt: { gte: start, lte: end },
+                    OR: [
+                        { performerIds: { has: userId } },
+                        { teamId: teamId || 'non-existent' }
+                    ],
+                    address: { project: { isDemo: req.isDemo || false } }
+                }
+            });
+            activations = soplados.map(s => ({
+                isSaturday: s.isSaturday,
+                activationType: 'BP',
+                createdAt: s.createdAt,
+                basePrice: 0
+            }));
+        } else {
+            activations = await prisma.activationInfo.findMany({
+                where: {
+                    createdAt: { gte: start, lte: end },
+                    OR: [
+                        { performerIds: { has: userId } },
+                        {
+                            address: {
+                                project: { isDemo: req.isDemo || false },
+                                appointment: { assignedTeamId: teamId || 'non-existent' }
+                            }
                         }
-                    }
-                });
-            }
+                    ]
+                }
+            });
         }
 
         // 2b. Add SimpleInstallations (G&K)
@@ -335,24 +341,39 @@ exports.getPayrollSummaryInternal = async (req, start, end, userIdFilter = 'all'
         }
     });
 
-    const teamActs = {};
+    // Mapping maps teams AND individual users to their work
+    const workMapping = {}; // By userId or teamId
+    const addToMap = (id, work) => {
+        if (!workMapping[id]) workMapping[id] = [];
+        workMapping[id].push(work);
+    };
+
     activations.forEach(act => {
         const tid = act.address?.appointment?.assignedTeamId;
-        if (tid) {
-            if (!teamActs[tid]) teamActs[tid] = [];
-            teamActs[tid].push(act);
+        if (tid) addToMap(tid, act);
+        
+        // Also map to individual performers (this covers deleted teams)
+        if (act.performerIds && act.performerIds.length > 0) {
+            act.performerIds.forEach(uid => addToMap(uid, act));
         }
     });
+
     soplados.forEach(s => {
         const tid = s.teamId;
-        if (tid) {
-            if (!teamActs[tid]) teamActs[tid] = [];
-            teamActs[tid].push({
+        if (tid) addToMap(tid, {
+            isSaturday: s.isSaturday,
+            activationType: 'BP',
+            createdAt: s.createdAt,
+            basePrice: 0
+        });
+
+        if (s.performerIds && s.performerIds.length > 0) {
+            s.performerIds.forEach(uid => addToMap(uid, {
                 isSaturday: s.isSaturday,
                 activationType: 'BP',
                 createdAt: s.createdAt,
                 basePrice: 0
-            });
+            }));
         }
     });
 
@@ -380,11 +401,15 @@ exports.getPayrollSummaryInternal = async (req, start, end, userIdFilter = 'all'
                 appointmentsDone: apptCount,
                 totalRevenue: apptCount * (financialConfig?.pricePerAppointment || 15)
             };
-        } else if (team) {
-            const acts = teamActs[teamId] || [];
-            stats = calculateGroupFinancials(acts, financialConfig, team.members, 0, getWorkingDays(yearForDays, monthForDays));
         } else {
-            stats = { netResult: 0 - (user.baseSalary || 1500) };
+            // Priority: work explicitly assigned to user, fallback to team work
+            const myActs = workMapping[user.id] || [];
+            const teamActs = teamId ? (workMapping[teamId] || []) : [];
+            
+            // Deduplicate (in case it's in both)
+            const allMyWork = [...new Map([...teamActs, ...myActs].map(item => [item.id || item.createdAt, item])).values()];
+            
+            stats = calculateGroupFinancials(allMyWork, financialConfig, team?.members || [user], 0, getWorkingDays(yearForDays, monthForDays));
         }
 
         return { user, stats, groupKey, financialConfig };

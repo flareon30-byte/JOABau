@@ -137,7 +137,7 @@ exports.submitActivation = async (req, res) => {
         // 1. Fetch User and Team (to know the client rates)
         const user = await prisma.user.findUnique({
             where: { id: req.userId },
-            include: { team: { include: { activeClientCompany: { include: { priceItems: true } } } } }
+            include: { team: { include: { members: true, activeClientCompany: { include: { priceItems: true } } } } }
         });
 
         const activeClient = user?.team?.activeClientCompany;
@@ -284,7 +284,8 @@ exports.submitActivation = async (req, res) => {
                 mduPrice: mduPriceTotal,
                 repairPrice: repairPriceTotal,
                 pdfPath: pdfPath ? pdfPath.split('?')[0] : null, // Clean query string before saving to DB
-                photos: allPhotos
+                photos: allPhotos,
+                performerIds: user?.team?.members.map(m => m.id) || [req.userId]
             };
 
             const activation = await tx.activationInfo.upsert({
@@ -366,11 +367,18 @@ exports.getAllActivations = async (req, res) => {
         }
 
         if (teamId) {
-            where.address = {
-                appointment: {
-                    assignedTeamId: teamId
+            where.OR = [
+                {
+                    address: {
+                        appointment: {
+                            assignedTeamId: teamId
+                        }
+                    }
+                },
+                {
+                    performerIds: { has: teamId } // This is a fallback if you pass a userId instead of teamId, or we can handle it specifically
                 }
-            };
+            ];
         }
 
         if (projectId) {

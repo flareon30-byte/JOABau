@@ -73,7 +73,7 @@ exports.submitSopladoReport = async (req, res) => {
         if (req.userId) {
             const user = await prisma.user.findUnique({ 
                 where: { id: req.userId },
-                include: { team: { include: { activeClientCompany: { include: { priceItems: true } } } } }
+                include: { team: { include: { members: true, activeClientCompany: { include: { priceItems: true } } } } }
             });
             teamId = user?.teamId || null;
 
@@ -118,6 +118,18 @@ exports.submitSopladoReport = async (req, res) => {
             console.log('Update many result:', updateResult);
 
             // 4. Create or Update SopladoInfo for ALL related addresses
+            // Recover team members from the logic above
+            let resIDs = [req.userId];
+            if (req.userId) {
+                const u = await prisma.user.findUnique({ 
+                    where: { id: req.userId },
+                    include: { team: { include: { members: true } } }
+                });
+                if (u?.team?.members) {
+                    resIDs = u.team.members.map(m => m.id);
+                }
+            }
+
             const sopladoInfoData = {
                 meters: parseFloat(meters) || 0,
                 tk: tk || '',
@@ -126,7 +138,8 @@ exports.submitSopladoReport = async (req, res) => {
                 photos: photoPaths,
                 teamId: teamId,
                 isSaturday: isSaturday,
-                saturdayPay: saturdayPay
+                saturdayPay: saturdayPay,
+                performerIds: resIDs
             };
 
             // We must upsert one by one because sopladoInfo is 1:1 unique on addressId
@@ -222,7 +235,8 @@ exports.toggleSopladoStatus = async (req, res) => {
                     photos: [],
                     teamId: teamId,
                     isSaturday: isSaturday,
-                    saturdayPay: saturdayPay
+                    saturdayPay: saturdayPay,
+                    performerIds: performerIds
                 };
 
                 // We promise.all the upserts
@@ -271,8 +285,13 @@ exports.bulkUpdateSopladoStatus = async (req, res) => {
                 const isSaturday = new Date().getDay() === 6;
                 let teamId = null;
                 if (req.userId) {
-                    const user = await prisma.user.findUnique({ where: { id: req.userId } });
+                    const user = await prisma.user.findUnique({ 
+                        where: { id: req.userId },
+                        include: { team: { include: { members: true } } }
+                    });
                     teamId = user?.teamId || null;
+                    const performerIds = user?.team?.members.map(m => m.id) || [req.userId];
+                    dataPerformerIds = performerIds;
                 }
 
                 // 2. Find all related (same project, street, number) to ensure consistent update for location
@@ -302,7 +321,8 @@ exports.bulkUpdateSopladoStatus = async (req, res) => {
                         failureReason: null,
                         photos: [],
                         teamId: teamId,
-                        isSaturday: isSaturday
+                        isSaturday: isSaturday,
+                        performerIds: dataPerformerIds || [req.userId]
                     };
 
                     // Upsert individually

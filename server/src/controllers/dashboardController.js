@@ -104,27 +104,28 @@ exports.getPayrollStats = async (req, res) => {
 
         activations.forEach(act => {
             const team = act.address.appointment?.assignedTeam;
+            const performers = act.performerIds || [];
+
+            // Team Stats (Legacy / Shared view)
             if (team) {
-                // Team Stats
                 if (!teamStats[team.id]) {
                     teamStats[team.id] = { name: team.name, earnings: 0, activations: 0 };
                 }
                 const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
                 teamStats[team.id].earnings += actTotal;
                 teamStats[team.id].activations += 1;
-
-                // User Stats (Split points equally or assign full to both? Usually shared or per team)
-                // Let's assign to users for individual tracking
-                team.members.forEach(member => {
-                    if (!userStats[member.id]) {
-                        userStats[member.id] = { username: member.username, points: 0, activations: 0 };
-                    }
-                    // Assuming points are per team, so each member gets credit for the team's work? 
-                    // Or points are split? Let's assume points are attributed to the team for now.
-                    // If we want per-user, we might need to know who specifically did it, but usually it's the team.
-                    // Let's just track by Team for payroll purposes as requested "per team".
-                });
             }
+
+            // User Stats (New Persistent Individual History)
+            performers.forEach(pId => {
+                if (!userStats[pId]) {
+                    userStats[pId] = { points: 0, activations: 0, earnings: 0 };
+                }
+                const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+                userStats[pId].earnings += actTotal;
+                userStats[pId].activations += 1;
+                userStats[pId].points += (act.points || 0);
+            });
         });
 
         res.json({
@@ -201,19 +202,22 @@ exports.getActivatorDashboard = async (req, res) => {
                 }
             });
         } else {
-            // Fetch ActivationInfo for activators/others
+            // Fetch ActivationInfo for activators/others (include work explicitly performed by this user)
             performanceData = await prisma.activationInfo.findMany({
                 where: {
                     createdAt: {
                         gte: startOfMonth,
                         lte: endDate
                     },
-                    address: {
-                        project: { isDemo: req.isDemo || false }, // Sync: Filter by Demo
-                        appointment: {
-                            assignedTeamId: user.teamId
+                    OR: [
+                        { performerIds: { has: userId } },
+                        {
+                            address: {
+                                project: { isDemo: req.isDemo || false },
+                                appointment: { assignedTeamId: user.teamId || 'non-existent' }
+                            }
                         }
-                    }
+                    ]
                 }
             });
         }
