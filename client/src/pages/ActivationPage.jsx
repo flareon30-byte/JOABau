@@ -536,9 +536,6 @@ const ActivationPage = () => {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
-            <div className="bg-orange-100 text-orange-800 p-2 text-[10px] font-bold text-center rounded-lg border border-orange-200">
-                ARCHIVO: ActivationPage.jsx (Técnico-Historial)
-            </div>
             <div className="flex items-center gap-4 mb-6">
                 <button onClick={() => setSelectedAppointment(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                     <ArrowLeft size={24} className="text-slate-600" />
@@ -900,7 +897,6 @@ const ActivationPage = () => {
                 <div
                     className="fixed inset-0 z-[9999] bg-slate-900/98 flex flex-col items-center justify-center p-2"
                 >
-                    <div className="absolute top-4 left-4 text-white/20 text-[10px] font-mono">v1.1-lightbox-history</div>
                     <button
                         onClick={() => setViewingPhotoIndex(null)}
                         className="absolute top-6 right-6 text-white p-3 bg-white/20 rounded-full hover:bg-white/40 active:scale-95 transition z-[10000]"

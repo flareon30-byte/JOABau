@@ -483,7 +483,6 @@ const ActivationsHistoryPage = () => {
                 <div 
                     className="fixed inset-0 bg-slate-900/98 z-[9999] flex flex-col items-center justify-center p-2 md:p-10"
                 >
-                    <div className="absolute top-4 left-4 text-white/20 text-[10px] font-mono">v1.1-lightbox</div>
                     <button 
                         onClick={() => setZoomPhoto(null)}
                         className="absolute top-6 right-6 text-white bg-white/20 p-3 rounded-full hover:bg-white/40 active:scale-95 transition-all z-[10000]"

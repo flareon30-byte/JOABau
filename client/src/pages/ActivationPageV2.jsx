@@ -688,9 +688,6 @@ const ActivationPageV2 = () => {
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
-            <div className="bg-orange-100 text-orange-800 p-2 text-[10px] font-bold text-center border-b border-orange-200">
-                ARCHIVO: ActivationPageV2.jsx (Cierre de Activación)
-            </div>
             {/* Header */}
             <div className="bg-white p-4 shadow-sm sticky top-0 z-10 flex items-center gap-4 border-b border-slate-100">
                 <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 rounded-full">
@@ -699,7 +696,7 @@ const ActivationPageV2 = () => {
                 <div className="flex-1">
                     <h1 className="text-lg font-bold text-slate-800 leading-tight">Finalizar Activación</h1>
                     <div className="flex items-center gap-2 mt-0.5">
-                        <span className="bg-blue-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">V2.5 DIAGNOSTIC</span>
+                        <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">V2.4 ACTIVADA</span>
                         <p className="text-[10px] text-slate-500 line-clamp-1">{appointment.address.street} {appointment.address.number}</p>
                     </div>
                 </div>
@@ -1170,7 +1167,6 @@ const ActivationPageV2 = () => {
                     <div
                         className="fixed inset-0 z-[9999] bg-slate-900/98 flex flex-col items-center justify-center p-2"
                     >
-                        <div className="absolute top-4 left-4 text-white/20 text-[10px] font-mono">v1.1-lightbox-v2</div>
                         <button
                             onClick={() => setViewingPhotoIndex(null)}
                             className="absolute top-6 right-6 text-white p-3 bg-white/20 rounded-full hover:bg-white/40 active:scale-95 transition z-[10000]"
