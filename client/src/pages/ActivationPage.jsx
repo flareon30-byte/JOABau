@@ -5,7 +5,7 @@ import { CheckCircle, Camera, ArrowLeft, Calendar, MapPin, Trash2, X, FileText, 
 import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
 
-const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
+const BASE_URL = import.meta.env.PROD ? window.location.origin : 'http://localhost:3000';
 
 const ActivationPage = () => {
     const [appointments, setAppointments] = useState([]);
@@ -79,12 +79,16 @@ const ActivationPage = () => {
 
                 // Load existing photos
                 if (info.photos && info.photos.length > 0) {
-                    setPhotos(info.photos.map((path, i) => ({
-                        blob: null,
-                        preview: `${BASE_URL}/${path.replace(/\\/g, '/')}`,
-                        isExisting: true,
-                        originalPath: path
-                    })));
+                    setPhotos(info.photos.map((path, i) => {
+                        const cleanPath = path.replace(/\\/g, '/');
+                        const encoded = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+                        return {
+                            blob: null,
+                            preview: `${BASE_URL}/${encoded.replace(/^\/+/, '')}`,
+                            isExisting: true,
+                            originalPath: path
+                        };
+                    }));
                 } else {
                     setPhotos([]);
                 }
@@ -892,7 +896,7 @@ const ActivationPage = () => {
             {/* Photo Viewer Modal */}
             {viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
                 <div
-                    className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4"
+                    className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-4"
                     onClick={() => setViewingPhotoIndex(null)}
                 >
                     <button

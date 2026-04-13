@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Calendar, Filter, Download, Eye, X, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 
-const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
+const BASE_URL = import.meta.env.PROD ? window.location.origin : 'http://localhost:3000';
 
 const ActivationsHistoryPage = () => {
     const [activations, setActivations] = useState([]);
@@ -20,6 +20,7 @@ const ActivationsHistoryPage = () => {
 
     // Modal
     const [selectedActivation, setSelectedActivation] = useState(null);
+    const [zoomPhoto, setZoomPhoto] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -451,30 +452,47 @@ const ActivationsHistoryPage = () => {
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {selectedActivation.photos && selectedActivation.photos.length > 0 ? (
-                                selectedActivation.photos.map((photo, i) => (
-                                    <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
-                                        <img
-                                            src={`${BASE_URL}/${photo.split('/').map(segment => encodeURIComponent(segment)).join('/')}`}
-                                            alt={`Foto ${i + 1}`}
-                                            className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                                            onClick={() => {
-                                                const encoded = photo.split('/').map(segment => encodeURIComponent(segment)).join('/');
-                                                const url = `${BASE_URL || window.location.origin}/${encoded}`;
-                                                const a = document.createElement('a');
-                                                a.href = url;
-                                                a.target = '_blank';
-                                                document.body.appendChild(a);
-                                                a.click();
-                                                document.body.removeChild(a);
-                                            }}
-                                        />
-                                    </div>
-                                ))
+                                selectedActivation.photos.map((photo, i) => {
+                                    const encoded = photo.split('/').map(segment => encodeURIComponent(segment)).join('/');
+                                    const fullUrl = `${BASE_URL}/${encoded.replace(/^\/+/, '')}`;
+                                    
+                                    return (
+                                        <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 group relative">
+                                            <img
+                                                src={fullUrl}
+                                                alt={`Foto ${i + 1}`}
+                                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                                onClick={() => setZoomPhoto(fullUrl)}
+                                            />
+                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity flex items-center justify-center">
+                                                <Eye className="text-white" />
+                                            </div>
+                                        </div>
+                                    );
+                                })
                             ) : (
                                 <p className="text-slate-400 text-sm col-span-full">No hay fotos adjuntas.</p>
                             )}
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Photo Lightbox (Zoom) */}
+            {zoomPhoto && (
+                <div 
+                    className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4"
+                    onClick={() => setZoomPhoto(null)}
+                >
+                    <button className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 p-2 rounded-full transition-colors">
+                        <X size={32} />
+                    </button>
+                    <img 
+                        src={zoomPhoto} 
+                        alt="Zoom" 
+                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl zoom-in"
+                        onClick={(e) => e.stopPropagation()}
+                    />
                 </div>
             )}
 

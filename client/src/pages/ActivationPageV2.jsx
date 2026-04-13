@@ -6,7 +6,7 @@ import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
 import { savePendingActivation, saveActivationDraft, getActivationDraft, deleteActivationDraft } from '../utils/offlineStorage';
 
-const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
+const BASE_URL = import.meta.env.PROD ? window.location.origin : 'http://localhost:3000';
 
 const ActivationPageV2 = () => {
     const { id } = useParams();
@@ -90,13 +90,17 @@ const ActivationPageV2 = () => {
 
                         // Load existing photos
                         if (info.photos && info.photos.length > 0) {
-                            setPhotos(info.photos.map((path, i) => ({
-                                blob: null,
-                                preview: `${BASE_URL}/${path.replace(/\\/g, '/')}`,
-                                name: `Foto ${i + 1}`,
-                                isExisting: true,
-                                originalPath: path
-                            })));
+                            setPhotos(info.photos.map((path, i) => {
+                                const cleanPath = path.replace(/\\/g, '/');
+                                const encoded = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+                                return {
+                                    blob: null,
+                                    preview: `${BASE_URL}/${encoded.replace(/^\/+/, '')}`,
+                                    name: `Foto ${i + 1}`,
+                                    isExisting: true,
+                                    originalPath: path
+                                };
+                            }));
                         }
                     } else if (found.address.klsId) {
                         setFormData(prev => ({ ...prev, klsId: found.address.klsId }));
@@ -1161,7 +1165,7 @@ const ActivationPageV2 = () => {
             {
                 viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
                     <div
-                        className="fixed inset-0 z-50 bg-black/95 flex flex-col items-center justify-center p-4"
+                        className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-4"
                         onClick={() => setViewingPhotoIndex(null)}
                     >
                         <button

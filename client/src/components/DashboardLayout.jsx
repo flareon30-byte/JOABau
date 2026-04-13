@@ -440,7 +440,7 @@ const DashboardLayout = () => {
                     </div>
                 </header>
 
-                <div className="p-4 md:p-8 relative z-10">
+                <div className="p-4 md:p-8">
                     <Outlet />
                 </div>
             </main>
