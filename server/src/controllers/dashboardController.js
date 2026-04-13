@@ -98,54 +98,44 @@ exports.getPayrollStats = async (req, res) => {
             }
         });
 
-        // Aggregate stats using new Performer-based logic (immune to team deletion)
+        // Aggregate stats using Unique Attribution logic (No duplication)
         const teamStats = {};
 
-        // To attribute orphan work to current teams, we need to know users' current teams
+        // To identify performers quickly
         const allUsers = await prisma.user.findMany({
             where: { id: { in: [...new Set(activations.flatMap(a => a.performerIds || []))] } },
-            select: { id: true, teamId: true, team: { select: { id: true, name: true } } }
+            select: { id: true, username: true }
         });
-        const userToTeamMap = new Map(allUsers.map(u => [u.id, u.team]));
+        const userMap = new Map(allUsers.map(u => [u.id, u.username]));
 
         activations.forEach(act => {
             const performers = act.performerIds || [];
             if (performers.length === 0) return;
 
             const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
-            const teamsProcessedForThisAct = new Set();
 
-            performers.forEach(pId => {
-                // 1. Try original team from appointment
-                let team = act.address.appointment?.assignedTeam;
-                
-                // 2. Fallback: Try performer's current team from our map
-                if (!team) {
-                    team = userToTeamMap.get(pId);
+            // 1. Try original team from appointment
+            const team = act.address.appointment?.assignedTeam;
+            
+            if (team) {
+                // Happy path: Original team exists
+                if (!teamStats[team.id]) {
+                    teamStats[team.id] = { id: team.id, name: team.name, earnings: 0, activations: 0 };
                 }
-                
-                if (team) {
-                    if (!teamsProcessedForThisAct.has(team.id)) {
-                        if (!teamStats[team.id]) {
-                            teamStats[team.id] = { id: team.id, name: team.name, earnings: 0, activations: 0 };
-                        }
-                        teamStats[team.id].earnings += actTotal;
-                        teamStats[team.id].activations += 1;
-                        teamsProcessedForThisAct.add(team.id);
-                    }
-                } else {
-                    // FINAL FALLBACK: Truly orphan
-                    const fallbackId = 'orphans';
-                    if (!teamStats[fallbackId]) {
-                        teamStats[fallbackId] = { id: fallbackId, name: 'Historial / Otros', earnings: 0, activations: 0 };
-                    }
-                    if (!teamsProcessedForThisAct.has(fallbackId)) {
-                        teamStats[fallbackId].earnings += actTotal;
-                        teamStats[fallbackId].activations += 1;
-                        teamsProcessedForThisAct.add(fallbackId);
-                    }
+                teamStats[team.id].earnings += actTotal;
+                teamStats[team.id].activations += 1;
+            } else {
+                // FALLBACK: The "Real Team" was deleted. 
+                // We create a Virtual Team based on the performers' names so it's only counted ONCE.
+                const virtualTeamId = 'virtual-' + [...performers].sort().join('-');
+                const virtualTeamName = 'Histórico: ' + performers.map(id => userMap.get(id) || 'Desconocido').join(' & ');
+
+                if (!teamStats[virtualTeamId]) {
+                    teamStats[virtualTeamId] = { id: virtualTeamId, name: virtualTeamName, earnings: 0, activations: 0 };
                 }
-            });
+                teamStats[virtualTeamId].earnings += actTotal;
+                teamStats[virtualTeamId].activations += 1;
+            }
         });
 
         res.json({
