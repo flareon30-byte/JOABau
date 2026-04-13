@@ -1165,24 +1165,21 @@ const ActivationPageV2 = () => {
             {
                 viewingPhotoIndex !== null && photos[viewingPhotoIndex] && (
                     <div
-                        className="fixed inset-0 z-[200] bg-black/95 flex flex-col items-center justify-center p-4"
-                        onClick={() => setViewingPhotoIndex(null)}
+                        className="fixed inset-0 z-[9999] bg-slate-900/98 flex flex-col items-center justify-center p-2"
                     >
+                        <div className="absolute top-4 left-4 text-white/20 text-[10px] font-mono">v1.1-lightbox-v2</div>
                         <button
                             onClick={() => setViewingPhotoIndex(null)}
-                            className="absolute top-4 right-4 text-white p-2 bg-white/10 rounded-full hover:bg-white/20 transition"
+                            className="absolute top-6 right-6 text-white p-3 bg-white/20 rounded-full hover:bg-white/40 active:scale-95 transition z-[10000]"
                         >
-                            <X size={24} />
+                            <X size={28} />
                         </button>
 
-                        <div
-                            className="relative max-w-full max-h-[80vh] mb-8"
-                            onClick={(e) => e.stopPropagation()}
-                        >
+                        <div className="relative max-w-full max-h-[85vh] flex items-center justify-center">
                             <img
                                 src={photos[viewingPhotoIndex].preview}
                                 alt="Full viewing"
-                                className="max-h-[75vh] object-contain rounded-lg shadow-2xl"
+                                className="max-w-full max-h-[80vh] object-contain rounded shadow-2xl"
                             />
                         </div>
 
@@ -1191,7 +1188,7 @@ const ActivationPageV2 = () => {
                                 e.stopPropagation();
                                 removePhoto(viewingPhotoIndex);
                             }}
-                            className="flex items-center gap-2 bg-red-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-700 transition transform active:scale-95"
+                            className="mt-6 flex items-center gap-2 bg-red-600/80 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-700 transition transform active:scale-95"
                         >
                             <Trash2 size={20} /> Eliminar Foto
                         </button>

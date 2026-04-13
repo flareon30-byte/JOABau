@@ -481,17 +481,19 @@ const ActivationsHistoryPage = () => {
             {/* Photo Lightbox (Zoom) */}
             {zoomPhoto && (
                 <div 
-                    className="fixed inset-0 bg-black/95 z-[200] flex items-center justify-center p-4"
-                    onClick={() => setZoomPhoto(null)}
+                    className="fixed inset-0 bg-slate-900/98 z-[9999] flex flex-col items-center justify-center p-2 md:p-10"
                 >
-                    <button className="absolute top-6 right-6 text-white/70 hover:text-white bg-white/10 p-2 rounded-full transition-colors">
-                        <X size={32} />
+                    <div className="absolute top-4 left-4 text-white/20 text-[10px] font-mono">v1.1-lightbox</div>
+                    <button 
+                        onClick={() => setZoomPhoto(null)}
+                        className="absolute top-6 right-6 text-white bg-white/20 p-3 rounded-full hover:bg-white/40 active:scale-95 transition-all z-[10000]"
+                    >
+                        <X size={28} />
                     </button>
                     <img 
                         src={zoomPhoto} 
                         alt="Zoom" 
                         className="max-w-full max-h-full object-contain rounded-lg shadow-2xl zoom-in"
-                        onClick={(e) => e.stopPropagation()}
                     />
                 </div>
             )}
