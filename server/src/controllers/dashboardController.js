@@ -157,26 +157,37 @@ exports.getActivatorDashboard = async (req, res) => {
             }
         });
 
-        if (!user || !user.teamId) {
-            return res.json({ message: 'User not assigned to a team', appointments: [], stats: {} });
-        }
-
         const teamSize = user.team?._count?.members || 1;
+        const teamId = user.teamId || 'no-team';
 
-        // 2. Get Team Appointments (Calendar)
+        // 2. Get Team Appointments (Calendar) + Individual History (Done work)
         const today = new Date();
-        const startOfYear = new Date(today.getFullYear(), 0, 1);
-
         const appointments = await prisma.appointment.findMany({
             where: {
-                assignedTeamId: user.teamId,
-                // assignedDate: { gte: startOfYear }
+                OR: [
+                    { assignedTeamId: teamId },
+                    { 
+                        address: { 
+                            activationInfo: { 
+                                performerIds: { has: userId } 
+                            } 
+                        } 
+                    },
+                    {
+                        address: {
+                            sopladoInfo: {
+                                performerIds: { has: userId }
+                            }
+                        }
+                    }
+                ]
             },
             include: {
                 address: {
                     include: {
                         project: true,
-                        activationInfo: true
+                        activationInfo: true,
+                        sopladoInfo: true
                     }
                 }
             },
@@ -198,7 +209,10 @@ exports.getActivatorDashboard = async (req, res) => {
                         gte: startOfMonth,
                         lte: endDate
                     },
-                    teamId: user.teamId
+                    OR: [
+                        { performerIds: { has: userId } },
+                        { teamId: teamId }
+                    ]
                 }
             });
         } else {
@@ -214,7 +228,7 @@ exports.getActivatorDashboard = async (req, res) => {
                         {
                             address: {
                                 project: { isDemo: req.isDemo || false },
-                                appointment: { assignedTeamId: user.teamId || 'non-existent' }
+                                appointment: { assignedTeamId: teamId }
                             }
                         }
                     ]
