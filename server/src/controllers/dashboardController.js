@@ -98,33 +98,53 @@ exports.getPayrollStats = async (req, res) => {
             }
         });
 
-        // Aggregate points by Team and User
+        // Aggregate stats using new Performer-based logic (immune to team deletion)
         const teamStats = {};
-        const userStats = {};
+
+        // To attribute orphan work to current teams, we need to know users' current teams
+        const allUsers = await prisma.user.findMany({
+            where: { id: { in: [...new Set(activations.flatMap(a => a.performerIds || []))] } },
+            select: { id: true, teamId: true, team: { select: { id: true, name: true } } }
+        });
+        const userToTeamMap = new Map(allUsers.map(u => [u.id, u.team]));
 
         activations.forEach(act => {
-            const team = act.address.appointment?.assignedTeam;
             const performers = act.performerIds || [];
+            if (performers.length === 0) return;
 
-            // Team Stats (Legacy / Shared view)
-            if (team) {
-                if (!teamStats[team.id]) {
-                    teamStats[team.id] = { name: team.name, earnings: 0, activations: 0 };
-                }
-                const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
-                teamStats[team.id].earnings += actTotal;
-                teamStats[team.id].activations += 1;
-            }
+            const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+            const teamsProcessedForThisAct = new Set();
 
-            // User Stats (New Persistent Individual History)
             performers.forEach(pId => {
-                if (!userStats[pId]) {
-                    userStats[pId] = { points: 0, activations: 0, earnings: 0 };
+                // 1. Try original team from appointment
+                let team = act.address.appointment?.assignedTeam;
+                
+                // 2. Fallback: Try performer's current team from our map
+                if (!team) {
+                    team = userToTeamMap.get(pId);
                 }
-                const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
-                userStats[pId].earnings += actTotal;
-                userStats[pId].activations += 1;
-                userStats[pId].points += (act.points || 0);
+                
+                if (team) {
+                    if (!teamsProcessedForThisAct.has(team.id)) {
+                        if (!teamStats[team.id]) {
+                            teamStats[team.id] = { id: team.id, name: team.name, earnings: 0, activations: 0 };
+                        }
+                        teamStats[team.id].earnings += actTotal;
+                        teamStats[team.id].activations += 1;
+                        teamsProcessedForThisAct.add(team.id);
+                    }
+                } else {
+                    // FINAL FALLBACK: Truly orphan
+                    const fallbackId = 'orphans';
+                    if (!teamStats[fallbackId]) {
+                        teamStats[fallbackId] = { id: fallbackId, name: 'Historial / Otros', earnings: 0, activations: 0 };
+                    }
+                    if (!teamsProcessedForThisAct.has(fallbackId)) {
+                        teamStats[fallbackId].earnings += actTotal;
+                        teamStats[fallbackId].activations += 1;
+                        teamsProcessedForThisAct.add(fallbackId);
+                    }
+                }
             });
         });
 
