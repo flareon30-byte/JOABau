@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIcon } from 'lucide-react';
+import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIcon, Share } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
 import { savePendingActivation, saveActivationDraft, getActivationDraft, deleteActivationDraft } from '../utils/offlineStorage';
@@ -486,6 +486,53 @@ const ActivationPageV2 = () => {
         }
     };
 
+    const handleSharePdf = async () => {
+        if (!pdfPath) return;
+        
+        try {
+            const cleanPath = pdfPath.split('?')[0];
+            const encoded = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+            const url = `${BASE_URL || window.location.origin}/${encoded}`;
+
+            // Check if Web Share API is available and can share files
+            if (navigator.share) {
+                try {
+                    // Fetch the file to share it as an actual attachment if possible
+                    const response = await fetch(url);
+                    const blob = await response.blob();
+                    const filename = cleanPath.split('/').pop() || 'Documento_Activacion.pdf';
+                    const file = new File([blob], filename, { type: 'application/pdf' });
+
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Orden de Activación - Joa Technologien',
+                            text: 'Se adjunta el PDF de la orden de activación.'
+                        });
+                    } else {
+                        // Fallback to URL sharing
+                        await navigator.share({
+                            title: 'Orden de Activación - Joa Technologien',
+                            url: url
+                        });
+                    }
+                } catch (shareErr) {
+                    console.warn('File share failed, falling back to link share:', shareErr);
+                    await navigator.share({
+                        title: 'Orden de Activación - Joa Technologien',
+                        url: url
+                    });
+                }
+            } else {
+                // Fallback for desktop or non-supported browsers
+                window.open(`mailto:?subject=Orden de Activación - Joa Technologien&body=Puedes descargar el PDF aquí: ${url}`);
+            }
+        } catch (error) {
+            console.error('Error sharing PDF:', error);
+            alert('No se pudo abrir el menú de compartir. Puedes intentar descargar el PDF directamente.');
+        }
+    };
+
     const handleGeneratePdf = async (currentSignatures = null) => {
         // Validate mandatory fields
         if (!formData.activationType) {
@@ -924,6 +971,15 @@ const ActivationPageV2 = () => {
                             >
                                 <FileText size={18} />
                                 Ver PDF Generado
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleSharePdf}
+                                className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
+                            >
+                                <Share size={18} />
+                                Compartir PDF (Outlook/WA)
                             </button>
                             <button
                                 type="button"
