@@ -145,6 +145,7 @@ model Address {
   number     String?
   city       String?
   klsId      String?
+  bauauftragId String?
   clientName String?
 
   // Soplado

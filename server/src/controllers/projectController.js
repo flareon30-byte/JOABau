@@ -107,6 +107,7 @@ exports.importProject = async (req, res) => {
             const clientName = findCol(row, ['NOMBRE', 'nombre', 'Name', 'name', 'Cliente', 'cliente', 'Client', 'client', 'Kunde', 'kunde']);
             const city = findCol(row, ['CIUDAD', 'ciudad', 'City', 'city', 'Ort', 'ort', 'Stadt', 'stadt', 'Town', 'town', 'Poblacion', 'poblacion']);
             const klsId = findCol(row, ['KLS', 'kls', 'KLS-ID', 'kls-id', 'KLS ID', 'kls id', 'KLS-Id', 'Kls-Id', 'P']);
+            const bauauftragId = findCol(row, ['Bauauftrag-ID', 'bauauftrag-id', 'Bauauftrag', 'bauauftrag', 'Bauauftrag ID', 'Bauauftrag Id']);
             const status = findCol(row, ['Status', 'status', 'Estado', 'estado']); // Column C logic
             const customerCol = findCol(row, ['Customer', 'customer']);
             let apartmentCount = null;
@@ -125,6 +126,7 @@ exports.importProject = async (req, res) => {
                 clientName: clientName ? String(clientName).trim() : null,
                 city: city ? String(city).trim() : null,
                 klsId: klsId ? String(klsId).trim() : null,
+                bauauftragId: bauauftragId ? String(bauauftragId).trim() : null,
                 status: status ? String(status).trim() : 'geplant',
                 apartmentCount: apartmentCount
             };
@@ -142,9 +144,19 @@ exports.importProject = async (req, res) => {
         let updatedCount = 0;
 
         for (const addrData of addressesToProcess) {
-            // Find existing prioritising KLS ID (which is stable)
+            // Find existing prioritising Bauauftrag ID (which is the new stable unique key)
             let existing = null;
-            if (addrData.klsId) {
+            if (addrData.bauauftragId) {
+                existing = await prisma.address.findFirst({
+                    where: {
+                        projectId: project.id,
+                        bauauftragId: { equals: addrData.bauauftragId, mode: 'insensitive' }
+                    }
+                });
+            }
+
+            // Fallback backward compat to KLS
+            if (!existing && addrData.klsId) {
                 existing = await prisma.address.findFirst({
                     where: {
                         projectId: project.id,
@@ -176,7 +188,8 @@ exports.importProject = async (req, res) => {
                     nvt: addrData.nvt || existing.nvt,
                     // Only update clientName if it's null in DB, to avoid overwriting user edits
                     clientName: existing.clientName || addrData.clientName,
-                    apartmentCount: existing.apartmentCount || addrData.apartmentCount // Keep existing if set, else update from excel
+                    apartmentCount: existing.apartmentCount || addrData.apartmentCount, // Keep existing if set, else update from excel
+                    bauauftragId: addrData.bauauftragId || existing.bauauftragId
                 };
 
                 // Update status ONLY if not archived. We respect the girl's work in Back Office.
@@ -203,6 +216,7 @@ exports.importProject = async (req, res) => {
                         city: addrData.city,
                         clientName: addrData.clientName,
                         klsId: addrData.klsId,
+                        bauauftragId: addrData.bauauftragId,
                         nvt: addrData.nvt,
                         orderStatus: addrData.status, // Load status from excel
                         requiresProtocol: isProtocol, // Set flag if this is a protocol import
@@ -228,8 +242,11 @@ exports.importProject = async (req, res) => {
         let missingInExcelCount = 0;
 
         for (const dbAddr of existingAddresses) {
-            // Robust matching using KLS prioritisation
+            // Robust matching using Bauauftrag prioritisation then KLS
             const isInNewFile = addressesToProcess.some(newData => {
+                if (newData.bauauftragId && dbAddr.bauauftragId) {
+                    return newData.bauauftragId.trim().toLowerCase() === dbAddr.bauauftragId.trim().toLowerCase();
+                }
                 if (newData.klsId && dbAddr.klsId) {
                     return newData.klsId.trim().toLowerCase() === dbAddr.klsId.trim().toLowerCase();
                 }

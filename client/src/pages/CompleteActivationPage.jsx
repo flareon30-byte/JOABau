@@ -267,8 +267,8 @@ const CompleteActivationPage = () => {
 
         const klsIdToUse = formData.klsId || appointment.address.klsId;
 
-        if (!klsIdToUse) {
-            alert('Por favor, indica o verifica el KLS ID antes de generar el PDF.');
+        if (!formData.klsId?.trim()) {
+            alert('Por favor, indica o verifica el Bauauftrag ID (o KLS) antes de generar el PDF.');
             return;
         }
 
@@ -528,16 +528,18 @@ const CompleteActivationPage = () => {
                         )}
                     </div>
 
-                    <div className="mb-4">
-                        <label className="block text-sm font-medium text-slate-600 mb-1">KLS ID (Para el PDF)</label>
-                        <input
-                            type="text"
-                            name="klsId"
-                            value={formData.klsId}
-                            onChange={handleInputChange}
-                            placeholder="KLS ID"
-                            className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
-                        />
+                    <div>
+                        <label className="block text-sm font-medium text-slate-600 mb-1">Bauauftrag ID / KLS (Para el PDF)</label>
+                        <div className="relative">
+                            <Hash className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="text"
+                                value={formData.klsId}
+                                onChange={(e) => setFormData({ ...formData, klsId: e.target.value })}
+                                className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-500 font-bold"
+                                placeholder="Bauauftrag ID / KLS"
+                            />
+                        </div>
                     </div>
 
                     {pdfPath ? (

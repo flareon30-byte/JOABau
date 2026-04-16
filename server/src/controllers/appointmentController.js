@@ -508,7 +508,7 @@ exports.updateComment = async (req, res) => {
 // Update address master data (Back Office usage)
 exports.updateAddressDetails = async (req, res) => {
     const { addressId } = req.params;
-    const { clientName, street, number, nvt, klsId } = req.body;
+    const { clientName, street, number, nvt, klsId, bauauftragId } = req.body;
 
     try {
         const address = await prisma.address.update({
@@ -518,7 +518,8 @@ exports.updateAddressDetails = async (req, res) => {
                 street,
                 number,
                 nvt,
-                klsId
+                klsId,
+                bauauftragId
             }
         });
         res.json(address);

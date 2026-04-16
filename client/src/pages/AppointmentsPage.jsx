@@ -286,7 +286,8 @@ const AppointmentsPage = () => {
             street: address.street || '',
             number: address.number || '',
             nvt: address.nvt || '',
-            klsId: address.klsId || ''
+            klsId: address.klsId || '',
+            bauauftragId: address.bauauftragId || ''
         });
         setIsEditAddressModalOpen(true);
     };
@@ -438,7 +439,7 @@ const AppointmentsPage = () => {
                                         <button 
                                             onClick={() => openEditAddressModal(address)}
                                             className="text-slate-400 hover:text-blue-600 transition-colors p-1"
-                                            title="Editar ficha (Nombre, KLS, NVT)"
+                                            title="Editar ficha (Nombre, Bauauftrag, KLS, NVT)"
                                         >
                                             <Pencil size={14} />
                                         </button>
@@ -447,7 +448,7 @@ const AppointmentsPage = () => {
                                         <p className="text-sm font-semibold text-blue-600 mb-1">{address.clientName}</p>
                                     )}
                                     <p className="text-sm text-slate-500">
-                                        {address.project.name} | NVT: {address.nvt} | KLS: {address.klsId || 'N/A'}
+                                        {address.project.name} | NVT: {address.nvt} | Bauauftrag: {address.bauauftragId || address.klsId || 'N/A'}
                                         {address.apartmentCount ? ` | Aptos: ${address.apartmentCount}` : ''}
                                     </p>
                                 </div>
@@ -605,7 +606,7 @@ const AppointmentsPage = () => {
                                         <button 
                                             onClick={() => openEditAddressModal(address)}
                                             className="text-slate-400 hover:text-purple-600 transition-colors p-1"
-                                            title="Editar ficha (Nombre, KLS, NVT)"
+                                            title="Editar ficha (Nombre, Bauauftrag, KLS, NVT)"
                                         >
                                             <Pencil size={14} />
                                         </button>
@@ -1143,7 +1144,17 @@ const AppointmentsPage = () => {
 
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">ID KLS</label>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Bauauftrag ID</label>
+                                        <input 
+                                            type="text" 
+                                            value={editAddressForm.bauauftragId} 
+                                            onChange={(e) => setEditAddressForm({ ...editAddressForm, bauauftragId: e.target.value })}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-3 outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-800"
+                                            placeholder="Ej: BA-12345"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">KLS ID (Legado)</label>
                                         <input 
                                             type="text" 
                                             value={editAddressForm.klsId} 
