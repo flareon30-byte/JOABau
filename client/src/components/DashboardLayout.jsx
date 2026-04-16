@@ -237,18 +237,21 @@ const DashboardLayout = () => {
                     ${isSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full md:translate-x-0 md:w-20'}
                 `}
             >
-                <div className="p-6 flex items-center justify-between h-24">
+                <div className="p-6 flex items-center justify-between h-24 mt-2">
                     {isSidebarOpen ? (
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-joa-blue to-joa-cyan rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-joa-cyan/20">
-                                J
-                            </div>
-                            <span className="text-white font-heading font-bold text-xl tracking-wide">JOA Tech</span>
+                        <div className="flex items-center">
+                            <img 
+                                src="/logo.png" 
+                                alt="JOA Tech" 
+                                className="h-10 object-contain drop-shadow-[0_0_15px_rgba(0,210,255,0.3)] transition-transform duration-300 hover:scale-105" 
+                            />
                         </div>
                     ) : (
-                        <div className="w-12 h-12 bg-gradient-to-br from-joa-blue to-joa-cyan rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto shadow-lg shadow-joa-cyan/20">
-                            J
-                        </div>
+                        <img 
+                            src="/logo.png" 
+                            alt="JOA Tech" 
+                            className="h-8 object-contain mx-auto drop-shadow-[0_0_15px_rgba(0,210,255,0.3)] transition-transform duration-300 hover:scale-105" 
+                        />
                     )}
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
