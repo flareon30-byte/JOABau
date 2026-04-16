@@ -16,7 +16,12 @@ const ProtocolDepartment = () => {
             // We can filter on client side.
             const res = await api.get('/api/activations/my-appointments');
             const protocolApps = res.data.filter(app => app.type === 'PROTOCOL');
-            setAppointments(protocolApps);
+            const sorted = protocolApps.sort((a, b) => {
+                const strA = `${a.address?.street || ''} ${a.address?.number || ''}`.trim();
+                const strB = `${b.address?.street || ''} ${b.address?.number || ''}`.trim();
+                return strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+            });
+            setAppointments(sorted);
         } catch (error) {
             console.error('Error fetching protocol appointments:', error);
         } finally {

@@ -43,7 +43,12 @@ const BlowingDepartment = () => {
     const fetchAddresses = async () => {
         try {
             const res = await api.get(`/api/soplado/addresses/${selectedProject.id}?search=${searchTerm}`);
-            setAddresses(res.data);
+            const sorted = res.data.sort((a, b) => {
+                const strA = `${a.street || ''} ${a.number || ''}`.trim();
+                const strB = `${b.street || ''} ${b.number || ''}`.trim();
+                return strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+            });
+            setAddresses(sorted);
         } catch (error) {
             console.error('Error fetching addresses:', error);
         }

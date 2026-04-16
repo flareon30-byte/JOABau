@@ -338,23 +338,33 @@ const AppointmentsPage = () => {
         });
     };
 
+    const sortAddresses = (list) => {
+        return [...list].sort((a, b) => {
+            const addrA = a.address || a;
+            const addrB = b.address || b;
+            const strA = `${addrA.street || ''} ${addrA.number || ''}`.trim();
+            const strB = `${addrB.street || ''} ${addrB.number || ''}`.trim();
+            return strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+        });
+    };
+
     // Dynamic BASE_URL detection to avoid DNS issues
     const BASE_URL = window.location.origin.includes('localhost') 
         ? 'http://localhost:3000' 
         : window.location.origin;
 
-    const allPendingFiltered = filterAppointments(pendingAddresses);
+    const allPendingFiltered = sortAddresses(filterAppointments(pendingAddresses));
 
     // Addresses that NEED Protocol check
-    const filteredProtocols = allPendingFiltered.filter(a => a.requiresProtocol && a.protocolStatus !== 'OK');
+    const filteredProtocols = sortAddresses(allPendingFiltered.filter(a => a.requiresProtocol && a.protocolStatus !== 'OK'));
 
     // Addresses ready for Activation (or standard)
-    const filteredPending = allPendingFiltered.filter(a =>
+    const filteredPending = sortAddresses(allPendingFiltered.filter(a =>
         (!a.requiresProtocol || a.protocolStatus === 'OK') && a.sopladoStatus === 'OK'
-    );
+    ));
 
-    const filteredScheduled = filterAppointments(scheduledAppointments);
-    const filteredEscalated = filterAppointments(escalatedAddresses);
+    const filteredScheduled = sortAddresses(filterAppointments(scheduledAppointments));
+    const filteredEscalated = sortAddresses(filterAppointments(escalatedAddresses));
 
     return (
         <div className="space-y-6">
