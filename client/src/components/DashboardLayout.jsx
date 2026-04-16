@@ -221,40 +221,45 @@ const DashboardLayout = () => {
     }, []);
 
     return (
-        <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
+        <div className="flex h-screen bg-[#f3f6fa] font-sans overflow-hidden">
             {/* Mobile Overlay */}
             {isSidebarOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-20 md:hidden"
+                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-20 md:hidden"
                     onClick={() => setIsSidebarOpen(false)}
                 />
             )}
 
             {/* Sidebar */}
             <aside
-                className={`bg-white border-r border-slate-200 transition-all duration-300 ease-in-out 
-                    fixed md:relative z-30 h-full flex flex-col shadow-xl shadow-slate-200/50
+                className={`bg-[#060b19] border-r border-[#1a233a] transition-all duration-300 ease-in-out 
+                    fixed md:relative z-30 h-full flex flex-col shadow-2xl shadow-black/50
                     ${isSidebarOpen ? 'translate-x-0 w-72' : '-translate-x-full md:translate-x-0 md:w-20'}
                 `}
             >
                 <div className="p-6 flex items-center justify-between h-24">
                     {isSidebarOpen ? (
-                        <img src="/logo.png" alt="JOA" className="h-24 object-contain transition-all" />
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-joa-blue to-joa-cyan rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-joa-cyan/20">
+                                J
+                            </div>
+                            <span className="text-white font-heading font-bold text-xl tracking-wide">JOA Tech</span>
+                        </div>
                     ) : (
-                        <div className="w-12 h-12 bg-gradient-to-br from-joa-blue to-joa-cyan rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto">
+                        <div className="w-12 h-12 bg-gradient-to-br from-joa-blue to-joa-cyan rounded-xl flex items-center justify-center text-white font-bold text-2xl mx-auto shadow-lg shadow-joa-cyan/20">
                             J
                         </div>
                     )}
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors md:block hidden"
+                        className="p-2 hover:bg-[#1a233a] rounded-lg text-slate-400 hover:text-white transition-colors md:block hidden"
                     >
                         {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
                     </button>
                     {/* Mobile Close Button */}
                     <button
                         onClick={() => setIsSidebarOpen(false)}
-                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors md:hidden block"
+                        className="p-2 hover:bg-[#1a233a] rounded-lg text-slate-400 hover:text-white transition-colors md:hidden block"
                     >
                         <X size={24} />
                     </button>
@@ -263,25 +268,25 @@ const DashboardLayout = () => {
                 <div className="px-4 mb-6">
                     <button
                         onClick={() => setIsPasswordModalOpen(true)}
-                        className={`w-full p-4 rounded-2xl bg-slate-50 border border-slate-100 flex items-center gap-3 hover:bg-blue-50 hover:border-blue-100 transition-all group text-left ${!isSidebarOpen && 'md:justify-center p-2'}`}
+                        className={`w-full p-3 rounded-2xl bg-[#0f172a]/50 border border-[#1e293b] flex items-center gap-3 hover:bg-[#1e293b] hover:border-[#334155] transition-all group text-left ${!isSidebarOpen && 'md:justify-center p-2'}`}
                         title="Clic para cambiar contraseña"
                     >
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-joa-blue to-joa-cyan flex items-center justify-center text-white font-bold shadow-md shadow-joa-blue/20 shrink-0 relative">
                             {user.username?.charAt(0).toUpperCase()}
-                            <div className="absolute -bottom-1 -right-1 bg-white rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Settings size={12} className="text-slate-600" />
+                            <div className="absolute -bottom-1 -right-1 bg-[#060b19] rounded-full p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Settings size={12} className="text-slate-300" />
                             </div>
                         </div>
                         {isSidebarOpen && (
                             <div className="overflow-hidden flex-1">
-                                <p className="font-bold text-slate-800 truncate text-sm">{user.username}</p>
-                                <p className="text-xs text-slate-500 truncate capitalize">{user.role?.replace('_', ' ').toLowerCase()}</p>
+                                <p className="font-bold text-slate-100 truncate text-sm">{user.username}</p>
+                                <p className="text-xs text-joa-cyan truncate capitalize">{user.role?.replace('_', ' ').toLowerCase()}</p>
                             </div>
                         )}
                     </button>
                 </div>
 
-                <nav className="flex-1 px-4 space-y-4 overflow-y-auto custom-scrollbar pb-10">
+                <nav className="flex-1 px-4 space-y-4 overflow-y-auto custom-scrollbar-dark pb-10">
                     {navGroups.map((group) => {
                         // Check if group should be visible for this user
                         if (group.roles && !group.roles.includes(user.role)) return null;
@@ -294,7 +299,7 @@ const DashboardLayout = () => {
                                 {group.label && isSidebarOpen && (
                                     <button
                                         onClick={() => toggleGroup(group.id)}
-                                        className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest hover:text-joa-blue transition-colors group"
+                                        className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-joa-cyan transition-colors group"
                                     >
                                         <div className="flex items-center gap-2">
                                             {group.icon && <group.icon size={12} />}
@@ -316,13 +321,13 @@ const DashboardLayout = () => {
                                                     to={item.path}
                                                     onClick={() => window.innerWidth < 768 && setIsSidebarOpen(false)}
                                                     className={`flex items-center p-3 rounded-xl transition-all group ${isActive
-                                                        ? 'bg-joa-blue text-white shadow-lg shadow-joa-blue/30'
-                                                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
+                                                        ? 'bg-gradient-to-r from-joa-blue to-joa-cyan text-white shadow-lg shadow-joa-blue/20'
+                                                        : 'text-slate-400 hover:bg-[#1e293b] hover:text-white'
                                                         }`}
                                                 >
-                                                    <item.icon size={isSidebarOpen ? 20 : 22} className={`${isActive ? 'text-white' : 'text-slate-400 group-hover:text-joa-blue'} transition-colors ${isSidebarOpen ? 'mr-3' : 'mx-auto'}`} />
+                                                    <item.icon size={isSidebarOpen ? 20 : 22} className={`${isActive ? 'text-white' : 'text-slate-500 group-hover:text-joa-cyan'} transition-colors ${isSidebarOpen ? 'mr-3' : 'mx-auto'}`} />
                                                     {isSidebarOpen && (
-                                                        <span className={`font-medium flex-1 ${isActive ? 'text-white' : 'text-slate-600'}`}>
+                                                        <span className={`font-medium flex-1 ${isActive ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
                                                             {item.label}
                                                         </span>
                                                     )}
@@ -336,12 +341,12 @@ const DashboardLayout = () => {
                     })}
                 </nav>
 
-                <div className="p-4 border-t border-slate-100 space-y-2">
+                <div className="p-4 border-t border-[#1a233a] space-y-2">
                     {/* Settings Link for everyone */}
                     {isSidebarOpen && (
                         <button
                             onClick={() => setIsPasswordModalOpen(true)}
-                            className="flex items-center w-full p-2 rounded-lg text-slate-400 hover:bg-slate-50 hover:text-joa-blue transition-colors text-sm"
+                            className="flex items-center w-full p-2 rounded-lg text-slate-500 hover:bg-[#1e293b] hover:text-white transition-colors text-sm"
                         >
                             <Lock size={16} className="mr-2" />
                             Cambiar Contraseña
@@ -350,7 +355,7 @@ const DashboardLayout = () => {
 
                     <button
                         onClick={handleLogout}
-                        className={`flex items-center w-full p-3.5 rounded-xl text-slate-500 hover:bg-red-50 hover:text-red-600 transition-colors ${!isSidebarOpen && 'md:justify-center'
+                        className={`flex items-center w-full p-3.5 rounded-xl text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-colors ${!isSidebarOpen && 'md:justify-center'
                             }`}
                     >
                         <LogOut size={22} className={isSidebarOpen ? 'mr-3' : ''} />
@@ -360,33 +365,39 @@ const DashboardLayout = () => {
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 min-h-screen bg-slate-50 relative overflow-y-auto w-full">
+            <main className="flex-1 min-h-screen relative overflow-y-auto w-full">
+                
+                {/* Decorative Background Elements */}
+                <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-[#e0e7ff]/30 to-transparent pointer-events-none -z-10"></div>
+                <div className="absolute top-[-5%] right-[-5%] w-[40%] h-[40%] rounded-full bg-joa-cyan/5 blur-[120px] pointer-events-none -z-10"></div>
+                <div className="absolute top-[20%] left-[-10%] w-[40%] h-[40%] rounded-full bg-joa-blue/5 blur-[120px] pointer-events-none -z-10"></div>
 
                 {/* Centered Diffused Logo (Watermark) */}
-                <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.03]">
+                <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.02]">
                     <img src="/logo.png" alt="" className="w-[80%] max-w-[600px] object-contain grayscale" />
                 </div>
 
-                {/* Header */}
-                <header className="bg-white/80 backdrop-blur-md sticky top-0 z-20 px-4 md:px-8 py-4 border-b border-slate-200 flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                        {/* Mobile Menu Button */}
-                        <button
-                            onClick={() => setIsSidebarOpen(true)}
-                            className="p-2 -ml-2 hover:bg-slate-100 rounded-lg text-slate-600 md:hidden"
-                        >
-                            <Menu size={24} />
-                        </button>
+                {/* Floating Header */}
+                <div className="p-4 md:px-8 md:pt-6 pb-0 sticky top-0 z-20">
+                    <header className="glass-panel rounded-2xl px-6 py-4 flex justify-between items-center transition-all duration-300">
+                        <div className="flex items-center gap-4">
+                            {/* Mobile Menu Button */}
+                            <button
+                                onClick={() => setIsSidebarOpen(true)}
+                                className="p-2 -ml-2 hover:bg-slate-100 rounded-lg text-slate-600 md:hidden"
+                            >
+                                <Menu size={24} />
+                            </button>
 
-                        <div>
-                            <h1 className="text-xl md:text-2xl font-bold text-slate-800">
-                                {navGroups.flatMap(g => g.items).find(i => i.path === location.pathname)?.label || 'Dashboard'}
-                            </h1>
-                            <p className="text-xs md:text-sm text-slate-500 hidden md:block">Gestión integral de fibra óptica</p>
+                            <div>
+                                <h1 className="text-xl md:text-2xl font-heading font-bold text-slate-800 tracking-tight">
+                                    {navGroups.flatMap(g => g.items).find(i => i.path === location.pathname)?.label || 'Dashboard'}
+                                </h1>
+                                <p className="text-xs md:text-sm text-slate-500 hidden md:block mt-0.5">Gestión integral de fibra óptica</p>
+                            </div>
                         </div>
-                    </div>
 
-                    <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-6">
 
                         {/* Notifications */}
                         <div className="relative">
@@ -439,6 +450,7 @@ const DashboardLayout = () => {
                         </div>
                     </div>
                 </header>
+                </div>
 
                 <div className="p-4 md:p-8">
                     <Outlet />

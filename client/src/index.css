@@ -1,13 +1,47 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
   --color-joa-cyan: #00d2ff;
   --color-joa-blue: #005bea;
   --color-joa-dark: #0f172a;
-  --font-sans: 'Inter', system-ui, sans-serif;
+  --color-joa-sidebar: #060b19;
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-heading: 'Outfit', system-ui, sans-serif;
+}
+
+/* Glassmorphism utilities */
+.glass-panel {
+  @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-xl shadow-joa-blue/5;
+}
+
+.glass-dark {
+  @apply bg-[#060b19]/80 backdrop-blur-xl border-[#ffffff]/10 border;
+}
+
+/* Scrollbar personalizada */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 20px;
+}
+.custom-scrollbar-dark::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar-dark::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar-dark::-webkit-scrollbar-thumb {
+  background-color: #334155;
+  border-radius: 20px;
 }
 
 body {
-  background-color: #f8fafc;
+  background-color: #f8fafc; /* Mantendremos un fondo claro general pero refinado */
   color: #0f172a;
 }
