@@ -7,6 +7,7 @@ const BlowingDepartment = () => {
     const [selectedProject, setSelectedProject] = useState(null);
     const [addresses, setAddresses] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL');
     const [selectedAddress, setSelectedAddress] = useState(null);
 
     // Form State
@@ -106,11 +107,17 @@ const BlowingDepartment = () => {
         });
     };
 
+    const filteredAddresses = addresses.filter(addr => {
+        if (statusFilter === 'ALL') return true;
+        const currentStatus = addr.sopladoStatus || 'PENDIENTE';
+        return currentStatus === statusFilter;
+    });
+
     const handleSelectAll = () => {
-        if (selectedIds.length === addresses.length) {
+        if (selectedIds.length === filteredAddresses.length && filteredAddresses.length > 0) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(addresses.map(a => a.id));
+            setSelectedIds(filteredAddresses.map(a => a.id));
         }
     };
 
@@ -186,26 +193,38 @@ const BlowingDepartment = () => {
 
                 <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                     {/* Header with Select All */}
-                    <div className="p-4 border-b border-slate-100 flex items-center gap-4 bg-slate-50">
-                        <div
-                            onClick={handleSelectAll}
-                            className={`w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer transition-all ${selectedIds.length > 0 && selectedIds.length === addresses.length
-                                ? 'bg-blue-600 border-blue-600 text-white'
-                                : 'bg-white border-slate-300'
-                                }`}
-                        >
-                            {selectedIds.length > 0 && selectedIds.length === addresses.length && <CheckCircle size={14} />}
+                    <div className="p-4 border-b border-slate-100 flex items-center justify-between gap-4 bg-slate-50">
+                        <div className="flex items-center gap-4">
+                            <div
+                                onClick={handleSelectAll}
+                                className={`w-6 h-6 rounded border-2 flex items-center justify-center cursor-pointer transition-all ${selectedIds.length > 0 && selectedIds.length === filteredAddresses.length
+                                    ? 'bg-blue-600 border-blue-600 text-white'
+                                    : 'bg-white border-slate-300'
+                                    }`}
+                            >
+                                {selectedIds.length > 0 && selectedIds.length === filteredAddresses.length && <CheckCircle size={14} />}
+                            </div>
+                            <span className="text-sm font-bold text-slate-600">
+                                {selectedIds.length > 0 ? `${selectedIds.length} Seleccionados` : 'Seleccionar Todos'}
+                            </span>
                         </div>
-                        <span className="text-sm font-bold text-slate-600">
-                            {selectedIds.length > 0 ? `${selectedIds.length} Seleccionados` : 'Seleccionar Todos'}
-                        </span>
+                        <select 
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="border border-slate-300 rounded-lg px-2 py-1 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                            <option value="ALL">Mostrar Todas</option>
+                            <option value="OK">Solo OK</option>
+                            <option value="PENDIENTE">Solo Pendientes</option>
+                            <option value="FALLIDO">Solo Fallidos</option>
+                        </select>
                     </div>
 
-                    {addresses.length === 0 ? (
+                    {filteredAddresses.length === 0 ? (
                         <div className="p-8 text-center text-slate-500">No se encontraron direcciones</div>
                     ) : (
                         <div className="divide-y divide-slate-100">
-                            {addresses.map(address => {
+                            {filteredAddresses.map(address => {
                                 const isSelected = selectedIds.includes(address.id);
                                 return (
                                     <div
