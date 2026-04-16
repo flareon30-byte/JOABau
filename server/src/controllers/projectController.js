@@ -187,15 +187,33 @@ exports.importProject = async (req, res) => {
                 });
             }
 
-            // Fallback to address matching if KLS is missing or wasn't found (for old projects or consistency)
+            // Fallback to address matching ONLY IF the DB record doesn't belong to another specific client
             if (!existing) {
-                existing = await prisma.address.findFirst({
-                    where: {
-                        projectId: project.id,
-                        street: { equals: addrData.street, mode: 'insensitive' },
-                        number: { equals: (addrData.number || ''), mode: 'insensitive' }
-                    }
-                });
+                // Try to match by Name + Address first (very strong signal for multiple clients at same building)
+                if (addrData.clientName) {
+                    existing = await prisma.address.findFirst({
+                        where: {
+                            projectId: project.id,
+                            street: { equals: addrData.street, mode: 'insensitive' },
+                            number: { equals: (addrData.number || ''), mode: 'insensitive' },
+                            clientName: { equals: addrData.clientName, mode: 'insensitive' }
+                        }
+                    });
+                }
+
+                // If not found by name, try to find a legacy record at this address that has NO IDs yet
+                // (This allows us to attach the new Bauauftrag-ID to an old generic record safely)
+                if (!existing) {
+                    existing = await prisma.address.findFirst({
+                        where: {
+                            projectId: project.id,
+                            street: { equals: addrData.street, mode: 'insensitive' },
+                            number: { equals: (addrData.number || ''), mode: 'insensitive' },
+                            bauauftragId: null,
+                            klsId: null
+                        }
+                    });
+                }
             }
 
             if (existing) {
