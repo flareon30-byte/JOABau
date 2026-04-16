@@ -53,6 +53,12 @@ const AppointmentsPage = () => {
     const [selectedHistory, setSelectedHistory] = useState([]);
     const [historyAddressName, setHistoryAddressName] = useState('');
 
+    // Building Modal States
+    const [isBuildingModalOpen, setIsBuildingModalOpen] = useState(false);
+    const [buildingClients, setBuildingClients] = useState([]);
+    const [buildingAddressName, setBuildingAddressName] = useState('');
+    const [isBuildingLoading, setIsBuildingLoading] = useState(false);
+
     useEffect(() => {
         fetchData();
         fetchTeams();
@@ -206,6 +212,23 @@ const AppointmentsPage = () => {
         setSelectedHistory(history);
         setHistoryAddressName(`${address.street} ${address.number}`);
         setIsHistoryModalOpen(true);
+    };
+
+    const openBuildingClientsModal = async (address) => {
+        setBuildingAddressName(`${address.street} ${address.number}`);
+        setBuildingClients([]);
+        setIsBuildingLoading(true);
+        setIsBuildingModalOpen(true);
+        try {
+            const res = await api.get(`/api/appointments/building?projectId=${address.projectId}&street=${encodeURIComponent(address.street)}&number=${encodeURIComponent(address.number || '')}`);
+            setBuildingClients(res.data);
+        } catch (error) {
+            console.error('Error fetching building clients:', error);
+            alert('Error al obtener los clientes del edificio');
+            setIsBuildingModalOpen(false);
+        } finally {
+            setIsBuildingLoading(false);
+        }
     };
 
     const openContactModal = (address) => {
@@ -449,7 +472,15 @@ const AppointmentsPage = () => {
                                     )}
                                     <p className="text-sm text-slate-500">
                                         {address.project.name} | NVT: {address.nvt} | Bauauftrag: {address.bauauftragId || address.klsId || 'N/A'}
-                                        {address.apartmentCount ? ` | Aptos: ${address.apartmentCount}` : ''}
+                                        {address.apartmentCount ? (
+                                            <> | <span 
+                                                onClick={() => openBuildingClientsModal(address)} 
+                                                className="cursor-pointer font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                                                title="Ver todos los clientes de este edificio"
+                                            >
+                                                Aptos: {address.apartmentCount}
+                                            </span></>
+                                        ) : ''}
                                     </p>
                                 </div>
                                 <div className="text-right">
@@ -616,7 +647,15 @@ const AppointmentsPage = () => {
                                     )}
                                     <p className="text-sm text-slate-500">
                                         {address.project.name} | NVT: {address.nvt}
-                                        {address.apartmentCount ? ` | Aptos: ${address.apartmentCount}` : ''}
+                                        {address.apartmentCount ? (
+                                            <> | <span 
+                                                onClick={() => openBuildingClientsModal(address)} 
+                                                className="cursor-pointer font-bold text-purple-600 hover:text-purple-800 hover:underline inline-flex items-center gap-1"
+                                                title="Ver todos los clientes de este edificio"
+                                            >
+                                                Aptos: {address.apartmentCount}
+                                            </span></>
+                                        ) : ''}
                                     </p>
                                 </div>
                             </div>
@@ -1284,6 +1323,52 @@ const AppointmentsPage = () => {
                             >
                                 Cerrar Visor
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Building Clients Modal */}
+            {isBuildingModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 z-50">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                            <div>
+                                <h3 className="text-xl font-bold text-slate-800">Clientes en Edificio</h3>
+                                <p className="text-sm text-slate-500 mt-1">{buildingAddressName}</p>
+                            </div>
+                            <button onClick={() => setIsBuildingModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                                <X size={20} className="text-slate-500" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto bg-slate-50 flex-1">
+                            {isBuildingLoading ? (
+                                <div className="text-center py-8 text-slate-500 flex flex-col items-center gap-2">
+                                    <Loader className="animate-spin text-blue-500" size={24} /> 
+                                    Cargando clientes...
+                                </div>
+                            ) : buildingClients.length === 0 ? (
+                                <div className="text-center py-8 text-slate-500">No se encontraron otros clientes.</div>
+                            ) : (
+                                <div className="grid gap-3">
+                                    {buildingClients.map(client => (
+                                        <div key={client.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between md:items-center gap-4 hover:shadow-md transition-all">
+                                            <div>
+                                                <p className="font-bold text-slate-800 text-lg">{client.clientName || 'Sin Nombre'}</p>
+                                                <p className="text-sm text-slate-500 font-medium mt-1">
+                                                    <span className="bg-slate-100 text-slate-600 px-2 py-0.5 rounded mr-2">Bauauftrag: {client.bauauftragId || client.klsId || 'N/A'}</span>
+                                                    NVT: {client.nvt || 'N/A'}
+                                                </p>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                                                <span className={`px-3 py-1.5 text-xs font-bold rounded-full border ${client.orderStatus === 'CERRADA' ? 'bg-green-50 text-green-700 border-green-200' : client.orderStatus === 'DERIVADA' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                                                    {client.orderStatus || 'PENDIENTE'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>

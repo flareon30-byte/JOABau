@@ -143,6 +143,28 @@ exports.importProject = async (req, res) => {
         let createdCount = 0;
         let updatedCount = 0;
 
+        // Auto-calculate apartment counts based on unique Bauauftrag IDs per building
+        const buildingCounts = {};
+        for (const addr of addressesToProcess) {
+            if (addr.street && addr.number && addr.bauauftragId) {
+                const key = `${addr.street.trim().toLowerCase()}|${addr.number.trim().toLowerCase()}`;
+                if (!buildingCounts[key]) buildingCounts[key] = new Set();
+                buildingCounts[key].add(addr.bauauftragId.trim().toLowerCase());
+            }
+        }
+
+        // Apply calculated counts if no numeric value was supplied in the 'Customer' column
+        for (let i = 0; i < addressesToProcess.length; i++) {
+            const addr = addressesToProcess[i];
+            if (addr.street && addr.number && !addr.apartmentCount) {
+                const key = `${addr.street.trim().toLowerCase()}|${addr.number.trim().toLowerCase()}`;
+                const count = buildingCounts[key] ? buildingCounts[key].size : 0;
+                if (count > 0) { // If there are valid unique IDs, use that size as apartment count
+                    addr.apartmentCount = count;
+                }
+            }
+        }
+
         for (const addrData of addressesToProcess) {
             // Find existing prioritising Bauauftrag ID (which is the new stable unique key)
             let existing = null;

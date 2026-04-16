@@ -65,6 +65,27 @@ exports.getEscalatedAppointments = async (req, res) => {
     }
 };
 
+// Get all clients living in the same building
+exports.getBuildingClients = async (req, res) => {
+    const { street, number, projectId } = req.query;
+    try {
+        const clients = await prisma.address.findMany({
+            where: {
+                projectId,
+                street: { equals: street, mode: 'insensitive' },
+                number: { equals: number || '', mode: 'insensitive' }
+            },
+            include: {
+                appointment: true
+            }
+        });
+        res.json(clients);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching building clients' });
+    }
+};
+
 // Log a contact attempt
 exports.logContactAttempt = async (req, res) => {
     const { addressId } = req.params;
