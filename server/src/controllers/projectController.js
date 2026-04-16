@@ -108,6 +108,14 @@ exports.importProject = async (req, res) => {
             const city = findCol(row, ['CIUDAD', 'ciudad', 'City', 'city', 'Ort', 'ort', 'Stadt', 'stadt', 'Town', 'town', 'Poblacion', 'poblacion']);
             const klsId = findCol(row, ['KLS', 'kls', 'KLS-ID', 'kls-id', 'KLS ID', 'kls id', 'KLS-Id', 'Kls-Id', 'P']);
             const status = findCol(row, ['Status', 'status', 'Estado', 'estado']); // Column C logic
+            const customerCol = findCol(row, ['Customer', 'customer']);
+            let apartmentCount = null;
+            if (customerCol) {
+                const parsed = parseInt(customerCol);
+                if (!isNaN(parsed)) {
+                    apartmentCount = parsed;
+                }
+            }
 
             return {
                 projectId: project.id,
@@ -117,7 +125,8 @@ exports.importProject = async (req, res) => {
                 clientName: clientName ? String(clientName).trim() : null,
                 city: city ? String(city).trim() : null,
                 klsId: klsId ? String(klsId).trim() : null,
-                status: status ? String(status).trim() : 'geplant'
+                status: status ? String(status).trim() : 'geplant',
+                apartmentCount: apartmentCount
             };
         }).filter(addr => {
             if (!addr.street || addr.street === 'Sin calle') return false;
@@ -166,7 +175,8 @@ exports.importProject = async (req, res) => {
                     city: addrData.city || existing.city,
                     nvt: addrData.nvt || existing.nvt,
                     // Only update clientName if it's null in DB, to avoid overwriting user edits
-                    clientName: existing.clientName || addrData.clientName
+                    clientName: existing.clientName || addrData.clientName,
+                    apartmentCount: existing.apartmentCount || addrData.apartmentCount // Keep existing if set, else update from excel
                 };
 
                 // Update status ONLY if not archived. We respect the girl's work in Back Office.
@@ -195,7 +205,8 @@ exports.importProject = async (req, res) => {
                         klsId: addrData.klsId,
                         nvt: addrData.nvt,
                         orderStatus: addrData.status, // Load status from excel
-                        requiresProtocol: isProtocol // Set flag if this is a protocol import
+                        requiresProtocol: isProtocol, // Set flag if this is a protocol import
+                        apartmentCount: addrData.apartmentCount
                     }
                 });
                 createdCount++;

@@ -236,7 +236,7 @@ const AppointmentsPage = () => {
                 date: '',
                 teamId: '',
                 clientName: address.clientName || '',
-                apartmentCount: '',
+                apartmentCount: address.apartmentCount || '',
                 type: defaultType
             });
         }
@@ -436,7 +436,10 @@ const AppointmentsPage = () => {
                                     {address.clientName && (
                                         <p className="text-sm font-semibold text-blue-600 mb-1">{address.clientName}</p>
                                     )}
-                                    <p className="text-sm text-slate-500">{address.project.name} | NVT: {address.nvt} | KLS: {address.klsId || 'N/A'}</p>
+                                    <p className="text-sm text-slate-500">
+                                        {address.project.name} | NVT: {address.nvt} | KLS: {address.klsId || 'N/A'}
+                                        {address.apartmentCount ? ` | Aptos: ${address.apartmentCount}` : ''}
+                                    </p>
                                 </div>
                                 <div className="text-right">
                                     <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-bold mb-1">
@@ -600,7 +603,10 @@ const AppointmentsPage = () => {
                                     {address.clientName && (
                                         <p className="text-sm font-semibold text-purple-700 mb-1">{address.clientName}</p>
                                     )}
-                                    <p className="text-sm text-slate-500">{address.project.name} | NVT: {address.nvt}</p>
+                                    <p className="text-sm text-slate-500">
+                                        {address.project.name} | NVT: {address.nvt}
+                                        {address.apartmentCount ? ` | Aptos: ${address.apartmentCount}` : ''}
+                                    </p>
                                 </div>
                             </div>
 

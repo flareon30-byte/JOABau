@@ -36,20 +36,20 @@ model User {
   baseSalary            Float         @default(1500.0) // Sueldo Base para nóminas
   vacationDaysTotal     Int           @default(30)
   isDemo                Boolean       @default(false)
-  
-  vacationRequests      VacationRequest[]
-  materialOrders        MaterialOrder[]
-  simpleInstallations   SimpleInstallation[]
-  dietaLogs             DietaLog[] @relation("UserDietas")
-  
+
+  vacationRequests    VacationRequest[]
+  materialOrders      MaterialOrder[]
+  simpleInstallations SimpleInstallation[]
+  dietaLogs           DietaLog[]           @relation("UserDietas")
+
   activeClientCompanyId String?
   activeClientCompany   ClientCompany? @relation("ActiveClientCompany", fields: [activeClientCompanyId], references: [id])
-  
-  pushSubscriptions     PushSubscription[]
-  payrollLogs           PayrollLog[]
 
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  pushSubscriptions PushSubscription[]
+  payrollLogs       PayrollLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model PushSubscription {
@@ -74,19 +74,19 @@ enum VacationType {
 }
 
 model VacationRequest {
-  id             String         @id @default(uuid())
-  userId         String
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   startDate      DateTime
   endDate        DateTime
   type           VacationType   @default(VACATION)
   status         VacationStatus @default(PENDING)
   reason         String?
   managerComment String?
-  
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Team {
@@ -98,15 +98,15 @@ model Team {
   appointments Appointment[]
   tools        Tool[]
   soplados     SopladoInfo[] @relation("BlowingTeam")
-  
+
   activeClientCompanyId String?
   activeClientCompany   ClientCompany? @relation(fields: [activeClientCompanyId], references: [id])
-  
-  vehicleId    String?       @unique
-  vehicle      Vehicle?      @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+
+  vehicleId String?  @unique
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Tool {
@@ -167,6 +167,7 @@ model Address {
   requiresProtocol Boolean @default(false)
   protocolStatus   String  @default("NONE") // NONE, PENDING, SCHEDULED, COMPLETED, RECITED
   orderStatus      String? @default("geplant") // Column C from Excel
+  apartmentCount   Int?    // Track apartments from Excel Customer Column (AA)
 
   notifications Notification[]
   repairs       Repair[]
@@ -189,24 +190,24 @@ model SopladoInfo {
   tk        String
   tubeColor String
 
-  teamId    String?
-  team      Team?   @relation("BlowingTeam", fields: [teamId], references: [id], onDelete: SetNull)
+  teamId String?
+  team   Team?   @relation("BlowingTeam", fields: [teamId], references: [id], onDelete: SetNull)
 
   isSaturday Boolean @default(false)
 
   // Si fallido
   failureReason String?
   photos        String[]
-  
-  saturdayPay   Float   @default(0.0) // Captured earnings for technician if isSaturday
+
+  saturdayPay Float @default(0.0) // Captured earnings for technician if isSaturday
 
   // Invoicing
-  invoiceId     String?
-  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   performerIds String[] // IDs of technicians who performed the soplado
 }
 
@@ -280,25 +281,25 @@ model ActivationInfo {
   addressId String  @unique
   address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
 
-  activationType ActivationType
+  activationType       ActivationType
   customActivationName String?
-  familiesCount  Int
-  apPorts        Int
-  hasMoreClients Boolean
-  spInstalled    Int      @default(0)
-  taInstalled    Boolean
-  taCount        Int      @default(0)
-  mduInstalled   Boolean  @default(false)
-  isRepair       Boolean  @default(false)
+  familiesCount        Int
+  apPorts              Int
+  hasMoreClients       Boolean
+  spInstalled          Int            @default(0)
+  taInstalled          Boolean
+  taCount              Int            @default(0)
+  mduInstalled         Boolean        @default(false)
+  isRepair             Boolean        @default(false)
 
-  homeIds        String[]
-  description    String?
+  homeIds     String[]
+  description String?
 
   photos  String[]
   pdfPath String?
 
-  points     Float // Legacy points
-  
+  points Float // Legacy points
+
   // New Financial Fields (Snapshot)
   basePrice   Float @default(0.0)
   spPrice     Float @default(0.0)
@@ -311,12 +312,12 @@ model ActivationInfo {
   isSaturday Boolean @default(false)
 
   // Invoicing
-  invoiceId   String?
-  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   performerIds String[] // IDs of technicians who performed the activation
 }
 
@@ -372,23 +373,23 @@ model FusionWork {
   createdById String?
 
   // Invoicing
-  invoiceId   String?
-  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
 }
 
 model Repair {
-  id           String   @id @default(uuid())
-  addressId    String
-  address      Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  description  String
-  photos       String[]
-  
+  id          String   @id @default(uuid())
+  addressId   String
+  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  description String
+  photos      String[]
+
   technicianId String? // ID of who performed the repair
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum MaterialOrderStatus {
@@ -405,92 +406,92 @@ model MaterialOrder {
   timeRemaining       String
   status              MaterialOrderStatus @default(PENDIENTE)
 
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ClientCompany {
-  id           String   @id @default(uuid())
-  name         String   @unique
-  legalName    String?  // Razón Social para facturas
-  isActive     Boolean  @default(true)
-  settings     Json?    // Store client-specific financial/bonus/rates config
-  
+  id        String  @id @default(uuid())
+  name      String  @unique
+  legalName String? // Razón Social para facturas
+  isActive  Boolean @default(true)
+  settings  Json? // Store client-specific financial/bonus/rates config
+
   // Fiscal Data
-  taxId        String?  // CIF/VAT
+  taxId        String? // CIF/VAT
   address      String?
   city         String?
   postalCode   String?
-  country      String   @default("ES") // ES, DE, etc.
+  country      String  @default("ES") // ES, DE, etc.
   billingEmail String?
-  defaultVat   Float    @default(21.0)
-  
-  teams        Team[]
-  
-  users        User[]   @relation("ActiveClientCompany")
-  projects     Project[]
-  
-  priceItems   ClientPriceItem[] // Dynamic pricing items
-  invoices     Invoice[]
-  
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  defaultVat   Float   @default(21.0)
+
+  teams Team[]
+
+  users    User[]    @relation("ActiveClientCompany")
+  projects Project[]
+
+  priceItems ClientPriceItem[] // Dynamic pricing items
+  invoices   Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Invoice {
-  id              String        @id @default(uuid())
-  number          String        @unique // e.g. JOA-2026-001
-  clientId        String
-  client          ClientCompany @relation(fields: [clientId], references: [id])
-  
-  date            DateTime      @default(now())
-  dueDate         DateTime?
-  
-  subtotal        Float
-  vatAmount       Float
-  total           Float
-  status          String        @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
-  
-  pdfPath         String?
-  items           Json          // Exploded view of items at generation time
-  
-  // Traceability links
-  activations     ActivationInfo[]
-  installations   SimpleInstallation[]
-  soplados        SopladoInfo[]
-  fusions         FusionWork[]
+  id       String        @id @default(uuid())
+  number   String        @unique // e.g. JOA-2026-001
+  clientId String
+  client   ClientCompany @relation(fields: [clientId], references: [id])
 
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  date    DateTime  @default(now())
+  dueDate DateTime?
+
+  subtotal  Float
+  vatAmount Float
+  total     Float
+  status    String @default("PENDING") // PENDING, PAID, OVERDUE, CANCELLED
+
+  pdfPath String?
+  items   Json // Exploded view of items at generation time
+
+  // Traceability links
+  activations   ActivationInfo[]
+  installations SimpleInstallation[]
+  soplados      SopladoInfo[]
+  fusions       FusionWork[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CompanySettings {
-  id          String   @id @default(uuid())
-  name        String   @default("JOA Technologien")
-  taxId       String?  // Your CIF/VAT
+  id          String  @id @default(uuid())
+  name        String  @default("JOA Technologien")
+  taxId       String? // Your CIF/VAT
   address     String?
   city        String?
-  country     String   @default("ES") // ES, DE, etc.
+  country     String  @default("ES") // ES, DE, etc.
   phone       String?
   email       String?
-  bankDetails String?  // IBAN / SWIFT
+  bankDetails String? // IBAN / SWIFT
   logoPath    String?
-  
-  updatedAt   DateTime @updatedAt
+
+  updatedAt DateTime @updatedAt
 }
 
 model ClientPriceItem {
-  id               String        @id @default(uuid())
-  clientCompanyId  String
-  clientCompany    ClientCompany @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
-  name             String
-  department       Department    // ACTIVATION, BLOWING, etc.
-  priceToClient    Float         @default(0.0) // What Joa charges the client
-  bonusToTeam      Float         @default(0.0) // Extra pay for the team (Standard)
-  saturdayPay      Float         @default(0.0) // Specific extra pay for technician on SATURDAY
-  
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  id              String        @id @default(uuid())
+  clientCompanyId String
+  clientCompany   ClientCompany @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  name            String
+  department      Department // ACTIVATION, BLOWING, etc.
+  priceToClient   Float         @default(0.0) // What Joa charges the client
+  bonusToTeam     Float         @default(0.0) // Extra pay for the team (Standard)
+  saturdayPay     Float         @default(0.0) // Specific extra pay for technician on SATURDAY
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   installationEntries SimpleInstallationItem[]
 }
@@ -499,75 +500,75 @@ model SimpleInstallation {
   id        String  @id @default(uuid())
   addressId String  @unique
   address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  
+
   customerFirstName String?
   customerLastName  String?
-  
+
   olt              String?
   pon              String?
   splitterPort     String?
   gponSerialNumber String?
-  
+
   isReadyForOperation Boolean? @default(true)
-  
-  gpsLat           Float?
-  gpsLng           Float?
-  gpsAlt           Float?
-  
+
+  gpsLat Float?
+  gpsLng Float?
+  gpsAlt Float?
+
   contactName String?
   comments    String?
   photos      String[]
-  
+
   // New: Categorized Photo Paths (Optional overrides for PDF generation)
-  photoHuep        String?
-  photoModem       String?
-  photoOtdr        String?
-  signaturePath    String?
-  pdfPath          String?
-  
+  photoHuep     String?
+  photoModem    String?
+  photoOtdr     String?
+  signaturePath String?
+  pdfPath       String?
+
   // Financial tracking metadata based on Active Client settings at the time of creation
   priceCharged Float @default(0.0)
-  
-  items       SimpleInstallationItem[] // New: Multiple items support
-  
+
+  items SimpleInstallationItem[] // New: Multiple items support
+
   createdById String?
   createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
 
   // Invoicing
-  invoiceId   String?
-  invoice     Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoiceId String?
+  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model SimpleInstallationItem {
-  id                   String            @id @default(uuid())
+  id                   String             @id @default(uuid())
   simpleInstallationId String
   simpleInstallation   SimpleInstallation @relation(fields: [simpleInstallationId], references: [id], onDelete: Cascade)
   priceItemId          String
-  priceItem            ClientPriceItem   @relation(fields: [priceItemId], references: [id])
-  quantity             Int               @default(1)
+  priceItem            ClientPriceItem    @relation(fields: [priceItemId], references: [id])
+  quantity             Int                @default(1)
   priceAtTime          Float
   bonusAtTime          Float
 }
 
 model Vehicle {
-  id               String       @id @default(uuid())
-  make             String
-  model            String
-  plate            String       @unique
-  initialKms       Float        @default(0.0)
-  currentKms       Float        @default(0.0)
-  annualKmLimit    Float        @default(10000.0) // Your insurance limit
-  
-  team             Team?
-  logs             VehicleLog[]
+  id            String @id @default(uuid())
+  make          String
+  model         String
+  plate         String @unique
+  initialKms    Float  @default(0.0)
+  currentKms    Float  @default(0.0)
+  annualKmLimit Float  @default(10000.0) // Your insurance limit
 
-  isDemo           Boolean      @default(false)
-  
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  team Team?
+  logs VehicleLog[]
+
+  isDemo Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum VehicleLogType {
@@ -577,58 +578,58 @@ enum VehicleLogType {
 }
 
 model VehicleLog {
-  id               String         @id @default(uuid())
-  vehicleId        String
-  vehicle          Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  
-  type             VehicleLogType @default(FUEL)
-  kms              Float?         // Reading from tachograph
-  amount           Float?         // Price paid for gas
-  liters           Float?
-  
-  photos           String[]       // Tickets, tachograph photos
-  date             DateTime       @default(now())
-  
-  createdById      String?
-  
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  id        String  @id @default(uuid())
+  vehicleId String
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  type   VehicleLogType @default(FUEL)
+  kms    Float? // Reading from tachograph
+  amount Float? // Price paid for gas
+  liters Float?
+
+  photos String[] // Tickets, tachograph photos
+  date   DateTime @default(now())
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model DietaLog {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation("UserDietas", fields: [userId], references: [id], onDelete: Cascade)
-  date      DateTime
-  type      String   // "HOTEL" or "CASA"
-  amount    Float
-  isSaturday Boolean @default(false)
-  createdAt DateTime @default(now())
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation("UserDietas", fields: [userId], references: [id], onDelete: Cascade)
+  date       DateTime
+  type       String // "HOTEL" or "CASA"
+  amount     Float
+  isSaturday Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
   @@unique([userId, date])
 }
 
 model PayrollLog {
-  id              String   @id @default(uuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  month           Int
-  year            Int
-  cycleStart      DateTime
-  cycleEnd        DateTime
-  
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  month      Int
+  year       Int
+  cycleStart DateTime
+  cycleEnd   DateTime
+
   // Snapshot Totals
-  points          Float    @default(0.0)
-  pointEarnings   Float    @default(0.0)
-  dietasCount     Int      @default(0)
-  dietasAmount    Float    @default(0.0)
-  saturdayPay     Float    @default(0.0)
-  totalEuros      Float    @default(0.0)
-  
-  status          String   @default("CLOSED") // CLOSED, PAID
-  
-  createdAt       DateTime @default(now())
+  points        Float @default(0.0)
+  pointEarnings Float @default(0.0)
+  dietasCount   Int   @default(0)
+  dietasAmount  Float @default(0.0)
+  saturdayPay   Float @default(0.0)
+  totalEuros    Float @default(0.0)
+
+  status String @default("CLOSED") // CLOSED, PAID
+
+  createdAt DateTime @default(now())
 
   @@unique([userId, month, year])
 }
