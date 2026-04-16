@@ -5,15 +5,21 @@ import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, St
 import OfflineSyncManager from '../components/OfflineSyncManager';
 
 const StatCard = ({ title, value, icon: Icon, colorClass, subtext }) => (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group">
-        <div className="flex items-start justify-between">
+    <div className="glass-panel p-7 rounded-[2rem] hover:-translate-y-1 transition-all duration-500 group border-b-[3px] border-b-transparent hover:border-b-joa-cyan shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,210,255,0.1)] relative overflow-hidden">
+        {/* Subtle background glow */}
+        <div className={`absolute top-0 right-0 w-32 h-32 ${colorClass.replace('text-', 'bg-')} opacity-[0.03] rounded-full blur-3xl -mr-10 -mt-10 group-hover:opacity-10 transition-opacity`}></div>
+        
+        <div className="flex items-start justify-between relative z-10">
             <div>
-                <p className="text-slate-500 text-sm font-medium mb-1">{title}</p>
-                <h3 className="text-3xl font-bold text-slate-800 group-hover:text-joa-blue transition-colors">{value}</h3>
-                {subtext && <p className="text-xs text-slate-400 mt-2">{subtext}</p>}
+                <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mb-2 font-heading">{title}</p>
+                <h3 className="text-4xl font-heading font-black text-slate-800 transition-colors bg-clip-text group-hover:bg-gradient-to-r group-hover:from-joa-blue group-hover:to-joa-cyan group-hover:text-transparent">
+                    {value}
+                </h3>
+                {subtext && <p className="text-[11px] text-slate-400 mt-3 font-medium bg-slate-50 py-1 px-3 rounded-full inline-block border border-slate-100">{subtext}</p>}
             </div>
-            <div className={`p-3 rounded-xl ${colorClass} bg-opacity-10 group-hover:scale-110 transition-transform`}>
-                <Icon className={`w-6 h-6 ${colorClass.replace('bg-', 'text-')}`} />
+            <div className={`p-4 rounded-2xl ${colorClass} bg-opacity-[0.08] group-hover:scale-110 group-hover:-rotate-3 transition-all duration-500 relative`}>
+                <div className={`absolute inset-0 rounded-2xl ${colorClass.replace('text-', 'bg-')} opacity-20 blur-md group-hover:opacity-40 transition-opacity`}></div>
+                <Icon className={`w-8 h-8 relative z-10 ${colorClass.replace('bg-', 'text-')} drop-shadow-sm`} />
             </div>
         </div>
     </div>
@@ -425,20 +431,23 @@ const DashboardHome = () => {
 
                 {/* Welcome & Status */}
 
-                <div className="bg-gradient-to-r from-joa-dark to-slate-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-joa-cyan/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+                <div className="bg-[#0a0f1c] rounded-[2.5rem] p-10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.2)] relative overflow-hidden border border-[#ffffff]/10 group">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-joa-cyan/20 rounded-full blur-[100px] -mr-20 -mt-20 mix-blend-screen pointer-events-none group-hover:bg-joa-cyan/30 transition-colors duration-1000"></div>
+                    <div className="absolute bottom-0 left-[20%] w-80 h-80 bg-joa-blue/20 rounded-full blur-[100px] -mb-20 mix-blend-screen pointer-events-none"></div>
+                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik00MCAwaC0xdjQwaDFWMHptLTQwIDQwaDQwdi0xSDB2MXoiIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyIvPjwvZz48L3N2Zz4=')] opacity-30 pointer-events-none"></div>
+
                     <div className="relative z-10">
-                        <div className="flex justify-between items-start flex-col md:flex-row gap-4 mb-6">
+                        <div className="flex justify-between items-start flex-col md:flex-row gap-6 mb-8">
                             <div>
-                                <h2 className="text-3xl font-bold mb-2">Hola, {user.username?.split('.')[0]}! 👋</h2>
-                                <p className="text-slate-300">
+                                <h2 className="text-4xl font-heading font-black mb-3">Hola, <span className="text-transparent bg-clip-text bg-gradient-to-r from-joa-cyan to-white">{user.username?.split('.')[0]}</span>! 👋</h2>
+                                <p className="text-slate-300 text-lg font-medium">
                                     {isBlower ? 'Panel de Soplado - Resumen de rendimiento.' : 'Resumen económico • v3.0 OFFLINE READY'}
                                 </p>
                             </div>
                             
-                            <div className="bg-white/10 p-3 rounded-xl border border-white/20 backdrop-blur-sm self-stretch md:self-auto flex flex-col justify-center">
-                                <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1 block">Tu Cliente Activo</label>
-                                <div className="text-white text-sm font-bold w-full md:w-48 truncate">
+                            <div className="bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md self-stretch md:self-auto flex flex-col justify-center shadow-inner shadow-black/10">
+                                <label className="text-[10px] font-bold text-joa-cyan uppercase tracking-widest mb-1 block">Tu Cliente Activo</label>
+                                <div className="text-white text-base font-bold w-full md:w-48 truncate">
                                     {user.activeClientCompany?.name || 'No asignado'}
                                 </div>
                             </div>
@@ -716,31 +725,39 @@ const DashboardHome = () => {
     return (
         <div className="space-y-8">
             {/* Welcome Section */}
-            <div className="bg-gradient-to-r from-joa-dark to-slate-800 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-joa-cyan/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+            <div className="bg-[#0a0f1c] rounded-[2.5rem] p-10 text-white shadow-[0_20px_50px_rgba(0,0,0,0.2)] relative overflow-hidden border border-[#ffffff]/10 group">
+                <div className="absolute top-0 right-0 w-96 h-96 bg-joa-cyan/20 rounded-full blur-[100px] -mr-20 -mt-20 mix-blend-screen pointer-events-none group-hover:bg-joa-cyan/30 transition-colors duration-1000"></div>
+                <div className="absolute bottom-0 left-[20%] w-80 h-80 bg-joa-blue/20 rounded-full blur-[100px] -mb-20 mix-blend-screen pointer-events-none"></div>
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik00MCAwaC0xdjQwaDFWMHptLTQwIDQwaDQwdi0xSDB2MXoiIGZpbGw9IiNmZmZmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyIvPjwvZz48L3N2Zz4=')] opacity-30 pointer-events-none"></div>
+
                 <div className="relative z-10">
-                    <div className="flex justify-between items-start flex-col md:flex-row gap-4">
+                    <div className="flex justify-between items-start flex-col md:flex-row gap-6">
                         <div>
-                            <h2 className="text-3xl font-bold mb-2">¡Hola, {user.username?.split('.')[0]}! 👋</h2>
-                            <p className="text-slate-300 max-w-xl mb-6">
-                                Bienvenido al panel de control de JOA Technologien.
+                            <h2 className="text-4xl font-heading font-black mb-3">¡Hola, <span className="text-transparent bg-clip-text bg-gradient-to-r from-joa-cyan to-white">{user.username?.split('.')[0]}</span>! 👋</h2>
+                            <p className="text-slate-300 text-lg font-medium max-w-xl mb-6">
+                                Bienvenido al panel central de comando de JOA Technologien.
                             </p>
                         </div>
 
                         {/* Client Switcher Selector for Admin */}
-                        <div className="bg-white/10 p-3 rounded-xl border border-white/20 backdrop-blur-sm self-stretch md:self-auto flex flex-col justify-center mb-6 md:mb-0">
-                            <label className="text-[10px] font-bold text-slate-300 uppercase tracking-wider mb-1 block">Cliente Analizado</label>
-                            <select 
-                                value={user.activeClientCompanyId || ''} 
-                                onChange={handleClientChange}
-                                disabled={updatingClient}
-                                className="bg-transparent text-white border-0 border-b border-white/30 focus:ring-0 px-0 py-1 text-sm font-bold w-full md:w-48 appearance-none cursor-pointer"
-                            >
-                                <option value="" className="text-slate-800">-- Selecciona Cliente --</option>
-                                {clients.map(c => (
-                                    <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
-                                ))}
-                            </select>
+                        <div className="bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md self-stretch md:self-auto flex flex-col justify-center mb-6 md:mb-0 shadow-inner shadow-black/10">
+                            <label className="text-[10px] font-bold text-joa-cyan uppercase tracking-wider mb-2 block">Cliente Analizado</label>
+                            <div className="relative">
+                                <select 
+                                    value={user.activeClientCompanyId || ''} 
+                                    onChange={handleClientChange}
+                                    disabled={updatingClient}
+                                    className="bg-transparent text-white border-0 border-b-2 border-white/20 focus:border-joa-cyan focus:ring-0 px-0 py-2 text-base font-bold w-full md:w-56 appearance-none cursor-pointer outline-none transition-colors"
+                                >
+                                    <option value="" className="text-slate-800">-- Selecciona Cliente --</option>
+                                    {clients.map(c => (
+                                        <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-white/50">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
