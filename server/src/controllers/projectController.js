@@ -177,12 +177,13 @@ exports.importProject = async (req, res) => {
                 });
             }
 
-            // Fallback backward compat to KLS
+            // Fallback backward compat to KLS only if the existing record doesn't belong to a different Bauauftrag
             if (!existing && addrData.klsId) {
                 existing = await prisma.address.findFirst({
                     where: {
                         projectId: project.id,
-                        klsId: { equals: addrData.klsId, mode: 'insensitive' }
+                        klsId: { equals: addrData.klsId, mode: 'insensitive' },
+                        bauauftragId: null
                     }
                 });
             }
