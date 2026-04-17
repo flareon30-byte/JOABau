@@ -163,7 +163,7 @@ const DashboardLayout = () => {
                 { icon: AlertTriangle, label: 'Averías / Incidencias', path: '/dashboard/issues', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: CheckCircle, label: 'Activaciones', path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: ClipboardList, label: 'Protocolos', path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: Zap, label: 'Control de Producción', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] },
+                { icon: Zap, label: 'Control de Producción', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
             ]
         },
         {
@@ -184,11 +184,11 @@ const DashboardLayout = () => {
             id: 'hr',
             label: 'Recursos Humanos',
             icon: Users,
-            roles: ['SUPER_ADMIN', 'ADMIN'],
+            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'],
             items: [
                 { icon: Users, label: 'Usuarios', path: '/dashboard/users', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Users, label: 'Equipos', path: '/dashboard/teams', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Sun, label: 'Vacaciones Personal', path: '/dashboard/vacations-admin', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Sun, label: 'Vacaciones Personal', path: '/dashboard/vacations-admin', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] },
             ]
         },
         {

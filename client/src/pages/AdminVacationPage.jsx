@@ -41,6 +41,7 @@ const getGermanHolidays = (year) => {
 };
 
 const AdminVacationPage = () => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [requests, setRequests] = useState([]);
     const [userStats, setUserStats] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -169,7 +170,7 @@ const AdminVacationPage = () => {
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Período</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Tipo</th>
                                     <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Estado</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Acciones</th>
+                                    {user.role !== 'BACK_OFFICE' && <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Acciones</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -194,31 +195,33 @@ const AdminVacationPage = () => {
                                                 {request.status === 'PENDING' ? 'Pendiente' : request.status === 'APPROVED' ? 'Aprobado' : 'Denegado'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            {request.status === 'PENDING' ? (
-                                                <div className="flex gap-2">
-                                                    <button
-                                                        onClick={() => handleUpdateStatus(request.id, 'APPROVED')}
-                                                        className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition"
-                                                        title="Aprobar"
-                                                    >
-                                                        <CheckCircle size={18} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => {
-                                                            const comm = prompt('Motivo de denegación:');
-                                                            if (comm !== null) handleUpdateStatus(request.id, 'DENIED', comm);
-                                                        }}
-                                                        className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition"
-                                                        title="Denegar"
-                                                    >
-                                                        <XCircle size={18} />
-                                                    </button>
-                                                </div>
-                                            ) : (
-                                                <span className="text-slate-400 text-sm italic">Completado</span>
-                                            )}
-                                        </td>
+                                        {user.role !== 'BACK_OFFICE' && (
+                                            <td className="px-6 py-4">
+                                                {request.status === 'PENDING' ? (
+                                                    <div className="flex gap-2">
+                                                        <button
+                                                            onClick={() => handleUpdateStatus(request.id, 'APPROVED')}
+                                                            className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition"
+                                                            title="Aprobar"
+                                                        >
+                                                            <CheckCircle size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => {
+                                                                const comm = prompt('Motivo de denegación:');
+                                                                if (comm !== null) handleUpdateStatus(request.id, 'DENIED', comm);
+                                                            }}
+                                                            className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition"
+                                                            title="Denegar"
+                                                        >
+                                                            <XCircle size={18} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400 text-sm italic">Completado</span>
+                                                )}
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
