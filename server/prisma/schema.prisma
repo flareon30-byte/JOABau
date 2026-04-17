@@ -22,6 +22,7 @@ enum Department {
   BLOWING
   BACK_OFFICE
   PROTOCOLS
+  FUSION
 }
 
 model User {
