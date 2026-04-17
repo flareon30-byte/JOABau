@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Search, Camera, ArrowLeft, Zap, Layers, History, Save } from 'lucide-react';
+import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload } from 'lucide-react';
 
 const FusionDepartment = () => {
     const [projects, setProjects] = useState([]);
