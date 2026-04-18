@@ -190,9 +190,24 @@ exports.getMyPayroll = async (req, res) => {
 
         const memberCount = teamMembers.length || 1;
         const myBonus = stats.bonusPool / memberCount;
-        const mySaturday = stats.saturdayPay / memberCount;
+
+        let myDietasPayOnly = 0;
+        let mySaturdayExtraFromDietas = 0;
+        const individualDietas = allTeamDietas.filter(d => d.userId === userId);
+        individualDietas.forEach(d => {
+            let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
+            if (d.isSaturday) {
+                let extra = d.amount - base;
+                mySaturdayExtraFromDietas += extra;
+                myDietasPayOnly += base;
+            } else {
+                myDietasPayOnly += d.amount;
+            }
+        });
+
+        const mySaturday = (stats.saturdayPay / memberCount) + mySaturdayExtraFromDietas;
         const myBaseSalary = user.baseSalary || 1500;
-        const myTotal = myBaseSalary + myBonus + mySaturday + myDietasPay;
+        const myTotal = myBaseSalary + myBonus + mySaturday + myDietasPayOnly;
 
         res.json({
             financials: financialConfig,
@@ -208,7 +223,7 @@ exports.getMyPayroll = async (req, res) => {
                 baseSalary: user.baseSalary || 1500,
                 myBonusShare: myBonus,
                 mySaturdayPay: mySaturday,
-                myDietasPay: myDietasPay,
+                myDietasPay: myDietasPayOnly,
                 totalEstimated: myTotal
             },
             cycle: { start, end }
@@ -436,8 +451,24 @@ exports.getPayrollSummaryInternal = async (req, start, end, userIdFilter = 'all'
         const finalBaseSalary = user.baseSalary || 1500;
         const members = user.team?.members?.length || 1;
         const shareBonus = (stats && stats.bonusPool) ? (stats.bonusPool / members) : 0;
-        const shareSaturday = (stats && stats.saturdayPay) ? (stats.saturdayPay / members) : 0;
-        const dietaPay = user.dietaLogs?.reduce((sum, d) => sum + (d.amount || 0), 0) || 0;
+        
+        let splitDietaPay = 0;
+        let splitSaturdayExtra = 0;
+        user.dietaLogs?.forEach(d => {
+            let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
+            if (d.isSaturday) {
+                // DietaLog saved the Extra in the total amount. Extract it out.
+                let extra = d.amount - base;
+                splitSaturdayExtra += extra;
+                splitDietaPay += base;
+            } else {
+                splitDietaPay += d.amount;
+            }
+        });
+
+        // Add any activation-based saturday pay to the separated dieta extra
+        const shareSaturday = ((stats && stats.saturdayPay) ? (stats.saturdayPay / members) : 0) + splitSaturdayExtra;
+        const dietaPay = splitDietaPay;
         const dietasCount = user.dietaLogs?.length || 0;
         const total = finalBaseSalary + shareBonus + shareSaturday + dietaPay;
 
