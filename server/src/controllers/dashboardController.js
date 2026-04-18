@@ -389,7 +389,7 @@ exports.getActivatorDashboard = async (req, res) => {
              appointments,
              stats: {
                  regularEarnings: isAdmin ? statsFromLib.totalRevenue - statsFromLib.saturdayPay : null,
-                 saturdayEarnings: isAdmin ? statsFromLib.saturdayPay : null,
+                 saturdayEarnings: statsFromLib.saturdayPay / teamSizeInner,
                  regularActivations,
                  saturdayActivations,
                  counts,
