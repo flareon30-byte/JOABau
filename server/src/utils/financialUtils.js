@@ -194,11 +194,22 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
 
     let bonusCost = 0;
     
-    // A. Saturday Pay (Using capture snapshot prices)
-    const saturdayCostTotal = activations
+    // A. Saturday Pay (Using capture snapshot prices + Fixed Saturday Dieta)
+    const saturdayCostFromItems = activations
         .filter(a => a.isSaturday)
         .reduce((sum, a) => sum + (a.saturdayPay || 0), 0);
     
+    const uniqueSaturdays = new Set(
+        activations.filter(a => a.isSaturday).map(a => {
+            const d = new Date(a.createdAt);
+            return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+        })
+    ).size;
+
+    const extraSaturdayDieta = financialConfig.extraSaturday !== undefined ? parseFloat(financialConfig.extraSaturday) : 50;
+    
+    const saturdayCostTotal = saturdayCostFromItems + (uniqueSaturdays * extraSaturdayDieta * teamSize);
+
     stats.saturdayPay = saturdayCostTotal;
 
     // B. Production Bonus (M-F)
