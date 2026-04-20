@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool } from 'lucide-react';
+import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Hash } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
