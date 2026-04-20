@@ -836,7 +836,10 @@ const AppointmentsPage = () => {
                             </table>
                         </div>
                     ) : (
-                        <CalendarView appointments={filteredScheduled} />
+                        <CalendarView 
+                            appointments={filteredScheduled} 
+                            onEventClick={(app) => openScheduleModal(app.address, app)} 
+                        />
                     )}
                 </div>
             )}

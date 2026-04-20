@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Users, MapPin } from 'lucide-react';
 
-const CalendarView = ({ appointments, onSlotClick }) => {
+const CalendarView = ({ appointments, onSlotClick, onEventClick }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
 
     // Helper to get start of week (Monday)
@@ -113,7 +113,11 @@ const CalendarView = ({ appointments, onSlotClick }) => {
                                                 title={`${app.address.street} - ${app.assignedTeam?.name}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    onSlotClick && onSlotClick(day, hour); // Still trigger slot click or maybe edit? Usually slot click handles opening.
+                                                    if (onEventClick) {
+                                                        onEventClick(app);
+                                                    } else if (onSlotClick) {
+                                                        onSlotClick(day, hour);
+                                                    }
                                                 }}
                                             >
                                                 <div className="font-bold text-blue-800 truncate">{app.address.street}</div>
