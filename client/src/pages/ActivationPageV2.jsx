@@ -238,10 +238,17 @@ const ActivationPageV2 = () => {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : value
-        }));
+        setFormData(prev => {
+            const newData = {
+                ...prev,
+                [name]: type === 'checkbox' ? checked : value
+            };
+            // Logic: if TA is unchecked, clear the count
+            if (name === 'taInstalled' && !checked) {
+                newData.taCount = '';
+            }
+            return newData;
+        });
     };
 
     const [processingPhotos, setProcessingPhotos] = useState(false);

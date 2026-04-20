@@ -130,7 +130,7 @@ exports.submitActivation = async (req, res) => {
         
         // 🔴 UNIFICACIÓN SDU/TA: Si el técnico marca SDU, por definición hay una TA instalada.
         let taInstalledBool = taInstalled === 'true' || taInstalled === true;
-        let finalTaCount = taCountInt > 0 ? taCountInt : (taInstalledBool ? 1 : 0);
+        let finalTaCount = taInstalledBool ? (taCountInt > 0 ? taCountInt : 1) : 0;
         
         // El precio de TA y MDU ya no se fuerza por tipo de activación, solo por selector manual.
 
@@ -193,7 +193,7 @@ exports.submitActivation = async (req, res) => {
         if (sduItem && sduItem.priceToClient !== undefined) {
             sduDynamicPrice = sduItem.priceToClient;
         }
-        const finalTaCountCalculated = taCountInt > 0 ? taCountInt : (taInstalledBool ? 1 : 0);
+        const finalTaCountCalculated = taInstalledBool ? (taCountInt > 0 ? taCountInt : 1) : 0;
         if (finalTaCountCalculated > 0) {
             taPriceTotal = finalTaCountCalculated * sduDynamicPrice;
             if (isSaturday && sduItem && sduItem.saturdayPay) {
