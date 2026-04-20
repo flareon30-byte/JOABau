@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader, Save } from 'lucide-react';
+import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader, Save, Download } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 
 const AppointmentsPage = () => {
@@ -17,6 +17,8 @@ const AppointmentsPage = () => {
     const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
     const [projectFilter, setProjectFilter] = useState('');
     const [projects, setProjects] = useState([]);
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
 
     // Modal States
     const [selectedAddress, setSelectedAddress] = useState(null);
@@ -61,15 +63,19 @@ const AppointmentsPage = () => {
 
     useEffect(() => {
         fetchData();
+    }, [startDate, endDate]);
+
+    useEffect(() => {
         fetchTeams();
         fetchProjects();
     }, []);
 
     const fetchData = async () => {
         try {
+            const scheduledParams = (startDate && endDate) ? `?startDate=${startDate}&endDate=${endDate}` : '';
             const [pendingRes, scheduledRes, escalatedRes] = await Promise.all([
                 api.get('/api/appointments/pending'),
-                api.get('/api/appointments/scheduled'),
+                api.get(`/api/appointments/scheduled${scheduledParams}`),
                 api.get('/api/appointments/escalated')
             ]);
             setPendingAddresses(pendingRes.data || []);
@@ -80,6 +86,26 @@ const AppointmentsPage = () => {
             setPendingAddresses([]);
             setScheduledAppointments([]);
             setEscalatedAddresses([]);
+        }
+    };
+
+    const handleExport = async () => {
+        try {
+            const params = (startDate && endDate) ? `?startDate=${startDate}&endDate=${endDate}` : '';
+            const response = await api.get(`/api/appointments/export${params}`, {
+                responseType: 'blob',
+            });
+            
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `citas_agendadas_${new Date().toISOString().split('T')[0]}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Error al exportar las citas.');
         }
     };
 
@@ -427,8 +453,8 @@ const AppointmentsPage = () => {
             </div>
 
             {/* Filters Bar */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4">
-                <div className="flex-1">
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex-1 w-full">
                     <input
                         type="text"
                         placeholder="Buscar por dirección o cliente..."
@@ -437,11 +463,39 @@ const AppointmentsPage = () => {
                         className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                 </div>
+
+                {view === 'scheduled' && (
+                    <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                value={startDate}
+                                onChange={(e) => setStartDate(e.target.value)}
+                                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                            <span className="text-slate-400 text-xs font-bold uppercase">al</span>
+                            <input
+                                type="date"
+                                value={endDate}
+                                onChange={(e) => setEndDate(e.target.value)}
+                                className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+                        <button
+                            onClick={handleExport}
+                            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm active:scale-95"
+                        >
+                            <Download size={18} />
+                            <span>Exportar</span>
+                        </button>
+                    </div>
+                )}
+
                 <div className="w-full md:w-64">
                     <select
                         value={projectFilter}
                         onChange={(e) => setProjectFilter(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                     >
                         <option value="">Todos los Proyectos</option>
                         {projects.map(p => (

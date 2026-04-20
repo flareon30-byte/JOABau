@@ -217,14 +217,24 @@ exports.scheduleAppointment = async (req, res) => {
     }
 };
 
-// Get scheduled appointments (Calendar view - optional for now, but good to have)
+// Get scheduled appointments (Calendar view)
 exports.getScheduledAppointments = async (req, res) => {
+    const { startDate, endDate } = req.query;
     try {
+        let where = {
+            status: 'CITADO',
+            address: { project: { isDemo: req.isDemo || false } }
+        };
+
+        if (startDate && endDate) {
+            where.assignedDate = {
+                gte: new Date(startDate),
+                lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+            };
+        }
+
         const appointments = await prisma.appointment.findMany({
-            where: {
-                status: 'CITADO',
-                address: { project: { isDemo: req.isDemo || false } }
-            },
+            where,
             include: {
                 address: {
                     include: { project: true }
@@ -236,6 +246,63 @@ exports.getScheduledAppointments = async (req, res) => {
         res.json(appointments);
     } catch (error) {
         res.status(500).json({ message: 'Error fetching scheduled appointments' });
+    }
+};
+
+const xlsx = require('xlsx');
+exports.exportScheduledAppointments = async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        let where = {
+            status: 'CITADO',
+            address: { project: { isDemo: req.isDemo || false } }
+        };
+
+        if (startDate && endDate) {
+            where.assignedDate = {
+                gte: new Date(startDate),
+                lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
+            };
+        }
+
+        const appointments = await prisma.appointment.findMany({
+            where,
+            include: {
+                address: { include: { project: true } },
+                assignedTeam: true
+            },
+            orderBy: { assignedDate: 'asc' }
+        });
+
+        // Map data for Excel
+        const data = appointments.map(app => ({
+            'Fecha': new Date(app.assignedDate).toLocaleDateString('es-ES'),
+            'Hora': new Date(app.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+            'Proyecto': app.address.project.name,
+            'Calle': app.address.street,
+            'Número': app.address.number,
+            'Localidad': app.address.city || '',
+            'NVT': app.address.nvt || '',
+            'Cliente': app.clientName || app.address.clientName || '',
+            'Aptos': app.apartmentCount || '',
+            'Equipo': app.assignedTeam ? app.assignedTeam.name : 'Sin asignar',
+            'Estado': app.status,
+            'Bauauftrag ID': app.address.bauauftragId || '',
+            'KLS ID': app.address.klsId || ''
+        }));
+
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(data);
+        xlsx.utils.book_append_sheet(wb, ws, 'Citas Agendadas');
+
+        const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+        res.setHeader('Content-Disposition', 'attachment; filename=citas_agendadas.xlsx');
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buffer);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error al exportar citas' });
     }
 };
 // Update appointment status (e.g., Protocol Terminado)
