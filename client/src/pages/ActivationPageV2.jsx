@@ -45,7 +45,16 @@ const ActivationPageV2 = () => {
     const fileInputRef = useRef(null);
     const cameraInputRef = useRef(null);
     const galleryInputRef = useRef(null);
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+    let user = {};
+    try {
+        const userStr = localStorage.getItem('user');
+        if (userStr && userStr !== "undefined") {
+            user = JSON.parse(userStr);
+        }
+    } catch (e) {
+        console.error("Error parsing user from localStorage", e);
+    }
 
     useEffect(() => {
         const fetchAppointment = async () => {
@@ -55,8 +64,12 @@ const ActivationPageV2 = () => {
 
                 if (navigator.onLine) {
                     const res = await api.get('/api/dashboard/activator');
-                    activeClientId = res.data.activeClientId;
-                    found = res.data.appointments.find(a => a.id === id);
+                    activeClientId = res.data?.activeClientId;
+                    const appointmentList = res.data?.appointments || [];
+                    if (!Array.isArray(appointmentList)) {
+                        throw new Error("Appointments data is not an array");
+                    }
+                    found = appointmentList.find(a => String(a.id) === String(id));
                 } else {
                     console.warn("Offline mode: Loading from cache...");
                     const cached = JSON.parse(localStorage.getItem('cachedAgenda') || '{}');
@@ -690,8 +703,33 @@ const ActivationPageV2 = () => {
         }
     };
 
-    if (loading) return <div className="p-8 text-center bg-slate-50 min-h-screen pt-20">Cargando...</div>;
-    if (!appointment) return <div className="p-8 text-center text-red-500 bg-slate-50 min-h-screen pt-20">Cita no encontrada.</div>;
+    console.log("Rendering ActivationPageV2. Loading:", loading, "AppointmentID:", id, "AppointmentOBJ:", appointment ? "exist" : "null");
+
+    if (loading) return <div className="p-8 text-center bg-slate-50 min-h-screen pt-20 transition-all">Cargando datos...</div>;
+
+    if (!appointment) {
+        console.error("Critical: Appointment data missing for ID:", id);
+        return (
+            <div className="p-8 text-center text-red-500 bg-slate-50 min-h-screen pt-20">
+                <h3 className="font-bold text-xl mb-2">Cita no encontrada.</h3>
+                <p className="text-sm opacity-70 mb-6">No se han podido recuperar los datos de la intervención.</p>
+                <div className="flex flex-col gap-3 max-w-xs mx-auto">
+                    <button 
+                        onClick={() => window.location.reload()} 
+                        className="w-full py-3 bg-joa-blue text-white rounded-xl font-bold shadow-lg"
+                    >
+                        Reintentar carga
+                    </button>
+                    <button 
+                        onClick={() => navigate('/dashboard')} 
+                        className="w-full py-3 bg-slate-200 text-slate-700 rounded-xl font-bold"
+                    >
+                        Volver al Inicio
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
@@ -704,7 +742,7 @@ const ActivationPageV2 = () => {
                     <h1 className="text-lg font-bold text-slate-800 leading-tight">Finalizar Activación</h1>
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">V2.4 ACTIVADA</span>
-                        <p className="text-[10px] text-slate-500 line-clamp-1">{appointment.address.street} {appointment.address.number}</p>
+                        <p className="text-[10px] text-slate-500 line-clamp-1">{appointment?.address?.street} {appointment?.address?.number}</p>
                     </div>
                 </div>
             </div>
@@ -1110,7 +1148,7 @@ const ActivationPageV2 = () => {
                     ) : (
                         <>
                             <Save size={20} />
-                            {appointment.status === 'COMPLETADO' ? 'Actualizar Activación' : 'Guardar y Finalizar'}
+                            {appointment?.status === 'COMPLETADO' ? 'Actualizar Activación' : 'Guardar y Finalizar'}
                         </>
                     )}
                 </button>
