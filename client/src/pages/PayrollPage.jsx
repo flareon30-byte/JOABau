@@ -112,6 +112,8 @@ const PayrollPage = () => {
         }
     };
 
+    const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val || 0);
+
     const handleExportCSV = () => {
         if (summary.length === 0) return;
         const headers = ["Trabajador", "Rol", "Equipo", "Sueldo Base", "Bonus Produccion", "Extras Sabados", "Dietas", "Total Neto"];
@@ -552,7 +554,7 @@ const PayrollHistoryModal = ({ history, onClose }) => {
                                             </div>
                                         </div>
                                         <div className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-black text-slate-500">
-                                            {log.cycleStart.split('T')[0].split('-').reverse().join('/')} - {log.cycleEnd.split('T')[0].split('-').reverse().join('/')}
+                                            {log.cycleStart ? log.cycleStart.split('T')[0].split('-').reverse().join('/') : '---'} - {log.cycleEnd ? log.cycleEnd.split('T')[0].split('-').reverse().join('/') : '---'}
                                         </div>
                                     </div>
 
