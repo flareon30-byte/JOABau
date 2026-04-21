@@ -5,10 +5,12 @@ import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIc
 import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
 import { savePendingActivation, saveActivationDraft, getActivationDraft, deleteActivationDraft } from '../utils/offlineStorage';
+import useBranding from '../hooks/useBranding';
 
 const BASE_URL = import.meta.env.PROD ? window.location.origin : 'http://localhost:3000';
 
 const ActivationPageV2 = () => {
+    const { branding } = useBranding();
     const { id } = useParams();
     const navigate = useNavigate();
     const [appointment, setAppointment] = useState(null);
@@ -398,6 +400,7 @@ const ActivationPageV2 = () => {
 
                 // --- DRAW LOGO ---
                 const logoImg = new Image();
+                logoImg.crossOrigin = "anonymous";
                 logoImg.onload = () => {
                     const logoHeight = bottomBarHeight * 0.45; // Más discreto y elegante
                     const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
@@ -410,7 +413,7 @@ const ActivationPageV2 = () => {
                     console.error("Logo load err - finishing without it");
                     finalizeResult();
                 };
-                logoImg.src = '/logo.png';
+                logoImg.src = branding.logoUrl;
             };
 
             img.onerror = () => {

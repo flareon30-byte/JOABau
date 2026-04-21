@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-import api from '../api/axios';
-import { useNavigate } from 'react-router-dom';
-import { Lock, User, ArrowRight, Loader2, Shield } from 'lucide-react';
+import useBranding from '../hooks/useBranding';
 
 const LoginPage = () => {
+    const { branding } = useBranding();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -51,17 +49,17 @@ const LoginPage = () => {
                         
                         {/* El Logotipo de la Empresa Recuperado */}
                         <img 
-                            src="/logo.png" 
-                            alt="JOA Technologien" 
+                            src={branding.logoUrl} 
+                            alt={branding.name} 
                             className="w-48 object-contain drop-shadow-[0_0_25px_rgba(0,210,255,0.4)] mb-8 transform hover:scale-105 transition-transform duration-500 relative z-10"
                         />
                         
                         <div className="relative z-10">
-                            <h2 className="text-3xl font-heading font-black text-white tracking-tight mb-4">
+                            <h2 className="text-3xl font-heading font-black text-white tracking-tight mb-4 text-center">
                                 Gestión <span className="text-transparent bg-clip-text bg-gradient-to-r from-joa-cyan to-joa-blue drop-shadow-sm">Avanzada</span>
                             </h2>
                             <p className="text-slate-400 text-sm leading-relaxed font-medium">
-                                Bienvenido a la plataforma central de operaciones de fibra óptica de JOA Technologien.
+                                Bienvenido a la plataforma central de operaciones de fibra óptica de {branding.name}.
                             </p>
                         </div>
                     </div>

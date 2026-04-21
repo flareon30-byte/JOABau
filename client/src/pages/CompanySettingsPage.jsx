@@ -18,7 +18,13 @@ const CompanySettingsPage = () => {
     const fetchSettings = async () => {
         try {
             const { data } = await api.get('/api/company');
-            if (data) setSettings(data);
+            if (data) {
+                if (data.logoPath && !data.logoPath.startsWith('http') && !data.logoPath.startsWith('data:')) {
+                    const fullBase = api.defaults.baseURL || '';
+                    data.logoPath = `${fullBase}${data.logoPath}${data.logoPath.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                }
+                setSettings(data);
+            }
         } catch (error) {
             console.error('Error fetching settings', error);
         } finally {
@@ -49,7 +55,16 @@ const CompanySettingsPage = () => {
         e.preventDefault();
         setSaving(true);
         try {
-            await api.post('/api/company', settings);
+            const res = await api.post('/api/company', settings);
+            if (res.data) {
+                // Actualizar con la ruta limpia que devuelve el servidor (pero con tazón para la UI local)
+                const newPath = res.data.logoPath;
+                if (newPath && !newPath.startsWith('http') && !newPath.startsWith('data:')) {
+                    const fullBase = api.defaults.baseURL || '';
+                    res.data.logoPath = `${fullBase}${newPath}?v=${Date.now()}`;
+                }
+                setSettings(res.data);
+            }
             alert('Datos de empresa actualizados correctamente');
         } catch (error) {
             alert('Error al guardar los datos');

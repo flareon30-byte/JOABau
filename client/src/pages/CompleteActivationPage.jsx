@@ -3,10 +3,12 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Hash } from 'lucide-react';
 import SignaturePad from 'signature_pad';
+import useBranding from '../hooks/useBranding';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
 const CompleteActivationPage = () => {
+    const { branding } = useBranding();
     const { id } = useParams();
     const navigate = useNavigate();
     const [appointment, setAppointment] = useState(null);
@@ -205,8 +207,8 @@ const CompleteActivationPage = () => {
                             saveBlob();
                         };
                         
-                        // Full source path to avoid PWA relative issues
-                        logoImg.src = window.location.origin + '/logo.png?v=' + Date.now(); 
+                        // Use dynamic branding logo
+                        logoImg.src = branding.logoUrl; 
                     };
 
                     drawLogoAndResolve();

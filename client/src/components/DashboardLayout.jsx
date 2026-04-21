@@ -10,8 +10,7 @@ import {
 import ChangePasswordModal from './ChangePasswordModal';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
-// Notification Sound URL (Short subtle beep)
-const BEEP_URL = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
+import useBranding from '../hooks/useBranding';
 
 const Toast = ({ message, onClose }) => (
     <div className="fixed top-24 right-4 z-[100] bg-white border-l-4 border-joa-blue shadow-2xl p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-right w-80">
@@ -29,6 +28,7 @@ const Toast = ({ message, onClose }) => (
 );
 
 const DashboardLayout = () => {
+    const { branding } = useBranding();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     usePushNotifications(user.id);
 
@@ -241,15 +241,15 @@ const DashboardLayout = () => {
                     {isSidebarOpen ? (
                         <div className="flex items-center">
                             <img 
-                                src="/logo.png" 
-                                alt="JOA Tech" 
+                                src={branding.logoUrl} 
+                                alt={branding.name} 
                                 className="h-10 object-contain drop-shadow-[0_0_15px_rgba(0,210,255,0.3)] transition-transform duration-300 hover:scale-105" 
                             />
                         </div>
                     ) : (
                         <img 
-                            src="/logo.png" 
-                            alt="JOA Tech" 
+                            src={branding.logoUrl} 
+                            alt={branding.name} 
                             className="h-8 object-contain mx-auto drop-shadow-[0_0_15px_rgba(0,210,255,0.3)] transition-transform duration-300 hover:scale-105" 
                         />
                     )}
@@ -377,7 +377,7 @@ const DashboardLayout = () => {
 
                 {/* Centered Diffused Logo (Watermark) */}
                 <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-0 opacity-[0.02]">
-                    <img src="/logo.png" alt="" className="w-[80%] max-w-[600px] object-contain grayscale" />
+                    <img src={branding.logoUrl} alt="" className="w-[80%] max-w-[600px] object-contain grayscale" />
                 </div>
 
                 {/* Floating Header */}
@@ -396,7 +396,7 @@ const DashboardLayout = () => {
                                 <h1 className="text-xl md:text-2xl font-heading font-bold text-slate-800 tracking-tight">
                                     {navGroups.flatMap(g => g.items).find(i => i.path === location.pathname)?.label || 'Dashboard'}
                                 </h1>
-                                <p className="text-xs md:text-sm text-slate-500 hidden md:block mt-0.5">Gestión integral de fibra óptica</p>
+                                <p className="text-xs md:text-sm text-slate-500 hidden md:block mt-0.5">Gestión integral de {branding.name}</p>
                             </div>
                         </div>
 

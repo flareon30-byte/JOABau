@@ -6,8 +6,18 @@ const PayrollPage = () => {
     // 1. Calculate Default Date Range (21st Prev - 20th Current)
     const calculateDefaultDates = () => {
         const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth() - 1, 21);
-        const end = new Date(now.getFullYear(), now.getMonth(), 20);
+        const currentDay = now.getDate();
+        let start, end;
+
+        if (currentDay <= 20) {
+            // Previous cycle: Prev Month 21 - Current Month 20
+            start = new Date(now.getFullYear(), now.getMonth() - 1, 21);
+            end = new Date(now.getFullYear(), now.getMonth(), 20);
+        } else {
+            // Current cycle: Current Month 21 - Next Month 20
+            start = new Date(now.getFullYear(), now.getMonth(), 21);
+            end = new Date(now.getFullYear(), now.getMonth() + 1, 20);
+        }
         // Fix JS Date offset issues by using local string components or specific UTC handling if needed
         // Simple YYYY-MM-DD generation:
         const toDateInput = (date) => {
