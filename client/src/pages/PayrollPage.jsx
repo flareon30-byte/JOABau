@@ -112,8 +112,29 @@ const PayrollPage = () => {
         }
     };
 
-    // Helper formatter
-    const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val || 0);
+    const handleExportCSV = () => {
+        if (summary.length === 0) return;
+        const headers = ["Trabajador", "Rol", "Equipo", "Sueldo Base", "Bonus Produccion", "Extras Sabados", "Dietas", "Total Neto"];
+        const rows = summary.map(u => [
+            `"${u.username}"`,
+            u.role,
+            `"${u.production?.teamName || 'Sin Equipo'}"`,
+            u.baseSalary.toFixed(2).replace('.', ','),
+            u.bonus.toFixed(2).replace('.', ','),
+            u.saturday.toFixed(2).replace('.', ','),
+            u.dietaPay.toFixed(2).replace('.', ','),
+            u.total.toFixed(2).replace('.', ',')
+        ]);
+        const csvContent = "\uFEFF" + [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Nominas_JOA_${filters.startDate}_al_${filters.endDate}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
 
     return (
         <div className="max-w-7xl mx-auto space-y-8 pb-20">
@@ -146,7 +167,10 @@ const PayrollPage = () => {
                     >
                         {isArchiving ? 'Cerrando...' : <><CheckCircle size={16} /> Cerrar Ciclo (20) </>}
                     </button>
-                    <button className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors">
+                    <button 
+                        onClick={handleExportCSV}
+                        className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors"
+                    >
                         <Download size={16} /> Exportar CSV
                     </button>
                 </div>
@@ -528,7 +552,7 @@ const PayrollHistoryModal = ({ history, onClose }) => {
                                             </div>
                                         </div>
                                         <div className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-black text-slate-500">
-                                            {new Date(log.cycleStart).toLocaleDateString('es-ES')} - {new Date(log.cycleEnd).toLocaleDateString('es-ES')}
+                                            {log.cycleStart.split('T')[0].split('-').reverse().join('/')} - {log.cycleEnd.split('T')[0].split('-').reverse().join('/')}
                                         </div>
                                     </div>
 

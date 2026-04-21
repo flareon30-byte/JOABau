@@ -246,32 +246,38 @@ exports.archiveCurrentCycle = async (req, res) => {
         let count = 0;
         for (const item of data) {
             try {
+                // Normalize dates to mid-day to avoid TZ jumps
+                const safeStart = new Date(start);
+                safeStart.setHours(12, 0, 0, 0);
+                const safeEnd = new Date(end);
+                safeEnd.setHours(12, 0, 0, 0);
+
                 await prisma.payrollLog.upsert({
                     where: {
                         userId_month_year: { userId: item.id, month, year }
                     },
                     update: {
-                        points: item.production?.pointsTotal || 0,
+                        points: item.production?.unitsDone || 0,
                         pointEarnings: item.bonus || 0,
                         dietasCount: item.dietasCount || 0,
                         dietasAmount: item.dietaPay || 0,
                         saturdayPay: item.saturday || 0,
                         totalEuros: item.total || 0,
-                        cycleStart: start,
-                        cycleEnd: end
+                        cycleStart: safeStart,
+                        cycleEnd: safeEnd
                     },
                     create: {
                         userId: item.id,
                         month,
                         year,
-                        points: item.production?.pointsTotal || 0,
+                        points: item.production?.unitsDone || 0,
                         pointEarnings: item.bonus || 0,
                         dietasCount: item.dietasCount || 0,
                         dietasAmount: item.dietaPay || 0,
                         saturdayPay: item.saturday || 0,
                         totalEuros: item.total || 0,
-                        cycleStart: start,
-                        cycleEnd: end
+                        cycleStart: safeStart,
+                        cycleEnd: safeEnd
                     }
                 });
                 count++;
