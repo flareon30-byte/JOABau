@@ -14,7 +14,16 @@ const useBranding = () => {
                 const res = await api.get('/api/company/public');
                 if (res.data) {
                     const cleanPath = res.data.logoPath || '/logo.png';
-                    const fullUrl = cleanPath.startsWith('http') ? cleanPath : `${api.defaults.baseURL || ''}${cleanPath}`;
+                    
+                    // Asegurar que no terminemos con // si el baseURL ya tiene una barra o es '/'
+                    let baseUrl = api.defaults.baseURL || '';
+                    if (baseUrl === '/') baseUrl = '';
+                    if (baseUrl.endsWith('/') && cleanPath.startsWith('/')) {
+                        baseUrl = baseUrl.slice(0, -1);
+                    }
+                    
+                    const fullUrl = cleanPath.startsWith('http') ? cleanPath : `${baseUrl}${cleanPath}`;
+                    
                     setBranding({
                         name: res.data.name || 'JOA Technologien',
                         logoUrl: `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}v=${Date.now()}`

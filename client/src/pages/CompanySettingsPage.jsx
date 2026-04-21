@@ -20,8 +20,10 @@ const CompanySettingsPage = () => {
             const { data } = await api.get('/api/company');
             if (data) {
                 if (data.logoPath && !data.logoPath.startsWith('http') && !data.logoPath.startsWith('data:')) {
-                    const fullBase = api.defaults.baseURL || '';
-                    data.logoPath = `${fullBase}${data.logoPath}${data.logoPath.includes('?') ? '&' : '?'}v=${Date.now()}`;
+                    let baseUrl = api.defaults.baseURL || '';
+                    if (baseUrl === '/') baseUrl = '';
+                    const cleanPath = data.logoPath.startsWith('/') ? data.logoPath : `/${data.logoPath}`;
+                    data.logoPath = `${baseUrl}${cleanPath}${cleanPath.includes('?') ? '&' : '?'}v=${Date.now()}`;
                 }
                 setSettings(data);
             }
@@ -57,11 +59,12 @@ const CompanySettingsPage = () => {
         try {
             const res = await api.post('/api/company', settings);
             if (res.data) {
-                // Actualizar con la ruta limpia que devuelve el servidor (pero con tazón para la UI local)
                 const newPath = res.data.logoPath;
                 if (newPath && !newPath.startsWith('http') && !newPath.startsWith('data:')) {
-                    const fullBase = api.defaults.baseURL || '';
-                    res.data.logoPath = `${fullBase}${newPath}?v=${Date.now()}`;
+                    let baseUrl = api.defaults.baseURL || '';
+                    if (baseUrl === '/') baseUrl = '';
+                    const cleanPath = newPath.startsWith('/') ? newPath : `/${newPath}`;
+                    res.data.logoPath = `${baseUrl}${cleanPath}?v=${Date.now()}`;
                 }
                 setSettings(res.data);
             }
