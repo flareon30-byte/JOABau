@@ -18,13 +18,9 @@ const getWorkingDays = (year, month) => {
 // Helper: Accurate Cycle Calculation (21st to 20th)
 const getCycleDates = (dateInput = new Date()) => {
     const date = new Date(dateInput);
-    let start = new Date(date.getFullYear(), date.getMonth(), 21);
-    let end = new Date(date.getFullYear(), date.getMonth() + 1, 20);
-
-    if (date.getDate() <= 20) {
-        start.setMonth(start.getMonth() - 1);
-        end.setMonth(end.getMonth() - 1);
-    }
+    // Cycle is always from 21st of previous month to 20th of current month
+    const start = new Date(date.getFullYear(), date.getMonth() - 1, 21);
+    const end = new Date(date.getFullYear(), date.getMonth(), 20);
     
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
