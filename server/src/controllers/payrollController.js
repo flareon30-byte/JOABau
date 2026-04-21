@@ -16,11 +16,17 @@ const getWorkingDays = (year, month) => {
 };
 
 // Helper: Accurate Cycle Calculation (21st to 20th)
-const getCycleDates = (dateInput = new Date()) => {
+exports.getCycleDates = (dateInput = new Date()) => {
     const date = new Date(dateInput);
-    // Cycle is always from 21st of previous month to 20th of current month
-    const start = new Date(date.getFullYear(), date.getMonth() - 1, 21);
-    const end = new Date(date.getFullYear(), date.getMonth(), 20);
+    let start = new Date(date.getFullYear(), date.getMonth(), 21);
+    let end = new Date(date.getFullYear(), date.getMonth() + 1, 20);
+
+    // If we are on day 1-20, current cycle is (M-1).21 to M.20
+    // If we are on day 21+, current cycle is M.21 to (M+1).20
+    if (date.getDate() <= 20) {
+        start.setMonth(start.getMonth() - 1);
+        end.setMonth(end.getMonth() - 1);
+    }
     
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
@@ -231,13 +237,21 @@ exports.getMyPayroll = async (req, res) => {
     }
 };
 
+// c:\Users\Yane Orden\Joa Technologien\server\src\controllers\payrollController.js
+
 exports.archiveCurrentCycle = async (req, res) => {
     try {
-        const { start, end } = getCycleDates();
+        // When archiving, we usually want to archive the cycle that JUST ENDED (the 20th).
+        // If today is 21st-31st, getCycleDates() would point to the NEW future cycle.
+        // We subtract 2 days from "now" to make sure we are inside the period that ended on the 20th.
+        const referenceDate = new Date();
+        referenceDate.setDate(referenceDate.getDate() - 2); 
+        
+        const { start, end } = getCycleDates(referenceDate);
         const month = end.getMonth() + 1;
         const year = end.getFullYear();
 
-        // 1. Fetch current payroll summary
+        // 1. Fetch summary for the COMPLETED period
         const summaryResponse = await exports.getPayrollSummaryInternal(req, start, end);
         const data = summaryResponse.data;
 

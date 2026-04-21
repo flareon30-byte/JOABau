@@ -204,9 +204,9 @@ exports.getActivatorDashboard = async (req, res) => {
             orderBy: { assignedDate: 'asc' }
         });
 
-        // 3. Get Performance Stats (Current Month)
-        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const endDate = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        // 3. Get Performance Stats (Uses JOA Cycle 21-20)
+        const { getCycleDates } = require('./payrollController');
+        const { start: startOfMonth, end: endDate } = getCycleDates(today);
 
         let performanceData = [];
         const isBlower = req.userRole === 'BLOWER';
