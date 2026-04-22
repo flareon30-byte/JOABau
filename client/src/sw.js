@@ -10,8 +10,19 @@ precacheAndRoute(self.__WB_MANIFEST || []);
 
 // Navigation Route (SPA Fallback)
 // This ensures that any navigation request (URL in address bar) returns the cached index.html
+// WE EXCLUDE /uploads and .pdf files so the browser can download/open them directly
 const handler = createHandlerBoundToURL('/index.html');
-const navigationRoute = new NavigationRoute(handler);
+const navigationRoute = new NavigationRoute(handler, {
+    denylist: [
+        /^\/uploads/, 
+        /^\/api/,
+        /\.pdf$/i,
+        /\.png$/i,
+        /\.jpg$/i,
+        /\.jpeg$/i,
+        /\.xlsx$/i
+    ]
+});
 registerRoute(navigationRoute);
 
 /**
