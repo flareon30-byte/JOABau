@@ -15,6 +15,7 @@ const repairController = require('../controllers/repairController');
 router.get('/pending', checkRole(allowedRoles), appointmentController.getPendingAppointments);
 router.get('/scheduled', checkRole(allowedRoles), appointmentController.getScheduledAppointments);
 router.get('/export', checkRole(allowedRoles), appointmentController.exportScheduledAppointments);
+router.get('/export-all', checkRole(allowedRoles), appointmentController.exportAllByProject);
 router.get('/escalated', checkRole(allowedRoles), appointmentController.getEscalatedAppointments);
 router.get('/building', checkRole(allowedRoles), appointmentController.getBuildingClients);
 router.post('/log-contact/:addressId', checkRole(allowedRoles), appointmentController.logContactAttempt);

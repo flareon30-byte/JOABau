@@ -305,6 +305,106 @@ exports.exportScheduledAppointments = async (req, res) => {
         res.status(500).json({ message: 'Error al exportar citas' });
     }
 };
+
+exports.exportAllByProject = async (req, res) => {
+    try {
+        const { projectId } = req.query;
+        if (!projectId) {
+            return res.status(400).json({ message: 'Se requiere el ID del proyecto' });
+        }
+
+        const addresses = await prisma.address.findMany({
+            where: {
+                projectId: projectId
+            },
+            include: {
+                project: true,
+                appointment: {
+                    include: {
+                        comments: true,
+                        assignedTeam: true
+                    }
+                }
+            },
+            orderBy: { street: 'asc' }
+        });
+
+        // Map data for Excel
+        const data = addresses.map(addr => {
+            const app = addr.appointment;
+            
+            // Format comments
+            let commentsText = '';
+            if (app && app.comments && app.comments.length > 0) {
+                commentsText = app.comments.map(c => 
+                    `[${new Date(c.createdAt).toLocaleDateString('es-ES')}] ${c.authorName}: ${c.content}`
+                ).join(' | ');
+            }
+
+            // Format history
+            let historyText = '';
+            if (app && app.contactHistory && app.contactHistory.length > 0) {
+                historyText = app.contactHistory.join(' | ');
+            }
+
+            return {
+                'Proyecto': addr.project.name,
+                'Bauauftrag ID': addr.bauauftragId || '',
+                'KLS ID': addr.klsId || '',
+                'Calle': addr.street,
+                'Número': addr.number,
+                'Localidad': addr.city || '',
+                'NVT': addr.nvt || '',
+                'Cliente': addr.clientName || '',
+                'Aptos': addr.apartmentCount || '',
+                'Soplado': addr.sopladoStatus,
+                'Protocolo': addr.protocolStatus,
+                'Estado Orden': addr.orderStatus,
+                'Estado Cita': app ? app.status : 'SIN CITA',
+                'Fecha Cita': (app && app.assignedDate) ? new Date(app.assignedDate).toLocaleDateString('es-ES') : '',
+                'Equipo': (app && app.assignedTeam) ? app.assignedTeam.name : '',
+                'Comentarios': commentsText,
+                'Historial Contacto': historyText
+            };
+        });
+
+        const wb = xlsx.utils.book_new();
+        const ws = xlsx.utils.json_to_sheet(data);
+        
+        // Auto-size columns slightly
+        const wscols = [
+            {wch: 15}, // Proyecto
+            {wch: 15}, // Bauauftrag
+            {wch: 15}, // KLS
+            {wch: 25}, // Calle
+            {wch: 10}, // Num
+            {wch: 15}, // Loc
+            {wch: 10}, // NVT
+            {wch: 25}, // Cliente
+            {wch: 8},  // Aptos
+            {wch: 10}, // Soplado
+            {wch: 10}, // Protocolo
+            {wch: 15}, // Estado Orden
+            {wch: 15}, // Estado Cita
+            {wch: 15}, // Fecha
+            {wch: 15}, // Equipo
+            {wch: 50}, // Comentarios
+            {wch: 50}  // Historial
+        ];
+        ws['!cols'] = wscols;
+
+        xlsx.utils.book_append_sheet(wb, ws, 'Gestión de Citas');
+
+        const buffer = xlsx.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+        res.setHeader('Content-Disposition', `attachment; filename=gestion_citas_${projectId}.xlsx`);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.send(buffer);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error al exportar gestión de citas' });
+    }
+};
 // Update appointment status (e.g., Protocol Terminado)
 exports.updateStatus = async (req, res) => {
     const { id } = req.params;

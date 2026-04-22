@@ -109,6 +109,32 @@ const AppointmentsPage = () => {
         }
     };
 
+    const handleExportAll = async () => {
+        if (!projectFilter) {
+            alert('Por favor, selecciona un proyecto primero.');
+            return;
+        }
+        try {
+            const response = await api.get(`/api/appointments/export-all?projectId=${projectFilter}`, {
+                responseType: 'blob',
+            });
+            
+            const project = projects.find(p => p.id === projectFilter);
+            const projectName = project ? project.name.replace(/[^a-z0-9]/gi, '_').toLowerCase() : 'proyecto';
+            
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `reporte_completo_${projectName}_${new Date().toISOString().split('T')[0]}.xlsx`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('Error al exportar el reporte.');
+        }
+    };
+
     const fetchTeams = async () => {
         try {
             const res = await api.get('/api/teams');
@@ -491,17 +517,32 @@ const AppointmentsPage = () => {
                     </div>
                 )}
 
-                <div className="w-full md:w-64">
+                <div className="w-full md:w-auto flex flex-col md:flex-row gap-2 items-center">
                     <select
                         value={projectFilter}
                         onChange={(e) => setProjectFilter(e.target.value)}
-                        className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                        className="w-full md:w-64 border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                     >
                         <option value="">Todos los Proyectos</option>
                         {projects.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
                     </select>
+                    
+                    <button
+                        onClick={handleExportAll}
+                        disabled={!projectFilter}
+                        className={`px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-bold shadow-sm transition-all whitespace-nowrap w-full md:w-auto ${
+                            projectFilter 
+                            ? 'bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95' 
+                            : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        }`}
+                        title={!projectFilter ? "Selecciona un proyecto primero" : "Exportar reporte completo del proyecto"}
+                    >
+                        <Download size={18} />
+                        <span className="hidden md:inline">Exportar Reporte Proyecto</span>
+                        <span className="md:hidden">Exportar</span>
+                    </button>
                 </div>
             </div>
 
