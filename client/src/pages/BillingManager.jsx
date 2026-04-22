@@ -190,29 +190,28 @@ const BillingPage = () => {
         let columns = [];
         let emptyMsg = "No hay datos";
 
-        // Use relative path for production (since Express serves both API and frontend)
-        // or fallback to localhost for local dev if environment variable is not set.
-        let BASE_URL = '';
-        if (import.meta.env.DEV) {
-            BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        }
-
         const getFileUrl = (path) => {
             if (!path) return '';
 
-            // 1. Remove any query strings that might be stored in the DB by mistake
+            // 1. Remove any query strings
             let cleanPath = path.split('?')[0];
 
             // 2. Fix backslashes
             cleanPath = cleanPath.replace(/\\/g, '/');
 
-            // 3. Remove leading slash
-            if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
+            // 3. Ensure leading slash
+            if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
 
-            // 4. EncodeURI to handle spaces and special chars in filenames
+            // 4. Resolve Base URL
+            let baseUrl = api.defaults.baseURL || '';
+            if (baseUrl === '/') baseUrl = '';
+            // Remove trailing slash from baseUrl if exists
+            if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+
+            // 5. Encode segments
             const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
 
-            return `${BASE_URL ? BASE_URL + '/' : '/'}${encodedPath}`;
+            return `${baseUrl}${encodedPath}`;
         };
 
         switch (activeTab) {
@@ -505,20 +504,17 @@ const BillingPage = () => {
     const PhotoModal = () => {
         if (!isPhotoModalOpen) return null;
 
-        // Use relative path logic matching the main component
-        let BASE_URL = '';
-        if (import.meta.env.DEV) {
-            BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-        }
-
         const getUrl = (path) => {
             if (!path) return '';
             let cleanPath = path.split('?')[0].replace(/\\/g, '/');
-            if (cleanPath.startsWith('/')) cleanPath = cleanPath.slice(1);
+            if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+
+            let baseUrl = api.defaults.baseURL || '';
+            if (baseUrl === '/') baseUrl = '';
+            if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
             
-            // Encode each segment of the path
             const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
-            return `${BASE_URL ? BASE_URL + '/' : '/'}${encodedPath}`;
+            return `${baseUrl}${encodedPath}`;
         };
 
         return (

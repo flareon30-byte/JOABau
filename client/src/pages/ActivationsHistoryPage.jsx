@@ -2,7 +2,18 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Calendar, Filter, Download, Eye, X, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 
-const BASE_URL = import.meta.env.PROD ? window.location.origin : 'http://localhost:3000';
+const getFileUrl = (path) => {
+    if (!path) return '';
+    let cleanPath = path.split('?')[0].replace(/\\/g, '/');
+    if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+
+    let baseUrl = api.defaults.baseURL || '';
+    if (baseUrl === '/') baseUrl = '';
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+    
+    const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+    return `${baseUrl}${encodedPath}`;
+};
 
 const ActivationsHistoryPage = () => {
     const [activations, setActivations] = useState([]);
@@ -120,7 +131,10 @@ const ActivationsHistoryPage = () => {
         if (exportFiltersForm.projectId) params.append('projectId', exportFiltersForm.projectId);
 
         // Trigger download via anchor click instead of window.open (fixes PWA blank screen)
-        const url = `${BASE_URL}/api/activations/export-photos?${params.toString()}`;
+        let baseUrl = api.defaults.baseURL || '';
+        if (baseUrl === '/') baseUrl = '';
+        if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+        const url = `${baseUrl}/api/activations/export-photos?${params.toString()}`;
         const a = document.createElement('a');
         a.href = url;
         a.target = '_blank';
@@ -453,8 +467,7 @@ const ActivationsHistoryPage = () => {
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {selectedActivation.photos && selectedActivation.photos.length > 0 ? (
                                 selectedActivation.photos.map((photo, i) => {
-                                    const encoded = photo.split('/').map(segment => encodeURIComponent(segment)).join('/');
-                                    const fullUrl = `${BASE_URL}/${encoded.replace(/^\/+/, '')}`;
+                                    const fullUrl = getFileUrl(photo);
                                     
                                     return (
                                         <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 group relative">
