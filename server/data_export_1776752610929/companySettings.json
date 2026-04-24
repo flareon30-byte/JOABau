@@ -1,0 +1,15 @@
+[
+  {
+    "id": "default-joa-cfg",
+    "name": "JOA Technologien",
+    "taxId": "B12345678",
+    "address": "Calle Ejemplo 123, Madrid, España",
+    "city": null,
+    "country": "ES",
+    "phone": "+34 600 000 000",
+    "email": "info@joatechnologien.de",
+    "bankDetails": "ES00 0000 0000 0000 0000 0000",
+    "logoPath": null,
+    "updatedAt": "2026-04-06T09:07:41.027Z"
+  }
+]

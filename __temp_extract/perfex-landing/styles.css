@@ -1,0 +1,161 @@
+/* Global Styles */
+:root {
+    --primary-color: #007bff; /* Example Blue - adjust based on logo */
+    --secondary-color: #f8f9fa; /* Light background */
+    --text-color: #333;
+    --accent-color: #e9ecef;
+    --font-main: 'Montserrat', sans-serif;
+}
+
+body {
+    font-family: var(--font-main);
+    background-color: var(--secondary-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+.container {
+    text-align: center;
+    padding: 2rem;
+    max-width: 800px;
+    width: 100%;
+    animation: fadeIn 1.5s ease-out;
+}
+
+/* Header & Logo */
+.header {
+    margin-bottom: 2rem;
+}
+
+.logo-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+/* Make logo responsive but impactful */
+.logo {
+    max-width: 300px; /* Adjust size as needed */
+    height: auto;
+    border-radius: 8px; /* Optional rounded corners */
+    /* Add a subtle shadow or lift effect */
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+}
+
+/* Main Content */
+.main-content {
+    margin-bottom: 3rem;
+}
+
+h1.text-reveal {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    margin-bottom: 1rem;
+    color: #222;
+}
+
+.highlight {
+    color: var(--primary-color);
+    position: relative;
+    display: inline-block;
+}
+
+/* Underline effect for 'Construcción' */
+.highlight::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 8px;
+    bottom: 5px;
+    left: 0;
+    background-color: rgba(0, 123, 255, 0.2);
+    z-index: -1;
+    transform: skewX(-15deg);
+}
+
+.subtitle {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 2.5rem;
+    font-weight: 300;
+}
+
+/* Contact Card - Glassmorphism style */
+.contact-card {
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    transition: transform 0.3s ease;
+}
+
+.contact-card:hover {
+    transform: translateY(-5px);
+}
+
+.contact-card h2 {
+    font-size: 1.1rem;
+    margin-bottom: 1.5rem;
+    font-weight: 600;
+    color: #444;
+}
+
+.contact-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.8rem 2rem;
+    border-radius: 50px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.contact-btn:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+
+.contact-btn .icon {
+    margin-right: 0.5rem;
+    font-size: 1.2rem;
+}
+
+/* Footer */
+.footer {
+    margin-top: 3rem;
+    font-size: 0.9rem;
+    color: #999;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    h1.text-reveal {
+        font-size: 2rem;
+    }
+    .logo {
+        max-width: 200px;
+    }
+    .container {
+        padding: 1rem;
+    }
+}

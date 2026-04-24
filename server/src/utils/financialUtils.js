@@ -2,7 +2,7 @@
  * Shared logic for calculating group and member financials
  */
 
-exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, overhead = 0, workingDays = 21, teamDietasCost = 0) => {
+exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, overhead = 0, workingDays = 21, teamDietasCost = 0, isIndividualMode = false, userTeamSize = 1, targetUserId = null) => {
     // Defaults
     const stats = {
         totalRevenue: 0,
@@ -53,13 +53,17 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
     totalDietas = teamDietasCost; // Use actual logged dietas cost for the team
     const totalPersonnelExpenses = totalSalaries + totalInsurance + totalSokaBau + totalDietas + totalMaterials + totalRent;
 
-    // Per Team Expenses
+    // Per Team Expenses (If individual mode, we split the car and gas by the team size)
     const car = (financialConfig.car !== undefined && financialConfig.car !== null) ? parseFloat(financialConfig.car) : 400; // Match Calculator
     const gas = (financialConfig.gas !== undefined && financialConfig.gas !== null) ? parseFloat(financialConfig.gas) : 300; // Match Calculator
     const equipRent = (financialConfig.equipmentRent !== undefined && financialConfig.equipmentRent !== null) ? parseFloat(financialConfig.equipmentRent) : 0;
-    const perTeamExpenses = car + gas + equipRent;
+    
+    let perTeamExpenses = car + gas + equipRent;
+    if (isIndividualMode && userTeamSize > 0) {
+        perTeamExpenses = perTeamExpenses / userTeamSize;
+    }
 
-    // Total Fixed Expenses for this Team
+    // Total Fixed Expenses for this Team (or Individual)
     const groupFixedExpenses = totalPersonnelExpenses + perTeamExpenses;
 
     // --- 2. REVENUE & PRODUCTION (Income) ---
@@ -76,14 +80,26 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
 
     // Process Activations
     activations.forEach(act => {
+        let weight = 1;
+
+        if (isIndividualMode && targetUserId) {
+            if (act.performerIds && act.performerIds.length > 0) {
+                if (!act.performerIds.includes(targetUserId)) return; // Skip if user not involved
+                weight = 1 / act.performerIds.length;
+            } else {
+                // Fallback for old data without performerIds: assume split by team size
+                weight = 1 / (userTeamSize || 1);
+            }
+        }
+
         const isSaturday = act.isSaturday === true;
         const type = act.activationType || 'BP';
 
         // Revenue Calculation
-        const snapshotRevenue = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+        let snapshotRevenue = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
 
         if (snapshotRevenue > 0) {
-            totalRevenue += snapshotRevenue;
+            totalRevenue += snapshotRevenue * weight;
         } else {
             // Legacy/Fallback using Config Prices
             const pricePerUnitConfig = financialConfig.pricePerUnit || 0;
@@ -92,90 +108,90 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
             const mduRevenue = financialConfig.pricePerMDU || 0;
 
             if (type === 'BP' || type === 'BP_2_FAM') {
-                totalRevenue += pricePerUnitConfig;
+                totalRevenue += pricePerUnitConfig * weight;
             } else if (type === 'BR_MULTI') {
-                totalRevenue += (pricePerUnitConfig + multiRevenue);
+                totalRevenue += (pricePerUnitConfig + multiRevenue) * weight;
             } else if (type === 'SDU') {
-                totalRevenue += taRevenue;
+                totalRevenue += taRevenue * weight;
             } else if (type === 'MDU') {
-                totalRevenue += mduRevenue;
+                totalRevenue += mduRevenue * weight;
             }
         }
 
         // Stats Counters
         if (isSaturday) {
-            stats.counts.saturday++;
+            stats.counts.saturday += weight;
             if (type === 'BR_MULTI') {
-                saturdayInstalls++;
-                stats.counts.bp++;
+                saturdayInstalls += weight;
+                stats.counts.bp += weight;
                 const sps = (act.spInstalled || 0);
-                saturdaySp += sps;
-                stats.counts.mul += sps;
+                saturdaySp += sps * weight;
+                stats.counts.mul += sps * weight;
                 if (act.taInstalled || (act.taCount && act.taCount > 0)) {
-                    saturdayTa++;
-                    stats.counts.ta++;
+                    saturdayTa += weight;
+                    stats.counts.ta += weight;
                 } else if (act.mduInstalled) {
-                    saturdayMdu++;
-                    stats.counts.mdu++;
+                    saturdayMdu += weight;
+                    stats.counts.mdu += weight;
                 }
             } else if (type === 'BP') {
-                saturdayInstalls++;
-                stats.counts.bp++;
+                saturdayInstalls += weight;
+                stats.counts.bp += weight;
             } else if (type === 'BP_2_FAM') {
-                saturdayInstalls++;
-                stats.counts.bif++;
+                saturdayInstalls += weight;
+                stats.counts.bif += weight;
             } else if (type === 'SDU') {
-                saturdayTa++;
-                stats.counts.ta++;
+                saturdayTa += weight;
+                stats.counts.ta += weight;
             } else if (type === 'MDU') {
-                saturdayMdu++;
-                stats.counts.mdu++;
+                saturdayMdu += weight;
+                stats.counts.mdu += weight;
             }
             if ((act.taCount > 0 || act.taInstalled) && type !== 'SDU' && type !== 'BR_MULTI') {
-                saturdayTa += (act.taCount || 1);
-                stats.counts.ta += (act.taCount || 1);
+                saturdayTa += (act.taCount || 1) * weight;
+                stats.counts.ta += (act.taCount || 1) * weight;
             }
         } else {
             // M-F
             if (type === 'BR_MULTI') {
-                standardUnits++; 
-                stats.counts.bp++;
+                standardUnits += weight; 
+                stats.counts.bp += weight;
                 const sps = (act.spInstalled || 0);
-                spUnits += sps;
-                stats.counts.mul += sps;
+                spUnits += sps * weight;
+                stats.counts.mul += sps * weight;
                 if (act.taInstalled || (act.taCount && act.taCount > 0)) {
-                    taUnits++;
-                    stats.counts.ta++;
+                    taUnits += weight;
+                    stats.counts.ta += weight;
                 } else if (act.mduInstalled) {
-                    mduUnits++;
-                    stats.counts.mdu++;
+                    mduUnits += weight;
+                    stats.counts.mdu += weight;
                 }
             } else if (type === 'BP') {
-                standardUnits++;
-                stats.counts.bp++;
+                standardUnits += weight;
+                stats.counts.bp += weight;
             } else if (type === 'BP_2_FAM') {
-                standardUnits++;
-                stats.counts.bif++;
+                standardUnits += weight;
+                stats.counts.bif += weight;
             } else if (type === 'SDU') {
-                taUnits++;
-                stats.counts.ta++;
+                taUnits += weight;
+                stats.counts.ta += weight;
             } else if (type === 'MDU') {
-                mduUnits++;
-                stats.counts.mdu++;
+                mduUnits += weight;
+                stats.counts.mdu += weight;
             }
             if ((act.taCount > 0 || act.taInstalled) && type !== 'SDU' && type !== 'BR_MULTI') {
-                taUnits += (act.taCount || 1);
-                stats.counts.ta += (act.taCount || 1);
+                taUnits += (act.taCount || 1) * weight;
+                stats.counts.ta += (act.taCount || 1) * weight;
             }
             if (act.mduInstalled && type !== 'MDU' && type !== 'BR_MULTI') {
-                mduUnits++;
-                stats.counts.mdu++;
+                mduUnits += weight;
+                stats.counts.mdu += weight;
             }
         }
 
         // Count Repairs
         if (type === 'REPAIR' || act.isRepair) {
-            stats.counts.repair++;
+            stats.counts.repair += weight;
         }
     });
 
@@ -194,10 +210,20 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
 
     let bonusCost = 0;
     
-    // A. Saturday Pay (Using capture snapshot prices)
-    const saturdayCostTotal = activations
-        .filter(a => a.isSaturday)
-        .reduce((sum, a) => sum + (a.saturdayPay || 0), 0);
+    // A. Saturday Pay (Using capture snapshot prices and weights)
+    let saturdayCostTotal = 0;
+    activations.filter(a => a.isSaturday).forEach(a => {
+        let weight = 1;
+        if (isIndividualMode && targetUserId) {
+            if (a.performerIds && a.performerIds.length > 0) {
+                if (!a.performerIds.includes(targetUserId)) return;
+                weight = 1 / a.performerIds.length;
+            } else {
+                weight = 1 / (userTeamSize || 1);
+            }
+        }
+        saturdayCostTotal += (a.saturdayPay || 0) * weight;
+    });
     
     stats.saturdayPay = saturdayCostTotal;
 
@@ -228,12 +254,20 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
     // --- 5. RESULTS ---
     const targetRevenue = totalDebtToCover; // Salaries + SS + OpCosts + Share of Company Deficit
     // Statistics: Revenue from Monday to Friday only (excludes Saturday)
-    const revenueMf = activations
-        .filter(a => !a.isSaturday)
-        .reduce((sum, act) => {
-            const snap = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
-            return sum + snap;
-        }, 0);
+    let revenueMf = 0;
+    activations.filter(a => !a.isSaturday).forEach(act => {
+        let weight = 1;
+        if (isIndividualMode && targetUserId) {
+            if (act.performerIds && act.performerIds.length > 0) {
+                if (!act.performerIds.includes(targetUserId)) return;
+                weight = 1 / act.performerIds.length;
+            } else {
+                weight = 1 / (userTeamSize || 1);
+            }
+        }
+        const snap = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
+        revenueMf += snap * weight;
+    });
 
     stats.totalTargetRevenue = targetRevenue;
     stats.currentRevenueMf = revenueMf;

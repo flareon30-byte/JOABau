@@ -1,0 +1,79 @@
+[
+  {
+    "id": "019b879d-3b4d-4a72-8ce4-82994b913aa9",
+    "isDemo": false,
+    "extraPointPrice": 0,
+    "saturdayPointPrice": 0,
+    "repairPrice": 45,
+    "monthlyTargetPoints": 100,
+    "bpPoints": 10,
+    "bp2FamPoints": 15,
+    "brMultiPoints": 20,
+    "sduPoints": 25,
+    "mduPoints": 30,
+    "spPoints": 5,
+    "taPoints": 0.5,
+    "financials": {
+      "blowers": {
+        "car": 400,
+        "gas": 300,
+        "salary": 1600,
+        "insurance": 352,
+        "materials": 50,
+        "bonusPerUnit": 0.05,
+        "dietasPerDay": 0,
+        "pricePerUnit": 0.4,
+        "saturdayRate": 40,
+        "equipmentRent": 0
+      },
+      "backOffice": {
+        "salary": 1500,
+        "insurance": 330,
+        "dietasPerDay": 0,
+        "opCostPerPerson": 200,
+        "pricePerAppointment": 15
+      },
+      "installers": {
+        "car": 400,
+        "gas": 400,
+        "salary": 3200,
+        "insurance": 1334,
+        "materials": 150,
+        "bonusPerTA": 10,
+        "pricePerSP": 75,
+        "pricePerTA": 50,
+        "bonusPerMDU": 10,
+        "pricePerMDU": 50,
+        "bonusPerUnit": 20,
+        "dietasPerDay": 28,
+        "pricePerUnit": 250,
+        "saturdayRate": 40,
+        "bonusPerMulti": 10,
+        "equipmentRent": 1200,
+        "pricePerMulti": 100
+      }
+    },
+    "updatedAt": "2026-02-19T16:11:32.020Z"
+  },
+  {
+    "id": "c34b5e61-1428-4248-bb95-33ffcbaf0f71",
+    "isDemo": true,
+    "extraPointPrice": 2.5,
+    "saturdayPointPrice": 5,
+    "repairPrice": 45,
+    "monthlyTargetPoints": 120,
+    "bpPoints": 10,
+    "bp2FamPoints": 15,
+    "brMultiPoints": 20,
+    "sduPoints": 25,
+    "mduPoints": 30,
+    "spPoints": 5,
+    "taPoints": 0.5,
+    "financials": {
+      "carCost": 350,
+      "insurance": 100,
+      "salaryBase": 1700
+    },
+    "updatedAt": "2026-04-03T15:45:56.646Z"
+  }
+]

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "5483700a-9ed3-409a-91dd-50b714860ba3",
+    "name": "Proyecto Demo",
+    "isDemo": false,
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "createdAt": "2026-02-19T16:37:17.090Z",
+    "updatedAt": "2026-04-06T09:08:55.036Z"
+  },
+  {
+    "id": "9ae02371-fd3e-45fc-92b8-550a35d6fc69",
+    "name": "Fiber City Demo 2026",
+    "isDemo": true,
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "createdAt": "2026-04-03T15:45:56.657Z",
+    "updatedAt": "2026-04-06T09:08:55.036Z"
+  }
+]

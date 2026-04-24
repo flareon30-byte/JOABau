@@ -98,9 +98,7 @@ const TeamManagement = () => {
             if (prev.memberIds.includes(userId)) {
                 return { ...prev, memberIds: prev.memberIds.filter(id => id !== userId) };
             }
-            // Allow more than 2 members? User prompt implied just modifying. Let's keep 2 limit or relax it.
-            // Original code had limit 2. I'll stick to it unless user complains.
-            if (prev.memberIds.length >= 2) return prev;
+            // Sin límite estricto, o un límite alto si se prefiere. Lo dejamos libre.
             return { ...prev, memberIds: [...prev.memberIds, userId] };
         });
     };
@@ -231,7 +229,7 @@ const TeamManagement = () => {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Seleccionar Miembros (Max 2)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Seleccionar Miembros</label>
                                 <div className="border border-slate-200 rounded-lg max-h-40 overflow-y-auto p-2 space-y-1">
                                     {availableUsers.length === 0 ? (
                                         <p className="text-sm text-slate-400 text-center py-2">No hay usuarios disponibles</p>
@@ -249,7 +247,7 @@ const TeamManagement = () => {
                                         ))
                                     )}
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1 text-right">{formData.memberIds.length}/2 seleccionados</p>
+                                <p className="text-xs text-slate-500 mt-1 text-right">{formData.memberIds.length} seleccionados</p>
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
                                 <button

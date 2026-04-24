@@ -42,8 +42,8 @@ exports.getMyPayroll = async (req, res) => {
             include: { team: { include: { activeClientCompany: true } }, activeClientCompany: true }
         });
 
-        if (!user || (!user.teamId && user.role !== 'SUPER_ADMIN' && user.role !== 'BACK_OFFICE')) {
-            return res.status(400).json({ message: 'User not assigned to a team' });
+        if (!user) {
+            return res.status(400).json({ message: 'User not found' });
         }
 
         const teamId = user.teamId;
@@ -188,10 +188,20 @@ exports.getMyPayroll = async (req, res) => {
             overheadToCover = await require('../services/financialService').getGlobalSupportDeficit(req.isDemo || false);
         }
 
-        const stats = calculateGroupFinancials(activations, financialConfig, teamMembers, overheadToCover, getWorkingDays(start.getFullYear(), start.getMonth()), teamDietasCost);
+        const stats = calculateGroupFinancials(
+            activations, 
+            financialConfig, 
+            [user], 
+            overheadToCover / (team?.members?.length || 1), 
+            getWorkingDays(start.getFullYear(), start.getMonth()), 
+            myDietasPayOnly, // Pasamos solo sus dietas como coste porque evaluamos individual
+            true, // isIndividualMode
+            team?.members?.length || 1, // userTeamSize para dividir el coche
+            user.id // targetUserId
+        );
 
-        const memberCount = teamMembers.length || 1;
-        const myBonus = stats.bonusPool / memberCount;
+        const memberCount = 1; // Ya no dividimos, porque stats ya es individual
+        const myBonus = stats.bonusPool;
 
         let myDietasPayOnly = 0;
         let mySaturdayExtraFromDietas = 0;
@@ -215,8 +225,8 @@ exports.getMyPayroll = async (req, res) => {
             financials: financialConfig,
             stats: {
                 ...stats,
-                myTargetRevenue: stats.totalTargetRevenue / memberCount,
-                myCurrentRevenue: stats.currentRevenueMf / memberCount,
+                myTargetRevenue: stats.totalTargetRevenue,
+                myCurrentRevenue: stats.currentRevenueMf,
                 myProgressPercent: stats.progressPercent,
                 activationsCount: activations.length,
                 teamName: team?.name || 'Sin Equipo'
@@ -440,7 +450,22 @@ exports.getPayrollSummaryInternal = async (req, start, end, userIdFilter = 'all'
             // Deduplicate (in case it's in both)
             const allMyWork = [...new Map([...teamActs, ...myActs].map(item => [item.id || item.createdAt, item])).values()];
             
-            stats = calculateGroupFinancials(allMyWork, financialConfig, team?.members || [user], 0, getWorkingDays(yearForDays, monthForDays));
+            let userDietas = 0;
+            user.dietaLogs?.forEach(d => {
+                userDietas += d.amount;
+            });
+
+            stats = calculateGroupFinancials(
+                allMyWork, 
+                financialConfig, 
+                [user], 
+                0, 
+                getWorkingDays(yearForDays, monthForDays), 
+                userDietas,
+                true,
+                team?.members?.length || 1,
+                user.id
+            );
         }
 
         return { user, stats, groupKey, financialConfig };
@@ -466,7 +491,7 @@ exports.getPayrollSummaryInternal = async (req, start, end, userIdFilter = 'all'
     const data = processedUsers.map(({ user, stats, groupKey, financialConfig }) => {
         const finalBaseSalary = user.baseSalary || 1500;
         const members = user.team?.members?.length || 1;
-        const shareBonus = (stats && stats.bonusPool) ? (stats.bonusPool / members) : 0;
+        const shareBonus = (stats && stats.bonusPool) ? stats.bonusPool : 0; // El bonus ya está calculado de forma individual
         
         let splitDietaPay = 0;
         let splitSaturdayExtra = 0;

@@ -1,0 +1,22 @@
+[
+  {
+    "id": "team-instaladores-a",
+    "name": "Instaladores A",
+    "department": "ACTIVATION",
+    "isDemo": false,
+    "activeClientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "vehicleId": null,
+    "createdAt": "2026-02-19T16:37:17.087Z",
+    "updatedAt": "2026-04-06T09:08:55.039Z"
+  },
+  {
+    "id": "73b38b95-f1ec-46c2-a302-209846c6c414",
+    "name": "Equipo Demo Alpha",
+    "department": "ACTIVATION",
+    "isDemo": true,
+    "activeClientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "vehicleId": null,
+    "createdAt": "2026-04-03T15:45:56.650Z",
+    "updatedAt": "2026-04-06T09:08:55.039Z"
+  }
+]

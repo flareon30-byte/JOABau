@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-securepassword}
+      POSTGRES_DB: ${DB_NAME:-fiberoptics}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+
+  server:
+    build: ./server
+    restart: always
+    environment:
+      DATABASE_URL: postgresql://${DB_USER:-admin}:${DB_PASSWORD:-securepassword}@postgres:5432/${DB_NAME:-fiberoptics}?schema=public
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-supersecretkey}
+    volumes:
+      - ./server/uploads:/app/uploads
+      - ./server/backups:/app/backups
+    depends_on:
+      - postgres
+    ports:
+      - "3000:3000"
+
+  client:
+    build: ./client
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - server
+
+volumes:
+  postgres_data:

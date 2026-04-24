@@ -1,0 +1,18 @@
+[
+  {
+    "id": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "name": "CLIENTE PRINCIPAL",
+    "legalName": null,
+    "isActive": true,
+    "settings": null,
+    "taxId": "CIF-CLIENTE-PENDIENTE",
+    "address": "Dirección del Cliente, Ciudad, España",
+    "city": null,
+    "postalCode": null,
+    "country": "ES",
+    "billingEmail": null,
+    "defaultVat": 21,
+    "createdAt": "2026-04-06T09:08:55.018Z",
+    "updatedAt": "2026-04-06T09:08:55.018Z"
+  }
+]

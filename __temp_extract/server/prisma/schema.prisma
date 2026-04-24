@@ -1,0 +1,533 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  BACK_OFFICE
+  ACTIVATOR
+  BLOWER
+  PROTOCOL_MANAGER
+}
+
+enum Department {
+  ACTIVATION
+  BLOWING
+  BACK_OFFICE
+  PROTOCOLS
+}
+
+model User {
+  id                    String        @id @default(uuid())
+  username              String        @unique
+  password              String
+  role                  Role
+  teamId                String?
+  team                  Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  scheduledAppointments Appointment[] @relation("ScheduledBy")
+  phone                 String?
+  baseSalary            Float         @default(1500.0) // Sueldo Base para nóminas
+  vacationDaysTotal     Int           @default(30)
+  isDemo                Boolean       @default(false)
+  
+  vacationRequests      VacationRequest[]
+  materialOrders        MaterialOrder[]
+  simpleInstallations   SimpleInstallation[]
+  dietaLogs             DietaLog[] @relation("UserDietas")
+  
+  activeClientCompanyId String?
+  activeClientCompany   ClientCompany? @relation("ActiveClientCompany", fields: [activeClientCompanyId], references: [id])
+  
+  pushSubscriptions     PushSubscription[]
+
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
+enum VacationStatus {
+  PENDING
+  APPROVED
+  DENIED
+}
+
+enum VacationType {
+  VACATION
+  DAY_OFF
+}
+
+model VacationRequest {
+  id             String         @id @default(uuid())
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  startDate      DateTime
+  endDate        DateTime
+  type           VacationType   @default(VACATION)
+  status         VacationStatus @default(PENDING)
+  reason         String?
+  managerComment String?
+  
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+model Team {
+  id           String        @id @default(uuid())
+  name         String
+  department   Department
+  isDemo       Boolean       @default(false)
+  members      User[]
+  appointments Appointment[]
+  tools        Tool[]
+  soplados     SopladoInfo[] @relation("BlowingTeam")
+  
+  activeClientCompanyId String?
+  activeClientCompany   ClientCompany? @relation(fields: [activeClientCompanyId], references: [id])
+  
+  vehicleId    String?       @unique
+  vehicle      Vehicle?      @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Tool {
+  id           String @id @default(uuid())
+  name         String
+  serialNumber String
+  status       String @default("ACTIVE") // ACTIVE, BROKEN, REPAIR
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  photos String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Project {
+  id              String         @id @default(uuid())
+  name            String         @unique
+  isDemo          Boolean        @default(false)
+  clientCompanyId String?
+  clientCompany   ClientCompany? @relation(fields: [clientCompanyId], references: [id])
+  addresses       Address[]
+  fusionWorks     FusionWork[]
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model Address {
+  id         String  @id @default(uuid())
+  projectId  String
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  nvt        String?
+  street     String
+  number     String?
+  city       String?
+  klsId      String?
+  clientName String?
+
+  // Soplado
+  sopladoStatus SopladoStatus?
+  sopladoInfo   SopladoInfo?
+
+  // Fusion
+  fusionInfo FusionInfo?
+
+  // Back Office / Citas
+  appointment Appointment?
+
+  // Activacion
+  activationInfo ActivationInfo?
+
+  // G&K / Simple Workflow
+  simpleInstallation SimpleInstallation?
+
+  // New fields for Protocol and Status Logic
+  requiresProtocol Boolean @default(false)
+  protocolStatus   String  @default("NONE") // NONE, PENDING, SCHEDULED, COMPLETED, RECITED
+  orderStatus      String? @default("geplant") // Column C from Excel
+
+  notifications Notification[]
+  repairs       Repair[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum SopladoStatus {
+  OK
+  FALLIDO
+  PENDIENTE
+}
+
+model SopladoInfo {
+  id        String  @id @default(uuid())
+  addressId String  @unique
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  meters    Float
+  tk        String
+  tubeColor String
+
+  teamId    String?
+  team      Team?   @relation("BlowingTeam", fields: [teamId], references: [id], onDelete: SetNull)
+
+  isSaturday Boolean @default(false)
+
+  // Si fallido
+  failureReason String?
+  photos        String[]
+  
+  saturdayPay   Float   @default(0.0) // Captured earnings for technician if isSaturday
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FusionInfo {
+  id          String   @id @default(uuid())
+  addressId   String   @unique
+  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  description String
+  photos      String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum AppointmentStatus {
+  PENDIENTE
+  CITADO
+  COMPLETADO
+  CANCELADO
+  RECITAR
+}
+
+model Appointment {
+  id        String  @id @default(uuid())
+  addressId String  @unique
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+
+  clientName     String? // Mandatory for assignment
+  apartmentCount Int? // Mandatory for assignment
+
+  contactAttempts Int      @default(0)
+  contactHistory  String[] // "YYYY-MM-DD HH:mm: Resultado"
+
+  assignedDate   DateTime?
+  assignedTeamId String?
+  assignedTeam   Team?     @relation(fields: [assignedTeamId], references: [id], onDelete: SetNull)
+
+  scheduledById String?
+  scheduledBy   User?   @relation("ScheduledBy", fields: [scheduledById], references: [id], onDelete: SetNull)
+
+  type         String  @default("ACTIVATION") // ACTIVATION, PROTOCOL
+  reciteReason String?
+
+  status   AppointmentStatus @default(PENDIENTE)
+  comments Comment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Comment {
+  id            String      @id @default(uuid())
+  content       String
+  authorName    String
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  photos        String[]    @default([])
+  createdAt     DateTime    @default(now())
+}
+
+enum ActivationType {
+  BP
+  BP_2_FAM
+  BR_MULTI
+  SDU
+  MDU
+}
+
+model ActivationInfo {
+  id        String  @id @default(uuid())
+  addressId String  @unique
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+
+  activationType ActivationType
+  customActivationName String?
+  familiesCount  Int
+  apPorts        Int
+  hasMoreClients Boolean
+  spInstalled    Int      @default(0)
+  taInstalled    Boolean
+  taCount        Int      @default(0)
+  mduInstalled   Boolean  @default(false)
+  isRepair       Boolean  @default(false)
+
+  homeIds        String[]
+  description    String?
+
+  photos  String[]
+  pdfPath String?
+
+  points     Float // Legacy points
+  
+  // New Financial Fields (Snapshot)
+  basePrice   Float @default(0.0)
+  spPrice     Float @default(0.0)
+  taPrice     Float @default(0.0)
+  mduPrice    Float @default(0.0)
+  repairPrice Float @default(0.0)
+
+  saturdayPay Float @default(0.0) // Captured earnings for technician if isSaturday
+
+  isSaturday Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SystemSettings {
+  id                  String  @id @default(uuid())
+  isDemo              Boolean @default(false)
+  extraPointPrice     Float   @default(0.0)
+  saturdayPointPrice  Float   @default(0.0)
+  repairPrice         Float   @default(45.0) // Precio por Avería (Facturable)
+  monthlyTargetPoints Int     @default(100)
+
+  // Point Values
+  bpPoints      Float @default(10.0)
+  bp2FamPoints  Float @default(15.0)
+  brMultiPoints Float @default(20.0)
+  sduPoints     Float @default(25.0)
+  mduPoints     Float @default(30.0)
+  spPoints      Float @default(5.0)
+  taPoints      Float @default(0.5)
+
+  financials Json? // Stores complex calculator config (salaries, cars, etc.)
+
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id      String  @id @default(uuid())
+  type    String // e.g., 'RECITE', 'ISSUE'
+  message String
+  isRead  Boolean @default(false)
+
+  addressId String?
+  address   Address? @relation(fields: [addressId], references: [id], onDelete: Cascade)
+
+  createdById String?
+  targetRole  Role?
+
+  createdAt DateTime @default(now())
+}
+
+model FusionWork {
+  id        String  @id @default(uuid())
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  nvtName   String // The NVT identifier (e.g. "NVT-01")
+
+  fusionCount Int
+  isTray      Boolean @default(false) // "en bandejas"
+
+  photos      String[]
+  description String? // Optional comments
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+}
+
+model Repair {
+  id           String   @id @default(uuid())
+  addressId    String
+  address      Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  description  String
+  photos       String[]
+  
+  technicianId String? // ID of who performed the repair
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+enum MaterialOrderStatus {
+  PENDIENTE
+  REALIZADO
+  EN_ALMACEN
+}
+
+model MaterialOrder {
+  id                  String              @id @default(uuid())
+  userId              String
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  materialDescription String
+  timeRemaining       String
+  status              MaterialOrderStatus @default(PENDIENTE)
+
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+}
+
+model ClientCompany {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  settings  Json?    // Store client-specific financial/bonus/rates config
+  
+  teams     Team[]
+  
+  users     User[]   @relation("ActiveClientCompany")
+  projects  Project[]
+  
+  priceItems ClientPriceItem[] // Dynamic pricing items
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClientPriceItem {
+  id               String        @id @default(uuid())
+  clientCompanyId  String
+  clientCompany    ClientCompany @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  name             String
+  department       Department    // ACTIVATION, BLOWING, etc.
+  priceToClient    Float         @default(0.0) // What Joa charges the client
+  bonusToTeam      Float         @default(0.0) // Extra pay for the team (Standard)
+  saturdayPay      Float         @default(0.0) // Specific extra pay for technician on SATURDAY
+  
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  installationEntries SimpleInstallationItem[]
+}
+
+model SimpleInstallation {
+  id        String  @id @default(uuid())
+  addressId String  @unique
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  
+  customerFirstName String?
+  customerLastName  String?
+  
+  olt              String?
+  pon              String?
+  splitterPort     String?
+  gponSerialNumber String?
+  
+  isReadyForOperation Boolean? @default(true)
+  
+  gpsLat           Float?
+  gpsLng           Float?
+  gpsAlt           Float?
+  
+  contactName String?
+  comments    String?
+  photos      String[]
+  
+  // New: Categorized Photo Paths (Optional overrides for PDF generation)
+  photoHuep        String?
+  photoModem       String?
+  photoOtdr        String?
+  signaturePath    String?
+  pdfPath          String?
+  
+  // Financial tracking metadata based on Active Client settings at the time of creation
+  priceCharged Float @default(0.0)
+  
+  items       SimpleInstallationItem[] // New: Multiple items support
+  
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SimpleInstallationItem {
+  id                   String            @id @default(uuid())
+  simpleInstallationId String
+  simpleInstallation   SimpleInstallation @relation(fields: [simpleInstallationId], references: [id], onDelete: Cascade)
+  priceItemId          String
+  priceItem            ClientPriceItem   @relation(fields: [priceItemId], references: [id])
+  quantity             Int               @default(1)
+  priceAtTime          Float
+  bonusAtTime          Float
+}
+
+model Vehicle {
+  id               String       @id @default(uuid())
+  make             String
+  model            String
+  plate            String       @unique
+  initialKms       Float        @default(0.0)
+  currentKms       Float        @default(0.0)
+  annualKmLimit    Float        @default(10000.0) // Your insurance limit
+  
+  team             Team?
+  logs             VehicleLog[]
+
+  isDemo           Boolean      @default(false)
+  
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+enum VehicleLogType {
+  FUEL
+  ODOMETER
+  MAINTENANCE
+}
+
+model VehicleLog {
+  id               String         @id @default(uuid())
+  vehicleId        String
+  vehicle          Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  
+  type             VehicleLogType @default(FUEL)
+  kms              Float?         // Reading from tachograph
+  amount           Float?         // Price paid for gas
+  liters           Float?
+  
+  photos           String[]       // Tickets, tachograph photos
+  
+  createdById      String?
+  
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+}
+
+model DietaLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation("UserDietas", fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime
+  type      String   // "HOTEL" or "CASA"
+  amount    Float
+  createdAt DateTime @default(now())
+
+  @@unique([userId, date])
+}

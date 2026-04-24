@@ -1,0 +1,90 @@
+[
+  {
+    "id": "price-Activación-Estándar",
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "name": "Activación Estándar",
+    "department": "ACTIVATION",
+    "priceToClient": 250,
+    "bonusToTeam": 20,
+    "saturdayPay": 0,
+    "createdAt": "2026-04-06T09:08:55.025Z",
+    "updatedAt": "2026-04-06T09:08:55.025Z"
+  },
+  {
+    "id": "price-Instalación-SP",
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "name": "Instalación SP",
+    "department": "ACTIVATION",
+    "priceToClient": 75,
+    "bonusToTeam": 0,
+    "saturdayPay": 0,
+    "createdAt": "2026-04-06T09:08:55.028Z",
+    "updatedAt": "2026-04-06T09:08:55.028Z"
+  },
+  {
+    "id": "price-Instalación-TA",
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "name": "Instalación TA",
+    "department": "ACTIVATION",
+    "priceToClient": 50,
+    "bonusToTeam": 10,
+    "saturdayPay": 0,
+    "createdAt": "2026-04-06T09:08:55.029Z",
+    "updatedAt": "2026-04-06T09:08:55.029Z"
+  },
+  {
+    "id": "price-Instalación-MDU",
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "name": "Instalación MDU",
+    "department": "ACTIVATION",
+    "priceToClient": 50,
+    "bonusToTeam": 10,
+    "saturdayPay": 0,
+    "createdAt": "2026-04-06T09:08:55.030Z",
+    "updatedAt": "2026-04-06T09:08:55.030Z"
+  },
+  {
+    "id": "price-Activación-Multi-familia",
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "name": "Activación Multi-familia",
+    "department": "ACTIVATION",
+    "priceToClient": 100,
+    "bonusToTeam": 10,
+    "saturdayPay": 0,
+    "createdAt": "2026-04-06T09:08:55.031Z",
+    "updatedAt": "2026-04-06T09:08:55.031Z"
+  },
+  {
+    "id": "price-Soplado-(por-metro)",
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "name": "Soplado (por metro)",
+    "department": "BLOWING",
+    "priceToClient": 0.4,
+    "bonusToTeam": 0.05,
+    "saturdayPay": 0,
+    "createdAt": "2026-04-06T09:08:55.032Z",
+    "updatedAt": "2026-04-06T09:08:55.032Z"
+  },
+  {
+    "id": "price-Cita-Concertada",
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "name": "Cita Concertada",
+    "department": "BACK_OFFICE",
+    "priceToClient": 15,
+    "bonusToTeam": 0,
+    "saturdayPay": 0,
+    "createdAt": "2026-04-06T09:08:55.033Z",
+    "updatedAt": "2026-04-06T09:08:55.033Z"
+  },
+  {
+    "id": "price-Avería-/-Reparación",
+    "clientCompanyId": "77b89ff3-c77a-481b-94b3-62109b6e4b11",
+    "name": "Avería / Reparación",
+    "department": "ACTIVATION",
+    "priceToClient": 45,
+    "bonusToTeam": 0,
+    "saturdayPay": 0,
+    "createdAt": "2026-04-06T09:08:55.034Z",
+    "updatedAt": "2026-04-06T09:08:55.034Z"
+  }
+]

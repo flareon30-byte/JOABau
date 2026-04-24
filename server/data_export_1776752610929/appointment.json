@@ -1,0 +1,50 @@
+[
+  {
+    "id": "80e2ca6c-e1d7-4c33-a6c8-d3df85d58519",
+    "addressId": "29a4dfec-e623-48aa-beb5-a7f6a7f09ddd",
+    "clientName": "Cliente Pendiente",
+    "apartmentCount": 1,
+    "contactAttempts": 0,
+    "contactHistory": [],
+    "assignedDate": "2026-02-19T16:37:17.093Z",
+    "assignedTeamId": "team-instaladores-a",
+    "scheduledById": null,
+    "type": "ACTIVATION",
+    "reciteReason": null,
+    "status": "CITADO",
+    "createdAt": "2026-02-19T16:37:17.095Z",
+    "updatedAt": "2026-02-19T16:37:17.095Z"
+  },
+  {
+    "id": "5cce78c5-97a5-48b1-a341-4437a6243eb1",
+    "addressId": "24952c4a-2964-4e16-943f-12b08941063b",
+    "clientName": "Cliente Completado",
+    "apartmentCount": 1,
+    "contactAttempts": 0,
+    "contactHistory": [],
+    "assignedDate": "2026-02-19T16:37:17.099Z",
+    "assignedTeamId": "team-instaladores-a",
+    "scheduledById": null,
+    "type": "ACTIVATION",
+    "reciteReason": null,
+    "status": "COMPLETADO",
+    "createdAt": "2026-02-19T16:37:17.101Z",
+    "updatedAt": "2026-02-19T16:37:17.101Z"
+  },
+  {
+    "id": "f73935fb-bded-4eed-a579-a9639654ca02",
+    "addressId": "8c6d12ad-a839-4402-b38d-b8e802d6738e",
+    "clientName": "Cliente Averia",
+    "apartmentCount": 1,
+    "contactAttempts": 0,
+    "contactHistory": [],
+    "assignedDate": "2026-02-19T16:37:17.104Z",
+    "assignedTeamId": "team-instaladores-a",
+    "scheduledById": null,
+    "type": "ACTIVATION",
+    "reciteReason": null,
+    "status": "COMPLETADO",
+    "createdAt": "2026-02-19T16:37:17.105Z",
+    "updatedAt": "2026-02-19T16:37:17.105Z"
+  }
+]
