@@ -188,6 +188,21 @@ exports.getMyPayroll = async (req, res) => {
             overheadToCover = await require('../services/financialService').getGlobalSupportDeficit(req.isDemo || false);
         }
 
+        // --- DIETAS CALCULATION ---
+        let myDietasPayOnly = 0;
+        let mySaturdayExtraFromDietas = 0;
+        const individualDietas = allTeamDietas.filter(d => d.userId === userId);
+        individualDietas.forEach(d => {
+            let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
+            if (d.isSaturday) {
+                let extra = d.amount - base;
+                mySaturdayExtraFromDietas += extra;
+                myDietasPayOnly += base;
+            } else {
+                myDietasPayOnly += d.amount;
+            }
+        });
+
         const stats = calculateGroupFinancials(
             activations, 
             financialConfig, 
@@ -202,20 +217,6 @@ exports.getMyPayroll = async (req, res) => {
 
         const memberCount = 1; // Ya no dividimos, porque stats ya es individual
         const myBonus = stats.bonusPool;
-
-        let myDietasPayOnly = 0;
-        let mySaturdayExtraFromDietas = 0;
-        const individualDietas = allTeamDietas.filter(d => d.userId === userId);
-        individualDietas.forEach(d => {
-            let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
-            if (d.isSaturday) {
-                let extra = d.amount - base;
-                mySaturdayExtraFromDietas += extra;
-                myDietasPayOnly += base;
-            } else {
-                myDietasPayOnly += d.amount;
-            }
-        });
 
         const mySaturday = (stats.saturdayPay / memberCount) + mySaturdayExtraFromDietas;
         const myBaseSalary = user.baseSalary || 1500;

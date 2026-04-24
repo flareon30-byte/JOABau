@@ -25,25 +25,39 @@ exports.getMyAppointments = async (req, res) => {
             select: { teamId: true }
         });
 
-        if (!user.teamId) {
-            return res.status(400).json({ message: 'User is not assigned to a team' });
-        }
+        const teamId = user.teamId || 'no-team';
 
         const appointments = await prisma.appointment.findMany({
             where: {
-                assignedTeamId: user.teamId,
-                status: 'CITADO' // Only show what is currently pending to be done
+                OR: [
+                    { assignedTeamId: teamId },
+                    { 
+                        address: { 
+                            activationInfo: { 
+                                performerIds: { has: userId } 
+                            } 
+                        } 
+                    },
+                    {
+                        address: {
+                            sopladoInfo: {
+                                performerIds: { has: userId }
+                            }
+                        }
+                    }
+                ]
             },
             include: {
                 address: {
                     include: {
                         project: true,
-                        activationInfo: true
+                        activationInfo: true,
+                        sopladoInfo: true
                     }
                 }
             },
             orderBy: { assignedDate: 'desc' },
-            take: 50 // Limit to last 50 to avoid clutter
+            take: 100 // Incremented slightly to ensure they see past few days
         });
 
         res.json(appointments);
