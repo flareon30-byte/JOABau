@@ -61,7 +61,7 @@ exports.getMyPayroll = async (req, res) => {
         }
 
         // --- NEW CYCLE LOGIC (21 TO 20) ---
-        const { start, end } = getCycleDates();
+        const { start, end } = exports.getCycleDates();
 
         // 0. Fetch Dietas Logged for all team members (affects shared pool)
         const teamMemberIds = team ? team.members.map(m => m.id) : [userId];
@@ -253,12 +253,12 @@ exports.getMyPayroll = async (req, res) => {
 exports.archiveCurrentCycle = async (req, res) => {
     try {
         // When archiving, we usually want to archive the cycle that JUST ENDED (the 20th).
-        // If today is 21st-31st, getCycleDates() would point to the NEW future cycle.
+        // If today is 21st-31st, exports.getCycleDates() would point to the NEW future cycle.
         // We subtract 2 days from "now" to make sure we are inside the period that ended on the 20th.
         const referenceDate = new Date();
         referenceDate.setDate(referenceDate.getDate() - 2); 
         
-        const { start, end } = getCycleDates(referenceDate);
+        const { start, end } = exports.getCycleDates(referenceDate);
         const month = end.getMonth() + 1;
         const year = end.getFullYear();
 
@@ -539,7 +539,7 @@ exports.getPayrollSummary = async (req, res) => {
             start = new Date(startDate);
             end = new Date(endDate);
         } else {
-            const cycle = getCycleDates();
+            const cycle = exports.getCycleDates();
             start = cycle.start;
             end = cycle.end;
         }
