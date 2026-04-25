@@ -197,7 +197,7 @@ const DashboardLayout = () => {
             icon: Package,
             items: [
                 { icon: Package, label: 'Pedidos de Material', path: '/dashboard/material-orders' },
-                { icon: Truck, label: 'Mi Vehículo', path: '/dashboard/my-vehicle', roles: ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER'] },
+                { icon: Truck, label: 'Mi Vehículo', path: '/dashboard/my-vehicle', roles: ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'], showIfVehicle: true },
                 { icon: Umbrella, label: 'Mis Vacaciones', path: '/dashboard/vacations' },
             ]
         }
@@ -315,7 +315,11 @@ const DashboardLayout = () => {
                                 {(isOpen || !group.label || !isSidebarOpen) && (
                                     <div className="space-y-1">
                                         {group.items.map((item) => {
-                                            if (item.roles && !item.roles.includes(user.role)) return null;
+                                            // Allow access if user has the role OR if the item is vehicle-related and user has a vehicle
+                                            const hasRole = !item.roles || item.roles.includes(user.role);
+                                            const hasVehicle = item.showIfVehicle && (user.vehicleId || user.vehicle);
+                                            
+                                            if (!hasRole && !hasVehicle) return null;
 
                                             const isActive = location.pathname === item.path;
                                             return (
