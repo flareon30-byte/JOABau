@@ -9,8 +9,7 @@ exports.getAllTeams = async (req, res) => {
                 members: {
                     select: { id: true, username: true, role: true }
                 },
-                activeClientCompany: true,
-                vehicle: true
+                activeClientCompany: true
             }
         });
         res.json(teams);
