@@ -7,25 +7,22 @@ const TeamManagement = () => {
     const [teams, setTeams] = useState([]);
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [formData, setFormData] = useState({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '', vehicleId: '' });
+    const [formData, setFormData] = useState({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '' });
 
     // New states
     const [clients, setClients] = useState([]);
     const [selectedTeam, setSelectedTeam] = useState(null); // For Tools Modal
     const [editingTeam, setEditingTeam] = useState(null);   // For Edit Modal
-    const [vehicles, setVehicles] = useState([]);
 
     const fetchData = async () => {
         try {
-            const [teamsRes, usersRes, clientsRes, vehiclesRes] = await Promise.all([
+            const [teamsRes, usersRes, clientsRes] = await Promise.all([
                 api.get('/api/teams').catch(err => { console.error('Teams load failed', err); return { data: [] }; }),
                 api.get('/api/users').catch(err => { console.error('Users load failed', err); return { data: [] }; }),
-                api.get('/api/clients').catch(err => { console.error('Clients load failed', err); return { data: [] }; }),
-                api.get('/api/vehicles').catch(err => { console.error('Vehicles load failed', err); return { data: [] }; })
+                api.get('/api/clients').catch(err => { console.error('Clients load failed', err); return { data: [] }; })
             ]);
             setTeams(teamsRes.data || []);
             setClients(clientsRes.data || []);
-            setVehicles(vehiclesRes.data || []);
             setUsers(usersRes.data || []);
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -38,7 +35,7 @@ const TeamManagement = () => {
 
     const openCreateModal = () => {
         setEditingTeam(null);
-        setFormData({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '', vehicleId: '' });
+        setFormData({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '' });
         setIsModalOpen(true);
     };
 
@@ -48,8 +45,7 @@ const TeamManagement = () => {
             name: team.name,
             department: team.department,
             memberIds: team.members.map(m => m.id),
-            activeClientCompanyId: team.activeClientCompanyId || '',
-            vehicleId: team.vehicleId || ''
+            activeClientCompanyId: team.activeClientCompanyId || ''
         });
         setIsModalOpen(true);
     };
@@ -74,7 +70,7 @@ const TeamManagement = () => {
             fetchData();
             setIsModalOpen(false);
             setEditingTeam(null);
-            setFormData({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '', vehicleId: '' });
+            setFormData({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '' });
         } catch (error) {
             console.error('Error saving team:', error);
             alert(error.response?.data?.message || 'Error al guardar equipo');
