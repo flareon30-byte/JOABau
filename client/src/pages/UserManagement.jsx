@@ -6,19 +6,25 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState(null); // For editing
-    const [formData, setFormData] = useState({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30 });
+    const [formData, setFormData] = useState({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '' });
 
-    const fetchUsers = async () => {
+    const [vehicles, setVehicles] = useState([]);
+
+    const fetchData = async () => {
         try {
-            const response = await api.get('/api/users');
-            setUsers(response.data);
+            const [usersRes, vehiclesRes] = await Promise.all([
+                api.get('/api/users'),
+                api.get('/api/vehicles')
+            ]);
+            setUsers(usersRes.data);
+            setVehicles(vehiclesRes.data);
         } catch (error) {
-            console.error('Error fetching users:', error);
+            console.error('Error fetching data:', error);
         }
     };
 
     useEffect(() => {
-        fetchUsers();
+        fetchData();
     }, []);
 
     const handleOpenModal = (user = null) => {
@@ -31,11 +37,12 @@ const UserManagement = () => {
                 teamId: user.teamId || '',
                 phone: user.phone || '',
                 baseSalary: user.baseSalary || 1500,
-                vacationDaysTotal: user.vacationDaysTotal || 30
+                vacationDaysTotal: user.vacationDaysTotal || 30,
+                vehicleId: user.vehicleId || ''
             });
         } else {
             setCurrentUser(null);
-            setFormData({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30 });
+            setFormData({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '' });
         }
         setIsModalOpen(true);
     };
@@ -48,7 +55,7 @@ const UserManagement = () => {
             } else {
                 await api.post('/api/users', formData);
             }
-            fetchUsers();
+            fetchData();
             setIsModalOpen(false);
         } catch (error) {
             console.error('Error saving user:', error);
@@ -60,7 +67,7 @@ const UserManagement = () => {
         if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
             try {
                 await api.delete(`/api/users/${id}`);
-                fetchUsers();
+                fetchData();
             } catch (error) {
                 console.error('Error deleting user:', error);
                 alert(error.response?.data?.message || 'Error al eliminar usuario');
@@ -99,6 +106,7 @@ const UserManagement = () => {
                             <th className="px-6 py-4">Teléfono</th>
                             <th className="px-6 py-4">Rol</th>
                             <th className="px-6 py-4">Equipo</th>
+                            <th className="px-6 py-4">Vehículo</th>
                             <th className="px-6 py-4">Sueldo Base</th>
                             <th className="px-6 py-4 text-right">Acciones</th>
                         </tr>
@@ -116,10 +124,13 @@ const UserManagement = () => {
                                         {user.role}
                                     </span>
                                 </td>
+                                <td className="px-6 py-4 text-slate-500">{user.teamId || '-'}</td>
+                                <td className="px-6 py-4 text-slate-500 text-sm">
+                                    {vehicles.find(v => v.id === user.vehicleId)?.plate || '-'}
+                                </td>
                                 <td className="px-6 py-4 text-slate-700 font-bold text-sm">
                                     {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(user.baseSalary || 1500)}
                                 </td>
-                                <td className="px-6 py-4 text-slate-500">{user.teamId || '-'}</td>
                                 <td className="px-6 py-4 text-right space-x-2">
                                     <button onClick={() => handleOpenModal(user)} className="text-blue-600 hover:bg-blue-50 p-2 rounded-lg transition-colors">
                                         <Edit size={18} />
@@ -183,6 +194,19 @@ const UserManagement = () => {
                                     <option value="ACTIVATOR">Activador</option>
                                     <option value="BLOWER">Soplador</option>
                                     <option value="PROTOCOL_MANAGER">Gestor de Protocolos</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Vehículo Asignado</label>
+                                <select
+                                    value={formData.vehicleId}
+                                    onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="">-- Sin Vehículo Asignado --</option>
+                                    {vehicles.map(v => (
+                                        <option key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</option>
+                                    ))}
                                 </select>
                             </div>
                             <div>

@@ -203,8 +203,8 @@ const VehicleManagement = () => {
                                         <p className="font-bold text-slate-700 flex items-center gap-1"><Gauge size={14} className="text-blue-500" /> {v.currentKms}</p>
                                     </div>
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Equipo Asignado</p>
-                                        <p className="font-bold text-slate-700 truncate">{v.team?.name || 'Libre'}</p>
+                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Usuarios Asignados</p>
+                                        <p className="font-bold text-slate-700 truncate">{v.users && v.users.length > 0 ? v.users.map(u => u.username).join(', ') : 'Libre'}</p>
                                     </div>
                                 </div>
                             </div>

@@ -5,7 +5,7 @@ exports.getAllVehicles = async (req, res) => {
     try {
         const vehicles = await prisma.vehicle.findMany({
             where: { isDemo: req.isDemo || false },
-            include: { team: true, logs: { take: 5, orderBy: { date: 'desc' } } }
+            include: { users: true, logs: { take: 5, orderBy: { date: 'desc' } } }
         });
         res.json(vehicles);
     } catch (error) {

@@ -19,8 +19,8 @@ const VehicleLogForm = () => {
         try {
             // Get user's team and vehicle
             const { data: userData } = await api.get('/api/auth/me');
-            if (userData.team?.vehicle) {
-                const { data: vehicleData } = await api.get(`/api/vehicles/${userData.team.vehicle.id}/stats`);
+            if (userData.vehicle) {
+                const { data: vehicleData } = await api.get(`/api/vehicles/${userData.vehicle.id}/stats`);
                 setVehicle(vehicleData.vehicle);
                 setLastLog(vehicleData.vehicle.logs?.[0] || null);
             }

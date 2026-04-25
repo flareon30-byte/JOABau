@@ -202,19 +202,7 @@ const TeamManagement = () => {
                                     <option value="PROTOCOLS">Protocolos</option>
                                 </select>
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Vehículo Asignado</label>
-                                <select
-                                    value={formData.vehicleId}
-                                    onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
-                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                >
-                                    <option value="">-- Sin Vehículo Asignado --</option>
-                                    {vehicles.map(v => (
-                                        <option key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</option>
-                                    ))}
-                                </select>
-                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Empresa Cliente (Asignación)</label>
                                 <select

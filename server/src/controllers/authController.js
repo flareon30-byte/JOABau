@@ -39,10 +39,10 @@ exports.login = async (req, res) => {
             where: { username },
             include: {
                 activeClientCompany: true,
+                vehicle: true,
                 team: {
                     include: {
                         activeClientCompany: true,
-                        vehicle: true,
                         members: true
                     }
                 }
@@ -95,7 +95,8 @@ exports.login = async (req, res) => {
                 teamId: user.teamId,
                 team: user.team,
                 activeClientCompanyId,
-                activeClientCompany
+                activeClientCompany,
+                vehicle: user.vehicle
             } 
         });
     } catch (error) {
@@ -141,10 +142,10 @@ exports.getMe = async (req, res) => {
             where: { id: req.userId },
             include: {
                 activeClientCompany: true,
+                vehicle: true,
                 team: {
                     include: {
                         activeClientCompany: true,
-                        vehicle: true,
                         members: true
                     }
                 }
@@ -177,7 +178,8 @@ exports.getMe = async (req, res) => {
             teamId: user.teamId,
             team: user.team,
             activeClientCompanyId,
-            activeClientCompany
+            activeClientCompany,
+            vehicle: user.vehicle
         });
     } catch (error) {
         console.error('Error fetching user profile:', error);

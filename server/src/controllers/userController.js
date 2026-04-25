@@ -14,6 +14,7 @@ exports.getAllUsers = async (req, res) => {
                 phone: true,
                 vacationDaysTotal: true,
                 activeClientCompanyId: true,
+                vehicleId: true,
                 baseSalary: true,
                 createdAt: true
             }
@@ -25,7 +26,7 @@ exports.getAllUsers = async (req, res) => {
 };
 
 exports.createUser = async (req, res) => {
-    const { username, password, role, teamId, phone, vacationDaysTotal } = req.body;
+    const { username, password, role, teamId, phone, vacationDaysTotal, vehicleId } = req.body;
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
@@ -35,6 +36,7 @@ exports.createUser = async (req, res) => {
                 role,
                 teamId: teamId || null,
                 phone: phone || null,
+                vehicleId: vehicleId || null,
                 baseSalary: (req.body.baseSalary !== undefined && req.body.baseSalary !== '') ? parseFloat(req.body.baseSalary) : 1500.0,
                 vacationDaysTotal: (vacationDaysTotal !== undefined && vacationDaysTotal !== '') ? parseInt(vacationDaysTotal) : 30,
                 isDemo: req.isDemo || false
@@ -49,7 +51,7 @@ exports.createUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
     const { id } = req.params;
-    const { username, password, role, teamId, phone, vacationDaysTotal } = req.body;
+    const { username, password, role, teamId, phone, vacationDaysTotal, vehicleId } = req.body;
 
     try {
         const data = {
@@ -57,6 +59,7 @@ exports.updateUser = async (req, res) => {
             role,
             teamId: teamId || null,
             phone: phone || null,
+            vehicleId: vehicleId || null,
             baseSalary: (req.body.baseSalary !== undefined && req.body.baseSalary !== '') ? parseFloat(req.body.baseSalary) : 1500.0,
             vacationDaysTotal: (vacationDaysTotal !== undefined && vacationDaysTotal !== '') ? parseInt(vacationDaysTotal) : 30
         };

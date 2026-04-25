@@ -20,7 +20,7 @@ exports.getAllTeams = async (req, res) => {
 };
 
 exports.createTeam = async (req, res) => {
-    const { name, department, memberIds, activeClientCompanyId, vehicleId } = req.body;
+    const { name, department, memberIds, activeClientCompanyId } = req.body;
 
     try {
         // Enforce Demo Isolation: Cannot mix demo users with real users
@@ -46,7 +46,6 @@ exports.createTeam = async (req, res) => {
                 name,
                 department,
                 activeClientCompanyId: activeClientCompanyId || null,
-                vehicleId: vehicleId || null,
                 isDemo: req.isDemo || false,
                 members: {
                     connect: memberIds.map(id => ({ id }))
@@ -75,7 +74,7 @@ exports.createTeam = async (req, res) => {
 
 exports.updateTeam = async (req, res) => {
     const { id } = req.params;
-    const { name, department, memberIds, activeClientCompanyId, vehicleId } = req.body;
+    const { name, department, memberIds, activeClientCompanyId } = req.body;
 
     try {
         // Validation: Verify that new members are not in OTHER teams
@@ -102,7 +101,6 @@ exports.updateTeam = async (req, res) => {
                 name,
                 department,
                 activeClientCompanyId: activeClientCompanyId || null,
-                vehicleId: vehicleId || null,
                 members: {
                     set: [], // Disconnect everyone
                     connect: memberIds.map(uid => ({ id: uid })) // Connect new list
