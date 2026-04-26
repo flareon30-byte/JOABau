@@ -28,7 +28,7 @@ const AppointmentsPage = () => {
 
     // Forms
     const [contactForm, setContactForm] = useState({ result: 'No contesta', comment: '' });
-    const [scheduleForm, setScheduleForm] = useState({ date: '', teamId: '', clientName: '', apartmentCount: '' });
+    const [scheduleForm, setScheduleForm] = useState({ date: '', teamId: '', clientName: '', apartmentCount: '', orientationComment: '' });
 
     // New Edit Comment States
     const [isEditCommentModalOpen, setIsEditCommentModalOpen] = useState(false);
@@ -179,7 +179,7 @@ const AppointmentsPage = () => {
 
             await api.post(`/api/appointments/schedule/${selectedAddress.id}`, payload);
             setIsScheduleModalOpen(false);
-            setScheduleForm({ date: '', teamId: '', clientName: '', apartmentCount: '' });
+            setScheduleForm({ date: '', teamId: '', clientName: '', apartmentCount: '', orientationComment: '' });
             fetchData();
         } catch (error) {
             console.error('Error scheduling:', error);
@@ -302,7 +302,8 @@ const AppointmentsPage = () => {
                 teamId: existingAppointment.assignedTeamId || '',
                 clientName: existingAppointment.clientName || '',
                 apartmentCount: existingAppointment.apartmentCount || '',
-                type: existingAppointment.type || 'ACTIVATION'
+                type: existingAppointment.type || 'ACTIVATION',
+                orientationComment: existingAppointment.orientationComment || ''
             });
         } else {
             // Reset for new
@@ -312,7 +313,8 @@ const AppointmentsPage = () => {
                 teamId: '',
                 clientName: address.clientName || '',
                 apartmentCount: address.apartmentCount || '',
-                type: defaultType
+                type: defaultType,
+                orientationComment: ''
             });
         }
         setIsScheduleModalOpen(true);
@@ -1074,6 +1076,15 @@ const AppointmentsPage = () => {
                                         <option key={team.id} value={team.id}>{team.name} ({team.department})</option>
                                     ))}
                                 </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Comentario de Orientación (Para el Técnico)</label>
+                                <textarea
+                                    value={scheduleForm.orientationComment}
+                                    onChange={(e) => setScheduleForm({ ...scheduleForm, orientationComment: e.target.value })}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none h-20 resize-none"
+                                    placeholder="Ej. El cliente ya tiene la instalación hecha, solo es activar..."
+                                />
                             </div>
                             <div className="flex justify-between mt-6">
                                 {scheduleForm.appointmentId ? (

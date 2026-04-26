@@ -255,6 +255,7 @@ model Appointment {
 
   status   AppointmentStatus @default(PENDIENTE)
   comments Comment[]
+  orientationComment String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

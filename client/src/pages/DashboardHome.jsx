@@ -181,6 +181,12 @@ const AppointmentModal = ({ appointment, onClose, onUpdate, navigate }) => {
                                     {new Date(appointment.assignedDate).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })}
                                 </p>
                             </div>
+                            {appointment.orientationComment && (
+                                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                                    <p className="text-xs font-bold text-blue-500 uppercase tracking-wider mb-1">Nota del Back Office</p>
+                                    <p className="font-medium text-blue-900 text-lg whitespace-pre-wrap">{appointment.orientationComment}</p>
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-6 flex gap-3">

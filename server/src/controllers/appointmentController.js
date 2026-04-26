@@ -132,7 +132,7 @@ exports.logContactAttempt = async (req, res) => {
 // Schedule an appointment
 exports.scheduleAppointment = async (req, res) => {
     const { addressId } = req.params;
-    const { date, teamId, clientName, apartmentCount, type = 'ACTIVATION' } = req.body;
+    const { date, teamId, clientName, apartmentCount, type = 'ACTIVATION', orientationComment } = req.body;
 
     if (!clientName || !apartmentCount) {
         return res.status(400).json({ message: 'El nombre del cliente y el número de apartamentos son obligatorios.' });
@@ -170,6 +170,7 @@ exports.scheduleAppointment = async (req, res) => {
                     clientName,
                     apartmentCount: parseInt(apartmentCount),
                     type,
+                    orientationComment,
                     scheduledById: userId // Track who made the appointment
                 },
                 create: {
@@ -180,6 +181,7 @@ exports.scheduleAppointment = async (req, res) => {
                     clientName,
                     apartmentCount: parseInt(apartmentCount),
                     type,
+                    orientationComment,
                     scheduledById: userId // Track who made the appointment
                 }
             });

@@ -157,6 +157,18 @@ const RepairCompletionPage = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-4 space-y-6 max-w-lg mx-auto">
+                {/* Orientation Comment Alert */}
+                {appointment?.orientationComment && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex gap-3 shadow-sm">
+                        <div className="text-blue-500 mt-0.5">
+                            <AlertTriangle size={20} className="text-blue-500" />
+                        </div>
+                        <div>
+                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Nota del Back Office</p>
+                            <p className="text-sm font-medium text-blue-900 whitespace-pre-wrap leading-snug">{appointment.orientationComment}</p>
+                        </div>
+                    </div>
+                )}
 
                 {/* Information Card */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
