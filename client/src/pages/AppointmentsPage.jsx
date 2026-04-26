@@ -821,7 +821,7 @@ const AppointmentsPage = () => {
                     </div>
 
                     {scheduledViewMode === 'list' ? (
-                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-visible">
                             <table className="w-full text-left text-sm text-slate-600">
                                 <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200">
                                     <tr>
@@ -839,9 +839,9 @@ const AppointmentsPage = () => {
                                                 {new Date(app.assignedDate).toLocaleDateString('es-ES')}
                                                 <div className="text-xs text-slate-400">{new Date(app.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
                                             </td>
-                                            <td className="p-4">
+                                            <td className="p-4 relative group">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="font-bold text-slate-800">{app.address.street} {app.address.number}</div>
+                                                    <div className="font-bold text-slate-800 cursor-help border-b border-dashed border-slate-300">{app.address.street} {app.address.number}</div>
                                                     <button 
                                                         onClick={() => openEditAddressModal(app.address)}
                                                         className="text-slate-400 hover:text-blue-600 transition-colors p-1"
@@ -851,6 +851,22 @@ const AppointmentsPage = () => {
                                                     </button>
                                                 </div>
                                                 <div className="text-xs">{app.address.project.name}</div>
+
+                                                {/* Hover Tooltip */}
+                                                <div className="absolute left-1/4 top-full mt-2 hidden group-hover:block w-72 bg-slate-800 text-white p-4 rounded-xl shadow-2xl z-[99] text-xs pointer-events-none before:absolute before:-top-2 before:left-6 before:w-4 before:h-4 before:bg-slate-800 before:transform before:rotate-45">
+                                                    <p className="font-bold mb-2 pb-2 border-b border-slate-700">Datos de la Orden</p>
+                                                    <div className="space-y-1.5">
+                                                        <p><span className="text-slate-400">Cliente:</span> {app.clientName || 'No especificado'}</p>
+                                                        <p><span className="text-slate-400">Apartamentos:</span> {app.apartmentCount || 'No especificado'}</p>
+                                                        <p><span className="text-slate-400">Tipo:</span> {app.type === 'REPAIR' ? 'AVERÍA' : (app.type || 'ACTIVACIÓN')}</p>
+                                                        {app.orientationComment && (
+                                                            <div className="mt-2 pt-2 border-t border-slate-700 text-blue-300">
+                                                                <span className="font-bold text-blue-400 block mb-0.5">Nota de Orientación:</span>
+                                                                <span className="whitespace-pre-wrap">{app.orientationComment}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td className="p-4">
                                                 {app.assignedTeam ? (
