@@ -76,7 +76,8 @@ exports.exportActivationPhotos = async (req, res) => {
 
         // PROCESS ACTIVATIONS
         for (const act of activations) {
-            const folderName = `Doc_${act.address.street}_${act.address.number || ''}`.replace(/[\\/:*?"<>|]/g, '_');
+            const clientName = (act.address.clientName || 'SinCliente').replace(/[\\/:*?"<>|]/g, '').trim();
+            const folderName = `Doc_${act.address.street}_${act.address.number || ''}_${clientName}`.replace(/[\\/:*?"<>|]/g, '_');
             
             if (act.photos) {
                 act.photos.forEach((p, idx) => addFileToArchive(p, `${folderName}/Fotos/Foto_${idx}.jpeg`));
