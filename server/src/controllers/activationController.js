@@ -299,7 +299,8 @@ exports.submitActivation = async (req, res) => {
                 repairPrice: repairPriceTotal,
                 pdfPath: pdfPath ? pdfPath.split('?')[0] : null, // Clean query string before saving to DB
                 photos: allPhotos,
-                performerIds: user?.team?.members.map(m => m.id) || [req.userId]
+                performerIds: user?.team?.members.map(m => m.id) || [req.userId],
+                createdById: req.userId
             };
 
             const activation = await tx.activationInfo.upsert({

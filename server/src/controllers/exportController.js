@@ -184,7 +184,10 @@ exports.getBillingData = async (req, res) => {
                 },
                 ...(type ? { activationType: type } : {})
             },
-            include: { address: { include: { project: true } } },
+            include: { 
+                address: { include: { project: true } },
+                createdBy: true
+            },
             orderBy: { createdAt: 'desc' }
         });
 

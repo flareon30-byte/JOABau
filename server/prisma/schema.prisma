@@ -322,6 +322,8 @@ model ActivationInfo {
   updatedAt DateTime @updatedAt
 
   performerIds String[] // IDs of technicians who performed the activation
+  createdById  String?
+  createdBy    User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
 }
 
 model SystemSettings {

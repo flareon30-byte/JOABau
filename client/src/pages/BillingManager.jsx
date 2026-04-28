@@ -304,7 +304,10 @@ const BillingPage = () => {
                                         </td>
                                         <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.address?.project?.name}</td>
-                                        <td className="p-4">{row.address?.street} {row.address?.number} <div className="text-[10px] text-blue-600 font-bold">ID: {row.homeIds?.[0] || '-'}</div></td>
+                                                                                 <td className="p-4" title={`NVT: ${row.address?.nvt || '-'}\nCerrada por: ${row.createdBy?.username || 'Desconocido'}`}>
+                                            {row.address?.street} {row.address?.number} <div className="text-[10px] text-blue-600 font-bold">ID: {row.homeIds?.[0] || '-'}</div>
+                                         </td>
+
                                         <td className="p-4">{row.address?.clientName || 'Sin Nombre'}</td>
                                         <td className="p-4">
                                             <div className="flex flex-col gap-1">
