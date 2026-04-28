@@ -38,6 +38,7 @@ const BillingPage = () => {
     const [selectedPhotos, setSelectedPhotos] = useState([]);
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const [zoomPhoto, setZoomPhoto] = useState(null);
+    const [infoData, setInfoData] = useState(null);
 
     // Photo Viewer Handler
     const handleViewPhotos = (photos) => {
@@ -304,7 +305,15 @@ const BillingPage = () => {
                                         </td>
                                         <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.address?.project?.name}</td>
-                                                                                 <td className="p-4" title={`NVT: ${row.address?.nvt || '-'}\nCerrada por: ${row.createdBy?.username || 'Desconocido'}`}>
+                                                                                 <td 
+                                            className="p-4 cursor-pointer hover:bg-blue-50 transition-colors" 
+                                            title={`NVT: ${row.address?.nvt || '-'}\nCerrada por: ${row.createdBy?.username || 'Desconocido'}`}
+                                            onClick={() => setInfoData({
+                                                nvt: row.address?.nvt || '-',
+                                                closer: row.createdBy?.username || 'Desconocido',
+                                                address: `${row.address?.street} ${row.address?.number}`
+                                            })}
+                                        >
                                             {row.address?.street} {row.address?.number} <div className="text-[10px] text-blue-600 font-bold">ID: {row.homeIds?.[0] || '-'}</div>
                                          </td>
 
@@ -799,6 +808,39 @@ const BillingPage = () => {
             )}
 
             <PhotoModal />
+            
+            {/* INFO MODAL FOR MOBILE/TAP */}
+            {infoData && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-6" onClick={() => setInfoData(null)}>
+                    <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="bg-blue-600 p-6 text-white text-center">
+                            <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
+                                <TrendingUp size={32} />
+                            </div>
+                            <h3 className="font-bold text-lg">Detalles del Trabajo</h3>
+                            <p className="text-blue-100 text-sm">{infoData.address}</p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div className="flex justify-between items-center border-b border-slate-50 pb-3">
+                                <span className="text-slate-500 text-sm font-medium">Número NVT:</span>
+                                <span className="font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg">{infoData.nvt}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-500 text-sm font-medium">Cerrada por:</span>
+                                <span className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">{infoData.closer}</span>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-slate-50">
+                            <button 
+                                onClick={() => setInfoData(null)}
+                                className="w-full py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all active:scale-95"
+                            >
+                                Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
