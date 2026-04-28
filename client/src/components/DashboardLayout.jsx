@@ -176,7 +176,7 @@ const DashboardLayout = () => {
                 { icon: FileText, label: 'Facturación Clientes', path: '/dashboard/invoicing', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Truck, label: 'Control de Flota', path: '/dashboard/vehicles', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Building2, label: 'Empresa (JOA)', path: '/dashboard/company-settings', roles: ['SUPER_ADMIN'] },
+                { icon: Building2, label: 'Mi Empresa', path: '/dashboard/company-settings', roles: ['SUPER_ADMIN'] },
                 { icon: Calculator, label: 'Sist. de Rentabilidad', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
             ]
         },

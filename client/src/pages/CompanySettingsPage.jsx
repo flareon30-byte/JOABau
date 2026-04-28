@@ -4,7 +4,7 @@ import { Building2, Save, Mail, Phone, MapPin, CreditCard, Image as ImageIcon, L
 
 const CompanySettingsPage = () => {
     const [settings, setSettings] = useState({
-        name: 'JOA Technologien',
+        name: '',
         taxId: '',
         address: '',
         phone: '',
