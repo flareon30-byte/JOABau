@@ -28,6 +28,7 @@ import VehicleManagement from './pages/VehicleManagement';
 import VehicleLogForm from './pages/VehicleLogForm';
 import InvoicingPage from './pages/InvoicingPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
+
 function App() {
   return (
     <Router>
