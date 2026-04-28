@@ -41,6 +41,7 @@ model User {
   vacationRequests    VacationRequest[]
   materialOrders      MaterialOrder[]
   simpleInstallations SimpleInstallation[]
+  activations         ActivationInfo[]
   dietaLogs           DietaLog[]           @relation("UserDietas")
 
   activeClientCompanyId String?
