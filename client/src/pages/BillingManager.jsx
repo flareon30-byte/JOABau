@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Search, FileText, Download, Filter, Calendar, Trash2, TrendingUp, Sun } from 'lucide-react';
+import { Search, FileText, Download, Filter, Calendar, Trash2, TrendingUp, Sun, ClipboardList } from 'lucide-react';
 
 const BillingPage = () => {
     // 1. Projects State
