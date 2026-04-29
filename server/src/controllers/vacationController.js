@@ -1,4 +1,8 @@
 const prisma = require('../prisma');
+const { sendPushToRole, sendPushToUser } = require('../utils/notificationUtils');
+
+// Helper for Easter Calculation (Meeus/Jones/Butcher algorithm)
+// ... (rest of helpers)
 
 // Helper for Easter Calculation (Meeus/Jones/Butcher algorithm)
 const getEaster = (year) => {
@@ -105,9 +109,30 @@ exports.requestVacation = async (req, res) => {
             data: {
                 type: 'VACATION_REQUEST',
                 message: `Nueva solicitud de vacaciones de ${request.user.username} (${startDate} a ${endDate})`,
-                targetRole: 'SUPER_ADMIN'
+                targetRole: 'SUPER_ADMIN',
+                createdById: userId
             }
         });
+
+        // Notify Back Office too
+        await prisma.notification.create({
+            data: {
+                type: 'VACATION_REQUEST',
+                message: `Nueva solicitud de vacaciones de ${request.user.username} (${startDate} a ${endDate})`,
+                targetRole: 'BACK_OFFICE',
+                createdById: userId
+            }
+        });
+
+        // 🟢 SEND PUSH NOTIFICATIONS
+        const pushPayload = {
+            title: '🏖️ Solicitud de Vacaciones',
+            body: `${request.user.username} ha solicitado vacaciones del ${startDate} al ${endDate}.`,
+            data: { url: '/dashboard/vacations-admin' }
+        };
+
+        sendPushToRole('SUPER_ADMIN', pushPayload).catch(e => console.error("Push error SA:", e.message));
+        sendPushToRole('BACK_OFFICE', pushPayload).catch(e => console.error("Push error BO:", e.message));
 
         res.status(201).json(request);
     } catch (error) {
@@ -223,13 +248,21 @@ exports.updateVacationStatus = async (req, res) => {
         });
 
         // Notify User
+        const updateMsg = `Tu solicitud de vacaciones ha sido ${status === 'APPROVED' ? 'APROBADA' : 'DENEGADA'}.`;
         await prisma.notification.create({
             data: {
                 type: 'VACATION_UPDATE',
-                message: `Tu solicitud de vacaciones ha sido ${status === 'APPROVED' ? 'APROBADA' : 'DENEGADA'}.`,
-                targetRole: request.user.role // They will see it in their notifications
+                message: updateMsg,
+                targetRole: request.user.role // This will show in their notification bell
             }
         });
+
+        // 🟢 SEND PUSH TO USER
+        sendPushToUser(request.user.id, {
+            title: '📅 Actualización de Vacaciones',
+            body: updateMsg,
+            data: { url: '/dashboard/my-vacations' }
+        }).catch(e => console.error("Push error User:", e.message));
 
         // If approved, notify Back Office
         if (status === 'APPROVED') {
@@ -240,6 +273,12 @@ exports.updateVacationStatus = async (req, res) => {
                     targetRole: 'BACK_OFFICE'
                 }
             });
+            
+            sendPushToRole('BACK_OFFICE', {
+                title: '✅ Vacaciones Aprobadas',
+                body: `Se han aprobado las vacaciones de ${request.user.username}.`,
+                data: { url: '/dashboard/vacations-admin' }
+            }).catch(e => console.error("Push error BO approved:", e.message));
         }
 
         res.json(request);

@@ -534,6 +534,16 @@ exports.reciteAppointment = async (req, res) => {
             }
         });
 
+        // 🟢 SEND PUSH NOTIFICATIONS
+        const pushPayload = {
+            title: '🚩 Solicitud de Recita/Derivación',
+            body: `${authorName} solicita recitar en ${updatedAppointment.addressId}. Motivo: ${reason}`,
+            data: { addressId: updatedAppointment.addressId }
+        };
+
+        sendPushToRole('BACK_OFFICE', pushPayload).catch(e => console.error("Push error BO:", e.message));
+        sendPushToRole('SUPER_ADMIN', pushPayload).catch(e => console.error("Push error SA:", e.message));
+
         res.json(updatedAppointment);
     } catch (error) {
         console.error("[Recite Error]", error);

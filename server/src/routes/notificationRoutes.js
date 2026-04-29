@@ -52,6 +52,61 @@ router.post('/subscribe', async (req, res) => {
 });
 
 /**
+ * Get notifications for the logged-in user
+ * GET /api/notifications
+ */
+router.get('/', async (req, res) => {
+    const userId = req.userId;
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true }
+        });
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        const notifications = await prisma.notification.findMany({
+            where: {
+                OR: [
+                    { targetRole: user.role },
+                    { createdById: userId } // Maybe they want to see what they sent, or specific targetUserId if added later
+                ]
+            },
+            include: {
+                address: {
+                    select: { street: true, number: true }
+                }
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 50
+        });
+
+        res.json(notifications);
+    } catch (error) {
+        console.error('Error fetching notifications:', error);
+        res.status(500).json({ message: 'Error fetching notifications' });
+    }
+});
+
+/**
+ * Mark a notification as read
+ * PUT /api/notifications/:id/read
+ */
+router.put('/:id/read', async (req, res) => {
+    const { id } = req.params;
+    try {
+        await prisma.notification.update({
+            where: { id },
+            data: { isRead: true }
+        });
+        res.json({ message: 'Notification marked as read' });
+    } catch (error) {
+        console.error('Error marking notification as read:', error);
+        res.status(500).json({ message: 'Error updating notification' });
+    }
+});
+
+/**
  * Remove a subscription (on logout)
  * POST /api/notifications/unsubscribe
  */
