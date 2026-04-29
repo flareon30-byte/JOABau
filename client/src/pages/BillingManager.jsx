@@ -39,6 +39,7 @@ const BillingPage = () => {
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const [zoomPhoto, setZoomPhoto] = useState(null);
     const [infoData, setInfoData] = useState(null);
+    const [commentData, setCommentData] = useState(null);
 
     // Photo Viewer Handler
     const handleViewPhotos = (photos) => {
@@ -390,11 +391,17 @@ const BillingPage = () => {
                                                 return <span className="font-black text-slate-800">{total}€</span>;
                                             })()}
                                         </td>
-                                        <td className="p-4">
+                                         <td 
+                                            className="p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                                            onClick={() => setCommentData({
+                                                title: 'Comentario del Técnico',
+                                                text: row.description || 'Sin comentarios'
+                                            })}
+                                        >
                                             <div className="text-xs text-slate-500 italic truncate max-w-[120px]" title={row.description}>
                                                 {row.description || '-'}
                                             </div>
-                                        </td>
+                                         </td>
                                     </>
                                 )}
 
@@ -424,9 +431,15 @@ const BillingPage = () => {
                                                 )}
                                             </div>
                                         </td>
-                                        <td className="p-4 text-slate-500 max-w-xs truncate">
+                                         <td 
+                                            className="p-4 text-slate-500 max-w-xs truncate cursor-pointer hover:bg-slate-50 transition-colors"
+                                            onClick={() => setCommentData({
+                                                title: 'Detalles de Instalación',
+                                                text: row.comments || 'Sin comentarios'
+                                            })}
+                                        >
                                             {row.comments || '-'}
-                                        </td>
+                                         </td>
                                         <td className="p-4 text-slate-500">
                                             <div className="flex gap-1 overflow-x-auto max-w-[100px] no-scrollbar">
                                                 {row.photos?.map((p, i) => (
@@ -468,7 +481,15 @@ const BillingPage = () => {
                                         <td className="p-4">{row.address?.street} {row.address?.number}</td>
                                         <td className="p-4 font-bold text-purple-600">{row.address?.nvt || '-'}</td>
                                         <td className="p-4"><span className="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-bold">{row.status}</span></td>
-                                        <td className="p-4 text-slate-500">{row.reciteReason || '-'}</td>
+                                         <td 
+                                            className="p-4 text-slate-500 cursor-pointer hover:bg-slate-50 transition-colors"
+                                            onClick={() => setCommentData({
+                                                title: 'Motivo de Recita/Derivación',
+                                                text: row.reciteReason || 'Sin motivo especificado'
+                                            })}
+                                        >
+                                            {row.reciteReason || '-'}
+                                        </td>
                                     </>
                                 )}
                                 {activeTab === 'repair' && (
@@ -478,7 +499,15 @@ const BillingPage = () => {
                                         <td className="p-4">{row.address?.street} {row.address?.number}</td>
                                         <td className="p-4 font-bold text-red-600">{row.address?.nvt || '-'}</td>
                                         <td className="p-4"><span className="bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-bold">Avería</span></td>
-                                        <td className="p-4 text-slate-500 italic">"{row.comments?.[0]?.text || 'Sin detalle'}"</td>
+                                         <td 
+                                            className="p-4 text-slate-500 italic cursor-pointer hover:bg-slate-50 transition-colors"
+                                            onClick={() => setCommentData({
+                                                title: 'Detalle de la Avería',
+                                                text: row.comments?.[0]?.text || 'Sin detalle registrado'
+                                            })}
+                                        >
+                                            "{row.comments?.[0]?.text || 'Sin detalle'}"
+                                        </td>
                                     </>
                                 )}
 
@@ -836,6 +865,46 @@ const BillingPage = () => {
                                 className="w-full py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all active:scale-95"
                             >
                                 Entendido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* COMMENT VIEWER MODAL */}
+            {commentData && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-6" onClick={() => setCommentData(null)}>
+                    <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 animate-in fade-in slide-in-from-bottom-4 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="bg-slate-800 p-6 text-white">
+                            <div className="flex items-center gap-3 mb-1">
+                                <ClipboardList className="text-joa-cyan" size={20} />
+                                <h3 className="font-bold text-lg">{commentData.title}</h3>
+                            </div>
+                            <p className="text-slate-400 text-xs">Información registrada por el técnico</p>
+                        </div>
+                        <div className="p-8">
+                            <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 min-h-[120px]">
+                                <p className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">
+                                    {commentData.text}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="p-4 bg-slate-50 flex gap-3">
+                            <button 
+                                onClick={() => setCommentData(null)}
+                                className="flex-1 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 transition-all active:scale-95"
+                            >
+                                Cerrar
+                            </button>
+                            <button 
+                                onClick={() => {
+                                    navigator.clipboard.writeText(commentData.text);
+                                    // Could add a toast here
+                                }}
+                                className="px-5 py-3.5 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all active:scale-95 flex items-center gap-2"
+                                title="Copiar texto"
+                            >
+                                <FileText size={18} />
                             </button>
                         </div>
                     </div>
