@@ -120,6 +120,17 @@ const DashboardLayout = () => {
         }
     };
 
+    const clearNotifications = async () => {
+        if (!window.confirm('¿Deseas borrar todas tus notificaciones?')) return;
+        try {
+            await api.delete('/api/notifications');
+            setNotifications([]);
+            setShowNotifications(false);
+        } catch (e) {
+            console.error('Error clearing notifications', e);
+        }
+    };
+
     const handleNotificationClick = (n) => {
         markAsRead(n.id);
         setShowNotifications(false);
@@ -420,9 +431,19 @@ const DashboardLayout = () => {
 
                             {showNotifications && (
                                 <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50">
-                                    <div className="p-3 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                                        <h3 className="font-bold text-slate-700 text-sm">Notificaciones</h3>
-                                        <span className="text-xs text-slate-400">{unreadCount} nuevas</span>
+                                     <div className="p-3 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
+                                        <div className="flex items-center gap-2">
+                                            <h3 className="font-bold text-slate-700 text-sm">Notificaciones</h3>
+                                            {unreadCount > 0 && <span className="bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-bold">{unreadCount}</span>}
+                                        </div>
+                                        {notifications.length > 0 && (
+                                            <button 
+                                                onClick={clearNotifications}
+                                                className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider bg-red-50 px-2 py-1 rounded-md transition-colors"
+                                            >
+                                                Limpiar todo
+                                            </button>
+                                        )}
                                     </div>
                                     <div className="max-h-80 overflow-y-auto">
                                         {notifications.length === 0 ? (

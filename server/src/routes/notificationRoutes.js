@@ -120,4 +120,34 @@ router.post('/unsubscribe', async (req, res) => {
     }
 });
 
+/**
+ * Delete all notifications for the current user
+ * DELETE /api/notifications
+ */
+router.delete('/', async (req, res) => {
+    const userId = req.userId;
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true }
+        });
+
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        await prisma.notification.deleteMany({
+            where: {
+                OR: [
+                    { targetRole: user.role },
+                    { createdById: userId }
+                ]
+            }
+        });
+
+        res.json({ message: 'Notifications cleared' });
+    } catch (error) {
+        console.error('Error clearing notifications:', error);
+        res.status(500).json({ message: 'Error clearing notifications' });
+    }
+});
+
 module.exports = router;
