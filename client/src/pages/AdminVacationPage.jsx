@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Calendar as CalendarIcon, Clock, CheckCircle, XCircle, User, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, CheckCircle, XCircle, User, Filter, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 
 // Helper for Easter Calculation (Meeus/Jones/Butcher algorithm)
 const getEaster = (year) => {
@@ -73,6 +73,16 @@ const AdminVacationPage = () => {
             fetchAllRequests();
         } catch (error) {
             alert('Error al actualizar el estado.');
+        }
+    };
+
+    const handleDelete = async (id) => {
+        if (!window.confirm('¿Estás seguro de que deseas eliminar esta solicitud? Esto borrará el registro permanentemente.')) return;
+        try {
+            await api.delete(`/api/vacations/${id}`);
+            fetchAllRequests();
+        } catch (error) {
+            alert('Error al eliminar la solicitud.');
         }
     };
 
@@ -195,31 +205,50 @@ const AdminVacationPage = () => {
                                                 {request.status === 'PENDING' ? 'Pendiente' : request.status === 'APPROVED' ? 'Aprobado' : 'Denegado'}
                                             </span>
                                         </td>
-                                        {user.role !== 'BACK_OFFICE' && (
+                                         {user.role !== 'BACK_OFFICE' && (
                                             <td className="px-6 py-4">
-                                                {request.status === 'PENDING' ? (
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            onClick={() => handleUpdateStatus(request.id, 'APPROVED')}
-                                                            className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition"
-                                                            title="Aprobar"
-                                                        >
-                                                            <CheckCircle size={18} />
-                                                        </button>
+                                                <div className="flex gap-2 items-center">
+                                                    {request.status === 'PENDING' ? (
+                                                        <>
+                                                            <button
+                                                                onClick={() => handleUpdateStatus(request.id, 'APPROVED')}
+                                                                className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition"
+                                                                title="Aprobar"
+                                                            >
+                                                                <CheckCircle size={18} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    const comm = prompt('Motivo de denegación:');
+                                                                    if (comm !== null) handleUpdateStatus(request.id, 'DENIED', comm);
+                                                                }}
+                                                                className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition"
+                                                                title="Denegar"
+                                                            >
+                                                                <XCircle size={18} />
+                                                            </button>
+                                                        </>
+                                                    ) : (
                                                         <button
                                                             onClick={() => {
-                                                                const comm = prompt('Motivo de denegación:');
-                                                                if (comm !== null) handleUpdateStatus(request.id, 'DENIED', comm);
+                                                                if (window.confirm('¿Deseas volver a poner esta solicitud como PENDIENTE para cambiar el estado?')) {
+                                                                    handleUpdateStatus(request.id, 'PENDING');
+                                                                }
                                                             }}
-                                                            className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition"
-                                                            title="Denegar"
+                                                            className="text-[10px] font-bold text-blue-600 hover:underline uppercase"
                                                         >
-                                                            <XCircle size={18} />
+                                                            Re-evaluar
                                                         </button>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-400 text-sm italic">Completado</span>
-                                                )}
+                                                    )}
+                                                    
+                                                    <button
+                                                        onClick={() => handleDelete(request.id)}
+                                                        className="p-2 bg-slate-50 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition ml-2 border border-transparent hover:border-red-100"
+                                                        title="Eliminar solicitud"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </div>
                                             </td>
                                         )}
                                     </tr>

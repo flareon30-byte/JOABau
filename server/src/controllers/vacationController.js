@@ -287,3 +287,18 @@ exports.updateVacationStatus = async (req, res) => {
         res.status(500).json({ message: 'Error al actualizar estado de vacaciones' });
     }
 };
+
+// Delete vacation request (Admin)
+exports.deleteVacation = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        await prisma.vacationRequest.delete({
+            where: { id }
+        });
+        res.json({ message: 'Solicitud de vacaciones eliminada correctamente' });
+    } catch (error) {
+        console.error('Error deleting vacation:', error);
+        res.status(500).json({ message: 'Error al eliminar la solicitud de vacaciones' });
+    }
+};

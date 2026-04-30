@@ -13,5 +13,6 @@ router.get('/my', vacationController.getMyVacations);
 router.get('/all', checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), vacationController.getAllVacations);
 router.get('/stats', checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), vacationController.getUsersVacationStats);
 router.put('/:id/status', checkRole(['SUPER_ADMIN', 'ADMIN']), vacationController.updateVacationStatus);
+router.delete('/:id', checkRole(['SUPER_ADMIN', 'ADMIN']), vacationController.deleteVacation);
 
 module.exports = router;
