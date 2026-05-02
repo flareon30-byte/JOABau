@@ -300,7 +300,8 @@ exports.submitActivation = async (req, res) => {
                 pdfPath: pdfPath ? pdfPath.split('?')[0] : null, // Clean query string before saving to DB
                 photos: allPhotos,
                 performerIds: user?.team?.members.map(m => m.id) || [req.userId],
-                createdById: req.userId
+                createdById: req.userId,
+                isDraft: false
             };
 
             const activation = await tx.activationInfo.upsert({
@@ -593,5 +594,82 @@ exports.generatePdf = async (req, res) => {
         console.error('--- PDF GENERATION ERROR ---');
         console.error(error);
         res.status(500).json({ message: 'Error generating PDF', error: error.message });
+    }
+};
+
+// Sync Draft Progress (Team Collaboration)
+exports.syncDraft = async (req, res) => {
+    const { addressId } = req.params;
+    const { 
+        activationType, 
+        familiesCount, 
+        apPorts, 
+        hasMoreClients, 
+        spInstalled, 
+        taInstalled, 
+        mduInstalled, 
+        homeIds, 
+        description, 
+        pdfPath,
+        existingPhotos 
+    } = req.body;
+
+    const photos = Array.isArray(req.files) ? req.files.filter(f => f.fieldname === 'photos') : [];
+    
+    try {
+        if (photos.length > 0) {
+            await processImages(photos);
+        }
+
+        const newPhotoPaths = photos.map(f => f.path.replace(/\\/g, '/'));
+        let keptPhotos = [];
+        if (existingPhotos) {
+            try {
+                keptPhotos = JSON.parse(existingPhotos);
+            } catch (e) {
+                keptPhotos = [];
+            }
+        }
+        const allPhotos = [...keptPhotos, ...newPhotoPaths];
+
+        const draft = await prisma.activationInfo.upsert({
+            where: { addressId },
+            update: {
+                activationType: activationType || undefined,
+                familiesCount: familiesCount ? parseInt(familiesCount) : undefined,
+                apPorts: apPorts ? parseInt(apPorts) : undefined,
+                hasMoreClients: hasMoreClients === 'true' || hasMoreClients === true ? true : (hasMoreClients === 'false' || hasMoreClients === false ? false : undefined),
+                spInstalled: spInstalled ? parseInt(spInstalled) : undefined,
+                taInstalled: taInstalled === 'true' || taInstalled === true ? true : (taInstalled === 'false' || taInstalled === false ? false : undefined),
+                mduInstalled: mduInstalled === 'true' || mduInstalled === true ? true : (mduInstalled === 'false' || mduInstalled === false ? false : undefined),
+                homeIds: homeIds ? (Array.isArray(homeIds) ? homeIds : (typeof homeIds === 'string' ? JSON.parse(homeIds) : homeIds)) : undefined,
+                description: description || undefined,
+                pdfPath: pdfPath || undefined,
+                photos: allPhotos,
+                isDraft: true,
+                points: 0 // Drafts don't count for points yet
+            },
+            create: {
+                addressId,
+                activationType: activationType || 'BP',
+                familiesCount: familiesCount ? parseInt(familiesCount) : 1,
+                apPorts: apPorts ? parseInt(apPorts) : 1,
+                hasMoreClients: hasMoreClients === 'true' || hasMoreClients === true,
+                spInstalled: spInstalled ? parseInt(spInstalled) : 0,
+                taInstalled: taInstalled === 'true' || taInstalled === true,
+                mduInstalled: mduInstalled === 'true' || mduInstalled === true,
+                homeIds: homeIds ? (Array.isArray(homeIds) ? homeIds : (typeof homeIds === 'string' ? JSON.parse(homeIds) : homeIds)) : [],
+                description: description || '',
+                pdfPath: pdfPath || null,
+                photos: allPhotos,
+                isDraft: true,
+                points: 0
+            }
+        });
+
+        res.json({ success: true, draft });
+    } catch (error) {
+        console.error('Error syncing draft:', error);
+        res.status(500).json({ message: 'Error al sincronizar borrador' });
     }
 };

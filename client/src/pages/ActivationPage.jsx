@@ -41,6 +41,57 @@ const ActivationPage = () => {
     const signaturePadRef = useRef(null);
 
     const [photos, setPhotos] = useState([]); // Array of  { blob, preview, isExisting, originalPath }
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [lastSyncTime, setLastSyncTime] = useState(null);
+
+    // Draft Synchronization Logic
+    const syncDraft = async (overrideData = null, extraPhotos = []) => {
+        if (!selectedAppointment || selectedAppointment.status === 'COMPLETADO') return;
+        
+        setIsSyncing(true);
+        try {
+            const dataToSync = overrideData || formData;
+            const data = new FormData();
+            
+            // Basic fields
+            Object.keys(dataToSync).forEach(key => {
+                if (dataToSync[key] !== undefined && dataToSync[key] !== null) {
+                    data.append(key, dataToSync[key]);
+                }
+            });
+
+            // Photos
+            const existingPaths = photos.filter(p => p.isExisting).map(p => p.originalPath);
+            data.append('existingPhotos', JSON.stringify(existingPaths));
+            
+            // New photos from state
+            photos.filter(p => !p.isExisting && p.blob).forEach((photo, index) => {
+                data.append('photos', photo.blob, `draft_photo_${index}.jpg`);
+            });
+
+            // Extra photos (just selected)
+            extraPhotos.forEach((photo, index) => {
+                data.append('photos', photo.blob, `new_draft_photo_${index}.jpg`);
+            });
+
+            if (pdfPath) {
+                // Remove the cache busting query string before sending
+                data.append('pdfPath', pdfPath.split('?')[0]);
+            }
+
+            const res = await api.post(`/api/activations/sync-draft/${selectedAppointment.addressId}`, data, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+
+            if (res.data.success) {
+                setLastSyncTime(new Date());
+            }
+        } catch (error) {
+            console.error('Error syncing draft:', error);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     useEffect(() => {
         fetchAppointments();
@@ -272,6 +323,7 @@ const ActivationPage = () => {
             }
             setPhotos([...photos, ...newPhotos]);
             setProcessingPhotos(false);
+            syncDraft(null, newPhotos); // Sync immediately after adding photos
         }
     };
 
@@ -373,8 +425,8 @@ const ActivationPage = () => {
 
             if (res.data.success) {
                 setPdfPath(res.data.path);
-                // alert('Documento generado y firmado correctamente.');
-                // window.open(`${BASE_URL}/${res.data.path}`, '_blank');
+                // Sync draft after PDF generation so other tech can see the signed PDF
+                syncDraft({ ...formData }, [], res.data.path); 
             }
         } catch (error) {
             console.error('Error creating PDF:', error);
@@ -495,11 +547,18 @@ const ActivationPage = () => {
                         {filteredAppointments.map(app => (
                             <div
                                 key={app.id}
-                                onClick={() => {
+                                onClick={async () => {
                                     if (app.type === 'REPAIR') {
                                         navigate(`/repair/${app.id}/complete`);
                                     } else {
-                                        setSelectedAppointment(app);
+                                        // Fetch fresh data for this specific appointment to get latest drafts
+                                        try {
+                                            const res = await api.get('/api/activations/my-appointments');
+                                            const freshApp = res.data.find(a => a.id === app.id);
+                                            setSelectedAppointment(freshApp || app);
+                                        } catch (e) {
+                                            setSelectedAppointment(app);
+                                        }
                                     }
                                 }}
                                 className={`bg-white p-6 rounded-xl shadow-sm border cursor-pointer hover:shadow-md transition-all ${app.status === 'COMPLETADO'
@@ -536,15 +595,38 @@ const ActivationPage = () => {
 
     return (
         <div className="max-w-2xl mx-auto space-y-6">
-            <div className="flex items-center gap-4 mb-6">
-                <button onClick={() => setSelectedAppointment(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                    <ArrowLeft size={24} className="text-slate-600" />
-                </button>
-                <div>
-                    <h2 className="text-xl font-bold text-slate-800">{selectedAppointment.address.street} {selectedAppointment.address.number}</h2>
-                    <p className="text-sm text-slate-500">
-                        {selectedAppointment.status === 'COMPLETADO' ? 'Modificar Activación' : 'Completar Activación'}
-                    </p>
+            <div className="flex items-center justify-between mb-6 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => setSelectedAppointment(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                        <ArrowLeft size={24} className="text-slate-600" />
+                    </button>
+                    <div>
+                        <h2 className="text-xl font-bold text-slate-800">{selectedAppointment.address.street} {selectedAppointment.address.number}</h2>
+                        <p className="text-sm text-slate-500">
+                            {selectedAppointment.status === 'COMPLETADO' ? 'Modificar Activación' : 'Completar Activación'}
+                        </p>
+                    </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                    {isSyncing ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-500 rounded-full text-[10px] font-bold animate-pulse border border-blue-100">
+                            <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                            SINCRONIZANDO...
+                        </div>
+                    ) : lastSyncTime ? (
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-bold border border-green-100">
+                            <CheckCircle size={10} />
+                            SINCRONIZADO {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                    ) : (
+                        <button 
+                            onClick={() => syncDraft()}
+                            className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-400 rounded-full text-[10px] font-bold border border-slate-100 hover:bg-blue-50 hover:text-blue-500 transition-colors"
+                        >
+                            <PenTool size={10} />
+                            GUARDAR BORRADOR
+                        </button>
+                    )}
                 </div>
             </div>
 

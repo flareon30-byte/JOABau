@@ -27,5 +27,6 @@ router.get('/billing/export', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE'])
 router.get('/all', checkRole(['ADMIN', 'SUPER_ADMIN']), activationController.getAllActivations);
 router.post('/generate-pdf', activationController.generatePdf);
 router.post('/report/:addressId', upload.any(), activationController.submitActivation);
+router.post('/sync-draft/:addressId', upload.any(), activationController.syncDraft);
 
 module.exports = router;
