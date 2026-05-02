@@ -167,6 +167,17 @@ const AppointmentModal = ({ appointment, onClose, onUpdate, navigate }) => {
                 ) : (
                     <>
                         <div className="space-y-4">
+                            <div className="bg-purple-50 p-4 rounded-xl border border-purple-100 flex justify-between items-center">
+                                <div>
+                                    <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Identificador NVT</p>
+                                    <p className="font-black text-purple-700 text-xl leading-none">
+                                        {appointment.address.nvt || 'Sin asignar'}
+                                    </p>
+                                </div>
+                                <div className="bg-purple-600 p-2 rounded-lg text-white">
+                                    <Target size={16} />
+                                </div>
+                            </div>
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Cliente</p>
                                 <p className="font-medium text-slate-800 text-lg">{appointment.clientName || 'No especificado'}</p>

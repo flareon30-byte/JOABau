@@ -549,6 +549,18 @@ const ActivationPage = () => {
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <div className="mb-6 p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Identificador de Armario</p>
+                        <h3 className="text-2xl font-black text-purple-700 leading-none">
+                            NVT: {selectedAppointment.address.nvt || 'Sin asignar'}
+                        </h3>
+                    </div>
+                    <div className="bg-purple-600 p-2.5 rounded-xl text-white shadow-lg shadow-purple-200">
+                        <MapPin size={24} />
+                    </div>
+                </div>
+
                 <form onSubmit={handleSubmit} className="space-y-6">
 
                     <div>

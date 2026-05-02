@@ -157,6 +157,17 @@ const RepairCompletionPage = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="p-4 space-y-6 max-w-lg mx-auto">
+                <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between shadow-sm">
+                    <div>
+                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Identificador de Armario</p>
+                        <h3 className="text-xl font-black text-purple-700 leading-none">
+                            NVT: {appointment.address.nvt || 'Sin asignar'}
+                        </h3>
+                    </div>
+                    <div className="bg-purple-600 p-2 rounded-lg text-white">
+                        <AlertTriangle size={18} />
+                    </div>
+                </div>
                 {/* Orientation Comment Alert */}
                 {appointment?.orientationComment && (
                     <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex gap-3 shadow-sm">
