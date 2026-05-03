@@ -13,76 +13,143 @@ const generatePdfFile = (invoice, client, company) => {
         if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
         
         const filePath = path.join(uploadsDir, fileName);
-        const doc = new PDFDocument({ margin: 50 });
+        const doc = new PDFDocument({ 
+            margin: 50,
+            size: 'A4',
+            bufferPages: true 
+        });
         const stream = fs.createWriteStream(filePath);
 
         doc.pipe(stream);
 
-        // 1. Cabecera (Logo y Datos Joa)
-        const logoPath = path.join(__dirname, '../../uploads/logo_factura.png'); // Guardaremos el logo aquí
-        if (fs.existsSync(logoPath)) {
-            doc.image(logoPath, 450, 45, { width: 100 });
-        }
+        // --- Helper: Cabecera de Página ---
+        const generateHeader = (doc) => {
+            const logoPath = path.join(__dirname, '../../uploads/logo.png'); // Logo principal
+            if (fs.existsSync(logoPath)) {
+                doc.image(logoPath, 50, 45, { width: 120 });
+            } else {
+                doc.fillColor('#0052cc').fontSize(22).font('Helvetica-Bold').text(company.name, 50, 50);
+            }
 
-        doc.fillColor('#444444').fontSize(20).text(company.name, 50, 50);
-        doc.fontSize(10).text(company.address || '', 50, 80);
-        doc.text(`${company.taxId || ''}`, 50, 95);
-        doc.text(`${company.email || ''} | ${company.phone || ''}`, 50, 110);
-        doc.moveDown();
+            doc.fillColor('#444444').fontSize(10).font('Helvetica');
+            doc.text(company.address || '', 350, 50, { align: 'right' });
+            doc.text(`CIF: ${company.taxId || ''}`, 350, 65, { align: 'right' });
+            doc.text(`${company.email || ''}`, 350, 80, { align: 'right' });
+            doc.text(`${company.phone || ''}`, 350, 95, { align: 'right' });
+            
+            doc.moveTo(50, 125).lineTo(545, 125).strokeColor('#eeeeee').lineWidth(1).stroke();
+        };
 
-        // 2. Datos del Cliente (A la derecha)
-        doc.fillColor('#000000').fontSize(12).text('FACTURAR A:', 50, 160);
-        doc.fontSize(14).text(client.legalName || client.name, 50, 180);
-        doc.fontSize(10).text(client.address || '', 50, 200);
-        doc.text(`${client.city || ''}, ${client.postalCode || ''}, ${client.country || ''}`, 50, 215);
-        doc.text(`CIF/VAT: ${client.taxId || ''}`, 50, 230);
+        // --- Helper: Footer con Paginación ---
+        const generateFooter = (doc) => {
+            doc.fontSize(8).fillColor('#aaaaaa').text(
+                'JOA Technologien - Innovación y Calidad en Telecomunicaciones',
+                50, 780, { align: 'center', width: 500 }
+            );
+        };
 
-        // Info Factura (A la izquierda)
-        doc.text(`Nº Factura: ${invoice.number}`, 400, 180);
-        doc.text(`Fecha: ${new Date(invoice.date).toLocaleDateString('es-ES')}`, 400, 195);
-        doc.text(`Vencimiento: ${invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('es-ES') : '-'}`, 400, 210);
+        // --- Primera Página ---
+        generateHeader(doc);
 
-        doc.moveDown();
+        // Datos Cliente e Info Factura
+        doc.fillColor('#000000').fontSize(10).font('Helvetica-Bold').text('CLIENTE:', 50, 150);
+        doc.fontSize(12).text(client.legalName || client.name, 50, 165);
+        doc.fontSize(10).font('Helvetica').fillColor('#444444');
+        doc.text(client.address || '', 50, 185, { width: 200 });
+        doc.text(`CIF/VAT: ${client.taxId || ''}`, 50, 215);
+
+        // Caja de Info Factura (Derecha)
+        doc.rect(350, 150, 195, 75).fill('#f8faff');
+        doc.fillColor('#0052cc').fontSize(12).font('Helvetica-Bold').text('DATOS FACTURA', 365, 160);
+        doc.fillColor('#444444').fontSize(9).font('Helvetica');
+        doc.text(`Nº Factura:`, 365, 180);
+        doc.font('Helvetica-Bold').text(invoice.number, 440, 180);
+        doc.font('Helvetica').text(`Fecha:`, 365, 192);
+        doc.text(new Date(invoice.date).toLocaleDateString('es-ES'), 440, 192);
+        doc.text(`Vencimiento:`, 365, 204);
+        doc.text(invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString('es-ES') : '-', 440, 204);
+
+        // --- Tabla de Items ---
+        let tableTop = 260;
+        const drawTableHeader = (y) => {
+            doc.rect(50, y, 495, 25).fill('#0052cc');
+            doc.fillColor('#ffffff').fontSize(10).font('Helvetica-Bold');
+            doc.text('Descripción del Servicio', 65, y + 8);
+            doc.text('Cant.', 350, y + 8, { width: 40, align: 'center' });
+            doc.text('Precio', 400, y + 8, { width: 60, align: 'right' });
+            doc.text('Total', 475, y + 8, { width: 60, align: 'right' });
+        };
+
+        drawTableHeader(tableTop);
+        doc.font('Helvetica').fontSize(9).fillColor('#333333');
         
-        // 3. Tabla de Items
-        const tableTop = 300;
-        doc.font('Helvetica-Bold');
-        doc.text('Concepto', 50, tableTop);
-        doc.text('Cant.', 300, tableTop, { width: 50, align: 'right' });
-        doc.text('Precio', 370, tableTop, { width: 70, align: 'right' });
-        doc.text('Total', 460, tableTop, { width: 80, align: 'right' });
-        
-        doc.moveTo(50, tableTop + 20).lineTo(550, tableTop + 20).stroke();
-        doc.font('Helvetica');
+        let position = tableTop + 30;
+        let itemsProcessed = 0;
 
-        let position = tableTop + 40;
-        invoice.items.forEach(item => {
-            doc.text(item.desc, 50, position, { width: 240 });
-            doc.text(item.qty.toString(), 300, position, { width: 50, align: 'right' });
-            doc.text(money(item.price), 370, position, { width: 70, align: 'right' });
-            doc.text(money(item.total), 460, position, { width: 80, align: 'right' });
-            position += 25;
+        invoice.items.forEach((item, index) => {
+            // Control de Salto de Página
+            if (position > 720) {
+                doc.addPage();
+                generateHeader(doc);
+                tableTop = 150;
+                drawTableHeader(tableTop);
+                position = tableTop + 30;
+                doc.font('Helvetica').fontSize(9).fillColor('#333333');
+            }
+
+            // Fondo alterno para filas
+            if (index % 2 === 0) {
+                doc.rect(50, position - 5, 495, 20).fill('#fcfcfc');
+            }
+
+            doc.fillColor('#333333');
+            doc.text(item.desc, 65, position, { width: 280, height: 15, ellipsis: true });
+            doc.text(item.qty.toString(), 350, position, { width: 40, align: 'center' });
+            doc.text(money(item.price), 400, position, { width: 60, align: 'right' });
+            doc.text(money(item.total), 475, position, { width: 60, align: 'right' });
+            
+            position += 20;
+            itemsProcessed++;
         });
 
-        doc.moveTo(50, position + 10).lineTo(550, position + 10).stroke();
+        // --- Bloque de Totales ---
+        // Si no cabe en la misma página, saltar
+        if (position > 650) {
+            doc.addPage();
+            generateHeader(doc);
+            position = 150;
+        }
 
-        // 4. Totales
-        const totalPosition = position + 30;
-        doc.text('Subtotal:', 370, totalPosition, { width: 70, align: 'right' });
-        doc.text(money(invoice.subtotal), 460, totalPosition, { width: 80, align: 'right' });
+        const totalsStart = 400;
+        const totalsY = position + 30;
 
-        doc.text(`IVA (${client.defaultVat}%):`, 370, totalPosition + 20, { width: 70, align: 'right' });
-        doc.text(money(invoice.vatAmount), 460, totalPosition + 20, { width: 80, align: 'right' });
+        doc.moveTo(totalsStart, totalsY).lineTo(545, totalsY).strokeColor('#eeeeee').stroke();
+        
+        doc.fontSize(10).font('Helvetica').fillColor('#666666');
+        doc.text('Base Imponible:', totalsStart, totalsY + 15);
+        doc.fillColor('#333333').text(money(invoice.subtotal), 475, totalsY + 15, { align: 'right', width: 70 });
 
-        doc.font('Helvetica-Bold').fontSize(14);
-        doc.text('TOTAL:', 370, totalPosition + 50, { width: 70, align: 'right' });
-        doc.text(money(invoice.total), 460, totalPosition + 50, { width: 80, align: 'right' });
+        doc.fillColor('#666666').text(`IVA (${client.defaultVat}%):`, totalsStart, totalsY + 30);
+        doc.fillColor('#333333').text(money(invoice.vatAmount), 475, totalsY + 30, { align: 'right', width: 70 });
 
-        // 5. Pie de página (Datos Bancarios)
-        doc.fontSize(10).font('Helvetica').fillColor('#888888');
-        doc.text(`Forma de pago: Transferencia Bancaria`, 50, 700);
-        doc.text(`Datos de cuenta (IBAN): ${company.bankDetails || 'Pendiente'}`, 50, 715);
-        doc.text('Muchas gracias por su confianza.', 50, 740, { align: 'center' });
+        doc.rect(totalsStart - 10, totalsY + 50, 155, 35).fill('#0052cc');
+        doc.fillColor('#ffffff').fontSize(12).font('Helvetica-Bold');
+        doc.text('TOTAL:', totalsStart, totalsY + 62);
+        doc.text(money(invoice.total), 465, totalsY + 62, { align: 'right', width: 70 });
+
+        // Datos de Pago
+        doc.fillColor('#333333').fontSize(10).font('Helvetica-Bold').text('INFORMACIÓN DE PAGO', 50, totalsY + 15);
+        doc.fontSize(9).font('Helvetica').fillColor('#666666');
+        doc.text(`Banco: ${company.bankDetails || 'Transferencia Bancaria'}`, 50, totalsY + 35);
+        doc.text(`Referencia: Factura ${invoice.number}`, 50, totalsY + 47);
+
+        // Finalizar
+        const range = doc.bufferedPageRange();
+        for (let i = range.start; i < range.start + range.count; i++) {
+            doc.switchToPage(i);
+            generateFooter(doc);
+            doc.fontSize(8).fillColor('#aaaaaa').text(`Página ${i + 1} de ${range.count}`, 50, 795, { align: 'right', width: 495 });
+        }
 
         doc.end();
         stream.on('finish', () => resolve(`/uploads/invoices/${fileName}`));
