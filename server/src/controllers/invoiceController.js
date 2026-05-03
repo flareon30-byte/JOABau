@@ -24,20 +24,24 @@ const generatePdfFile = (invoice, client, company) => {
 
         // --- Helper: Cabecera de Página ---
         const generateHeader = (doc) => {
-            const logoPath = path.join(__dirname, '../../uploads/logo.png'); // Logo principal
-            if (fs.existsSync(logoPath)) {
+            // Usar el logo oficial de CompanySettings
+            const logoRelativePath = company.logoPath; 
+            const logoPath = logoRelativePath ? path.join(__dirname, '../../', logoRelativePath) : null;
+            
+            if (logoPath && fs.existsSync(logoPath)) {
                 doc.image(logoPath, 50, 45, { width: 120 });
-            } else {
-                doc.fillColor('#0052cc').fontSize(22).font('Helvetica-Bold').text(company.name, 50, 50);
-            }
+            } 
+
+            // Nombre de la Empresa (Prominente)
+            doc.fillColor('#0052cc').fontSize(18).font('Helvetica-Bold').text(company.name.toUpperCase(), 350, 45, { align: 'right' });
 
             doc.fillColor('#444444').fontSize(10).font('Helvetica');
-            doc.text(company.address || '', 350, 50, { align: 'right' });
-            doc.text(`CIF: ${company.taxId || ''}`, 350, 65, { align: 'right' });
-            doc.text(`${company.email || ''}`, 350, 80, { align: 'right' });
-            doc.text(`${company.phone || ''}`, 350, 95, { align: 'right' });
+            doc.text(company.address || '', 350, 65, { align: 'right' });
+            doc.text(`CIF: ${company.taxId || ''}`, 350, 80, { align: 'right' });
+            doc.text(`${company.email || ''}`, 350, 95, { align: 'right' });
+            doc.text(`${company.phone || ''}`, 350, 110, { align: 'right' });
             
-            doc.moveTo(50, 125).lineTo(545, 125).strokeColor('#eeeeee').lineWidth(1).stroke();
+            doc.moveTo(50, 135).lineTo(545, 135).strokeColor('#eeeeee').lineWidth(1).stroke();
         };
 
         // --- Helper: Footer con Paginación ---
