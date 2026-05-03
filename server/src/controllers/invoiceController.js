@@ -32,16 +32,16 @@ const generatePdfFile = (invoice, client, company) => {
                 doc.image(logoPath, 50, 45, { width: 120 });
             } 
 
-            // Nombre de la Empresa (Prominente)
-            doc.fillColor('#0052cc').fontSize(18).font('Helvetica-Bold').text(company.name.toUpperCase(), 350, 45, { align: 'right' });
+            // Nombre de la Empresa (Elegante y sin solaparse)
+            doc.fillColor('#0052cc').fontSize(13).font('Helvetica-Bold').text(company.name.toUpperCase(), 300, 45, { align: 'right', width: 245 });
 
-            doc.fillColor('#444444').fontSize(10).font('Helvetica');
-            doc.text(company.address || '', 350, 65, { align: 'right' });
-            doc.text(`CIF: ${company.taxId || ''}`, 350, 80, { align: 'right' });
-            doc.text(`${company.email || ''}`, 350, 95, { align: 'right' });
-            doc.text(`${company.phone || ''}`, 350, 110, { align: 'right' });
+            doc.fillColor('#444444').fontSize(9).font('Helvetica');
+            doc.text(company.address || '', 300, 75, { align: 'right', width: 245 });
+            doc.text(`CIF: ${company.taxId || ''}`, 300, 88, { align: 'right', width: 245 });
+            doc.text(`${company.email || ''}`, 300, 101, { align: 'right', width: 245 });
+            doc.text(`${company.phone || ''}`, 300, 114, { align: 'right', width: 245 });
             
-            doc.moveTo(50, 135).lineTo(545, 135).strokeColor('#eeeeee').lineWidth(1).stroke();
+            doc.moveTo(50, 145).lineTo(545, 145).strokeColor('#eeeeee').lineWidth(1).stroke();
         };
 
         // --- Helper: Footer con Paginación ---
