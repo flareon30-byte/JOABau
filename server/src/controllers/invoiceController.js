@@ -117,15 +117,15 @@ const generatePdfFile = (invoice, client, company) => {
         });
 
         // --- Bloque de Totales ---
-        // Si no cabe en la misma página, saltar
-        if (position > 650) {
+        // Si no cabe en la misma página, saltar (Ajustado para ser más permisivo)
+        if (position > 700) {
             doc.addPage();
             generateHeader(doc);
-            position = 150;
+            position = 160;
         }
 
         const totalsStart = 400;
-        const totalsY = position + 30;
+        const totalsY = position + 20;
 
         doc.moveTo(totalsStart, totalsY).lineTo(545, totalsY).strokeColor('#eeeeee').stroke();
         
