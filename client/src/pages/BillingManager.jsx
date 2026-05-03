@@ -6,12 +6,27 @@ const BillingPage = () => {
     // 1. Projects State
     const [projects, setProjects] = useState([]);
 
-    // 2. Filters State (Default to current month)
+    // 2. Filters State (Default to current month, using local time)
     const getDefaultDates = () => {
         const now = new Date();
-        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-        return { firstDay, lastDay };
+        const y = now.getFullYear();
+        const m = now.getMonth();
+        
+        // Formato YYYY-MM-DD manual para evitar desfases de UTC
+        const first = new Date(y, m, 1);
+        const last = new Date(y, m + 1, 0);
+        
+        const formatDate = (d) => {
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        return { 
+            firstDay: formatDate(first), 
+            lastDay: formatDate(last) 
+        };
     };
 
     const { firstDay, lastDay } = getDefaultDates();
