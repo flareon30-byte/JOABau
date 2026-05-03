@@ -791,6 +791,26 @@ const BillingPage = () => {
                             />
                         </div>
                     </div>
+
+                    {/* Activation Type Filter - Only visible if 'activation' tab is active */}
+                    {activeTab === 'activation' && (
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-slate-500 uppercase">Tipo Activación</label>
+                            <div className="relative">
+                                <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <select
+                                    className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-sm font-bold"
+                                    value={filters.type}
+                                    onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+                                >
+                                    <option value="">Todos los tipos</option>
+                                    {[...new Set(billingData.activation.map(a => a.activationType))].sort().map(type => (
+                                        <option key={type} value={type}>{type}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    )}
                 </div>
                 
                 <div className="mt-4 flex justify-end">
@@ -801,27 +821,6 @@ const BillingPage = () => {
                         <Filter size={14} /> Limpiar Filtros (Ver Mes Actual)
                     </button>
                 </div>
-            </div>
-
-                {/* Activation Type Filter - Only visible if 'activation' tab is active */}
-                {activeTab === 'activation' && (
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Tipo Activación</label>
-                        <div className="relative">
-                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <select
-                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-sm font-bold"
-                                value={filters.type}
-                                onChange={(e) => setFilters({ ...filters, type: e.target.value })}
-                            >
-                                <option value="">Todos los tipos</option>
-                                {[...new Set(billingData.activation.map(a => a.activationType))].sort().map(type => (
-                                    <option key={type} value={type}>{type}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* Tabs */}
