@@ -358,3 +358,22 @@ exports.deleteInvoice = async (req, res) => {
         res.status(500).json({ message: 'Error eliminando factura' });
     }
 };
+
+exports.regeneratePdf = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const invoice = await prisma.invoice.findUnique({ where: { id } });
+        if (!invoice) return res.status(404).json({ message: 'Factura no encontrada' });
+
+        const client = await prisma.clientCompany.findUnique({ where: { id: invoice.clientId } });
+        const company = await prisma.companySettings.findFirst();
+
+        const pdfPath = await generatePdfFile(invoice, client, company);
+        await prisma.invoice.update({ where: { id }, data: { pdfPath } });
+
+        res.json({ success: true, pdfPath: `${pdfPath}?t=${Date.now()}` });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error regenerando PDF' });
+    }
+};

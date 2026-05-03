@@ -3,7 +3,7 @@ import api from '../api/axios';
 import { 
     FileText, Search, Calendar, CheckCircle2, Download, 
     Filter, AlertCircle, FilePlus, Loader, ChevronRight,
-    Euro, Trash2, CheckCircle, Clock, Pencil, Building2
+    Euro, Trash2, CheckCircle, Clock, Pencil, Building2, RefreshCw
 } from 'lucide-react';
 
 const InvoicingPage = () => {
@@ -145,6 +145,18 @@ const InvoicingPage = () => {
             fetchData();
         } catch (error) {
             alert('Error actualizando estado');
+        }
+    };
+
+    const handleRegeneratePdf = async (id) => {
+        try {
+            const { data } = await api.post(`/api/invoices/${id}/regenerate`);
+            if (data.success) {
+                alert('¡PDF regenerado con éxito con el nuevo diseño!');
+                fetchData();
+            }
+        } catch (error) {
+            alert('Error regenerando PDF');
         }
     };
 
@@ -342,6 +354,13 @@ const InvoicingPage = () => {
                                 <div className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center mb-6">
                                     <div className="text-lg font-black text-slate-800">{money(invoice.total)}</div>
                                     <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => handleRegeneratePdf(invoice.id)}
+                                            title="Regenerar PDF con nuevo diseño"
+                                            className="p-3 bg-white text-orange-600 rounded-xl shadow-md hover:bg-orange-600 hover:text-white transition-all"
+                                        >
+                                            <RefreshCw size={18} />
+                                        </button>
                                         <a href={invoice.pdfPath} target="_blank" rel="noreferrer" className="p-3 bg-white text-blue-600 rounded-xl shadow-md hover:bg-blue-600 hover:text-white transition-all">
                                             <Download size={18} />
                                         </a>
