@@ -234,41 +234,43 @@ exports.createInvoice = async (req, res) => {
         // Procesar Activaciones (Lógica de Precios Exactos de Producción)
         activations.forEach(a => {
             const basePrice = a.basePrice || 0;
-            invoiceItems.push({ desc: `Activación: ${a.address.street} (${a.activationType || 'Normal'})`, qty: 1, price: basePrice, total: basePrice });
+            const fullAddress = `${a.address.street} ${a.address.number || ''}`.trim();
+            invoiceItems.push({ desc: `Activación: ${fullAddress} (${a.activationType || 'Normal'})`, qty: 1, price: basePrice, total: basePrice });
             subtotal += basePrice;
             
             // Añadir TA si tiene precio o cuenta (Usamos el precio guardado en BD)
             if ((a.taInstalled && a.taCount > 0) || (a.taPrice && a.taPrice > 0)) {
                 const taPrice = a.taPrice || 0;
                 const count = a.taCount || 1;
-                invoiceItems.push({ desc: `Equipos TA/SDU instalados (${a.address.street})`, qty: count, price: taPrice / count, total: taPrice });
+                invoiceItems.push({ desc: `Equipos TA/SDU instalados (${fullAddress})`, qty: count, price: taPrice / count, total: taPrice });
                 subtotal += taPrice;
             }
-
+ 
             // Añadir SP si tiene precio
             if (a.spPrice && a.spPrice > 0) {
-                invoiceItems.push({ desc: `Equipos SP instalados (${a.address.street})`, qty: a.spInstalled || 1, price: a.spPrice / (a.spInstalled || 1), total: a.spPrice });
+                invoiceItems.push({ desc: `Equipos SP instalados (${fullAddress})`, qty: a.spInstalled || 1, price: a.spPrice / (a.spInstalled || 1), total: a.spPrice });
                 subtotal += a.spPrice;
             }
-
+ 
             // Añadir MDU si tiene precio
             if (a.mduPrice && a.mduPrice > 0) {
-                invoiceItems.push({ desc: `Equipo MDU instalado (${a.address.street})`, qty: 1, price: a.mduPrice, total: a.mduPrice });
+                invoiceItems.push({ desc: `Equipo MDU instalado (${fullAddress})`, qty: 1, price: a.mduPrice, total: a.mduPrice });
                 subtotal += a.mduPrice;
             }
-
+ 
             // Añadir Reparación si tiene precio
             if (a.repairPrice && a.repairPrice > 0) {
-                invoiceItems.push({ desc: `Reparación realizada (${a.address.street})`, qty: 1, price: a.repairPrice, total: a.repairPrice });
+                invoiceItems.push({ desc: `Reparación realizada (${fullAddress})`, qty: 1, price: a.repairPrice, total: a.repairPrice });
                 subtotal += a.repairPrice;
             }
         });
-
+ 
         // Procesar Soplados
         soplados.forEach(s => {
-            const pricePerMeter = 0.40; // Deberíamos buscarlo en client.priceItems
+            const pricePerMeter = 0.40; 
             const total = s.meters * pricePerMeter;
-            invoiceItems.push({ desc: `Soplado fibra: ${s.address.street} (${s.meters} m)`, qty: s.meters, price: pricePerMeter, total });
+            const fullAddress = `${s.address.street} ${s.address.number || ''}`.trim();
+            invoiceItems.push({ desc: `Soplado fibra: ${fullAddress} (${s.meters} m)`, qty: s.meters, price: pricePerMeter, total });
             subtotal += total;
         });
 
