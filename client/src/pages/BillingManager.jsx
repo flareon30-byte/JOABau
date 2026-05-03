@@ -6,15 +6,36 @@ const BillingPage = () => {
     // 1. Projects State
     const [projects, setProjects] = useState([]);
 
-    // 2. Filters State
+    // 2. Filters State (Default to current month)
+    const getDefaultDates = () => {
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        return { firstDay, lastDay };
+    };
+
+    const { firstDay, lastDay } = getDefaultDates();
+
     const [filters, setFilters] = useState({
         projectId: '',
         clientCompanyId: '',
-        startDate: '',
-        endDate: '',
+        startDate: firstDay,
+        endDate: lastDay,
         nvt: '',
         type: ''
     });
+
+    const resetFilters = () => {
+        const { firstDay, lastDay } = getDefaultDates();
+        setFilters({
+            projectId: '',
+            clientCompanyId: '',
+            startDate: firstDay,
+            endDate: lastDay,
+            nvt: '',
+            type: ''
+        });
+    };
 
     const [clients, setClients] = useState([]);
 
@@ -654,12 +675,12 @@ const BillingPage = () => {
                         <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
                             <TrendingUp size={80} />
                         </div>
-                        <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Facturación Total (Bruta)</p>
+                        <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Producción del Mes (Bruta)</p>
                         <h3 className="text-4xl font-black mb-2">
                             {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.euros || 0)}
                         </h3>
                         <div className="flex items-center gap-2 text-xs text-indigo-100/80">
-                            <span className="bg-white/20 px-2 py-0.5 rounded-full font-bold">Consolidado</span>
+                            <span className="bg-white/20 px-2 py-0.5 rounded-full font-bold">Mes en curso</span>
                             <span>{billingData.soplado.length + billingData.activation.length + billingData.simpleInstallation.length} trabajos realizados</span>
                         </div>
                     </div>
@@ -675,7 +696,7 @@ const BillingPage = () => {
                         <h3 className="text-3xl font-black text-slate-800">
                             {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.weekdayGross || 0)}
                         </h3>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Ingresos brutos generados en jornada ordinaria</p>
+                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Ingresos brutos generados este mes</p>
                     </div>
 
                     {/* Saturday Card */}
@@ -689,86 +710,98 @@ const BillingPage = () => {
                         <h3 className="text-3xl font-black text-slate-800">
                             {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.saturdayGross || 0)}
                         </h3>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Facturación adicional por trabajos de sábado</p>
+                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Facturación adicional de sábados (mes actual)</p>
                     </div>
                 </div>
             )}
 
             {/* Existing Filters section starts here... (Line 585 in original) */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Proyecto</label>
-                    <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <select
-                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-sm"
-                            value={filters.projectId}
-                            onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}
-                        >
-                            <option value="">Todos los proyectos</option>
-                            {projects.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
-                            ))}
-                        </select>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Proyecto</label>
+                        <div className="relative">
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <select
+                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-sm"
+                                value={filters.projectId}
+                                onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}
+                            >
+                                <option value="">Todos los proyectos</option>
+                                {projects.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Empresa Cliente</label>
-                    <div className="relative">
-                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <select
-                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-sm font-bold"
-                            value={filters.clientCompanyId}
-                            onChange={(e) => setFilters({ ...filters, clientCompanyId: e.target.value })}
-                        >
-                            <option value="">Todos los Clientes</option>
-                            {clients.map(c => (
-                                <option key={c.id} value={c.id}>{c.name}</option>
-                            ))}
-                        </select>
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Empresa Cliente</label>
+                        <div className="relative">
+                            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <select
+                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 text-sm font-bold"
+                                value={filters.clientCompanyId}
+                                onChange={(e) => setFilters({ ...filters, clientCompanyId: e.target.value })}
+                            >
+                                <option value="">Todos los Clientes</option>
+                                {clients.map(c => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Desde</label>
-                    <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input
-                            type="date"
-                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
-                            value={filters.startDate}
-                            onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-                        />
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Desde</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                                type="date"
+                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                                value={filters.startDate}
+                                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                            />
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Hasta</label>
-                    <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input
-                            type="date"
-                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
-                            value={filters.endDate}
-                            onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-                        />
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Hasta</label>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                                type="date"
+                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                                value={filters.endDate}
+                                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                            />
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-bold text-slate-500 uppercase">Buscar NVT</label>
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                        <input
-                            type="text"
-                            placeholder="Ej: NVT-01"
-                            className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
-                            value={filters.nvt}
-                            onChange={(e) => setFilters({ ...filters, nvt: e.target.value })}
-                        />
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">Buscar NVT</label>
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Ej: NVT-01"
+                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                                value={filters.nvt}
+                                onChange={(e) => setFilters({ ...filters, nvt: e.target.value })}
+                            />
+                        </div>
                     </div>
                 </div>
+                
+                <div className="mt-4 flex justify-end">
+                    <button 
+                        onClick={resetFilters}
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                        <Filter size={14} /> Limpiar Filtros (Ver Mes Actual)
+                    </button>
+                </div>
+            </div>
 
                 {/* Activation Type Filter - Only visible if 'activation' tab is active */}
                 {activeTab === 'activation' && (
