@@ -48,7 +48,7 @@ const generatePdfFile = (invoice, client, company) => {
         const generateFooter = (doc) => {
             doc.fontSize(8).fillColor('#aaaaaa').text(
                 'JOA Technologien - Innovación y Calidad en Telecomunicaciones',
-                50, 780, { align: 'center', width: 500 }
+                50, 760, { align: 'center', width: 500 }
             );
         };
 
@@ -151,8 +151,11 @@ const generatePdfFile = (invoice, client, company) => {
         const range = doc.bufferedPageRange();
         for (let i = range.start; i < range.start + range.count; i++) {
             doc.switchToPage(i);
+            // Desactivar temporalmente el autoPageBreak para el footer
+            doc.page.margins.bottom = 0; 
+            
             generateFooter(doc);
-            doc.fontSize(8).fillColor('#aaaaaa').text(`Página ${i + 1} de ${range.count}`, 50, 795, { align: 'right', width: 495 });
+            doc.fontSize(8).fillColor('#aaaaaa').text(`Página ${i + 1} de ${range.count}`, 50, 775, { align: 'right', width: 495 });
         }
 
         doc.end();
