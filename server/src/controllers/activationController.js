@@ -650,7 +650,7 @@ exports.syncDraft = async (req, res) => {
                 mduInstalled: mduInstalled === 'true' || mduInstalled === true ? true : (mduInstalled === 'false' || mduInstalled === false ? false : undefined),
                 homeIds: homeIds ? (Array.isArray(homeIds) ? homeIds : (typeof homeIds === 'string' ? JSON.parse(homeIds) : homeIds)) : undefined,
                 description: description || undefined,
-                pdfPath: pdfPath || undefined,
+                pdfPath: (pdfPath === 'null' || !pdfPath) ? null : pdfPath,
                 photos: allPhotos,
                 isDraft: true,
                 points: 0 

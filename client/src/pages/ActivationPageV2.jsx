@@ -103,7 +103,7 @@ const ActivationPageV2 = () => {
                         description: info.description || ''
                     }));
 
-                    setPdfPath(info.pdfPath || null);
+                    setPdfPath(info.pdfPath && info.pdfPath !== 'null' ? info.pdfPath : null);
 
                     // Load existing photos
                     if (info.photos && info.photos.length > 0) {
@@ -178,7 +178,7 @@ const ActivationPageV2 = () => {
                                 setPhotos(recoveredPhotos);
                             }
                             if (draftToUse.signatures) setSignatures(draftToUse.signatures);
-                            if (draftToUse.pdfPath) setPdfPath(draftToUse.pdfPath);
+                            if (draftToUse.pdfPath && draftToUse.pdfPath !== 'null') setPdfPath(draftToUse.pdfPath);
                         }
                     } catch (draftErr) {
                         console.error('Error loading draft:', draftErr);
