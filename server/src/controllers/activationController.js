@@ -632,10 +632,16 @@ exports.syncDraft = async (req, res) => {
         }
         const allPhotos = [...keptPhotos, ...newPhotoPaths];
 
+        // VALIDATE ENUM Values
+        const validEnumValues = ['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'];
+        const finalActivationType = validEnumValues.includes(activationType) ? activationType : 'BP';
+        const finalCustomName = !validEnumValues.includes(activationType) ? activationType : (description || '');
+
         const draft = await prisma.activationInfo.upsert({
             where: { addressId },
             update: {
-                activationType: activationType || undefined,
+                activationType: finalActivationType,
+                customActivationName: finalCustomName,
                 familiesCount: familiesCount ? parseInt(familiesCount) : undefined,
                 apPorts: apPorts ? parseInt(apPorts) : undefined,
                 hasMoreClients: hasMoreClients === 'true' || hasMoreClients === true ? true : (hasMoreClients === 'false' || hasMoreClients === false ? false : undefined),
@@ -647,11 +653,12 @@ exports.syncDraft = async (req, res) => {
                 pdfPath: pdfPath || undefined,
                 photos: allPhotos,
                 isDraft: true,
-                points: 0 // Drafts don't count for points yet
+                points: 0 
             },
             create: {
                 addressId,
-                activationType: activationType || 'BP',
+                activationType: finalActivationType,
+                customActivationName: finalCustomName,
                 familiesCount: familiesCount ? parseInt(familiesCount) : 1,
                 apPorts: apPorts ? parseInt(apPorts) : 1,
                 hasMoreClients: hasMoreClients === 'true' || hasMoreClients === true,
