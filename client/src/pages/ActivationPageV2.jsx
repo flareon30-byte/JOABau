@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIcon, Share, Hash } from 'lucide-react';
+import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIcon, Share, Hash, RefreshCw } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
 import { savePendingActivation, saveActivationDraft, getActivationDraft, deleteActivationDraft } from '../utils/offlineStorage';
@@ -60,158 +60,158 @@ const ActivationPageV2 = () => {
         console.error("Error parsing user from localStorage", e);
     }
 
-    useEffect(() => {
-        const fetchAppointment = async () => {
-            try {
-                let found = null;
-                let activeClientId = null;
+    const fetchAppointment = useCallback(async () => {
+        try {
+            let found = null;
+            let activeClientId = null;
 
-                if (navigator.onLine) {
-                    const res = await api.get('/api/dashboard/activator');
-                    activeClientId = res.data?.activeClientId;
-                    const appointmentList = res.data?.appointments || [];
-                    if (!Array.isArray(appointmentList)) {
-                        throw new Error("Appointments data is not an array");
+            if (navigator.onLine) {
+                const res = await api.get('/api/dashboard/activator');
+                activeClientId = res.data?.activeClientId;
+                const appointmentList = res.data?.appointments || [];
+                if (!Array.isArray(appointmentList)) {
+                    throw new Error("Appointments data is not an array");
+                }
+                found = appointmentList.find(a => String(a.id) === String(id));
+            } else {
+                console.warn("Offline mode: Loading from cache...");
+                const cached = JSON.parse(localStorage.getItem('cachedAgenda') || '{}');
+                activeClientId = cached.activeClientId;
+                found = cached.appointments?.find(a => a.id === id);
+            }
+
+            if (found) {
+                setAppointment(found);
+
+                // Pre-fill form if activation info exists
+                if (found.address.activationInfo) {
+                    const info = found.address.activationInfo;
+                    console.log('Pre-filling with info:', info);
+                    setFormData(prev => ({
+                        ...prev,
+                        activationType: info.customActivationName || info.activationType || 'BP',
+                        familiesCount: info.familiesCount || 1,
+                        apPorts: info.apPorts ? String(info.apPorts) : '2',
+                        hasMoreClients: info.hasMoreClients || false,
+                        spInstalled: info.spInstalled || '',
+                        taInstalled: info.taInstalled || false,
+                        taCount: info.taCount || '',
+                        mduInstalled: info.mduInstalled || false,
+                        isRepair: info.isRepair || false,
+                        homeId: info.homeIds && info.homeIds.length > 0 ? info.homeIds[0] : '',
+                        klsId: info.klsId || found.address.klsId || '',
+                        description: info.description || ''
+                    }));
+
+                    setPdfPath(info.pdfPath || null);
+
+                    // Load existing photos
+                    if (info.photos && info.photos.length > 0) {
+                        setPhotos(info.photos.map((path, i) => {
+                            const cleanPath = path.replace(/\\/g, '/');
+                            const encoded = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+                            return {
+                                blob: null,
+                                preview: `${BASE_URL}/${encoded.replace(/^\/+/, '')}`,
+                                name: `Foto ${i + 1}`,
+                                isExisting: true,
+                                originalPath: path
+                            };
+                        }));
                     }
-                    found = appointmentList.find(a => String(a.id) === String(id));
-                } else {
-                    console.warn("Offline mode: Loading from cache...");
-                    const cached = JSON.parse(localStorage.getItem('cachedAgenda') || '{}');
-                    activeClientId = cached.activeClientId;
-                    found = cached.appointments?.find(a => a.id === id);
+                } else if (found.address.klsId) {
+                    setFormData(prev => ({ ...prev, klsId: found.address.klsId }));
                 }
 
-                if (found) {
-                    setAppointment(found);
-
-                    // Pre-fill form if activation info exists
-                    if (found.address.activationInfo) {
-                        const info = found.address.activationInfo;
-                        console.log('Pre-filling with info:', info);
-                        setFormData({
-                            activationType: info.customActivationName || info.activationType || 'BP',
-                            familiesCount: info.familiesCount || 1,
-                            apPorts: info.apPorts ? String(info.apPorts) : '2',
-                            hasMoreClients: info.hasMoreClients || false,
-                            spInstalled: info.spInstalled || '',
-                            taInstalled: info.taInstalled || false,
-                            taCount: info.taCount || '',
-                            mduInstalled: info.mduInstalled || false,
-                            isRepair: info.isRepair || false,
-                            homeId: info.homeIds && info.homeIds.length > 0 ? info.homeIds[0] : '',
-                            klsId: info.klsId || found.address.klsId || '',
-                            description: info.description || ''
-                        });
-
-                        setPdfPath(info.pdfPath || null);
-
-                        // Load existing photos
-                        if (info.photos && info.photos.length > 0) {
-                            setPhotos(info.photos.map((path, i) => {
-                                const cleanPath = path.replace(/\\/g, '/');
-                                const encoded = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
-                                return {
-                                    blob: null,
-                                    preview: `${BASE_URL}/${encoded.replace(/^\/+/, '')}`,
-                                    name: `Foto ${i + 1}`,
-                                    isExisting: true,
-                                    originalPath: path
-                                };
-                            }));
+                // Fetch custom price items (billing concepts)
+                let clientId = activeClientId || found.address?.project?.clientCompanyId;
+                try {
+                    let finalActivationItems = [];
+                    
+                    if (navigator.onLine && clientId) {
+                        const pRes = await api.get(`/api/clients/${clientId}/price-items`);
+                        finalActivationItems = pRes.data.filter(item => item.department === 'ACTIVATION');
+                        localStorage.setItem(`cachedPriceItems_${clientId}`, JSON.stringify(finalActivationItems));
+                    } else if (clientId) {
+                        finalActivationItems = JSON.parse(localStorage.getItem(`cachedPriceItems_${clientId}`) || '[]');
+                    }
+                    
+                    setPriceItems(finalActivationItems);
+                    
+                    const info = found.address.activationInfo;
+                    if (!info || (!info.activationType && !info.customActivationName)) {
+                        if (finalActivationItems.length > 0) {
+                            setFormData(prev => ({ ...prev, activationType: finalActivationItems[0].name }));
                         }
-                    } else if (found.address.klsId) {
-                        setFormData(prev => ({ ...prev, klsId: found.address.klsId }));
                     }
 
-                    // Fetch custom price items (billing concepts)
-                    let clientId = activeClientId || found.address?.project?.clientCompanyId;
+                    // --- LOAD DRAFT / MERGE ---
                     try {
-                        let finalActivationItems = [];
+                        const localDraft = await getActivationDraft(id);
+                        const serverDraft = found.address.activationInfo;
                         
-                        if (navigator.onLine && clientId) {
-                            const pRes = await api.get(`/api/clients/${clientId}/price-items`);
-                            finalActivationItems = pRes.data.filter(item => item.department === 'ACTIVATION');
-                            localStorage.setItem(`cachedPriceItems_${clientId}`, JSON.stringify(finalActivationItems));
-                        } else if (clientId) {
-                            console.warn("Offline mode: Loading price items from cache...");
-                            finalActivationItems = JSON.parse(localStorage.getItem(`cachedPriceItems_${clientId}`) || '[]');
-                        }
-                        
-                        // Fallback: If no local or remote items, get general ones if online
-                        if (finalActivationItems.length === 0 && navigator.onLine) {
-                            const allClientsRes = await api.get('/api/clients');
-                            const clientsWithItems = allClientsRes.data.filter(c => c.priceItems && c.priceItems.length > 0);
-                            if (clientsWithItems.length > 0) {
-                                finalActivationItems = clientsWithItems[0].priceItems.filter(item => item.department === 'ACTIVATION');
-                            }
-                        }
-
-                        setPriceItems(finalActivationItems);
-                        
-                        // If no custom value matches current DB value and there are items, default to the first one safely
-                        const info = found.address.activationInfo;
-                        if (!info || (!info.activationType && !info.customActivationName)) {
-                            if (finalActivationItems.length > 0) {
-                                setFormData(prev => ({ ...prev, activationType: finalActivationItems[0].name }));
-                            }
-                        }
-
-                        // --- NEW: Load draft if exists (Comparing server vs local) ---
-                        try {
-                            const localDraft = await getActivationDraft(id);
-                            const serverDraft = found.address.activationInfo;
+                        let draftToUse = null;
+                        if (localDraft && serverDraft) {
+                            const serverTime = new Date(serverDraft.updatedAt).getTime();
+                            const localTime = localDraft.updatedAt || 0;
                             
-                            // Determine which one to use
-                            let draftToUse = null;
-                            if (localDraft && serverDraft) {
-                                const serverTime = new Date(serverDraft.updatedAt).getTime();
-                                const localTime = localDraft.updatedAt || 0;
-                                
-                                if (serverTime > localTime) {
-                                    console.log('🌐 Server draft is newer, preferring server.');
-                                    draftToUse = null; // Use info from found.address.activationInfo already set above
-                                } else {
-                                    console.log('📱 Local draft is newer, preferring local.');
-                                    draftToUse = localDraft;
-                                }
-                            } else if (localDraft) {
+                            if (serverTime > localTime) {
+                                console.log('🌐 Server draft is newer.');
+                                draftToUse = null;
+                            } else {
+                                console.log('📱 Local draft is newer.');
                                 draftToUse = localDraft;
                             }
-
-                            if (draftToUse) {
-                                console.log('🔄 Applying local draft...', draftToUse);
-                                if (draftToUse.formData) setFormData(prev => ({ ...prev, ...draftToUse.formData }));
-                                if (draftToUse.photos && draftToUse.photos.length > 0) {
-                                    const recoveredPhotos = draftToUse.photos.map(p => {
-                                        if (p.blob && !p.isExisting) {
-                                            return { ...p, preview: URL.createObjectURL(p.blob) };
-                                        }
-                                        return p;
-                                    });
-                                    setPhotos(recoveredPhotos);
-                                }
-                                if (draftToUse.signatures) setSignatures(draftToUse.signatures);
-                                if (draftToUse.pdfPath) setPdfPath(draftToUse.pdfPath);
-                            }
-                        } catch (draftErr) {
-                            console.error('Error loading draft:', draftErr);
+                        } else if (localDraft) {
+                            draftToUse = localDraft;
                         }
-                    } catch (err) {
-                        console.error('Error fetching price items:', err);
-                        // Fallback on error handled by the render method
-                    }
 
-                } else {
-                    console.error('Appointment not found');
+                        if (draftToUse) {
+                            if (draftToUse.formData) setFormData(prev => ({ ...prev, ...draftToUse.formData }));
+                            if (draftToUse.photos && draftToUse.photos.length > 0) {
+                                const recoveredPhotos = draftToUse.photos.map(p => {
+                                    if (p.blob && !p.isExisting) {
+                                        return { ...p, preview: URL.createObjectURL(p.blob) };
+                                    }
+                                    return p;
+                                });
+                                setPhotos(recoveredPhotos);
+                            }
+                            if (draftToUse.signatures) setSignatures(draftToUse.signatures);
+                            if (draftToUse.pdfPath) setPdfPath(draftToUse.pdfPath);
+                        }
+                    } catch (draftErr) {
+                        console.error('Error loading draft:', draftErr);
+                    }
+                } catch (err) {
+                    console.error('Error fetching items:', err);
                 }
-            } catch (error) {
-                console.error('Error fetching appointment:', error);
-            } finally {
-                setLoading(false);
+
             }
-        };
-        fetchAppointment();
+        } catch (error) {
+            console.error('Error fetching appointment:', error);
+        } finally {
+            setLoading(false);
+        }
     }, [id]);
+
+    useEffect(() => {
+        fetchAppointment();
+    }, [fetchAppointment]);
+
+    // --- NEW: Polling for updates ---
+    useEffect(() => {
+        if (!id || loading) return;
+
+        const interval = setInterval(() => {
+            if (navigator.onLine && !isSyncing && !submitting) {
+                console.log('🔄 Polling for team updates...');
+                fetchAppointment();
+            }
+        }, 30000); // Every 30 seconds
+
+        return () => clearInterval(interval);
+    }, [id, isSyncing, submitting, loading, fetchAppointment]);
 
     // --- NEW: Sync with Server Function ---
     const syncWithServer = async () => {
@@ -816,9 +816,17 @@ const ActivationPageV2 = () => {
                             </div>
                         ) : lastSyncedAt ? (
                             <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-[10px] font-bold">
-                                <CheckCircle size={12} /> Guardado en Nube
+                                <CheckCircle size={12} /> Sincronizado
                             </div>
                         ) : null}
+                        <button 
+                            type="button"
+                            onClick={() => fetchAppointment()}
+                            className="p-1.5 text-slate-400 hover:text-joa-blue hover:bg-blue-50 rounded-lg transition-all"
+                            title="Refrescar datos del servidor"
+                        >
+                            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                        </button>
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">V2.4 ACTIVADA</span>
