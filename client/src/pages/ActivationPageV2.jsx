@@ -18,6 +18,8 @@ const ActivationPageV2 = () => {
     const [submitting, setSubmitting] = useState(false);
     const [viewingPhotoIndex, setViewingPhotoIndex] = useState(null);
     const [priceItems, setPriceItems] = useState([]);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [lastSyncedAt, setLastSyncedAt] = useState(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -154,15 +156,33 @@ const ActivationPageV2 = () => {
                             }
                         }
 
-                        // --- NEW: Load draft if exists ---
+                        // --- NEW: Load draft if exists (Comparing server vs local) ---
                         try {
-                            const draft = await getActivationDraft(id);
-                            if (draft) {
-                                console.log('🔄 Draft found, recovering...', draft);
-                                if (draft.formData) setFormData(prev => ({ ...prev, ...draft.formData }));
-                                if (draft.photos && draft.photos.length > 0) {
-                                    // Make sure blobs are recovered correctly and previews regenerated
-                                    const recoveredPhotos = draft.photos.map(p => {
+                            const localDraft = await getActivationDraft(id);
+                            const serverDraft = found.address.activationInfo;
+                            
+                            // Determine which one to use
+                            let draftToUse = null;
+                            if (localDraft && serverDraft) {
+                                const serverTime = new Date(serverDraft.updatedAt).getTime();
+                                const localTime = localDraft.updatedAt || 0;
+                                
+                                if (serverTime > localTime) {
+                                    console.log('🌐 Server draft is newer, preferring server.');
+                                    draftToUse = null; // Use info from found.address.activationInfo already set above
+                                } else {
+                                    console.log('📱 Local draft is newer, preferring local.');
+                                    draftToUse = localDraft;
+                                }
+                            } else if (localDraft) {
+                                draftToUse = localDraft;
+                            }
+
+                            if (draftToUse) {
+                                console.log('🔄 Applying local draft...', draftToUse);
+                                if (draftToUse.formData) setFormData(prev => ({ ...prev, ...draftToUse.formData }));
+                                if (draftToUse.photos && draftToUse.photos.length > 0) {
+                                    const recoveredPhotos = draftToUse.photos.map(p => {
                                         if (p.blob && !p.isExisting) {
                                             return { ...p, preview: URL.createObjectURL(p.blob) };
                                         }
@@ -170,8 +190,8 @@ const ActivationPageV2 = () => {
                                     });
                                     setPhotos(recoveredPhotos);
                                 }
-                                if (draft.signatures) setSignatures(draft.signatures);
-                                if (draft.pdfPath) setPdfPath(draft.pdfPath);
+                                if (draftToUse.signatures) setSignatures(draftToUse.signatures);
+                                if (draftToUse.pdfPath) setPdfPath(draftToUse.pdfPath);
                             }
                         } catch (draftErr) {
                             console.error('Error loading draft:', draftErr);
@@ -193,26 +213,72 @@ const ActivationPageV2 = () => {
         fetchAppointment();
     }, [id]);
 
+    // --- NEW: Sync with Server Function ---
+    const syncWithServer = async () => {
+        if (!navigator.onLine || !id || !appointment?.addressId || loading) return;
+        
+        setIsSyncing(true);
+        try {
+            const syncData = new FormData();
+            syncData.append('activationType', formData.activationType);
+            syncData.append('familiesCount', formData.familiesCount);
+            syncData.append('apPorts', formData.apPorts);
+            syncData.append('hasMoreClients', formData.hasMoreClients);
+            syncData.append('spInstalled', formData.spInstalled);
+            syncData.append('taInstalled', formData.taInstalled);
+            syncData.append('mduInstalled', formData.mduInstalled);
+            syncData.append('isRepair', formData.isRepair);
+            syncData.append('homeIds', JSON.stringify([formData.homeId]));
+            syncData.append('description', formData.description);
+            syncData.append('pdfPath', pdfPath);
+
+            // Send existing photo paths to keep them
+            const existingPaths = photos.filter(p => p.isExisting).map(p => p.originalPath);
+            syncData.append('existingPhotos', JSON.stringify(existingPaths));
+
+            // Append new photo blobs
+            photos.forEach(p => {
+                if (p.blob && !p.isExisting) {
+                    syncData.append('photos', p.blob, p.name);
+                }
+            });
+
+            await api.post(`/api/activations/sync-draft/${appointment.addressId}`, syncData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            setLastSyncedAt(new Date());
+            console.log('✅ Draft synced with server successfully');
+        } catch (err) {
+            console.error('❌ Error syncing with server:', err);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     // --- NEW: Auto-save draft effect ---
     useEffect(() => {
         if (!id || loading || !appointment) return;
 
         const saveDraft = async () => {
             try {
-                // We don't save existing photos (server paths) in draft to save space
-                // But we definitely save new ones with blobs
+                // Local save for offline availability
                 await saveActivationDraft(id, {
                     formData,
                     photos,
                     signatures,
                     pdfPath
                 });
+
+                // Server sync for team collaboration
+                if (navigator.onLine) {
+                    await syncWithServer();
+                }
             } catch (err) {
                 console.error('Error auto-saving draft:', err);
             }
         };
 
-        const timeout = setTimeout(saveDraft, 1000); // Debounce save
+        const timeout = setTimeout(saveDraft, 2000); // Debounce save
         return () => clearTimeout(timeout);
     }, [formData, photos, signatures, pdfPath, id, loading, appointment]);
 
@@ -742,7 +808,18 @@ const ActivationPageV2 = () => {
                     <ArrowLeft size={24} className="text-slate-600" />
                 </button>
                 <div className="flex-1">
-                    <h1 className="text-lg font-bold text-slate-800 leading-tight">Finalizar Activación</h1>
+                    <div className="flex items-center gap-2">
+                        <h1 className="text-lg font-bold text-slate-800 leading-tight">Finalizar Activación</h1>
+                        {isSyncing ? (
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold animate-pulse">
+                                <Share size={12} /> Sincronizando...
+                            </div>
+                        ) : lastSyncedAt ? (
+                            <div className="flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-600 rounded-full text-[10px] font-bold">
+                                <CheckCircle size={12} /> Guardado en Nube
+                            </div>
+                        ) : null}
+                    </div>
                     <div className="flex items-center gap-2 mt-0.5">
                         <span className="bg-red-600 text-white text-[9px] px-1.5 py-0.5 rounded-full font-black animate-pulse">V2.4 ACTIVADA</span>
                         <p className="text-[10px] text-slate-500 line-clamp-1">{appointment?.address?.street} {appointment?.address?.number}</p>
