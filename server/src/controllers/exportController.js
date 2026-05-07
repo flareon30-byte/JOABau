@@ -183,6 +183,7 @@ exports.getBillingData = async (req, res) => {
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
+                basePrice: { gt: 0 }, // 🟢 HIDE 0€ OR DERIVED WITHOUT PRODUCTION
                 ...(type ? { activationType: type } : {})
             },
             include: { 
@@ -236,6 +237,7 @@ exports.getBillingData = async (req, res) => {
         // 6. SIMPLE INSTALLATIONS (Universal Catalog)
         results.simpleInstallation = await prisma.simpleInstallation.findMany({
             where: {
+                priceCharged: { gt: 0 }, // 🟢 HIDE 0€ GK/REPAIRS
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
@@ -253,6 +255,8 @@ exports.getBillingData = async (req, res) => {
             },
             orderBy: { createdAt: 'desc' }
         });
+
+        console.log(`[BILLING] Found: ${results.activation.length} activations, ${results.simpleInstallation.length} installations after 0€ filter.`);
 
         // 7. Calculate Totals (Enhanced for Global or Single Client)
         results.totals = { 
@@ -429,6 +433,7 @@ exports.exportBillingExcel = async (req, res) => {
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
+                basePrice: { gt: 0 }, // 🟢 HIDE 0€ OR DERIVED WITHOUT PRODUCTION
                 ...(type ? { activationType: type } : {})
             },
             include: { address: { include: { project: true } } }
