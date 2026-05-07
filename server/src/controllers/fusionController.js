@@ -13,7 +13,9 @@ exports.logFusionWork = async (req, res) => {
 
     // 🟢 COMPRESIÓN DE IMÁGENES
     if (files && files.length > 0) {
-        await processImages(files);
+        const techUser = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+        const techName = techUser?.username || 'Técnico JOA';
+        await processImages(files, techName);
     }
 
     try {

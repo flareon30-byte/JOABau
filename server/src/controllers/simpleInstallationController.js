@@ -28,7 +28,9 @@ exports.createInstallation = async (req, res) => {
         if (signatureFile) allFilesToProcess.push(signatureFile);
 
         if (allFilesToProcess.length > 0) {
-            await processImages(allFilesToProcess);
+            const techUser = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+            const techName = techUser?.username || 'Técnico JOA';
+            await processImages(allFilesToProcess, techName);
         }
 
         // Parse address info

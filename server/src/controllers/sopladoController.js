@@ -61,7 +61,12 @@ exports.submitSopladoReport = async (req, res) => {
     const files = req.files; // Array of files from multer
 
     if (files && files.length > 0) {
-        await processImages(files);
+        let techName = 'Técnico JOA';
+        if (req.userId) {
+            const techUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { username: true } });
+            if (techUser) techName = techUser.username;
+        }
+        await processImages(files, techName);
     }
 
     try {

@@ -99,7 +99,10 @@ exports.submitActivation = async (req, res) => {
     // 🟢 COMPRESIÓN DE IMÁGENES (Dentro de try-catch para evitar Error 500 si falla el procesamiento)
     try {
         if (photos.length > 0) {
-            await processImages(photos);
+            // Obtener nombre del técnico para la marca de agua
+            const techUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { username: true } });
+            const techName = techUser?.username || 'Técnico JOA';
+            await processImages(photos, techName);
         }
     } catch (procErr) {
         console.error("Image processing error, continuing:", procErr);
@@ -623,7 +626,9 @@ exports.syncDraft = async (req, res) => {
     
     try {
         if (photos.length > 0) {
-            await processImages(photos);
+            const techUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { username: true } });
+            const techName = techUser?.username || 'Técnico JOA';
+            await processImages(photos, techName);
         }
 
         const newPhotoPaths = photos.map(f => f.path.replace(/\\/g, '/'));

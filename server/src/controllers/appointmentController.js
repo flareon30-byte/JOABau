@@ -459,7 +459,9 @@ exports.reciteAppointment = async (req, res) => {
     // 🟢 IMAGE COMPRESSION
     if (photosRaw.length > 0) {
         try {
-            await processImages(photosRaw);
+            const techUser = await prisma.user.findUnique({ where: { id: userId }, select: { username: true } });
+            const techName = techUser?.username || 'Técnico JOA';
+            await processImages(photosRaw, techName);
         } catch (procErr) {
             console.error("[Recite] Image processing failed, continuing anyway:", procErr);
         }
@@ -685,7 +687,9 @@ exports.updateComment = async (req, res) => {
 
         // 2. Add new photos
         if (newPhotosRaw.length > 0) {
-            await processImages(newPhotosRaw);
+            const techUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { username: true } });
+            const techName = techUser?.username || 'Técnico JOA';
+            await processImages(newPhotosRaw, techName);
             const newPhotoPaths = newPhotosRaw.map(f => `/uploads/${f.filename}`);
             currentPhotos = [...currentPhotos, ...newPhotoPaths];
         }

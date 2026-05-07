@@ -24,7 +24,12 @@ exports.addTool = async (req, res) => {
 
     // 🟢 COMPRESIÓN DE IMÁGENES
     if (files && files.length > 0) {
-        await processImages(files);
+        let techName = 'Técnico JOA';
+        if (req.userId) {
+            const techUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { username: true } });
+            if (techUser) techName = techUser.username;
+        }
+        await processImages(files, techName);
     }
 
     try {

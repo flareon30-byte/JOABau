@@ -1,34 +1,47 @@
 const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
-
-const LOGO_PATH = path.join(__dirname, 'logo.png');
+const prisma = require('../prisma');
 
 /**
  * Procesa y comprime una lista de archivos de imagen usando Sharp.
  * Sobreescribe los archivos originales con versiones optimizadas y marca de agua.
  */
-const processImages = async (files) => {
+const processImages = async (files, technicianName = 'Técnico JOA') => {
     if (!files || files.length === 0) return;
 
     const filesArray = Array.isArray(files) ? files : Object.values(files).flat();
-    console.log(`[ImageProcessor] Iniciando compresión y branding de ${filesArray.length} fotos...`);
+    console.log(`[ImageProcessor] Iniciando branding (Esquina Superior Izquierda) para ${filesArray.length} fotos...`);
 
-    // Pre-load and resize logo for footer placement
+    // 1. Obtener el logo de la configuración de la empresa
     let logoBuffer = null;
-    if (fs.existsSync(LOGO_PATH)) {
-        try {
-            logoBuffer = await sharp(LOGO_PATH)
-                .resize({ height: 60, fit: 'inside' })
-                .toBuffer();
-        } catch (e) {
-            console.error("[ImageProcessor] Error loading logo:", e);
+    try {
+        const settings = await prisma.companySettings.findFirst();
+        if (settings && settings.logoPath) {
+            const absoluteLogoPath = path.isAbsolute(settings.logoPath) 
+                ? settings.logoPath 
+                : path.join(__dirname, '../../', settings.logoPath);
+            
+            if (fs.existsSync(absoluteLogoPath)) {
+                logoBuffer = await sharp(absoluteLogoPath)
+                    .resize({ width: 150, fit: 'inside' }) // Logo más pequeño para la esquina
+                    .toBuffer();
+            }
+        }
+    } catch (e) {
+        console.error("[ImageProcessor] Error loading company logo:", e);
+    }
+
+    // Fallback al logo por defecto si falla el de la BD
+    if (!logoBuffer) {
+        const DEFAULT_LOGO = path.join(__dirname, 'logo.png');
+        if (fs.existsSync(DEFAULT_LOGO)) {
+            logoBuffer = await sharp(DEFAULT_LOGO).resize({ width: 150 }).toBuffer();
         }
     }
 
-    const today = new Date().toLocaleDateString('de-DE');
+    const today = new Date().toLocaleDateString('es-ES');
 
-    // Use sequential processing instead of Promise.all to save RAM on small droplets
     for (const file of filesArray) {
         const filePath = file.path;
         const ext = path.extname(filePath).toLowerCase();
@@ -36,45 +49,54 @@ const processImages = async (files) => {
         if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) continue;
 
         try {
-            // 1. Get metadata of original image
             const metadata = await sharp(filePath).metadata();
             const width = metadata.width || 1200;
             
-            // 2. Create the Footer Bar (White background)
-            const footerHeight = 100;
-            const footerSvg = `
-                <svg width="${width}" height="${footerHeight}">
-                    <rect width="100%" height="100%" fill="white" />
-                    <text x="${width - 20}" y="60" font-family="Arial, sans-serif" font-weight="bold" font-size="24" fill="#0f172a" text-anchor="end">
-                        JOA TECHNOLOGIEN - ${today}
-                    </text>
+            // 2. Crear el SVG para el nombre del técnico (justo debajo del logo)
+            // Calculamos una posición aproximada: logo mide 150px de ancho, el texto irá debajo.
+            const textSvg = `
+                <svg width="400" height="100">
+                    <style>
+                        .name { fill: white; font-size: 22px; font-family: Arial, sans-serif; font-weight: bold; }
+                        .date { fill: rgba(255,255,255,0.7); font-size: 16px; font-family: Arial, sans-serif; }
+                        .shadow { filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.8)); }
+                    </style>
+                    <g class="shadow">
+                        <text x="10" y="30" class="name">${technicianName.toUpperCase()}</text>
+                        <text x="10" y="55" class="date">${today}</text>
+                    </g>
                 </svg>
             `;
-            const footerBuffer = Buffer.from(footerSvg);
+            const textBuffer = Buffer.from(textSvg);
 
-            // 3. Process image: compress + add footer (Skip footer for signatures)
-            const isSignature = file.fieldname === 'signature' || file.fieldname === 'techSignature' || file.fieldname === 'clientSignature';
+            const isSignature = file.fieldname && (file.fieldname.includes('signature') || file.fieldname.includes('Signature'));
             
             let builder = sharp(filePath)
                 .rotate()
                 .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true });
 
             if (!isSignature) {
-                // Add Footer and Logo
-                const compositeLayers = [
-                    { input: footerBuffer, gravity: 'south' }
-                ];
+                const compositeLayers = [];
 
+                // Logo en la esquina superior izquierda
                 if (logoBuffer) {
-                    compositeLayers.push({ input: logoBuffer, gravity: 'southwest', left: 20, top: undefined });
+                    compositeLayers.push({ 
+                        input: logoBuffer, 
+                        gravity: 'northwest',
+                        top: 20,
+                        left: 20
+                    });
                 }
 
-                builder = builder
-                    .composite(compositeLayers)
-                    .extend({
-                        bottom: footerHeight,
-                        background: { r: 255, g: 255, b: 255, alpha: 1 }
-                    });
+                // Nombre y fecha debajo del logo
+                compositeLayers.push({ 
+                    input: textBuffer, 
+                    gravity: 'northwest',
+                    top: 85, // Ajustado para que quede debajo del logo (que mide ~60-70px de alto tras el resize)
+                    left: 20
+                });
+
+                builder = builder.composite(compositeLayers);
             }
 
             const buffer = await builder
@@ -82,13 +104,13 @@ const processImages = async (files) => {
                 .toBuffer();
 
             fs.writeFileSync(filePath, buffer);
-            console.log(`[ImageProcessor] Sello aplicado y comprimido: ${file.originalname}`);
+            console.log(`[ImageProcessor] Branding aplicado (Superior Izq): ${file.originalname}`);
         } catch (err) {
             console.error(`[ImageProcessor] Error procesando ${file.originalname}:`, err);
         }
     }
-    console.log('[ImageProcessor] Procesamiento completado en serie (Ahorro de RAM).');
-    console.log('[ImageProcessor] Finalizado con éxito.');
 };
+
+module.exports = { processImages };
 
 module.exports = { processImages };
