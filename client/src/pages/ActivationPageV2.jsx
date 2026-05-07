@@ -390,10 +390,15 @@ const ActivationPageV2 = () => {
                         techYOffset = padding + logoHeight + (fontSize * 0.5);
                     }
 
-                    ctx.shadowColor = " rgba 0 0 0 0.8 \; ctx.shadowBlur = 6; ctx.shadowOffsetX = 2; ctx.shadowOffsetY = 2; ctx.fillStyle = \white\;
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
+                    ctx.fillStyle = 'white';
                     ctx.font = `bold ${fontSize}px Arial`;
                     ctx.textBaseline = 'top';
                     const techName = user.username?.split('@')[0] || 'Técnico';
+                    ctx.fillText(techName.toUpperCase(), padding, techYOffset);
 
 
                     ctx.restore();
