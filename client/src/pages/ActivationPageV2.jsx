@@ -369,35 +369,54 @@ const ActivationPageV2 = () => {
                 canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Watermark
-                const fontSize = Math.max(20, Math.floor(height * 0.035));
-                const padding = fontSize;
-                const lineHeight = fontSize * 1.4;
-                const bottomBarHeight = lineHeight * 3 + padding * 2;
+                // Watermark logic
+                const applyWatermark = (logoImg = null) => {
+                    const fontSize = Math.max(18, Math.floor(height * 0.022));
+                    const padding = fontSize * 1.5;
+                    
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
 
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-                ctx.fillRect(0, height - bottomBarHeight, width, bottomBarHeight);
+                    let techYOffset = padding;
 
-                ctx.fillStyle = 'white';
-                ctx.font = `bold ${fontSize}px Arial`;
-                ctx.textBaseline = 'bottom';
+                    if (logoImg) {
+                        const logoWidth = width * 0.18;
+                        const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
+                        ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+                        ctx.drawImage(logoImg, padding, padding, logoWidth, logoHeight);
+                        techYOffset = padding + logoHeight + (fontSize * 0.5);
+                    }
 
-                const dateStr = new Date().toLocaleString('es-ES');
-                const techName = user.username?.split('@')[0] || 'Técnico';
-                const addressStr = appointment ? `${appointment.address.street} ${appointment.address.number}${appointment.address.city ? ', ' + appointment.address.city : ''}` : 'Dirección';
+                    ctx.fillStyle = 'white';
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.textBaseline = 'top';
+                    const techName = user.username?.split('@')[0] || 'Técnico';
+                    ctx.fillText(techName.toUpperCase(), padding, techYOffset);
+
+                    ctx.restore();
+                    // Proceed to finalize
+                    if (typeof finalizeResult === 'function') finalizeResult(canvas.toDataURL('image/jpeg', 0.85));
+                };
+
+
+
+
 
                 const textX = padding;
                 let textY = height - padding - lineHeight * 2;
 
-                ctx.fillText(`📅 ${dateStr}`, textX, textY);
+
                 textY += lineHeight;
                 ctx.fillText(`👤 ${techName}`, textX, textY);
                 textY += lineHeight;
                 ctx.fillText(`📍 ${addressStr}`, textX, textY);
 
-                const finalizeResult = () => {
+                const finalizeResult = (dataUrl) => {
                     // Final JPEG Data URL
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
                     let finalBlob = null;
 
                     try {
@@ -452,34 +471,18 @@ const ActivationPageV2 = () => {
 
                     clearTimeout(timeout);
                     URL.revokeObjectURL(objectUrl);
-
-                    if (finalBlob) {
-                        resolve({
-                            blob: finalBlob,
-                            preview: URL.createObjectURL(finalBlob),
-                            name: file.name
-                        });
-                    } else {
-                        reject(new Error("Photo processing failed"));
-                    }
+                    resolve({ blob: finalBlob, preview: URL.createObjectURL(finalBlob), name: file.name });
                 };
 
-                // --- DRAW LOGO ---
-                const logoImg = new Image();
-                logoImg.crossOrigin = "anonymous";
-                logoImg.onload = () => {
-                    const logoHeight = bottomBarHeight * 0.45; // Más discreto y elegante
-                    const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
-                    const logoX = width - padding - logoWidth - (padding / 2); // Un poco más de margen
-                    const logoY = height - bottomBarHeight + (bottomBarHeight - logoHeight) / 2;
-                    ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
-                    finalizeResult();
-                };
-                logoImg.onerror = () => {
-                    console.error("Logo load err - finishing without it");
-                    finalizeResult();
-                };
-                logoImg.src = branding.logoUrl;
+                if (branding.logoUrl) {
+                    const logoImg = new Image();
+                    logoImg.crossOrigin = "anonymous";
+                    logoImg.onload = () => applyWatermark(logoImg);
+                    logoImg.onerror = () => applyWatermark(null);
+                    logoImg.src = branding.logoUrl;
+                } else {
+                    applyWatermark(null);
+                }
             };
 
             img.onerror = () => {
