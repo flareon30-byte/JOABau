@@ -394,7 +394,7 @@ const ActivationPageV2 = () => {
                     ctx.font = `bold ${fontSize}px Arial`;
                     ctx.textBaseline = 'top';
                     const techName = user.username?.split('@')[0] || 'Técnico';
-                    ctx.fillText(techName.toUpperCase(), padding, techYOffset);
+
 
                     ctx.restore();
                     // Proceed to finalize
@@ -405,14 +405,14 @@ const ActivationPageV2 = () => {
 
 
 
-                const textX = padding;
-                let textY = height - padding - lineHeight * 2;
 
 
-                textY += lineHeight;
-                ctx.fillText(`👤 ${techName}`, textX, textY);
-                textY += lineHeight;
-                ctx.fillText(`📍 ${addressStr}`, textX, textY);
+
+
+
+
+
+
 
                 const finalizeResult = (dataUrl) => {
                     // Final JPEG Data URL
