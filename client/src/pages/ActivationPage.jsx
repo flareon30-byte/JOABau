@@ -17,6 +17,7 @@ const ActivationPage = () => {
 
     // Photo Viewer State
     const [viewingPhotoIndex, setViewingPhotoIndex] = useState(null);
+    const [companyLogo, setCompanyLogo] = useState(null);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -112,6 +113,23 @@ const ActivationPage = () => {
 
         fetchAppointments();
     }, [location.search]);
+
+    useEffect(() => {
+        const fetchCompany = async () => {
+            try {
+                const { data } = await api.get('/api/company');
+                if (data && data.logoPath) {
+                    let baseUrl = api.defaults.baseURL || '';
+                    if (baseUrl === '/') baseUrl = '';
+                    const cleanPath = data.logoPath.startsWith('/') ? data.logoPath : `/${data.logoPath}`;
+                    setCompanyLogo(`${baseUrl}${cleanPath}`);
+                }
+            } catch (e) {
+                console.error("Error fetching company logo", e);
+            }
+        };
+        fetchCompany();
+    }, []);
 
     // PRE-REQUEST GPS PERMISSION on page load to avoid silent failures
     useEffect(() => {
@@ -250,69 +268,98 @@ const ActivationPage = () => {
                 canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // Watermark logic
-                const fontSize = Math.max(20, Math.floor(height * 0.035));
-                const padding = fontSize;
-                const lineHeight = fontSize * 1.4;
-                const bottomBarHeight = lineHeight * 3 + padding * 2;
-
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-                ctx.fillRect(0, height - bottomBarHeight, width, bottomBarHeight);
-                ctx.fillStyle = 'white';
-                ctx.font = `bold ${fontSize}px Arial`;
-                ctx.textBaseline = 'bottom';
-
-                const dateStr = new Date().toLocaleString('es-ES');
-                const userObj = JSON.parse(localStorage.getItem('user') || '{}');
-                const techName = userObj.username?.split('@')[0] || 'Técnico';
-                const addressStr = selectedAppointment ? `${selectedAppointment.address.street} ${selectedAppointment.address.number}${selectedAppointment.address.city ? ', ' + selectedAppointment.address.city : ''}` : 'Dirección';
-
-                let textY = height - padding - lineHeight * 2;
-                ctx.fillText(`📅 ${dateStr}`, padding, textY);
-                textY += lineHeight;
-                ctx.fillText(`👤 ${techName}`, padding, textY);
-                textY += lineHeight;
-                ctx.fillText(`📍 ${addressStr}`, padding, textY);
-
-                const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-                let finalBlob = null;
-
-                try {
-                    let processedDataUrl = dataUrl;
-                    if (gpsCoords) {
-                        const toRational = (decimal) => {
-                            const abs = Math.abs(decimal);
-                            const degrees = Math.floor(abs);
-                            const minutesDecimal = (abs - degrees) * 60;
-                            const minutes = Math.floor(minutesDecimal);
-                            const seconds = Math.round((minutesDecimal - minutes) * 60 * 100);
-                            return [[degrees, 1], [minutes, 1], [seconds, 100]];
-                        };
-                        const gps = {};
-                        gps[piexif.GPSIFD.GPSLatitudeRef] = gpsCoords.lat >= 0 ? 'N' : 'S';
-                        gps[piexif.GPSIFD.GPSLatitude] = toRational(gpsCoords.lat);
-                        gps[piexif.GPSIFD.GPSLongitudeRef] = gpsCoords.lng >= 0 ? 'E' : 'W';
-                        gps[piexif.GPSIFD.GPSLongitude] = toRational(gpsCoords.lng);
-                        const exifObj = {"0th": {}, "Exif": {}, "GPS": gps};
-                        processedDataUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
+                const finishProcessing = (dataUrl) => {
+                    let finalBlob = null;
+                    try {
+                        let processedDataUrl = dataUrl;
+                        if (gpsCoords) {
+                            const toRational = (decimal) => {
+                                const abs = Math.abs(decimal);
+                                const degrees = Math.floor(abs);
+                                const minutesDecimal = (abs - degrees) * 60;
+                                const minutes = Math.floor(minutesDecimal);
+                                const seconds = Math.round((minutesDecimal - minutes) * 60 * 100);
+                                return [[degrees, 1], [minutes, 1], [seconds, 100]];
+                            };
+                            const gps = {};
+                            gps[piexif.GPSIFD.GPSLatitudeRef] = gpsCoords.lat >= 0 ? 'N' : 'S';
+                            gps[piexif.GPSIFD.GPSLatitude] = toRational(gpsCoords.lat);
+                            gps[piexif.GPSIFD.GPSLongitudeRef] = gpsCoords.lng >= 0 ? 'E' : 'W';
+                            gps[piexif.GPSIFD.GPSLongitude] = toRational(gpsCoords.lng);
+                            const exifObj = {"0th": {}, "Exif": {}, "GPS": gps};
+                            processedDataUrl = piexif.insert(piexif.dump(exifObj), dataUrl);
+                        }
+                        const byteString = atob(processedDataUrl.split(',')[1]);
+                        const ab = new ArrayBuffer(byteString.length);
+                        const ia = new Uint8Array(ab);
+                        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                        finalBlob = new Blob([ab], {type: 'image/jpeg'});
+                    } catch (e) {
+                        console.error("EXIF error", e);
+                        const byteString = atob(dataUrl.split(',')[1]);
+                        const ab = new ArrayBuffer(byteString.length);
+                        const ia = new Uint8Array(ab);
+                        for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
+                        finalBlob = new Blob([ab], {type: 'image/jpeg'});
                     }
-                    const byteString = atob(processedDataUrl.split(',')[1]);
-                    const ab = new ArrayBuffer(byteString.length);
-                    const ia = new Uint8Array(ab);
-                    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-                    finalBlob = new Blob([ab], {type: 'image/jpeg'});
-                } catch (e) {
-                    console.error("EXIF error", e);
-                    const byteString = atob(dataUrl.split(',')[1]);
-                    const ab = new ArrayBuffer(byteString.length);
-                    const ia = new Uint8Array(ab);
-                    for (let i = 0; i < byteString.length; i++) ia[i] = byteString.charCodeAt(i);
-                    finalBlob = new Blob([ab], {type: 'image/jpeg'});
-                }
+                    clearTimeout(timeout);
+                    URL.revokeObjectURL(objectUrl);
+                    resolve({ blob: finalBlob, preview: URL.createObjectURL(finalBlob), isExisting: false, name: file.name });
+                };
 
-                clearTimeout(timeout);
-                URL.revokeObjectURL(objectUrl);
-                resolve({ blob: finalBlob, preview: URL.createObjectURL(finalBlob), isExisting: false, name: file.name });
+                const applyWatermark = (logoImg = null) => {
+                    const fontSize = Math.max(18, Math.floor(height * 0.022));
+                    const padding = fontSize * 1.5;
+                    
+                    ctx.save();
+                    
+                    // Shadow for text readability
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
+
+                    let techYOffset = padding;
+
+                    // 1. Draw Company Logo (Top-Left)
+                    if (logoImg) {
+                        const logoWidth = width * 0.18; // 18% of image width
+                        const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
+                        ctx.shadowBlur = 0; // No shadow for logo
+                        ctx.shadowOffsetX = 0;
+                        ctx.shadowOffsetY = 0;
+                        ctx.drawImage(logoImg, padding, padding, logoWidth, logoHeight);
+                        techYOffset = padding + logoHeight + (fontSize * 0.5);
+                    }
+
+                    // 2. Draw Tech Name (Below Logo or Top-Left)
+                    ctx.fillStyle = 'white';
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.textBaseline = 'top';
+                    
+                    const userObj = JSON.parse(localStorage.getItem('user') || '{}');
+                    const techName = userObj.username?.split('@')[0] || 'Técnico';
+                    ctx.fillText(techName.toUpperCase(), padding, techYOffset);
+
+                    // 3. Draw Info at the bottom (without bar)
+                    ctx.font = `bold ${fontSize * 0.8}px Arial`;
+                    const dateStr = new Date().toLocaleString('es-ES');
+                    const addressStr = selectedAppointment ? `${selectedAppointment.address.street} ${selectedAppointment.address.number}` : '';
+                    ctx.fillText(`📅 ${dateStr} | 📍 ${addressStr}`, padding, height - padding - fontSize);
+
+                    ctx.restore();
+                    finishProcessing(canvas.toDataURL('image/jpeg', 0.85));
+                };
+
+                if (companyLogo) {
+                    const logoImg = new Image();
+                    logoImg.crossOrigin = "anonymous";
+                    logoImg.onload = () => applyWatermark(logoImg);
+                    logoImg.onerror = () => applyWatermark(null);
+                    logoImg.src = companyLogo;
+                } else {
+                    applyWatermark(null);
+                }
             };
             img.onerror = () => { clearTimeout(timeout); URL.revokeObjectURL(objectUrl); reject(new Error("Img load fail")); };
             img.src = objectUrl;
