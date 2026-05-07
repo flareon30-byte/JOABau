@@ -4,8 +4,11 @@ import api from '../api/axios';
 import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target, Camera, Trash2, Navigation, Calculator, Truck, Percent, Wallet } from 'lucide-react';
 import OfflineSyncManager from '../components/OfflineSyncManager';
 
-const StatCard = ({ title, value, icon: Icon, colorClass, subtext }) => (
-    <div className="glass-panel p-7 rounded-[2rem] hover:-translate-y-1 transition-all duration-500 group border-b-[3px] border-b-transparent hover:border-b-joa-cyan shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,210,255,0.1)] relative overflow-hidden">
+const StatCard = ({ title, value, icon: Icon, colorClass, subtext, onClick }) => (
+    <div 
+        onClick={onClick}
+        className={`glass-panel p-7 rounded-[2rem] transition-all duration-500 group border-b-[3px] border-b-transparent hover:border-b-joa-cyan shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,210,255,0.1)] relative overflow-hidden ${onClick ? 'cursor-pointer hover:-translate-y-1' : ''}`}
+    >
         {/* Subtle background glow */}
         <div className={`absolute top-0 right-0 w-32 h-32 ${colorClass.replace('text-', 'bg-')} opacity-[0.03] rounded-full blur-3xl -mr-10 -mt-10 group-hover:opacity-10 transition-opacity`}></div>
         
@@ -787,6 +790,7 @@ const DashboardHome = () => {
                     icon={Clock}
                     colorClass="text-orange-500 bg-orange-500"
                     subtext="Requieren atención del Back Office"
+                    onClick={() => navigate('/dashboard/appointments')}
                 />
                 <StatCard
                     title="Citas Asignadas"
@@ -794,6 +798,7 @@ const DashboardHome = () => {
                     icon={Calendar}
                     colorClass="text-joa-blue bg-joa-blue"
                     subtext="Programadas y pendientes de cierre"
+                    onClick={() => navigate('/dashboard/appointments')}
                 />
                 <StatCard
                     title="Activaciones Terminadas"
@@ -801,6 +806,7 @@ const DashboardHome = () => {
                     icon={CheckCircle}
                     colorClass="text-green-500 bg-green-500"
                     subtext="Total histórico"
+                    onClick={() => navigate('/dashboard/activations')}
                 />
             </div>
 
@@ -847,11 +853,16 @@ const DashboardHome = () => {
                                                 <span className="font-bold text-slate-800">{money(team.earnings)}</span>
                                             </td>
                                             <td className="p-4">
-                                                <div className="w-full max-w-[100px] h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                    <div
-                                                        className="h-full bg-gradient-to-r from-joa-blue to-joa-cyan"
-                                                        style={{ width: `${Math.min((team.earnings / 12000) * 100, 100)}%` }}
-                                                    ></div>
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex-1 max-w-[100px] h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                        <div
+                                                            className="h-full bg-gradient-to-r from-joa-blue to-joa-cyan shadow-[0_0_8px_rgba(0,186,224,0.3)]"
+                                                            style={{ width: `${Math.min((team.earnings / 12000) * 100, 100)}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-slate-400">
+                                                        {Math.round(Math.min((team.earnings / 12000) * 100, 100))}%
+                                                    </span>
                                                 </div>
                                             </td>
                                         </tr>
