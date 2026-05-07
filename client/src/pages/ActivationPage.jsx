@@ -341,12 +341,6 @@ const ActivationPage = () => {
                     const techName = userObj.username?.split('@')[0] || 'Técnico';
                     ctx.fillText(techName.toUpperCase(), padding, techYOffset);
 
-                    // 3. Draw Info at the bottom (without bar)
-                    ctx.font = `bold ${fontSize * 0.8}px Arial`;
-                    const dateStr = new Date().toLocaleString('es-ES');
-                    const addressStr = selectedAppointment ? `${selectedAppointment.address.street} ${selectedAppointment.address.number}` : '';
-                    ctx.fillText(`📅 ${dateStr} | 📍 ${addressStr}`, padding, height - padding - fontSize);
-
                     ctx.restore();
                     finishProcessing(canvas.toDataURL('image/jpeg', 0.85));
                 };
