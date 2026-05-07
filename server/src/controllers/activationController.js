@@ -67,6 +67,51 @@ exports.getMyAppointments = async (req, res) => {
     }
 };
 
+exports.getActivationByAddress = async (req, res) => {
+    const { addressId } = req.params;
+    try {
+        const appointment = await prisma.appointment.findUnique({
+            where: { addressId },
+            include: {
+                address: {
+                    include: {
+                        project: true,
+                        activationInfo: {
+                            include: { createdBy: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        // If no appointment record exists, we synthesize one from address/activationInfo
+        if (!appointment) {
+            const address = await prisma.address.findUnique({
+                where: { id: addressId },
+                include: {
+                    project: true,
+                    activationInfo: { include: { createdBy: true } }
+                }
+            });
+            if (!address) return res.status(404).json({ message: 'Dirección no encontrada' });
+            
+            return res.json({
+                id: 'synth-' + address.id,
+                addressId: address.id,
+                status: address.activationInfo ? 'COMPLETADO' : 'PENDIENTE',
+                address: address,
+                clientName: address.clientName,
+                assignedDate: address.activationInfo?.createdAt || address.createdAt
+            });
+        }
+
+        res.json(appointment);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching activation details' });
+    }
+};
+
 // Submit Activation Report
 exports.submitActivation = async (req, res) => {
     const { addressId } = req.params;

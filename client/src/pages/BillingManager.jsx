@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import api from '../api/axios';
-import { Search, FileText, Download, Filter, Calendar, Trash2, TrendingUp, Sun, ClipboardList } from 'lucide-react';
+import { Search, FileText, Download, Filter, Calendar, Trash2, Pencil, TrendingUp, Sun, ClipboardList } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const BillingPage = () => {
+    const navigate = useNavigate();
     // 1. Projects State
     const [projects, setProjects] = useState([]);
 
@@ -551,13 +551,30 @@ const BillingPage = () => {
                                 <td className="p-4 w-28">
                                     <div className="flex items-center gap-2">
                                         {(activeTab === 'activation' || activeTab === 'simpleInstallation') && (
-                                            <button
-                                                onClick={() => handleDownloadDocs([row.id])} // Download ZIP for single item
-                                                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors"
-                                                title="Descargar ZIP (Fotos + PDF)"
-                                            >
-                                                <Download size={18} />
-                                            </button>
+                                            <>
+                                                <button
+                                                    onClick={() => {
+                                                        const addressId = row.addressId || row.address?.id;
+                                                        if (activeTab === 'activation') {
+                                                            navigate(`/dashboard/activations?editAddressId=${addressId}`);
+                                                        } else {
+                                                            // For SimpleInstallation we might need another page, but user specifically asked for activations
+                                                            // navigate(`/dashboard/gnk-installation?editId=${row.id}`);
+                                                        }
+                                                    }}
+                                                    className="text-amber-500 hover:text-amber-700 hover:bg-amber-50 p-2 rounded-lg transition-colors"
+                                                    title="Editar trabajo (Modo Técnico)"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDownloadDocs([row.id])} // Download ZIP for single item
+                                                    className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                                                    title="Descargar ZIP (Fotos + PDF)"
+                                                >
+                                                    <Download size={18} />
+                                                </button>
+                                            </>
                                         )}
 
                                         <button

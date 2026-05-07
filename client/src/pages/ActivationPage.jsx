@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import api from '../api/axios';
 import { CheckCircle, Camera, ArrowLeft, Calendar, MapPin, Trash2, X, FileText, PenTool } from 'lucide-react';
 import SignaturePad from 'signature_pad';
@@ -13,6 +13,7 @@ const ActivationPage = () => {
     const [submitting, setSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState('pending');
     const [searchQuery, setSearchQuery] = useState('');
+    const location = useLocation();
 
     // Photo Viewer State
     const [viewingPhotoIndex, setViewingPhotoIndex] = useState(null);
@@ -94,8 +95,23 @@ const ActivationPage = () => {
     };
 
     useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const editId = params.get('editAddressId');
+        
+        if (editId) {
+            const fetchOne = async () => {
+                try {
+                    const res = await api.get(`/api/activations/by-address/${editId}`);
+                    setSelectedAppointment(res.data);
+                } catch (err) {
+                    console.error("Error loading activation for edit:", err);
+                }
+            };
+            fetchOne();
+        }
+
         fetchAppointments();
-    }, []);
+    }, [location.search]);
 
     // PRE-REQUEST GPS PERMISSION on page load to avoid silent failures
     useEffect(() => {

@@ -25,6 +25,7 @@ router.get('/export-photos', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']),
 router.get('/billing/data', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), exportController.getBillingData);
 router.get('/billing/export', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), exportController.exportBillingExcel);
 router.get('/all', checkRole(['ADMIN', 'SUPER_ADMIN']), activationController.getAllActivations);
+router.get('/by-address/:addressId', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), activationController.getActivationByAddress);
 router.post('/generate-pdf', activationController.generatePdf);
 router.post('/report/:addressId', upload.any(), activationController.submitActivation);
 router.post('/sync-draft/:addressId', upload.any(), activationController.syncDraft);
