@@ -117,8 +117,8 @@ const generatePdfFile = (invoice, client, company) => {
         });
 
         // --- Bloque de Totales ---
-        // Si no cabe en la misma página, saltar (Ajustado para ser más permisivo)
-        if (position > 700) {
+        // Si no cabe en la misma página, saltar (Ajustado para dejar espacio a la frase legal)
+        if (position > 630) {
             doc.addPage();
             generateHeader(doc);
             position = 160;
@@ -140,6 +140,13 @@ const generatePdfFile = (invoice, client, company) => {
         doc.fillColor('#ffffff').fontSize(12).font('Helvetica-Bold');
         doc.text('TOTAL:', totalsStart, totalsY + 62);
         doc.text(money(invoice.total), 465, totalsY + 62, { align: 'right', width: 70 });
+
+        // Frase Legal Exención IVA (Solo si el IVA es 0 o muy cercano a 0)
+        if (invoice.vatAmount < 0.01 || client.defaultVat === 0) {
+            doc.fillColor('#444444').fontSize(8).font('Helvetica');
+            const exemptionText = "Operación exenta de IVA por aplicación de lo dispuesto en el artículo 25 de la Ley 37/1992 del IVA. Von der Mehrwertsteuer befreiter Betrieb gemäß Artikel 25 des Gesetzes 37/1992 über die Mehrwertsteuer des Königreichs Spanien";
+            doc.text(exemptionText, 50, totalsY + 95, { align: 'left', width: 500 });
+        }
 
         // Datos de Pago
         doc.fillColor('#333333').fontSize(10).font('Helvetica-Bold').text('INFORMACIÓN DE PAGO', 50, totalsY + 15);
