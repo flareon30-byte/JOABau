@@ -828,10 +828,19 @@ const BillingPage = () => {
                     )}
                 </div>
                 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex justify-end gap-2">
+                    <button 
+                        onClick={() => {
+                            const today = new Date().toISOString().split('T')[0];
+                            setFilters({ ...filters, startDate: today, endDate: today });
+                        }}
+                        className="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors border border-emerald-100"
+                    >
+                        <Calendar size={14} /> Ver Producción de Hoy
+                    </button>
                     <button 
                         onClick={resetFilters}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-100"
                     >
                         <Filter size={14} /> Limpiar Filtros (Ver Mes Actual)
                     </button>
