@@ -400,7 +400,12 @@ exports.getAllActivations = async (req, res) => {
         if (projectId) {
             where.address = {
                 ...where.address,
-                projectId: projectId
+                projectId: projectId,
+                orderStatus: { notIn: ['CERRADA', 'DERIVADA'] }
+            };
+        } else {
+            where.address = {
+                orderStatus: { notIn: ['CERRADA', 'DERIVADA'] }
             };
         }
 

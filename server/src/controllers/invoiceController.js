@@ -178,13 +178,18 @@ exports.getPendingWork = async (req, res) => {
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
 
+        const commonAddressFilter = { 
+            project: { clientCompanyId: clientId },
+            orderStatus: { notIn: ['CERRADA', 'DERIVADA'] }
+        };
+
         // Buscar TODA la producción del cliente sin facturar
         const [activations, soplados, fusions, installations] = await Promise.all([
             prisma.activationInfo.findMany({
                 where: { 
                     invoiceId: null, 
                     createdAt: { gte: start, lte: end },
-                    address: { project: { clientCompanyId: clientId } } 
+                    address: commonAddressFilter 
                 },
                 include: { address: true }
             }),
@@ -192,7 +197,7 @@ exports.getPendingWork = async (req, res) => {
                 where: { 
                     invoiceId: null, 
                     createdAt: { gte: start, lte: end },
-                    address: { project: { clientCompanyId: clientId } } 
+                    address: commonAddressFilter 
                 },
                 include: { address: true }
             }),
@@ -207,7 +212,7 @@ exports.getPendingWork = async (req, res) => {
                 where: { 
                     invoiceId: null, 
                     createdAt: { gte: start, lte: end },
-                    address: { project: { clientCompanyId: clientId } } 
+                    address: commonAddressFilter 
                 },
                 include: { address: true, items: { include: { priceItem: true } } }
             })
