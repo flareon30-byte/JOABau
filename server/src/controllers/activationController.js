@@ -196,14 +196,26 @@ exports.submitActivation = async (req, res) => {
         
         // El precio de TA y MDU ya no se fuerza por tipo de activación, solo por selector manual.
 
-        // 1. Fetch User and Team (to know the client rates)
-        const user = await prisma.user.findUnique({
-            where: { id: req.userId },
-            include: { team: { include: { members: true, activeClientCompany: { include: { priceItems: true } } } } }
+        // 1. Fetch Address and Project to know the client rates
+        const address = await prisma.address.findUnique({
+            where: { id: addressId },
+            include: { 
+                project: { include: { clientCompany: { include: { priceItems: true } } } },
+                activationInfo: true
+            }
         });
 
-        const activeClient = user?.team?.activeClientCompany;
+        if (!address) {
+            return res.status(404).json({ message: 'Dirección no encontrada' });
+        }
+
+        const activeClient = address.project?.clientCompany;
         const priceItems = activeClient?.priceItems || [];
+
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            include: { team: { include: { members: true } } }
+        });
 
         // Fetch Global System Settings (Fallback)
         const settings = await prisma.systemSettings.findFirst();
@@ -347,8 +359,11 @@ exports.submitActivation = async (req, res) => {
                 repairPrice: repairPriceTotal,
                 pdfPath: pdfPath ? pdfPath.split('?')[0] : null, // Clean query string before saving to DB
                 photos: allPhotos,
-                performerIds: user?.team?.members.map(m => m.id) || [req.userId],
-                createdById: req.userId,
+                // If editing as admin, preserve existing performers if available
+                performerIds: address.activationInfo?.performerIds?.length > 0 
+                    ? address.activationInfo.performerIds 
+                    : (user?.team?.members.map(m => m.id) || [req.userId]),
+                createdById: address.activationInfo?.createdById || req.userId,
                 isDraft: false
             };
 
