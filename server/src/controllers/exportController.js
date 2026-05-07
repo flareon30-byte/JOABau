@@ -176,6 +176,7 @@ exports.getBillingData = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
+                    orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
                     project: {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
@@ -421,6 +422,7 @@ exports.exportBillingExcel = async (req, res) => {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
+                    orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
                     project: {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
