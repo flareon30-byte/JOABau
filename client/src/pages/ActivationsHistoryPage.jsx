@@ -353,6 +353,23 @@ const ActivationsHistoryPage = () => {
                         {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                 </div>
+                <div className="md:col-span-4 flex justify-end gap-2 mt-2 pt-2 border-t border-slate-50">
+                    <button
+                        onClick={() => {
+                            const today = new Date().toISOString().split('T')[0];
+                            setFilters({ ...filters, startDate: today, endDate: today });
+                        }}
+                        className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-blue-200 transition-all active:scale-95"
+                    >
+                        <Calendar size={14} /> Ver Producción de Hoy
+                    </button>
+                    <button
+                        onClick={() => setFilters({ startDate: '', endDate: '', teamId: '', projectId: '' })}
+                        className="bg-slate-50 text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 border border-slate-200 transition-all active:scale-95"
+                    >
+                        <X size={14} /> Limpiar Filtros
+                    </button>
+                </div>
             </div>
 
             {/* Table */}
