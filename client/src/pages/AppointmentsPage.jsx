@@ -10,7 +10,7 @@ const AppointmentsPage = () => {
     const [scheduledAppointments, setScheduledAppointments] = useState([]);
     const [escalatedAddresses, setEscalatedAddresses] = useState([]);
     const [teams, setTeams] = useState([]);
-    const [view, setView] = useState('pending'); // 'pending' or 'scheduled'
+    const [view, setView] = useState(searchParams.get('view') || 'pending'); // 'pending', 'scheduled', 'protocols', 'escalated'
     const [scheduledViewMode, setScheduledViewMode] = useState('list'); // 'list' or 'calendar'
 
     // Filters

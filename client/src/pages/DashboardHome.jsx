@@ -351,7 +351,7 @@ const DashboardHome = () => {
 
                 if (isAdmin) {
                     const payrollRes = await api.get('/api/dashboard/payroll');
-                    setPayroll(payrollRes.data.teams);
+                    setPayroll(payrollRes.data); // Store the whole object { teams, technicians }
                 }
             }
         } catch (error) {
@@ -790,7 +790,7 @@ const DashboardHome = () => {
                     icon={Clock}
                     colorClass="text-orange-500 bg-orange-500"
                     subtext="Requieren atención del Back Office"
-                    onClick={() => navigate('/dashboard/appointments')}
+                    onClick={() => navigate('/dashboard/appointments?view=pending')}
                 />
                 <StatCard
                     title="Citas Asignadas"
@@ -798,7 +798,7 @@ const DashboardHome = () => {
                     icon={Calendar}
                     colorClass="text-joa-blue bg-joa-blue"
                     subtext="Programadas y pendientes de cierre"
-                    onClick={() => navigate('/dashboard/appointments')}
+                    onClick={() => navigate('/dashboard/appointments?view=scheduled')}
                 />
                 <StatCard
                     title="Activaciones Terminadas"
@@ -811,65 +811,101 @@ const DashboardHome = () => {
             </div>
 
             {isAdmin && (
-                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <TrendingUp size={20} className="text-joa-blue" />
-                            Rendimiento de Equipos (Mes Actual)
-                        </h3>
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-600">
-                            <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
-                                <tr>
-                                    <th className="p-4 pl-6">Equipo</th>
-                                    <th className="p-4">Activaciones</th>
-                                    <th className="p-4">Producción Total</th>
-                                    <th className="p-4">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50">
-                                {payroll.length === 0 ? (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Teams Table */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <Users size={20} className="text-joa-blue" />
+                                Rendimiento de Equipos
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-slate-600">
+                                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
                                     <tr>
-                                        <td colSpan="4" className="p-8 text-center text-slate-400">
-                                            No hay datos registrados para este mes
-                                        </td>
+                                        <th className="p-4 pl-6">Equipo</th>
+                                        <th className="p-4">Producción</th>
+                                        <th className="p-4 text-right pr-6">Estado</th>
                                     </tr>
-                                ) : (
-                                    payroll.map((team, index) => (
-                                        <tr key={index} className="hover:bg-slate-50 transition-colors">
-                                            <td className="p-4 pl-6 font-medium text-slate-800 flex items-center gap-3">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs">
-                                                    {team.name.substring(0, 2).toUpperCase()}
-                                                </div>
-                                                {team.name}
-                                            </td>
-                                            <td className="p-4">
-                                                <span className="px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 font-medium text-xs">
-                                                    {team.activations} activaciones
-                                                </span>
-                                            </td>
-                                            <td className="p-4">
-                                                <span className="font-bold text-slate-800">{money(team.earnings)}</span>
-                                            </td>
-                                            <td className="p-4">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="flex-1 max-w-[100px] h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div
-                                                            className="h-full bg-gradient-to-r from-joa-blue to-joa-cyan shadow-[0_0_8px_rgba(0,186,224,0.3)]"
-                                                            style={{ width: `${Math.min((team.earnings / 12000) * 100, 100)}%` }}
-                                                        ></div>
-                                                    </div>
-                                                    <span className="text-[10px] font-black text-slate-400">
-                                                        {Math.round(Math.min((team.earnings / 12000) * 100, 100))}%
-                                                    </span>
-                                                </div>
-                                            </td>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {(!payroll.teams || payroll.teams.length === 0) ? (
+                                        <tr>
+                                            <td colSpan="3" className="p-8 text-center text-slate-400">No hay datos</td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        payroll.teams.map((team, index) => (
+                                            <tr key={index} className="hover:bg-slate-50 transition-colors">
+                                                <td className="p-4 pl-6 font-medium text-slate-800">{team.name}</td>
+                                                <td className="p-4 font-bold">{money(team.earnings)}</td>
+                                                <td className="p-4 text-right pr-6">
+                                                    <div className="flex items-center justify-end gap-3">
+                                                        <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-gradient-to-r from-joa-blue to-joa-cyan"
+                                                                style={{ width: `${Math.min((team.earnings / 12000) * 100, 100)}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-400">
+                                                            {Math.round(Math.min((team.earnings / 12000) * 100, 100))}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Individual Technicians Table */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <Star size={20} className="text-yellow-500" />
+                                Producción por Técnico
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-sm text-slate-600">
+                                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
+                                    <tr>
+                                        <th className="p-4 pl-6">Técnico</th>
+                                        <th className="p-4">Total</th>
+                                        <th className="p-4 text-right pr-6">Progreso (Bonus)</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {(!payroll.technicians || payroll.technicians.length === 0) ? (
+                                        <tr>
+                                            <td colSpan="3" className="p-8 text-center text-slate-400">No hay datos</td>
+                                        </tr>
+                                    ) : (
+                                        payroll.technicians.map((tech, index) => (
+                                            <tr key={index} className="hover:bg-slate-50 transition-colors">
+                                                <td className="p-4 pl-6 font-medium text-slate-800">{tech.name}</td>
+                                                <td className="p-4 font-bold text-green-600">{money(tech.earnings)}</td>
+                                                <td className="p-4 text-right pr-6">
+                                                    <div className="flex items-center justify-end gap-3">
+                                                        <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-gradient-to-r from-yellow-400 to-orange-500"
+                                                                style={{ width: `${Math.min((tech.earnings / 6000) * 100, 100)}%` }}
+                                                            ></div>
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-400">
+                                                            {Math.round(Math.min((tech.earnings / 6000) * 100, 100))}%
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}

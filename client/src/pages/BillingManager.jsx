@@ -342,7 +342,7 @@ const BillingPage = () => {
                                                 className="w-4 h-4 rounded border-slate-300"
                                             />
                                         </td>
-                                        <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
+                                        <td className="p-4">{new Date(row.updatedAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.address?.project?.name}</td>
                                                                                  <td 
                                             className="p-4 cursor-pointer hover:bg-blue-50 transition-colors" 
@@ -453,7 +453,7 @@ const BillingPage = () => {
                                                 className="w-4 h-4 rounded border-slate-300"
                                             />
                                         </td>
-                                        <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
+                                        <td className="p-4">{new Date(row.updatedAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 text-slate-900 font-bold">
                                             {row.address.street} {row.address.number || ''}
                                         </td>

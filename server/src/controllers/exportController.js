@@ -173,7 +173,7 @@ exports.getBillingData = async (req, res) => {
         // 3. ACTIVATION
         results.activation = await prisma.activationInfo.findMany({
             where: {
-                createdAt: hasDate ? dateFilter : undefined,
+                updatedAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
@@ -190,7 +190,7 @@ exports.getBillingData = async (req, res) => {
                 address: { include: { project: true } },
                 createdBy: true
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { updatedAt: 'desc' }
         });
 
         // 4. PROTOCOL
@@ -238,7 +238,7 @@ exports.getBillingData = async (req, res) => {
         results.simpleInstallation = await prisma.simpleInstallation.findMany({
             where: {
                 priceCharged: { gt: 0 }, // 🟢 HIDE 0€ GK/REPAIRS
-                createdAt: hasDate ? dateFilter : undefined,
+                updatedAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -253,7 +253,7 @@ exports.getBillingData = async (req, res) => {
                 createdBy: true,
                 items: { include: { priceItem: true } }
             },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { updatedAt: 'desc' }
         });
 
         console.log(`[BILLING] Found: ${results.activation.length} activations, ${results.simpleInstallation.length} installations after 0€ filter.`);
@@ -423,7 +423,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         const activation = await prisma.activationInfo.findMany({
             where: {
-                createdAt: hasDate ? dateFilter : undefined,
+                updatedAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
@@ -506,7 +506,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 3. Activacion Sheet
         const actRows = activation.map(i => ({
-            Fecha: i.createdAt.toISOString().split('T')[0],
+            Fecha: i.updatedAt.toISOString().split('T')[0],
             Proyecto: i.address.project.name,
             Direccion: `${i.address.street} ${i.address.number}`,
             NVT: i.address.nvt,

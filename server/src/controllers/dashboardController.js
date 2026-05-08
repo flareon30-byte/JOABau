@@ -100,6 +100,7 @@ exports.getPayrollStats = async (req, res) => {
 
         // Aggregate stats using Unique Attribution logic (No duplication)
         const teamStats = {};
+        const techStats = {};
 
         // To identify performers quickly
         const allUsers = await prisma.user.findMany({
@@ -113,20 +114,19 @@ exports.getPayrollStats = async (req, res) => {
             if (performers.length === 0) return;
 
             const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
-
-            // 1. Try original team from appointment
-            const team = act.address.appointment?.assignedTeam;
             
+            // Shared amount per performer (Unique Attribution)
+            const share = actTotal / performers.length;
+
+            // 1. Team Aggregation
+            const team = act.address.appointment?.assignedTeam;
             if (team) {
-                // Happy path: Original team exists
                 if (!teamStats[team.id]) {
                     teamStats[team.id] = { id: team.id, name: team.name, earnings: 0, activations: 0 };
                 }
                 teamStats[team.id].earnings += actTotal;
                 teamStats[team.id].activations += 1;
             } else {
-                // FALLBACK: The "Real Team" was deleted. 
-                // We create a Virtual Team based on the performers' names so it's only counted ONCE.
                 const virtualTeamId = 'virtual-' + [...performers].sort().join('-');
                 const virtualTeamName = 'Histórico: ' + performers.map(id => userMap.get(id) || 'Desconocido').join(' & ');
 
@@ -136,11 +136,21 @@ exports.getPayrollStats = async (req, res) => {
                 teamStats[virtualTeamId].earnings += actTotal;
                 teamStats[virtualTeamId].activations += 1;
             }
+
+            // 2. Individual Technician Aggregation
+            performers.forEach(pid => {
+                if (!techStats[pid]) {
+                    techStats[pid] = { id: pid, name: userMap.get(pid) || 'Desconocido', earnings: 0, activations: 0 };
+                }
+                techStats[pid].earnings += share; // Each performer gets a share for the bar progress
+                techStats[pid].activations += 1;
+            });
         });
 
         res.json({
             period: { month: currentMonth, year: currentYear },
-            teams: Object.values(teamStats)
+            teams: Object.values(teamStats),
+            technicians: Object.values(techStats).sort((a, b) => b.earnings - a.earnings)
         });
 
     } catch (error) {
