@@ -50,20 +50,18 @@ const processImages = async (files, technicianName = 'Técnico JOA') => {
 
         try {
             const metadata = await sharp(filePath).metadata();
-            const width = metadata.width || 1200;
             
-            // 2. Crear el SVG para el nombre del técnico (justo debajo del logo)
-            // Calculamos una posición aproximada: logo mide 150px de ancho, el texto irá debajo.
+            // 2. Crear el SVG para el nombre del técnico (Estilo más elegante)
             const textSvg = `
-                <svg width="400" height="100">
+                <svg width="500" height="120">
                     <style>
-                        .name { fill: white; font-size: 22px; font-family: Arial, sans-serif; font-weight: bold; }
-                        .date { fill: rgba(255,255,255,0.7); font-size: 16px; font-family: Arial, sans-serif; }
-                        .shadow { filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.8)); }
+                        .name { fill: white; font-size: 24px; font-family: 'Segoe UI', Arial, sans-serif; font-weight: 900; letter-spacing: 1px; }
+                        .date { fill: rgba(255,255,255,0.8); font-size: 16px; font-family: Arial, sans-serif; font-weight: 600; }
+                        .shadow { filter: drop-shadow(3px 3px 3px rgba(0,0,0,0.9)); }
                     </style>
                     <g class="shadow">
-                        <text x="10" y="30" class="name">${technicianName.toUpperCase()}</text>
-                        <text x="10" y="55" class="date">${today}</text>
+                        <text x="490" y="35" class="name" text-anchor="end">${technicianName.toUpperCase()}</text>
+                        <text x="490" y="65" class="date" text-anchor="end">${today}</text>
                     </g>
                 </svg>
             `;
@@ -73,44 +71,43 @@ const processImages = async (files, technicianName = 'Técnico JOA') => {
             
             let builder = sharp(filePath)
                 .rotate()
-                .resize(1200, 1200, { fit: 'inside', withoutEnlargement: true });
+                .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true });
 
             if (!isSignature) {
                 const compositeLayers = [];
 
-                // Logo en la esquina superior izquierda
+                // Logo en la esquina superior derecha (Northeast)
                 if (logoBuffer) {
                     compositeLayers.push({ 
                         input: logoBuffer, 
-                        gravity: 'northwest',
-                        top: 20,
-                        left: 20
+                        gravity: 'northeast',
+                        top: 25,
+                        left: undefined, // Usar gravity
+                        right: 25 // Sharp usa offsets relativos a la gravedad si se pasan top/left
                     });
                 }
 
-                // Nombre y fecha debajo del logo
+                // Nombre y fecha ajustados a la derecha
                 compositeLayers.push({ 
                     input: textBuffer, 
-                    gravity: 'northwest',
-                    top: 85, // Ajustado para que quede debajo del logo (que mide ~60-70px de alto tras el resize)
-                    left: 20
+                    gravity: 'northeast',
+                    top: 100,
+                    right: 25
                 });
 
                 builder = builder.composite(compositeLayers);
             }
 
             const buffer = await builder
-                .jpeg({ quality: 80, progressive: true })
+                .jpeg({ quality: 85, progressive: true })
                 .toBuffer();
 
             fs.writeFileSync(filePath, buffer);
-            console.log(`[ImageProcessor] Branding aplicado (Superior Izq): ${file.originalname}`);
+            console.log(`[ImageProcessor] Branding aplicado (Superior Der): ${file.originalname}`);
         } catch (err) {
             console.error(`[ImageProcessor] Error procesando ${file.originalname}:`, err);
         }
     }
 };
-
-module.exports = { processImages };
 
 module.exports = { processImages };
