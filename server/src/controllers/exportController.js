@@ -141,7 +141,7 @@ exports.getBillingData = async (req, res) => {
         results.soplado = await prisma.sopladoInfo.findMany({
             where: {
                 meters: { gt: 0 }, // Only billable soplados
-                createdAt: hasDate ? dateFilter : undefined,
+                updatedAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -152,13 +152,13 @@ exports.getBillingData = async (req, res) => {
                 }
             },
             include: { address: { include: { project: true } } },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { updatedAt: 'desc' }
         });
 
         // 2. FUSION
         results.fusion = await prisma.fusionWork.findMany({
             where: {
-                createdAt: hasDate ? dateFilter : undefined,
+                updatedAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
                 project: {
                     isDemo: isDemo,
@@ -167,7 +167,7 @@ exports.getBillingData = async (req, res) => {
                 ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
             },
             include: { project: true },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { updatedAt: 'desc' }
         });
 
         // 3. ACTIVATION
@@ -353,7 +353,8 @@ exports.getBillingData = async (req, res) => {
             }
 
             results.totals.euros += instGross;
-            const isSat = inst.createdAt && new Date(inst.createdAt).getDay() === 6;
+            // Use updatedAt for consistent Saturday check (Completion date)
+            const isSat = inst.updatedAt && new Date(inst.updatedAt).getDay() === 6;
             if (isSat) results.totals.saturdayGross += instGross;
             else results.totals.weekdayGross += instGross;
         });
@@ -395,7 +396,7 @@ exports.exportBillingExcel = async (req, res) => {
         const soplado = await prisma.sopladoInfo.findMany({
             where: {
                 meters: { gt: 0 }, // Billable only
-                createdAt: hasDate ? dateFilter : undefined,
+                updatedAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -410,7 +411,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         const fusion = await prisma.fusionWork.findMany({
             where: {
-                createdAt: hasDate ? dateFilter : undefined,
+                updatedAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
                 project: {
                     isDemo: isDemo,
@@ -476,11 +477,27 @@ exports.exportBillingExcel = async (req, res) => {
             }
         });
 
+        const simpleInstallation = await prisma.simpleInstallation.findMany({
+            where: {
+                priceCharged: { gt: 0 },
+                updatedAt: hasDate ? dateFilter : undefined,
+                address: {
+                    projectId: projectId || undefined,
+                    project: {
+                        isDemo: isDemo,
+                        ...(clientCompanyId ? { clientCompanyId } : {})
+                    },
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                }
+            },
+            include: { address: { include: { project: true } } }
+        });
+
         const wb = XLSX.utils.book_new();
 
         // 1. Soplado Sheet
         const sopladoRows = soplado.map(i => ({
-            Fecha: i.createdAt.toISOString().split('T')[0],
+            Fecha: i.updatedAt.toISOString().split('T')[0],
             Proyecto: i.address.project.name,
             Direccion: `${i.address.street} ${i.address.number}`,
             NVT: i.address.nvt,
@@ -494,7 +511,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 2. Fusion Sheet
         const fusionRows = fusion.map(i => ({
-            Fecha: i.createdAt.toISOString().split('T')[0],
+            Fecha: i.updatedAt.toISOString().split('T')[0],
             Proyecto: i.project.name,
             NVT: i.nvtName,
             Fusiones: i.fusionCount,
