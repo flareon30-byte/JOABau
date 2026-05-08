@@ -495,6 +495,18 @@ const AppointmentsPage = () => {
                 {view === 'scheduled' && (
                     <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
                         <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => {
+                                    const today = new Date().toISOString().split('T')[0];
+                                    setStartDate(today);
+                                    setEndDate(today);
+                                }}
+                                className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-tight border border-blue-200 active:scale-95 flex items-center gap-1.5 shadow-sm"
+                                title="Ver solo las citas de hoy"
+                            >
+                                <Calendar size={14} />
+                                VER HOY
+                            </button>
                             <input
                                 type="date"
                                 value={startDate}
