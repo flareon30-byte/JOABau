@@ -367,12 +367,18 @@ exports.submitActivation = async (req, res) => {
                 isDraft: false
             };
 
+            // 🟢 FORCE NEW DATE ONLY IF IT WAS A DRAFT (This solves the "why does it have yesterday's date" problem)
+            if (address.activationInfo && address.activationInfo.isDraft) {
+                data.createdAt = new Date();
+            }
+
             const activation = await tx.activationInfo.upsert({
                 where: { addressId },
                 update: data,
                 create: {
                     addressId,
-                    ...data
+                    ...data,
+                    createdAt: new Date() // Ensure fresh date for new ones
                 }
             });
 

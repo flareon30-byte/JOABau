@@ -141,7 +141,7 @@ exports.getBillingData = async (req, res) => {
         results.soplado = await prisma.sopladoInfo.findMany({
             where: {
                 meters: { gt: 0 }, // Only billable soplados
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -152,13 +152,13 @@ exports.getBillingData = async (req, res) => {
                 }
             },
             include: { address: { include: { project: true } } },
-            orderBy: { updatedAt: 'desc' }
+            orderBy: { createdAt: 'desc' }
         });
 
         // 2. FUSION
         results.fusion = await prisma.fusionWork.findMany({
             where: {
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
                 project: {
                     isDemo: isDemo,
@@ -167,13 +167,13 @@ exports.getBillingData = async (req, res) => {
                 ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
             },
             include: { project: true },
-            orderBy: { updatedAt: 'desc' }
+            orderBy: { createdAt: 'desc' }
         });
 
         // 3. ACTIVATION
         results.activation = await prisma.activationInfo.findMany({
             where: {
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
@@ -190,7 +190,7 @@ exports.getBillingData = async (req, res) => {
                 address: { include: { project: true } },
                 createdBy: true
             },
-            orderBy: { updatedAt: 'desc' }
+            orderBy: { createdAt: 'desc' }
         });
 
         // 4. PROTOCOL
@@ -198,7 +198,7 @@ exports.getBillingData = async (req, res) => {
             where: {
                 type: 'PROTOCOL',
                 status: 'COMPLETADO',
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -209,7 +209,7 @@ exports.getBillingData = async (req, res) => {
                 }
             },
             include: { address: { include: { project: true } } },
-            orderBy: { updatedAt: 'desc' }
+            orderBy: { createdAt: 'desc' }
         });
 
         // 5. REPAIRS (Billable Only)
@@ -217,7 +217,7 @@ exports.getBillingData = async (req, res) => {
             where: {
                 type: 'REPAIR_BILLABLE',
                 status: 'COMPLETADO',
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -231,14 +231,14 @@ exports.getBillingData = async (req, res) => {
                 address: { include: { project: true } },
                 comments: { orderBy: { createdAt: 'desc' }, take: 1 }
             },
-            orderBy: { updatedAt: 'desc' }
+            orderBy: { createdAt: 'desc' }
         });
 
         // 6. SIMPLE INSTALLATIONS (Universal Catalog)
         results.simpleInstallation = await prisma.simpleInstallation.findMany({
             where: {
                 priceCharged: { gt: 0 }, // 🟢 HIDE 0€ GK/REPAIRS
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -253,7 +253,7 @@ exports.getBillingData = async (req, res) => {
                 createdBy: true,
                 items: { include: { priceItem: true } }
             },
-            orderBy: { updatedAt: 'desc' }
+            orderBy: { createdAt: 'desc' }
         });
 
         console.log(`[BILLING] Found: ${results.activation.length} activations, ${results.simpleInstallation.length} installations after 0€ filter.`);
@@ -353,8 +353,8 @@ exports.getBillingData = async (req, res) => {
             }
 
             results.totals.euros += instGross;
-            // Use updatedAt for consistent Saturday check (Completion date)
-            const isSat = inst.updatedAt && new Date(inst.updatedAt).getDay() === 6;
+            // Use createdAt for stability (Date work was registered)
+            const isSat = inst.createdAt && new Date(inst.createdAt).getDay() === 6;
             if (isSat) results.totals.saturdayGross += instGross;
             else results.totals.weekdayGross += instGross;
         });
@@ -424,7 +424,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         const activation = await prisma.activationInfo.findMany({
             where: {
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
@@ -444,7 +444,7 @@ exports.exportBillingExcel = async (req, res) => {
             where: {
                 type: 'PROTOCOL',
                 status: 'COMPLETADO',
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -461,7 +461,7 @@ exports.exportBillingExcel = async (req, res) => {
             where: {
                 type: 'REPAIR_BILLABLE',
                 status: 'COMPLETADO',
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -480,7 +480,7 @@ exports.exportBillingExcel = async (req, res) => {
         const simpleInstallation = await prisma.simpleInstallation.findMany({
             where: {
                 priceCharged: { gt: 0 },
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -523,7 +523,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 3. Activacion Sheet
         const actRows = activation.map(i => ({
-            Fecha: i.updatedAt.toISOString().split('T')[0],
+            Fecha: i.createdAt.toISOString().split('T')[0],
             Proyecto: i.address.project.name,
             Direccion: `${i.address.street} ${i.address.number}`,
             NVT: i.address.nvt,
@@ -540,7 +540,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 4. Protocol Sheet
         const protRows = protocol.map(i => ({
-            Fecha: i.updatedAt.toISOString().split('T')[0],
+            Fecha: i.createdAt.toISOString().split('T')[0],
             Proyecto: i.address.project.name,
             Direccion: `${i.address.street} ${i.address.number}`,
             NVT: i.address.nvt,
@@ -552,7 +552,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 5. Repair Sheet
         const repairRows = repair.map(i => ({
-            Fecha: i.updatedAt.toISOString().split('T')[0],
+            Fecha: i.createdAt.toISOString().split('T')[0],
             Proyecto: i.address.project.name,
             Direccion: `${i.address.street} ${i.address.number}`,
             NVT: i.address.nvt,
