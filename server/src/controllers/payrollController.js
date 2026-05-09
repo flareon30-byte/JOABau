@@ -65,7 +65,7 @@ exports.getPayrollSummary = async (req, res) => {
 
         let users = await prisma.user.findMany({
             where: {
-                role: { in: ['BLOWER', 'INSTALLER', 'BACK_OFFICE', 'TEAM_LEADER'] }
+                role: { in: ['BLOWER', 'ACTIVATOR', 'BACK_OFFICE', 'PROTOCOL_MANAGER'] }
             }
         });
 
