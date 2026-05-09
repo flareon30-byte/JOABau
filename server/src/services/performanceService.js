@@ -1,6 +1,6 @@
 const prisma = require('../prisma');
 const { calculateGroupFinancials, getWorkingDays } = require('../utils/financialUtils');
-const { getGlobalSupportDeficit } = require('../services/financialService');
+const { getGlobalSupportDeficit } = require('./financialService');
 
 /**
  * Shared helper to get cycle dates (21st to 20th)
