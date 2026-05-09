@@ -43,7 +43,17 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getPayrollStats = async (req, res) => {
     try {
-        const { start: startDate, end: endDate } = getCycleDates();
+        let startDate, endDate;
+        if (req.query.startDate && req.query.endDate) {
+            startDate = new Date(req.query.startDate);
+            // Ensure endDate covers the whole day
+            endDate = new Date(req.query.endDate);
+            endDate.setHours(23, 59, 59, 999);
+        } else {
+            const dates = getCycleDates();
+            startDate = dates.start;
+            endDate = dates.end;
+        }
 
         // ONLY REAL ACTIVATIONS (Glasfaser Plus)
         const activations = await prisma.activationInfo.findMany({
