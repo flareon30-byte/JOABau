@@ -39,8 +39,10 @@ function calculateGroupFinancials(
         const performerCount = performers.length || 1;
         
         // Strict implementation of the 1/N rule from the Core Memory
-        // A technician only gets their mathematical fraction of the activation
-        const weight = 1 / performerCount;
+        // A technician only gets their mathematical fraction of the activation.
+        // We use Math.max(performerCount, teamSizeForSplit) to ensure that if a tech
+        // is in a team of 2, they never get more than 50% even if they signed alone.
+        const weight = 1 / Math.max(performerCount, teamSizeForSplit);
 
         const type = act.activationType || 'BP';
         const price = revenueWeights[type] || 145;
