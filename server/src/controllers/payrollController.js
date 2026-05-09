@@ -50,3 +50,12 @@ exports.getMyPayroll = async (req, res) => {
 exports.getPayrollSummary = async (req, res) => {
     res.status(501).json({ message: 'Not implemented in this fix' });
 };
+
+// --- RESTORED FUNCTIONS TO PREVENT BOOT CRASH ---
+exports.archiveCurrentCycle = async (req, res) => {
+    res.status(501).json({ message: 'Function temporarily disabled for cleanup' });
+};
+
+exports.getArchiveHistory = async (req, res) => {
+    res.status(501).json({ message: 'Function temporarily disabled for cleanup' });
+};
