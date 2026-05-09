@@ -109,6 +109,7 @@ exports.getMyPayroll = async (req, res) => {
         if (!financialConfig && settings?.financials) {
             financialConfig = settings.financials[groupKey];
         }
+        financialConfig = financialConfig || {};
 
         let activations = [];
         if (groupKey === 'blowers') {
