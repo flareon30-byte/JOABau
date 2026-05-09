@@ -245,33 +245,7 @@ exports.getActivatorDashboard = async (req, res) => {
 
             performanceData = [...activations];
 
-            // 3. Calculate Weighted Counts for the Dashboard UI
-            performanceData.forEach(act => {
-                const weight = act.performerIds?.length > 0 ? (1 / act.performerIds.length) : 1;
-                const type = act.activationType || 'BP';
-
-                if (type === 'BP' || type === 'BP_2_FAM') {
-                    counts.bp += (type === 'BP_2_FAM' ? 2 : 1) * weight;
-                } else if (type === 'SDU') {
-                    counts.ta += weight;
-                } else if (type === 'MDU') {
-                    counts.mdu += weight;
-                } else if (type === 'BR_MULTI') {
-                    counts.bp += weight;
-                }
-
-                if (act.spInstalled > 0) counts.sp += act.spInstalled * weight;
-                if ((type !== 'SDU') && (act.taInstalled || (act.taCount && act.taCount > 0))) {
-                    counts.ta += (act.taCount || 1) * weight;
-                }
-                if (type !== 'MDU' && act.mduInstalled) counts.mdu += weight;
-                
-                if (act.isSaturday) {
-                    saturdayActivations += weight;
-                } else {
-                    regularActivations += weight;
-                }
-            });
+            performanceData = [...activations];
         }
 
         // 4. Get Financial Config
@@ -337,9 +311,9 @@ exports.getActivatorDashboard = async (req, res) => {
              stats: {
                  regularEarnings: isAdmin ? statsFromLib.totalRevenue - statsFromLib.saturdayPay : null,
                  saturdayEarnings: statsFromLib.saturdayPay,
-                 regularActivations,
-                 saturdayActivations,
-                 counts,
+                 regularActivations: statsFromLib.counts.bp + statsFromLib.counts.ta + statsFromLib.counts.mdu, // Summary of production
+                 saturdayActivations: statsFromLib.counts.saturday,
+                 counts: statsFromLib.counts,
                  totalRevenueGenerated: statsFromLib.totalRevenue,
                  targetRevenueToCover: statsFromLib.totalTargetRevenue,
                  moneyProgressPercent: statsFromLib.progressPercent,
