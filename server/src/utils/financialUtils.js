@@ -86,6 +86,8 @@ function calculateGroupFinancials(
 
     const bonusPool = (revenueMf > totalTargetRevenue) ? (revenueMf - totalTargetRevenue) : 0;
 
+    console.log(`[FINAL-REV-DEBUG] Final Revenue: ${totalRevenue}, Mf: ${revenueMf}`);
+
     return {
         totalRevenue,
         currentRevenueMf: revenueMf,
