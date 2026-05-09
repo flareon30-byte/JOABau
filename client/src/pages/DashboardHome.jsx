@@ -806,7 +806,7 @@ const DashboardHome = () => {
                     icon={CheckCircle}
                     colorClass="text-green-500 bg-green-500"
                     subtext="Total histórico"
-                    onClick={() => navigate('/dashboard/activations')}
+                    onClick={() => navigate('/dashboard/billing')}
                 />
             </div>
 
