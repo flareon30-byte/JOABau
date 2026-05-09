@@ -54,15 +54,9 @@ exports.getDashboardStats = async (req, res) => {
 };
 
 exports.getPayrollStats = async (req, res) => {
-    const { month, year } = req.query;
-    const date = new Date();
-    const currentMonth = month ? parseInt(month) : date.getMonth() + 1;
-    const currentYear = year ? parseInt(year) : date.getFullYear();
-
     try {
-        // Get all activations for the specified month/year
-        const startDate = new Date(currentYear, currentMonth - 1, 1);
-        const endDate = new Date(currentYear, currentMonth, 0); // Last day of month
+        const { getCycleDates } = require('./payrollController');
+        const { start: startDate, end: endDate } = getCycleDates();
 
         const activations = await prisma.activationInfo.findMany({
             where: {
@@ -136,7 +130,7 @@ exports.getPayrollStats = async (req, res) => {
         });
 
         res.json({
-            period: { month: currentMonth, year: currentYear },
+            period: { start: startDate, end: endDate },
             teams: Object.values(teamStats),
             technicians: Object.values(techStats).sort((a, b) => b.earnings - a.earnings)
         });
@@ -242,8 +236,6 @@ exports.getActivatorDashboard = async (req, res) => {
                     performerIds: { has: userId }
                 }
             });
-
-            performanceData = [...activations];
 
             performanceData = [...activations];
         }
