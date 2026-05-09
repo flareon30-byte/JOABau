@@ -26,8 +26,8 @@ function calculateGroupFinancials(
     const teamSize = teamMembers.length;
     const ssRate = (financialConfig.insuranceRate !== undefined && financialConfig.insuranceRate !== null) ? parseFloat(financialConfig.insuranceRate) : 21.50; 
     const sokaBauRate = (financialConfig.sokaBauPercent !== undefined && financialConfig.sokaBauPercent !== null) ? parseFloat(financialConfig.sokaBauPercent) : 15.10;
-    const rentPerPerson = (parseFloat(financialConfig.equipmentRent) || 0) + (parseFloat(financialConfig.car) || 0) + (parseFloat(financialConfig.gas) || 0);
-    const materialsPerPerson = parseFloat(financialConfig.materials) || 150;
+    const rentPerPerson = (parseFloat(financialConfig.equipmentRent) || 1450) + (parseFloat(financialConfig.car) || 400) + (parseFloat(financialConfig.gas) || 300);
+    const materialsPerPerson = parseFloat(financialConfig.materials) || 100;
 
     let totalRevenue = 0;
     let revenueMf = 0;
@@ -71,8 +71,10 @@ function calculateGroupFinancials(
         totalSokaBau += (salary * sokaBauRate / 100);
     });
 
-    const totalMaterials = materialsPerPerson * teamSize;
-    const totalRent = rentPerPerson * teamSize;
+    // These operational costs are "Per Team" as per UI labels, so we divide by the team size
+    // to get the individual's portion of the burden.
+    const totalMaterials = (materialsPerPerson / teamSizeForSplit) * teamSize;
+    const totalRent = (rentPerPerson / teamSizeForSplit) * teamSize;
     const totalDietas = teamDietasCost;
 
     const totalPersonnelExpenses = totalSalaries + totalInsurance + totalSokaBau + totalDietas + totalMaterials + totalRent;
