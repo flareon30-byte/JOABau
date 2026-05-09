@@ -396,7 +396,7 @@ exports.exportBillingExcel = async (req, res) => {
         const soplado = await prisma.sopladoInfo.findMany({
             where: {
                 meters: { gt: 0 }, // Billable only
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -411,7 +411,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         const fusion = await prisma.fusionWork.findMany({
             where: {
-                updatedAt: hasDate ? dateFilter : undefined,
+                createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
                 project: {
                     isDemo: isDemo,
@@ -497,13 +497,13 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 1. Soplado Sheet
         const sopladoRows = soplado.map(i => ({
-            Fecha: i.updatedAt.toISOString().split('T')[0],
-            Proyecto: i.address.project.name,
-            Direccion: `${i.address.street} ${i.address.number}`,
-            NVT: i.address.nvt,
+            Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
+            Proyecto: i.address?.project?.name || 'N/A',
+            Direccion: `${i.address?.street || ''} ${i.address?.number || ''}`,
+            NVT: i.address?.nvt || '',
             Metros: i.meters,
-            TK: i.tk,
-            ColorTubo: i.tubeColor,
+            TK: i.tk || '-',
+            ColorTubo: i.tubeColor || '-',
             Estado: 'OK'
         }));
         const wsSoplado = XLSX.utils.json_to_sheet(sopladoRows);
@@ -511,40 +511,40 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 2. Fusion Sheet
         const fusionRows = fusion.map(i => ({
-            Fecha: i.updatedAt.toISOString().split('T')[0],
-            Proyecto: i.project.name,
-            NVT: i.nvtName,
-            Fusiones: i.fusionCount,
+            Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
+            Proyecto: i.project?.name || 'N/A',
+            NVT: i.nvtName || '',
+            Fusiones: i.fusionCount || 0,
             EnBandeja: i.isTray ? 'Sí' : 'No',
-            Notas: i.description
+            Notas: i.description || '-'
         }));
         const wsFusion = XLSX.utils.json_to_sheet(fusionRows);
         XLSX.utils.book_append_sheet(wb, wsFusion, "Fusiones");
 
         // 3. Activacion Sheet
         const actRows = activation.map(i => ({
-            Fecha: i.createdAt.toISOString().split('T')[0],
-            Proyecto: i.address.project.name,
-            Direccion: `${i.address.street} ${i.address.number}`,
-            NVT: i.address.nvt,
-            Cliente: i.address.clientName,
-            Tipo: i.activationType,
+            Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
+            Proyecto: i.address?.project?.name || 'N/A',
+            Direccion: `${i.address?.street || ''} ${i.address?.number || ''}`,
+            NVT: i.address?.nvt || '',
+            Cliente: i.address?.clientName || 'N/A',
+            Tipo: i.activationType || 'ACTIVATION',
             TA: (i.taInstalled || i.taCount > 0) ? (i.taCount || 1) : 0,
             SP: i.spInstalled || 0,
             MDU: i.mduInstalled ? 1 : 0,
-            Familiares: i.familiesCount,
-            Fotos: i.photos.length
+            Familiares: i.familiesCount || 0,
+            Fotos: i.photos?.length || 0
         }));
         const wsAct = XLSX.utils.json_to_sheet(actRows);
         XLSX.utils.book_append_sheet(wb, wsAct, "Activaciones");
 
         // 4. Protocol Sheet
         const protRows = protocol.map(i => ({
-            Fecha: i.createdAt.toISOString().split('T')[0],
-            Proyecto: i.address.project.name,
-            Direccion: `${i.address.street} ${i.address.number}`,
-            NVT: i.address.nvt,
-            Estado: i.status,
+            Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
+            Proyecto: i.address?.project?.name || 'N/A',
+            Direccion: `${i.address?.street || ''} ${i.address?.number || ''}`,
+            NVT: i.address?.nvt || '',
+            Estado: i.status || 'COMPLETADO',
             Notas: i.reciteReason || 'Completado'
         }));
         const wsProt = XLSX.utils.json_to_sheet(protRows);
@@ -552,15 +552,27 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 5. Repair Sheet
         const repairRows = repair.map(i => ({
-            Fecha: i.createdAt.toISOString().split('T')[0],
-            Proyecto: i.address.project.name,
-            Direccion: `${i.address.street} ${i.address.number}`,
-            NVT: i.address.nvt,
+            Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
+            Proyecto: i.address?.project?.name || 'N/A',
+            Direccion: `${i.address?.street || ''} ${i.address?.number || ''}`,
+            NVT: i.address?.nvt || '',
             Tipo: 'Avería',
             Detalle: i.comments?.[0]?.text || 'Sin detalle'
         }));
         const wsRepair = XLSX.utils.json_to_sheet(repairRows);
         XLSX.utils.book_append_sheet(wb, wsRepair, "Averias");
+
+        // 6. G&K Installations Sheet
+        const gkRows = simpleInstallation.map(i => ({
+            Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
+            Proyecto: i.address?.project?.name || 'N/A',
+            Direccion: `${i.address?.street || ''} ${i.address?.number || ''}`,
+            Detalles: i.items?.map(item => `${item.quantity}x ${item.priceItem?.name || 'Item'}`).join(', ') || 'Legacy',
+            Total: (i.priceCharged || 0) + '€',
+            Notas: i.comments || '-'
+        }));
+        const wsGk = XLSX.utils.json_to_sheet(gkRows);
+        XLSX.utils.book_append_sheet(wb, wsGk, "GK_Instalaciones");
 
         const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
