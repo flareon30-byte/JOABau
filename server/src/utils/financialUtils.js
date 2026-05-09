@@ -64,7 +64,7 @@ function calculateGroupFinancials(
     let totalSokaBau = 0;
 
     teamMembers.forEach(m => {
-        const salary = parseFloat(m.salary) || 3200;
+        const salary = parseFloat(m.baseSalary) || 3200;
         totalSalaries += salary;
         totalInsurance += (salary * ssRate / 100);
         totalSokaBau += (salary * sokaBauRate / 100);

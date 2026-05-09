@@ -13,32 +13,33 @@ exports.getMyPayroll = async (req, res) => {
         const { user, stats, cycle, activations } = unified;
 
         res.json({
-            user: {
-                id: user.id,
-                username: user.username,
-                role: user.role,
-                salary: user.baseSalary,
-                team: user.team
+            role: user.role,
+            metrics: {
+                revenueGenerated: stats.totalRevenue,
+                appointmentsDone: stats.counts.bp + stats.counts.ta + stats.counts.sp + stats.counts.mdu + stats.counts.repair,
+                targetDaily: 15
             },
             cycle: {
                 start: cycle.start,
                 end: cycle.end,
                 monthName: cycle.end.toLocaleString('es-ES', { month: 'long', year: 'numeric' })
             },
-            summary: {
-                baseSalary: user.baseSalary || 0,
-                variableEarnings: stats.bonusPool + stats.saturdayPay + stats.dietasPay,
-                totalBeforeTaxes: (user.baseSalary || 0) + stats.bonusPool + stats.saturdayPay + stats.dietasPay,
-                bonusFromProduction: stats.bonusPool,
-                saturdayExtras: stats.saturdayPay,
-                dietasExtras: stats.dietasPay,
-                progressPercent: stats.progressPercent,
-                targetRevenue: stats.totalTargetRevenue,
-                currentRevenue: stats.totalRevenue
-            },
-            details: {
-                activations: activations,
+            stats: {
+                teamName: user.team?.name || 'Mi Equipo',
+                myCurrentRevenue: stats.currentRevenueMf,
+                myTargetRevenue: stats.totalTargetRevenue,
+                myProgressPercent: stats.progressPercent,
                 counts: stats.counts
+            },
+            personal: {
+                baseSalary: user.baseSalary || 0,
+                myBonusShare: stats.bonusPool,
+                mySaturdayPay: stats.saturdayPay,
+                myDietasPay: stats.dietasPay,
+                totalEstimated: (user.baseSalary || 0) + stats.bonusPool + stats.saturdayPay + stats.dietasPay
+            },
+            financials: {
+                total: stats.expenses.personnel + stats.expenses.overhead
             }
         });
     } catch (error) {
