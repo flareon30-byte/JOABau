@@ -1,22 +1,6 @@
 const prisma = require('../prisma');
-const { calculateGroupFinancials, getWorkingDays } = require('../utils/financialUtils');
+const { calculateGroupFinancials, getWorkingDays, getCycleDates } = require('../utils/financialUtils');
 const { getGlobalSupportDeficit } = require('./financialService');
-
-/**
- * Shared helper to get cycle dates (21st to 20th)
- */
-function getCycleDates(dateInput = new Date()) {
-    let date = new Date(dateInput);
-    let start, end;
-    if (date.getDate() >= 21) {
-        start = new Date(date.getFullYear(), date.getMonth(), 21);
-        end = new Date(date.getFullYear(), date.getMonth() + 1, 20, 23, 59, 59, 999);
-    } else {
-        start = new Date(date.getFullYear(), date.getMonth() - 1, 21);
-        end = new Date(date.getFullYear(), date.getMonth(), 20, 23, 59, 59, 999);
-    }
-    return { start, end };
-}
 
 /**
  * Unified function to calculate performance for a specific user in a cycle.
@@ -100,4 +84,4 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     };
 }
 
-module.exports = { getUnifiedUserStats, getCycleDates };
+module.exports = { getUnifiedUserStats };

@@ -1,7 +1,8 @@
 const prisma = require('../prisma');
-const { getUnifiedUserStats, getCycleDates } = require('../services/performanceService');
+const { getUnifiedUserStats } = require('../services/performanceService');
+const { getCycleDates } = require('../utils/financialUtils');
 
-exports.getCycleDates = getCycleDates; // Export the unified version
+exports.getCycleDates = getCycleDates;
 
 exports.getMyPayroll = async (req, res) => {
     const userId = req.params.userId || req.userId;
