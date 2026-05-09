@@ -135,28 +135,7 @@ exports.getMyPayroll = async (req, res) => {
             });
         }
 
-        // 2b. Add SimpleInstallations (G&K)
-        const simples = await prisma.simpleInstallation.findMany({
-            where: {
-                createdAt: { gte: start, lte: end },
-                createdById: userId
-            },
-            include: { items: { include: { priceItem: true } } }
-        });
-        simples.forEach(gk => {
-            let instBonusTotal = 0;
-            gk.items.forEach(item => { instBonusTotal += (item.bonusAtTime || 0) * (item.quantity || 1); });
-            const bonusToCredit = gk.items.length > 0 ? instBonusTotal : (gk.priceCharged || 0);
-
-            activations.push({
-                isSaturday: gk.createdAt && new Date(gk.createdAt).getDay() === 6,
-                activationType: 'GK',
-                createdAt: gk.createdAt,
-                basePrice: bonusToCredit,
-                spPrice: 0, taPrice: 0, mduPrice: 0, repairPrice: 0,
-                performerIds: [userId]
-            });
-        });
+        // G&K / Simple installations removed as requested
 
         const teamMembers = team ? team.members : [user];
         const now = new Date();
@@ -187,7 +166,7 @@ exports.getMyPayroll = async (req, res) => {
             financialConfig, 
             [user], 
             overheadToCover / (team?.members?.length || 1), 
-            getWorkingDays(start.getFullYear(), start.getMonth()), 
+            getWorkingDays(end.getFullYear(), end.getMonth()), 
             myDietasPayOnly, // Pasamos solo sus dietas como coste porque evaluamos individual
             true, // isIndividualMode
             team?.members?.length || 1, // userTeamSize para dividir el coche
@@ -205,8 +184,6 @@ exports.getMyPayroll = async (req, res) => {
             financials: financialConfig,
             stats: {
                 ...stats,
-                myTargetRevenue: stats.totalTargetRevenue,
-                myCurrentRevenue: stats.currentRevenueMf,
                 myProgressPercent: stats.progressPercent,
                 activationsCount: activations.length,
                 teamName: team?.name || 'Sin Equipo'

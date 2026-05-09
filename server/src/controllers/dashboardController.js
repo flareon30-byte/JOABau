@@ -243,39 +243,7 @@ exports.getActivatorDashboard = async (req, res) => {
                 }
             });
 
-            // 2. Fetch Simple Installations (G&K)
-            const simples = await prisma.simpleInstallation.findMany({
-                where: {
-                    createdAt: { gte: startOfMonth, lte: endDate },
-                    createdById: userId
-                },
-                include: { items: { include: { priceItem: true } } }
-            });
-
             performanceData = [...activations];
-
-            // Merge Simples into performanceData for calculateGroupFinancials
-            simples.forEach(gk => {
-                let instBonusTotal = 0;
-                gk.items.forEach(item => {
-                    const bonus = (item.bonusAtTime || 0) * (item.quantity || 1);
-                    instBonusTotal += bonus;
-                    const itemName = item.priceItem?.name || 'Desconocido';
-                    counts[itemName] = (counts[itemName] || 0) + (item.quantity || 1);
-                });
-
-                const bonusToCredit = gk.items.length > 0 ? instBonusTotal : (gk.priceCharged || 0);
-                counts.gk++;
-                
-                performanceData.push({
-                    isSaturday: gk.createdAt && new Date(gk.createdAt).getDay() === 6,
-                    activationType: 'GK',
-                    createdAt: gk.createdAt,
-                    basePrice: bonusToCredit,
-                    spPrice: 0, taPrice: 0, mduPrice: 0, repairPrice: 0,
-                    performerIds: [userId]
-                });
-            });
 
             // 3. Calculate Weighted Counts for the Dashboard UI
             performanceData.forEach(act => {
@@ -333,7 +301,11 @@ exports.getActivatorDashboard = async (req, res) => {
         let myDietasPayOnly = 0;
         userDietasLogs.forEach(d => {
             let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
-            myDietasPayOnly += base;
+            if (d.isSaturday) {
+                myDietasPayOnly += base; // Base only for Saturday cost in stats
+            } else {
+                myDietasPayOnly += d.amount; // Actual amount for regular days
+            }
         });
 
         // --- OVERHEAD CALCULATION ---
@@ -350,7 +322,7 @@ exports.getActivatorDashboard = async (req, res) => {
             fin, 
             [user], 
             overheadToCover / teamMembersCount, 
-            getWorkingDays(startOfMonth.getFullYear(), startOfMonth.getMonth()), 
+            getWorkingDays(endDate.getFullYear(), endDate.getMonth()), 
             myDietasPayOnly,
             true, // isIndividualMode
             teamMembersCount, 
