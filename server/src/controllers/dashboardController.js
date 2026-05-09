@@ -1,11 +1,11 @@
 const prisma = require('../prisma');
 const { calculateGroupFinancials, getWorkingDays, getCycleDates } = require('../utils/financialUtils');
-const { getGlobalSupportDeficit } = require('../services/financialService');
+const { getGlobalSupportDeficit } = require('./financialService');
 const { getUnifiedUserStats } = require('../services/performanceService');
 
 exports.getDashboardStats = async (req, res) => {
     try {
-        const [pendingCount, assignedCount, completedActivationsCount, simpleCount] = await Promise.all([
+        const [pendingCount, assignedCount, completedActivationsCount] = await Promise.all([
             prisma.address.count({
                 where: {
                     sopladoStatus: 'OK',
@@ -26,17 +26,14 @@ exports.getDashboardStats = async (req, res) => {
             }),
             prisma.activationInfo.count({
                 where: { address: { project: { isDemo: req.isDemo || false } } }
-            }),
-            prisma.simpleInstallation.count({
-                where: { address: { project: { isDemo: req.isDemo || false } } }
             })
         ]);
 
         res.json({
             pendingAppointments: pendingCount,
             assignedAppointments: assignedCount,
-            completedActivations: completedActivationsCount + simpleCount,
-            simpleCount: simpleCount
+            completedActivations: completedActivationsCount,
+            simpleCount: 0 // G&K EXTIRPATED
         });
     } catch (error) {
         console.error(error);
@@ -48,61 +45,34 @@ exports.getPayrollStats = async (req, res) => {
     try {
         const { start: startDate, end: endDate } = getCycleDates();
 
-        // FETCH BOTH: Regular Activations AND Simple Installations (G&K)
-        const [activations, simpleActivations] = await Promise.all([
-            prisma.activationInfo.findMany({
-                where: { createdAt: { gte: startDate, lte: endDate } },
-                include: {
-                    address: {
-                        include: {
-                            project: true,
-                            appointment: {
-                                include: {
-                                    assignedTeam: { include: { members: true } }
-                                }
+        // ONLY REAL ACTIVATIONS (Glasfaser Plus)
+        const activations = await prisma.activationInfo.findMany({
+            where: { createdAt: { gte: startDate, lte: endDate } },
+            include: {
+                address: {
+                    include: {
+                        project: true,
+                        appointment: {
+                            include: {
+                                assignedTeam: { include: { members: true } }
                             }
                         }
                     }
                 }
-            }),
-            prisma.simpleInstallation.findMany({
-                where: { createdAt: { gte: startDate, lte: endDate } },
-                include: {
-                    address: {
-                        include: {
-                            project: true,
-                            appointment: {
-                                include: {
-                                    assignedTeam: { include: { members: true } }
-                                }
-                            }
-                        }
-                    }
-                }
-            })
-        ]);
-
-        // Merge them for calculation
-        const allActs = [
-            ...activations,
-            ...simpleActivations.map(s => ({
-                ...s,
-                activationType: 'BP' // Simple installations are counted as BP
-            }))
-        ];
+            }
+        });
 
         const teamStats = {};
         const techStats = {};
         
-        // Identify all performers across both types
-        const performerIds = [...new Set(allActs.flatMap(a => a.performerIds || []))];
+        const performerIds = [...new Set(activations.flatMap(a => a.performerIds || []))];
         const allUsers = await prisma.user.findMany({
             where: { id: { in: performerIds } },
             select: { id: true, username: true }
         });
         const userMap = new Map(allUsers.map(u => [u.id, u.username]));
 
-        allActs.forEach(act => {
+        activations.forEach(act => {
             const performers = act.performerIds || [];
             if (performers.length === 0) return;
             

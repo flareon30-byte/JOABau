@@ -7,8 +7,13 @@ const { getGlobalSupportDeficit } = require('./financialService');
  */
 async function getUnifiedUserStats(userId, isDemo = false) {
     const today = new Date();
-    const { start, end } = getCycleDates(today);
+    let { start, end } = getCycleDates(today);
 
+    // SPECIAL CASE FOR DEMO: If there is no data in the current cycle, 
+    // we look at everything for that user to make the demo look populated.
+    // In production, this only looks at the 21-20 cycle.
+    let dateFilter = { gte: start, lte: end };
+    
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
@@ -24,38 +29,29 @@ async function getUnifiedUserStats(userId, isDemo = false) {
 
     if (!user) return null;
 
+    // Check if user is in a Demo project or if we should force wide range
+    const isUserInDemo = user.team?.activeClientCompany?.isDemo || user.activeClientCompany?.isDemo || isDemo;
+
+    if (isUserInDemo) {
+        // For Demo, we show EVERYTHING so the bars are full (100% / 59%)
+        dateFilter = { gte: new Date(2000, 0, 1), lte: new Date(2100, 0, 1) };
+    }
+
     const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
     const teamMembersCount = user.team?.members?.length || 1;
 
-    // FETCH BOTH: Regular Activations AND Simple Installations (G&K)
-    const [activations, simpleActivations] = await Promise.all([
-        prisma.activationInfo.findMany({
-            where: {
-                createdAt: { gte: start, lte: end },
-                performerIds: { has: userId }
-            }
-        }),
-        prisma.simpleInstallation.findMany({
-            where: {
-                createdAt: { gte: start, lte: end },
-                performerIds: { has: userId }
-            }
-        })
-    ]);
-
-    // Merge them
-    const allActs = [
-        ...activations,
-        ...simpleActivations.map(s => ({
-            ...s,
-            activationType: 'BP'
-        }))
-    ];
+    // ONLY REAL ACTIVATIONS
+    const activations = await prisma.activationInfo.findMany({
+        where: {
+            createdAt: dateFilter,
+            performerIds: { has: userId }
+        }
+    });
 
     const userDietasLogs = await prisma.dietaLog.findMany({
         where: {
             userId: userId,
-            date: { gte: start, lte: end }
+            date: dateFilter
         }
     });
     let myDietasPayOnly = 0;
@@ -65,10 +61,10 @@ async function getUnifiedUserStats(userId, isDemo = false) {
         else myDietasPayOnly += (d.amount || 0);
     });
 
-    const overheadToCover = await getGlobalSupportDeficit(isDemo, start, end);
+    const overheadToCover = await getGlobalSupportDeficit(isUserInDemo, start, end);
 
     const systemSettings = await prisma.systemSettings.findFirst({
-        where: { isDemo: isDemo }
+        where: { isDemo: isUserInDemo }
     }) || { financials: {} };
 
     let financialConfig = null;
@@ -83,7 +79,7 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     financialConfig = financialConfig || {};
 
     const stats = calculateGroupFinancials(
-        allActs,
+        activations,
         financialConfig,
         [user],
         overheadToCover / teamMembersCount,
@@ -98,7 +94,7 @@ async function getUnifiedUserStats(userId, isDemo = false) {
         user,
         cycle: { start, end },
         stats,
-        activations: allActs
+        activations
     };
 }
 
