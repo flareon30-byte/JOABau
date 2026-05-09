@@ -64,7 +64,7 @@ exports.getMyPayroll = async (req, res) => {
 
 
 
-        const settings = await prisma.systemSettings.findFirst({
+        const systemSettings = await prisma.systemSettings.findFirst({
             where: { isDemo: req.isDemo || false }
         });
 
@@ -76,7 +76,7 @@ exports.getMyPayroll = async (req, res) => {
             } else if (user.activeClientCompany?.settings) {
                 config = user.activeClientCompany.settings.backOffice;
             } else {
-                config = settings?.financials?.backOffice || {};
+                config = systemSettings?.financials?.backOffice || {};
             }
             
             const apptCount = await prisma.appointment.count({
