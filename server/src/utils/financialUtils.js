@@ -16,18 +16,18 @@ function calculateGroupFinancials(
     specificUserId = null
 ) {
     const revenueWeights = {
-        BP: parseFloat(financialConfig.basePrice) || 145,
-        TA: parseFloat(financialConfig.taPrice) || 185,
-        SP: parseFloat(financialConfig.spPrice) || 165,
-        MDU: parseFloat(financialConfig.mduPrice) || 100,
-        REPAIR: parseFloat(financialConfig.repairPrice) || 85
+        BP: parseFloat(financialConfig.pricePerUnit) || 145,
+        TA: parseFloat(financialConfig.pricePerTA) || 50,
+        SP: parseFloat(financialConfig.pricePerSP) || 100,
+        MDU: parseFloat(financialConfig.pricePerMDU) || 50,
+        REPAIR: parseFloat(financialConfig.pricePerRepair) || 30
     };
 
     const teamSize = teamMembers.length;
     const ssRate = (financialConfig.insuranceRate !== undefined && financialConfig.insuranceRate !== null) ? parseFloat(financialConfig.insuranceRate) : 21.50; 
     const sokaBauRate = (financialConfig.sokaBauPercent !== undefined && financialConfig.sokaBauPercent !== null) ? parseFloat(financialConfig.sokaBauPercent) : 15.10;
-    const rentPerPerson = (financialConfig.rent !== undefined && financialConfig.rent !== null) ? parseFloat(financialConfig.rent) : 0;
-    const materialsPerPerson = (financialConfig.materials !== undefined && financialConfig.materials !== null) ? parseFloat(financialConfig.materials) : 100;
+    const rentPerPerson = (parseFloat(financialConfig.equipmentRent) || 0) + (parseFloat(financialConfig.car) || 0) + (parseFloat(financialConfig.gas) || 0);
+    const materialsPerPerson = parseFloat(financialConfig.materials) || 150;
 
     let totalRevenue = 0;
     let revenueMf = 0;
