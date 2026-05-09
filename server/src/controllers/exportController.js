@@ -76,6 +76,7 @@ exports.exportActivationPhotos = async (req, res) => {
 
         // PROCESS ACTIVATIONS
         for (const act of activations) {
+            const clientName = (act.address.clientName || 'SinCliente').replace(/[\\/:*?"<>|]/g, '').trim();
             const nvtPrefix = act.address.nvt ? `${act.address.nvt}_` : '';
             const folderName = `${nvtPrefix}${act.address.street}_${act.address.number || ''}_${clientName}`.replace(/[\\/:*?"<>|]/g, '_');
             
@@ -86,6 +87,7 @@ exports.exportActivationPhotos = async (req, res) => {
         }
 
         // PROCESS SIMPLE INSTALLATIONS
+        for (const inst of simpleInstallations) {
             const nvtPrefix = inst.address.nvt ? `${inst.address.nvt}_` : '';
             const folderName = `${nvtPrefix}Inst_${inst.customerLastName || 'GK'}_${inst.address.street}_${inst.address.number || ''}`.replace(/[\\/:*?"<>|]/g, '_');
             
