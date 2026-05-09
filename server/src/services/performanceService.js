@@ -6,9 +6,12 @@ const { getGlobalSupportDeficit } = require('./financialService');
  * Unified function to calculate performance for a specific user.
  * Cleaned up and stabilized for production.
  */
-async function getUnifiedUserStats(userId, isDemo = false) {
+async function getUnifiedUserStats(userId, isDemo = false, customStartDate = null, customEndDate = null) {
     const today = new Date();
-    const { start, end } = getCycleDates(today);
+    let { start, end } = getCycleDates(today);
+
+    if (customStartDate) start = new Date(customStartDate);
+    if (customEndDate) end = new Date(customEndDate);
 
     const user = await prisma.user.findUnique({
         where: { id: userId },
