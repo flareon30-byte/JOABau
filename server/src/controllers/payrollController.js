@@ -67,6 +67,11 @@ exports.getPayrollSummary = async (req, res) => {
         let users = await prisma.user.findMany({
             where: {
                 role: { in: ['BLOWER', 'ACTIVATOR', 'BACK_OFFICE', 'PROTOCOL_MANAGER'] }
+            },
+            include: { 
+                team: {
+                    include: { members: true }
+                } 
             }
         });
 
@@ -103,10 +108,17 @@ exports.getPayrollSummary = async (req, res) => {
                 dietasCount: stats.dietasCount || 0,
                 total: (user.baseSalary || 0) + (stats.bonusPool || 0) + (stats.saturdayPay || 0) + (stats.dietasPay || 0),
                 production: {
-                    teamName: user.team?.name,
-                    appointmentsDone: stats.counts?.bp || 0, // Fallback for backoffice
+                    teamName: user.team?.name || 'Sin Equipo',
+                    appointmentsDone: stats.counts?.bp || 0,
                     totalRevenue: stats.totalRevenue || 0,
-                    counts: stats.counts
+                    counts: {
+                        bp: stats.counts?.bp || 0,
+                        bif: stats.counts?.sp || 0, // Mapping SP to BIF for UI consistency
+                        ta: stats.counts?.ta || 0,
+                        mul: stats.counts?.mul || 0,
+                        mdu: stats.counts?.mdu || 0,
+                        repair: stats.counts?.repair || 0
+                    }
                 }
             });
         }
