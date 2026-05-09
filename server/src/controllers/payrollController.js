@@ -106,8 +106,8 @@ exports.getMyPayroll = async (req, res) => {
         } else if (user.activeClientCompany?.settings) {
             financialConfig = user.activeClientCompany.settings[groupKey];
         }
-        if (!financialConfig && settings?.financials) {
-            financialConfig = settings.financials[groupKey];
+        if (!financialConfig && systemSettings?.financials) {
+            financialConfig = systemSettings.financials[groupKey];
         }
         financialConfig = financialConfig || {};
 
