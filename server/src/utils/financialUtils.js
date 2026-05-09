@@ -36,13 +36,13 @@ function calculateGroupFinancials(
 
     activations.forEach(act => {
         const performers = act.performerIds || [];
-        const performerCount = performers.length || 1;
+        const performerCount = (performers && performers.length) ? performers.length : 1;
         
         // Strict implementation of the 1/N rule from the Core Memory
-        // A technician only gets their mathematical fraction of the activation.
-        // We use Math.max(performerCount, teamSizeForSplit) to ensure that if a tech
-        // is in a team of 2, they never get more than 50% even if they signed alone.
-        const weight = 1 / Math.max(performerCount, teamSizeForSplit);
+        const divisor = Math.max(performerCount, teamSizeForSplit);
+        const weight = 1 / divisor;
+
+        console.log(`[MATH-LOG] Act: ${act.id}, PerfCount: ${performerCount}, TeamSize: ${teamSizeForSplit}, Weight: ${weight}`);
 
         const type = act.activationType || 'BP';
         const price = revenueWeights[type] || 145;
