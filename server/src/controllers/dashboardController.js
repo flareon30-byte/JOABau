@@ -217,66 +217,96 @@ exports.getActivatorDashboard = async (req, res) => {
         // 3. Get Performance Stats (Uses JOA Cycle 21-20)
         const { getCycleDates } = require('./payrollController');
         const { start: startOfMonth, end: endDate } = getCycleDates(today);
+        const isBlower = req.userRole === 'BLOWER';
+        const groupKey = isBlower ? 'blowers' : 'installers';
 
         let performanceData = [];
-        const isBlower = req.userRole === 'BLOWER';
-
-        if (isBlower) {
-            // Fetch SopladoInfo for blowers
-            performanceData = await prisma.sopladoInfo.findMany({
-                where: {
-                    createdAt: {
-                        gte: startOfMonth,
-                        lte: endDate
-                    },
-                    OR: [
-                        { performerIds: { has: userId } },
-                        { teamId: teamId }
-                    ]
-                }
-            });
-        } else {
-            // Fetch ActivationInfo for activators/others (include work explicitly performed by this user)
-            performanceData = await prisma.activationInfo.findMany({
-                where: {
-                    createdAt: {
-                        gte: startOfMonth,
-                        lte: endDate
-                    },
-                    OR: [
-                        { performerIds: { has: userId } },
-                        {
-                            address: {
-                                project: { isDemo: req.isDemo || false },
-                                appointment: { assignedTeamId: teamId }
-                            }
-                        }
-                    ]
-                }
-            });
-        }
+        const counts = {
+            bp: 0,
+            ta: 0,
+            sp: 0,
+            mdu: 0,
+            gk: 0,
+            viviendas: 0
+        };
 
         let regularEarnings = 0;
         let saturdayEarnings = 0;
         let regularActivations = 0;
         let saturdayActivations = 0;
 
-        // Production Counts
-        const counts = {
-            bp: 0,
-            ta: 0,
-            sp: 0,
-            mdu: 0,
-            gk: 0, // Added G&K count
-            viviendas: 0 // New field for blowers
-        };
+        if (isBlower) {
+            const soplados = await prisma.sopladoInfo.findMany({
+                where: {
+                    createdAt: { gte: startOfMonth, lte: endDate },
+                    OR: [
+                        { performerIds: { has: userId } },
+                        { teamId: teamId || 'non-existent' }
+                    ],
+                    address: { project: { isDemo: req.isDemo || false } }
+                }
+            });
+            performanceData = soplados.map(s => ({
+                isSaturday: s.isSaturday,
+                activationType: 'BP',
+                createdAt: s.createdAt,
+                basePrice: 0
+            }));
+            // Populate counts for blowers
+            soplados.forEach(s => { 
+                counts.viviendas++; 
+                if (s.isSaturday) saturdayActivations++;
+                else regularActivations++;
+            });
+        } else {
+            performanceData = await prisma.activationInfo.findMany({
+                where: {
+                    createdAt: { gte: startOfMonth, lte: endDate },
+                    OR: [
+                        { performerIds: { has: userId } },
+                        {
+                            address: {
+                                project: { isDemo: req.isDemo || false },
+                                appointment: { assignedTeamId: teamId || 'non-existent' }
+                            }
+                        }
+                    ]
+                }
+            });
+            // Populate counts for installers
+            performanceData.forEach(act => {
+                const type = act.activationType || 'BP';
+                if (type === 'BP' || type === 'BP_2_FAM') {
+                    counts.bp += (type === 'BP_2_FAM' ? 2 : 1);
+                } else if (type === 'SDU') {
+                    counts.ta++;
+                } else if (type === 'MDU') {
+                    counts.mdu++;
+                } else if (type === 'BR_MULTI') {
+                    counts.bp++;
+                }
+
+                if (act.spInstalled > 0) counts.sp += act.spInstalled;
+                if ((type !== 'SDU') && (act.taInstalled || (act.taCount && act.taCount > 0))) {
+                    counts.ta += (act.taCount || 1);
+                }
+                if (type !== 'MDU' && act.mduInstalled) counts.mdu++;
+                
+                if (act.isSaturday) {
+                    saturdayActivations++;
+                } else {
+                    regularActivations++;
+                }
+            });
+        }
+
+
 
         // 4. Get Financial Config (Same logic as Payroll Controller for parity)
         const systemSettings = await prisma.systemSettings.findFirst({
             where: { isDemo: req.isDemo || false }
         }) || { financials: {} };
 
-        const groupKey = isBlower ? 'blowers' : 'installers';
         let fin = null;
 
         if (user.team?.activeClientCompany?.settings) {
@@ -291,125 +321,98 @@ exports.getActivatorDashboard = async (req, res) => {
         
         // Fallback for UI robustness
         if (!fin) fin = {};
-
-        if (isBlower) {
-            performanceData.forEach(sop => {
-                const totalOnRecord = (fin.pricePerUnit || 10); // Price per dwelling blown
-                const saturdaysPrice = (fin.pricePerSaturdayUnit || fin.pricePerUnit || 15);
-
-                if (sop.isSaturday) {
-                    saturdayEarnings += saturdaysPrice;
-                    saturdayActivations++;
-                } else {
-                    regularEarnings += totalOnRecord;
-                    regularActivations++;
-                }
-                counts.viviendas++;
-            });
-        } else {
-            performanceData.forEach(act => {
-                const type = act.activationType || 'BP';
-
-                // 1. Determine Base Type for counts
-                if (type === 'BP' || type === 'BP_2_FAM') {
-                    counts.bp += (type === 'BP_2_FAM' ? 2 : 1);
-                } else if (type === 'SDU') {
-                    counts.ta++;
-                } else if (type === 'MDU') {
-                    counts.mdu++;
-                } else if (type === 'BR_MULTI') {
-                    counts.bp++;
-                }
-
-                // 2. Add Extras
-                if (act.spInstalled > 0) {
-                    counts.sp += act.spInstalled;
-                }
-                if ((type !== 'SDU') && (act.taInstalled || (act.taCount && act.taCount > 0))) {
-                    counts.ta += (act.taCount || 1);
-                }
-                if (type !== 'MDU' && act.mduInstalled) {
-                    counts.mdu++;
-                }
-
-                // 3. Financial Calculation (Sum of all prices on this record)
-                const totalOnRecord = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
-
-                // 4. Split by Saturday / Regular
-                if (act.isSaturday) {
-                    saturdayEarnings += totalOnRecord;
-                    saturdayActivations++;
-                } else {
-                    regularEarnings += totalOnRecord;
-                    regularActivations++;
-                }
-            });
-
-            // 5. Get Simple Installations (Dynamic Catalog)
-            const simpleData = await prisma.simpleInstallation.findMany({
-                where: {
-                    createdAt: { gte: startOfMonth, lte: endDate },
-                    createdById: userId
-                },
-                include: {
-                    items: { include: { priceItem: true } }
-                }
-            });
-            simpleData.forEach(gk => {
-                let instBonusTotal = 0;
-                gk.items.forEach(item => {
-                    const bonus = (item.bonusAtTime || 0) * (item.quantity || 1);
-                    instBonusTotal += bonus;
-                    
-                    // NEW: Dynamic Counts by Name (not just department)
-                    const itemName = item.priceItem?.name || 'Desconocido';
-                    counts[itemName] = (counts[itemName] || 0) + (item.quantity || 1);
-                });
-
-                // If no items, fallback to old priceCharged field (legacy support)
-                const bonusToCredit = gk.items.length > 0 ? instBonusTotal : (gk.priceCharged || 0);
+        // No longer need manual earnings loop here as we use statsFromLib below
+        
+        // 5. Get Simple Installations (Dynamic Catalog)
+        const simpleData = await prisma.simpleInstallation.findMany({
+            where: {
+                createdAt: { gte: startOfMonth, lte: endDate },
+                createdById: userId
+            },
+            include: {
+                items: { include: { priceItem: true } }
+            }
+        });
+        
+        simpleData.forEach(gk => {
+            let instBonusTotal = 0;
+            gk.items.forEach(item => {
+                const bonus = (item.bonusAtTime || 0) * (item.quantity || 1);
+                instBonusTotal += bonus;
                 
-                counts.gk++;
-                regularEarnings += bonusToCredit;
-                regularActivations++;
+                // Counts by Name
+                const itemName = item.priceItem?.name || 'Desconocido';
+                counts[itemName] = (counts[itemName] || 0) + (item.quantity || 1);
             });
-        }
+
+            const bonusToCredit = gk.items.length > 0 ? instBonusTotal : (gk.priceCharged || 0);
+            
+            counts.gk++;
+            regularEarnings += bonusToCredit;
+            regularActivations++;
+
+            // Merge for unified calculation
+            performanceData.push({
+                isSaturday: gk.createdAt && new Date(gk.createdAt).getDay() === 6,
+                activationType: 'GK',
+                createdAt: gk.createdAt,
+                basePrice: bonusToCredit,
+                spPrice: 0, taPrice: 0, mduPrice: 0, repairPrice: 0
+            });
+        });
+
+        // 6. Fetch User Dietas for individual logic
+        const userDietasLogs = await prisma.dietaLog.findMany({
+            where: {
+                userId: userId,
+                date: { gte: startOfMonth, lte: endDate }
+            }
+        });
+        let myDietasPayOnly = 0;
+        userDietasLogs.forEach(d => {
+            let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
+            myDietasPayOnly += base;
+        });
 
         // --- OVERHEAD CALCULATION (Global Deficit) ---
         let overheadToCover = 0;
         if (groupKey === 'installers') {
-            overheadToCover = await getGlobalSupportDeficit(req.isDemo || false);
+            overheadToCover = await getGlobalSupportDeficit(req.isDemo || false, startOfMonth, endDate);
         }
+
+        const teamMembersCount = user.team?.members?.length || 1;
 
         const statsFromLib = calculateGroupFinancials(
             performanceData, 
             fin, 
-            user.team?.members || [user], 
-            overheadToCover,
-            getWorkingDays(today.getFullYear(), today.getMonth()) // Sync: Pass exact working days
+            [user], // Individual mode for the technician
+            overheadToCover / teamMembersCount, 
+            getWorkingDays(startOfMonth.getFullYear(), startOfMonth.getMonth()), // Sync with payroll
+            myDietasPayOnly,
+            true, // isIndividualMode
+            teamMembersCount, // userTeamSize
+            userId // targetUserId
         );
 
         // PRIVACY: Only show 'earnings' if user is Admin, otherwise just show progress towards target
         const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.userRole);
 
-        const teamSizeInner = user.team?.members?.length || teamSize;
- 
          res.json({
              activeClientId: user.team?.activeClientCompanyId || user.activeClientCompanyId,
              appointments,
              stats: {
                  regularEarnings: isAdmin ? statsFromLib.totalRevenue - statsFromLib.saturdayPay : null,
-                 saturdayEarnings: statsFromLib.saturdayPay / teamSizeInner,
+                 saturdayEarnings: statsFromLib.saturdayPay,
                  regularActivations,
                  saturdayActivations,
                  counts,
                  // Money-based progress
-                 totalRevenueGenerated: statsFromLib.totalRevenue / teamSizeInner,
-                 targetRevenueToCover: statsFromLib.totalTargetRevenue / teamSizeInner,
+                 totalRevenueGenerated: statsFromLib.totalRevenue,
+                 targetRevenueToCover: statsFromLib.totalTargetRevenue,
                  moneyProgressPercent: statsFromLib.progressPercent,
-                 accumulatedBonus: statsFromLib.bonusPool / teamSizeInner,
+                 accumulatedBonus: statsFromLib.bonusPool,
                 // Legacy support for UI
-                breakEvenUnits: Math.ceil(statsFromLib.bonusThresholdUnits / teamSize),
+                breakEvenUnits: statsFromLib.bonusThresholdUnits,
                 isBonusMode: statsFromLib.progressPercent >= 100,
                 role: req.userRole
             }

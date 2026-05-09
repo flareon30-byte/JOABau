@@ -185,7 +185,7 @@ exports.getMyPayroll = async (req, res) => {
         // --- OVERHEAD CALCULATION ---
         let overheadToCover = 0;
         if (groupKey === 'installers') {
-            overheadToCover = await require('../services/financialService').getGlobalSupportDeficit(req.isDemo || false);
+            overheadToCover = await require('../services/financialService').getGlobalSupportDeficit(req.isDemo || false, start, end);
         }
 
         // --- DIETAS CALCULATION ---

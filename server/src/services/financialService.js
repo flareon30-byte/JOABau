@@ -5,11 +5,11 @@ const { calculateGroupFinancials } = require('../utils/financialUtils');
  * Calculates the per-team share of the total company overhead (Structural Deficit).
  * Following the logic in Calculator/src/App.jsx
  */
-exports.getGlobalSupportDeficit = async (isDemo = false) => {
+exports.getGlobalSupportDeficit = async (isDemo = false, startDate = null, endDate = null) => {
     try {
         const now = new Date();
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
-        const end = new Date();
+        const start = startDate || new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = endDate || new Date();
 
         const settings = await prisma.systemSettings.findFirst({
             where: { isDemo }
