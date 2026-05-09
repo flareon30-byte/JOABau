@@ -38,8 +38,9 @@ function calculateGroupFinancials(
         const performers = act.performerIds || [];
         const performerCount = performers.length || 1;
         
-        // Use 1/N for weight if not in individual mode (where activations are already filtered)
-        const weight = isIndividualMode ? 1 : (1 / performerCount);
+        // Strict implementation of the 1/N rule from the Core Memory
+        // A technician only gets their mathematical fraction of the activation
+        const weight = 1 / performerCount;
 
         const type = act.activationType || 'BP';
         const price = revenueWeights[type] || 145;
