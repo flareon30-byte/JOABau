@@ -4,22 +4,11 @@ const { getGlobalSupportDeficit } = require('./financialService');
 
 /**
  * Unified function to calculate performance for a specific user.
- * Uses a wider date range to ensure activations that were created as drafts
- * but COMPLETED/SIGNED in the current cycle are included.
+ * Cleaned up and stabilized for production.
  */
 async function getUnifiedUserStats(userId, isDemo = false) {
     const today = new Date();
-    let { start, end } = getCycleDates(today);
-
-    // WIDEN SEARCH: We search for activations that were EITHER:
-    // 1. Created in the cycle.
-    // 2. Updated in the cycle (this catches when they are signed/completed).
-    const dateFilter = {
-        OR: [
-            { createdAt: { gte: start, lte: end } },
-            { updatedAt: { gte: start, lte: end } }
-        ]
-    };
+    const { start, end } = getCycleDates(today);
 
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -39,29 +28,17 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
     const teamMembersCount = user.team?.members?.length || 1;
 
-    // FETCH FROM BOTH TABLES (ActivationInfo and SimpleInstallation)
-    const [activations, simpleActivations] = await Promise.all([
-        prisma.activationInfo.findMany({
-            where: {
-                ...dateFilter,
-                performerIds: { has: userId }
-            }
-        }),
-        prisma.simpleInstallation.findMany({
-            where: {
-                ...dateFilter,
-                performerIds: { has: userId }
-            }
-        })
-    ]);
-
-    const allActs = [
-        ...activations,
-        ...simpleActivations.map(s => ({
-            ...s,
-            activationType: 'BP'
-        }))
-    ];
+    // ONLY GLASFASER PLUS (ActivationInfo)
+    // We look at activations created OR updated in the cycle to catch signed docs
+    const activations = await prisma.activationInfo.findMany({
+        where: {
+            OR: [
+                { createdAt: { gte: start, lte: end } },
+                { updatedAt: { gte: start, lte: end } }
+            ],
+            performerIds: { has: userId }
+        }
+    });
 
     const userDietasLogs = await prisma.dietaLog.findMany({
         where: {
@@ -94,7 +71,7 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     financialConfig = financialConfig || {};
 
     const stats = calculateGroupFinancials(
-        allActs,
+        activations,
         financialConfig,
         [user],
         overheadToCover / teamMembersCount,
@@ -109,7 +86,7 @@ async function getUnifiedUserStats(userId, isDemo = false) {
         user,
         cycle: { start, end },
         stats,
-        activations: allActs
+        activations
     };
 }
 
