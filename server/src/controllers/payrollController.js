@@ -1,19 +1,7 @@
 const prisma = require('../prisma');
-const { calculateGroupFinancials } = require('../utils/financialUtils');
+const { calculateGroupFinancials, getWorkingDays } = require('../utils/financialUtils');
 
-// Helper: Calculate working days for a given month/year (Default current)
-// Simplified version of the calendar utils
-// Helper: Calculate working days for a given month/year
-const getWorkingDays = (year, month) => {
-    const startDate = new Date(year, month, 1);
-    const endDate = new Date(year, month + 1, 0);
-    let count = 0;
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-        const day = d.getDay();
-        if (day !== 0 && day !== 6) count++;
-    }
-    return count;
-};
+
 
 // Helper: Accurate Cycle Calculation (21st to 20th)
 exports.getCycleDates = (dateInput = new Date()) => {
@@ -144,15 +132,7 @@ exports.getMyPayroll = async (req, res) => {
             activations = await prisma.activationInfo.findMany({
                 where: {
                     createdAt: { gte: start, lte: end },
-                    OR: [
-                        { performerIds: { has: userId } },
-                        {
-                            address: {
-                                project: { isDemo: req.isDemo || false },
-                                appointment: { assignedTeamId: teamId || 'non-existent' }
-                            }
-                        }
-                    ]
+                    performerIds: { has: userId }
                 }
             });
         }

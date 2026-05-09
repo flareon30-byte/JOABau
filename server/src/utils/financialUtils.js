@@ -287,3 +287,14 @@ exports.calculateGroupFinancials = (activations, financialConfig, teamMembers, o
 
     return stats;
 };
+
+exports.getWorkingDays = (year, month) => {
+    const startDate = new Date(year, month, 1);
+    const endDate = new Date(year, month + 1, 0);
+    let count = 0;
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+        const day = d.getDay();
+        if (day !== 0 && day !== 6) count++;
+    }
+    return count;
+};
