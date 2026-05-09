@@ -4,17 +4,23 @@ const { getGlobalSupportDeficit } = require('./financialService');
 
 /**
  * Unified function to calculate performance for a specific user.
- * Adjusted to show the current active production regardless of strict month boundaries
- * if the current cycle is still empty.
+ * Uses a wider date range to ensure activations that were created as drafts
+ * but COMPLETED/SIGNED in the current cycle are included.
  */
 async function getUnifiedUserStats(userId, isDemo = false) {
     const today = new Date();
     let { start, end } = getCycleDates(today);
 
-    // If we are in the first days of a cycle and there's no data, 
-    // we automatically show the PREVIOUS cycle so the user doesn't see a 0% 
-    // until they start working in the new one.
-    
+    // WIDEN SEARCH: We search for activations that were EITHER:
+    // 1. Created in the cycle.
+    // 2. Updated in the cycle (this catches when they are signed/completed).
+    const dateFilter = {
+        OR: [
+            { createdAt: { gte: start, lte: end } },
+            { updatedAt: { gte: start, lte: end } }
+        ]
+    };
+
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
@@ -33,31 +39,29 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
     const teamMembersCount = user.team?.members?.length || 1;
 
-    // 1. Try to fetch activations for CURRENT cycle
-    let activations = await prisma.activationInfo.findMany({
-        where: {
-            createdAt: { gte: start, lte: end },
-            performerIds: { has: userId }
-        }
-    });
-
-    // 2. STICKY PROGRESS: If current cycle is empty, fetch the previous one 
-    // so the dashboard always shows the latest relevant performance (the 59% / 100%)
-    if (activations.length === 0) {
-        // Look back 30 days more to catch the early April activations Jane is talking about
-        const fallbackStart = new Date(start);
-        fallbackStart.setDate(fallbackStart.getDate() - 30);
-        
-        activations = await prisma.activationInfo.findMany({
+    // FETCH FROM BOTH TABLES (ActivationInfo and SimpleInstallation)
+    const [activations, simpleActivations] = await Promise.all([
+        prisma.activationInfo.findMany({
             where: {
-                createdAt: { gte: fallbackStart, lte: end },
+                ...dateFilter,
                 performerIds: { has: userId }
             }
-        });
-        
-        // Update cycle dates for the response if we used fallback
-        start = fallbackStart;
-    }
+        }),
+        prisma.simpleInstallation.findMany({
+            where: {
+                ...dateFilter,
+                performerIds: { has: userId }
+            }
+        })
+    ]);
+
+    const allActs = [
+        ...activations,
+        ...simpleActivations.map(s => ({
+            ...s,
+            activationType: 'BP'
+        }))
+    ];
 
     const userDietasLogs = await prisma.dietaLog.findMany({
         where: {
@@ -90,7 +94,7 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     financialConfig = financialConfig || {};
 
     const stats = calculateGroupFinancials(
-        activations,
+        allActs,
         financialConfig,
         [user],
         overheadToCover / teamMembersCount,
@@ -105,7 +109,7 @@ async function getUnifiedUserStats(userId, isDemo = false) {
         user,
         cycle: { start, end },
         stats,
-        activations
+        activations: allActs
     };
 }
 
