@@ -1,18 +1,7 @@
 const prisma = require('../prisma');
-const { getUnifiedUserStats } = require('../services/performanceService');
+const { getUnifiedUserStats, getCycleDates } = require('../services/performanceService');
 
-exports.getCycleDates = (dateInput = new Date()) => {
-    let date = new Date(dateInput);
-    let start, end;
-    if (date.getDate() >= 21) {
-        start = new Date(date.getFullYear(), date.getMonth(), 21);
-        end = new Date(date.getFullYear(), date.getMonth() + 1, 20, 23, 59, 59, 999);
-    } else {
-        start = new Date(date.getFullYear(), date.getMonth() - 1, 21);
-        end = new Date(date.getFullYear(), date.getMonth(), 20, 23, 59, 59, 999);
-    }
-    return { start, end };
-};
+exports.getCycleDates = getCycleDates; // Export the unified version
 
 exports.getMyPayroll = async (req, res) => {
     const userId = req.params.userId || req.userId;
@@ -22,7 +11,6 @@ exports.getMyPayroll = async (req, res) => {
 
         const { user, stats, cycle, activations } = unified;
 
-        // Map to expected frontend format
         res.json({
             user: {
                 id: user.id,
@@ -59,7 +47,5 @@ exports.getMyPayroll = async (req, res) => {
 };
 
 exports.getPayrollSummary = async (req, res) => {
-    // This is for Admin view, we can also unify it later if needed
-    // For now, let's focus on fixing the individual discrepancy
     res.status(501).json({ message: 'Not implemented in this fix' });
 };

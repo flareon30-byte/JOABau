@@ -1,7 +1,7 @@
 const prisma = require('../prisma');
 const { calculateGroupFinancials, getWorkingDays } = require('../utils/financialUtils');
 const { getGlobalSupportDeficit } = require('../services/financialService');
-const { getUnifiedUserStats } = require('../services/performanceService');
+const { getUnifiedUserStats, getCycleDates } = require('../services/performanceService');
 
 exports.getDashboardStats = async (req, res) => {
     try {
@@ -46,7 +46,6 @@ exports.getDashboardStats = async (req, res) => {
 
 exports.getPayrollStats = async (req, res) => {
     try {
-        const { getCycleDates } = require('./payrollController');
         const { start: startDate, end: endDate } = getCycleDates();
 
         const activations = await prisma.activationInfo.findMany({
@@ -117,7 +116,6 @@ exports.getActivatorDashboard = async (req, res) => {
         const { user, stats, cycle } = unified;
         const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(req.userRole);
 
-        // Fetch appointments separately for the full calendar view
         const appointments = await prisma.appointment.findMany({
             where: {
                 OR: [

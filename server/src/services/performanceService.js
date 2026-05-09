@@ -1,17 +1,30 @@
 const prisma = require('../prisma');
 const { calculateGroupFinancials, getWorkingDays } = require('../utils/financialUtils');
 const { getGlobalSupportDeficit } = require('../services/financialService');
-const { getCycleDates } = require('./payrollController');
+
+/**
+ * Shared helper to get cycle dates (21st to 20th)
+ */
+function getCycleDates(dateInput = new Date()) {
+    let date = new Date(dateInput);
+    let start, end;
+    if (date.getDate() >= 21) {
+        start = new Date(date.getFullYear(), date.getMonth(), 21);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 20, 23, 59, 59, 999);
+    } else {
+        start = new Date(date.getFullYear(), date.getMonth() - 1, 21);
+        end = new Date(date.getFullYear(), date.getMonth(), 20, 23, 59, 59, 999);
+    }
+    return { start, end };
+}
 
 /**
  * Unified function to calculate performance for a specific user in a cycle.
- * This ensures Dashboard and Payroll always show identical numbers.
  */
 async function getUnifiedUserStats(userId, isDemo = false) {
     const today = new Date();
     const { start, end } = getCycleDates(today);
 
-    // 1. Fetch User with all relations
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: {
@@ -30,7 +43,6 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
     const teamMembersCount = user.team?.members?.length || 1;
 
-    // 2. Fetch Activations (Weighted attribution)
     const activations = await prisma.activationInfo.findMany({
         where: {
             createdAt: { gte: start, lte: end },
@@ -38,7 +50,6 @@ async function getUnifiedUserStats(userId, isDemo = false) {
         }
     });
 
-    // 3. Fetch Dietas
     const userDietasLogs = await prisma.dietaLog.findMany({
         where: {
             userId: userId,
@@ -52,10 +63,8 @@ async function getUnifiedUserStats(userId, isDemo = false) {
         else myDietasPayOnly += (d.amount || 0);
     });
 
-    // 4. Fetch Global Overhead
     const overheadToCover = await getGlobalSupportDeficit(isDemo, start, end);
 
-    // 5. Fetch Financial Config (Hierarchy: Team -> User -> System)
     const systemSettings = await prisma.systemSettings.findFirst({
         where: { isDemo: isDemo }
     }) || { financials: {} };
@@ -71,7 +80,6 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     }
     financialConfig = financialConfig || {};
 
-    // 6. Calculate via core engine
     const stats = calculateGroupFinancials(
         activations,
         financialConfig,
@@ -79,7 +87,7 @@ async function getUnifiedUserStats(userId, isDemo = false) {
         overheadToCover / teamMembersCount,
         getWorkingDays(end.getFullYear(), end.getMonth()),
         myDietasPayOnly,
-        true, // isIndividualMode
+        true, 
         teamMembersCount,
         userId
     );
@@ -92,4 +100,4 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     };
 }
 
-module.exports = { getUnifiedUserStats };
+module.exports = { getUnifiedUserStats, getCycleDates };
