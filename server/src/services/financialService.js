@@ -93,16 +93,17 @@ exports.getGlobalSupportDeficit = async (isDemo = false, startDate = null, endDa
         // 3. Manager/Owner Costs (Calculator App.jsx)
         const OWNER_TOTAL_COST = 5000 + (5000 * 0.215);
 
-        // 4. Count ALL Field Teams
-        const [installerTeamsCount, blowerTeamsCount] = await Promise.all([
-            prisma.team.count({ where: { isDemo, members: { some: { role: 'ACTIVATOR' } } } }),
-            prisma.team.count({ where: { isDemo, members: { some: { role: 'BLOWER' } } } })
-        ]);
-        const totalFieldTeams = (installerTeamsCount || 0) + (blowerTeamsCount || 0);
+        // 4. Count ALL Technicians in the field
+        const totalTechnicians = await prisma.user.count({
+            where: {
+                isDemo,
+                role: { in: ['ACTIVATOR', 'BLOWER'] }
+            }
+        });
 
-        // 5. Calculate Result
+        // 5. Calculate Result (Per Person)
         const totalDeficit = Math.abs(Math.min(0, totalSupportProfit)) + OWNER_TOTAL_COST;
-        return totalFieldTeams > 0 ? (totalDeficit / totalFieldTeams) : 0;
+        return totalTechnicians > 0 ? (totalDeficit / totalTechnicians) : 0;
 
     } catch (error) {
         console.error("Critical error calculating global deficit:", error);

@@ -75,7 +75,7 @@ async function getUnifiedUserStats(userId, isDemo = false, customStartDate = nul
         activations,
         financialConfig,
         [user],
-        overheadToCover / teamMembersCount,
+        overheadToCover, // Already divided by total technicians in the service
         getWorkingDays(end.getFullYear(), end.getMonth()),
         myDietasPayOnly,
         true, 
