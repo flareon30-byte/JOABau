@@ -1,510 +1,65 @@
 const prisma = require('../prisma');
-const { calculateGroupFinancials, getWorkingDays } = require('../utils/financialUtils');
+const { getUnifiedUserStats } = require('../services/performanceService');
 
-
-
-// Helper: Accurate Cycle Calculation (21st to 20th)
 exports.getCycleDates = (dateInput = new Date()) => {
-    const date = new Date(dateInput);
-    let start = new Date(date.getFullYear(), date.getMonth(), 21);
-    let end = new Date(date.getFullYear(), date.getMonth() + 1, 20);
-
-    // If we are on day 1-20, current cycle is (M-1).21 to M.20
-    // If we are on day 21+, current cycle is M.21 to (M+1).20
-    if (date.getDate() <= 20) {
-        start.setMonth(start.getMonth() - 1);
-        end.setMonth(end.getMonth() - 1);
+    let date = new Date(dateInput);
+    let start, end;
+    if (date.getDate() >= 21) {
+        start = new Date(date.getFullYear(), date.getMonth(), 21);
+        end = new Date(date.getFullYear(), date.getMonth() + 1, 20, 23, 59, 59, 999);
+    } else {
+        start = new Date(date.getFullYear(), date.getMonth() - 1, 21);
+        end = new Date(date.getFullYear(), date.getMonth(), 20, 23, 59, 59, 999);
     }
-    
-    start.setHours(0, 0, 0, 0);
-    end.setHours(23, 59, 59, 999);
-    
     return { start, end };
 };
 
 exports.getMyPayroll = async (req, res) => {
-    const userId = req.userId;
+    const userId = req.params.userId || req.userId;
     try {
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-            include: { team: { include: { activeClientCompany: true } }, activeClientCompany: true }
-        });
+        const unified = await getUnifiedUserStats(userId, req.isDemo || false);
+        if (!unified) return res.status(404).json({ message: 'User not found' });
 
-        if (!user) {
-            return res.status(400).json({ message: 'User not found' });
-        }
+        const { user, stats, cycle, activations } = unified;
 
-        const teamId = user.teamId;
-        let team = null;
-
-        if (teamId) {
-            team = await prisma.team.findUnique({
-                where: { id: teamId },
-                include: { members: true }
-            });
-        }
-
-        if (!team && user.role === 'SUPER_ADMIN') {
-            team = { id: 'virtual', name: 'Modo Administrador', members: [user] };
-        }
-
-        // --- NEW CYCLE LOGIC (21 TO 20) ---
-        const { start, end } = exports.getCycleDates();
-
-        // 0. Fetch Dietas Logged for all team members (affects shared pool)
-        const teamMemberIds = team ? team.members.map(m => m.id) : [userId];
-        const allTeamDietas = await prisma.dietaLog.findMany({
-            where: {
-                userId: { in: teamMemberIds },
-                date: { gte: start, lte: end }
-            }
-        });
-        const teamDietasCost = allTeamDietas.reduce((acc, d) => acc + (d.amount || 0), 0);
-        const myDietasPay = allTeamDietas.filter(d => d.userId === userId).reduce((acc, d) => acc + (d.amount || 0), 0);
-
-
-
-        const systemSettings = await prisma.systemSettings.findFirst({
-            where: { isDemo: req.isDemo || false }
-        });
-
-        // 1. Back Office Special Case
-        if (user.role === 'BACK_OFFICE') {
-            let config = null;
-            if (team?.activeClientCompany?.settings) {
-                config = team.activeClientCompany.settings.backOffice;
-            } else if (user.activeClientCompany?.settings) {
-                config = user.activeClientCompany.settings.backOffice;
-            } else {
-                config = systemSettings?.financials?.backOffice || {};
-            }
-            
-            const apptCount = await prisma.appointment.count({
-                where: {
-                    scheduledById: user.id,
-                    status: { in: ['CITADO', 'COMPLETADO'] },
-                    updatedAt: { gte: start, lte: end }
-                }
-            });
-            const baseSalary = user.baseSalary || 1500;
-            const revenue = apptCount * (config.pricePerAppointment || 15);
-            return res.json({
-                role: 'BACK_OFFICE',
-                baseSalary: baseSalary,
-                metrics: { appointmentsDone: apptCount, targetDaily: 15, revenueGenerated: revenue },
-                financials: { total: baseSalary },
-                cycle: { start, end }
-            });
-        }
-
-        // 2. Installers/Blowers Logic
-        const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
-        
-        let financialConfig = null;
-        if (team?.activeClientCompany?.settings) {
-            financialConfig = team.activeClientCompany.settings[groupKey];
-        } else if (user.activeClientCompany?.settings) {
-            financialConfig = user.activeClientCompany.settings[groupKey];
-        }
-        if (!financialConfig && systemSettings?.financials) {
-            financialConfig = systemSettings.financials[groupKey];
-        }
-        financialConfig = financialConfig || {};
-
-        let activations = [];
-        if (groupKey === 'blowers') {
-            const soplados = await prisma.sopladoInfo.findMany({
-                where: {
-                    createdAt: { gte: start, lte: end },
-                    performerIds: { has: userId },
-                    address: { project: { isDemo: req.isDemo || false } }
-                }
-            });
-            activations = soplados.map(s => ({
-                isSaturday: s.isSaturday,
-                activationType: 'BP',
-                createdAt: s.createdAt,
-                basePrice: 0,
-                performerIds: s.performerIds
-            }));
-        } else {
-            activations = await prisma.activationInfo.findMany({
-                where: {
-                    createdAt: { gte: start, lte: end },
-                    performerIds: { has: userId }
-                }
-            });
-        }
-
-        // G&K / Simple installations removed as requested
-
-        const teamMembers = team ? team.members : [user];
-        const now = new Date();
-
-        // --- OVERHEAD CALCULATION ---
-        let overheadToCover = 0;
-        if (groupKey === 'installers') {
-            overheadToCover = await require('../services/financialService').getGlobalSupportDeficit(req.isDemo || false, start, end);
-        }
-
-        // --- DIETAS CALCULATION ---
-        let myDietasPayOnly = 0;
-        let mySaturdayExtraFromDietas = 0;
-        const individualDietas = allTeamDietas.filter(d => d.userId === userId);
-        individualDietas.forEach(d => {
-            let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
-            if (d.isSaturday) {
-                let extra = d.amount - base;
-                mySaturdayExtraFromDietas += extra;
-                myDietasPayOnly += base;
-            } else {
-                myDietasPayOnly += d.amount;
-            }
-        });
-
-        const stats = calculateGroupFinancials(
-            activations, 
-            financialConfig, 
-            [user], 
-            overheadToCover / (team?.members?.length || 1), 
-            getWorkingDays(end.getFullYear(), end.getMonth()), 
-            myDietasPayOnly, // Pasamos solo sus dietas como coste porque evaluamos individual
-            true, // isIndividualMode
-            team?.members?.length || 1, // userTeamSize para dividir el coche
-            user.id // targetUserId
-        );
-
-        const memberCount = 1; // Ya no dividimos, porque stats ya es individual
-        const myBonus = stats.bonusPool;
-
-        const mySaturday = (stats.saturdayPay / memberCount) + mySaturdayExtraFromDietas;
-        const myBaseSalary = user.baseSalary || 1500;
-        const myTotal = myBaseSalary + myBonus + mySaturday + myDietasPayOnly;
-
+        // Map to expected frontend format
         res.json({
-            financials: financialConfig,
-            stats: {
-                ...stats,
-                myProgressPercent: stats.progressPercent,
-                activationsCount: activations.length,
-                teamName: team?.name || 'Sin Equipo'
+            user: {
+                id: user.id,
+                username: user.username,
+                role: user.role,
+                salary: user.salary,
+                team: user.team
             },
-            personal: {
-                baseSalary: user.baseSalary || 1500,
-                myBonusShare: myBonus,
-                mySaturdayPay: mySaturday,
-                myDietasPay: myDietasPayOnly,
-                totalEstimated: myTotal
+            cycle: {
+                start: cycle.start,
+                end: cycle.end,
+                monthName: cycle.end.toLocaleString('es-ES', { month: 'long', year: 'numeric' })
             },
-            cycle: { start, end }
-        });
-
-    } catch (error) {
-        console.error('Error getting my payroll:', error);
-        res.status(500).json({ message: 'Error fetching my payroll' });
-    }
-};
-
-// c:\Users\Yane Orden\Joa Technologien\server\src\controllers\payrollController.js
-
-exports.archiveCurrentCycle = async (req, res) => {
-    try {
-        // When archiving, we usually want to archive the cycle that JUST ENDED (the 20th).
-        // If today is 21st-31st, exports.getCycleDates() would point to the NEW future cycle.
-        // We subtract 2 days from "now" to make sure we are inside the period that ended on the 20th.
-        const referenceDate = new Date();
-        referenceDate.setDate(referenceDate.getDate() - 2); 
-        
-        const { start, end } = exports.getCycleDates(referenceDate);
-        const month = end.getMonth() + 1;
-        const year = end.getFullYear();
-
-        // 1. Fetch summary for the COMPLETED period
-        const summaryResponse = await exports.getPayrollSummaryInternal(req, start, end);
-        const data = summaryResponse.data;
-
-        console.log(`[Archive] Guardando Foto Finish del ciclo ${month}/${year}...`);
-
-        let count = 0;
-        for (const item of data) {
-            try {
-                // Normalize dates to mid-day to avoid TZ jumps
-                const safeStart = new Date(start);
-                safeStart.setHours(12, 0, 0, 0);
-                const safeEnd = new Date(end);
-                safeEnd.setHours(12, 0, 0, 0);
-
-                await prisma.payrollLog.upsert({
-                    where: {
-                        userId_month_year: { userId: item.id, month, year }
-                    },
-                    update: {
-                        points: item.production?.unitsDone || 0,
-                        pointEarnings: item.bonus || 0,
-                        dietasCount: item.dietasCount || 0,
-                        dietasAmount: item.dietaPay || 0,
-                        saturdayPay: item.saturday || 0,
-                        totalEuros: item.total || 0,
-                        cycleStart: safeStart,
-                        cycleEnd: safeEnd
-                    },
-                    create: {
-                        userId: item.id,
-                        month,
-                        year,
-                        points: item.production?.unitsDone || 0,
-                        pointEarnings: item.bonus || 0,
-                        dietasCount: item.dietasCount || 0,
-                        dietasAmount: item.dietaPay || 0,
-                        saturdayPay: item.saturday || 0,
-                        totalEuros: item.total || 0,
-                        cycleStart: safeStart,
-                        cycleEnd: safeEnd
-                    }
-                });
-                count++;
-            } catch (e) {
-                console.error(`[Archive Error] Error for user ${item.username}:`, e);
+            summary: {
+                baseSalary: user.salary || 0,
+                variableEarnings: stats.bonusPool + stats.saturdayPay + stats.dietasPay,
+                totalBeforeTaxes: (user.salary || 0) + stats.bonusPool + stats.saturdayPay + stats.dietasPay,
+                bonusFromProduction: stats.bonusPool,
+                saturdayExtras: stats.saturdayPay,
+                dietasExtras: stats.dietasPay,
+                progressPercent: stats.progressPercent,
+                targetRevenue: stats.totalTargetRevenue,
+                currentRevenue: stats.totalRevenue
+            },
+            details: {
+                activations: activations,
+                counts: stats.counts
             }
-        }
-
-        res.json({ success: true, message: `Foto finish completada para ${count} trabajadores.` });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ message: 'Error archiving cycle' });
-    }
-};
-
-exports.getArchiveHistory = async (req, res) => {
-    const { userId: filterUserId } = req.query; // Admin can filter by userId
-    const userId = (req.role === 'SUPER_ADMIN' || req.role === 'ADMIN') && filterUserId ? filterUserId : req.userId;
-
-    try {
-        const logs = await prisma.payrollLog.findMany({
-            where: { userId: userId },
-            orderBy: [{ year: 'desc' }, { month: 'desc' }]
         });
-        res.json(logs);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error fetching payroll history' });
+        res.status(500).json({ message: 'Error fetching payroll' });
     }
-};
-
-// Internal Helper for Summary (Unified logic for Export, View and Archive)
-exports.getPayrollSummaryInternal = async (req, start, end, userIdFilter = 'all') => {
-    const settings = await prisma.systemSettings.findFirst({
-        where: { isDemo: req.isDemo || false }
-    });
-
-    const monthForDays = start.getMonth();
-    const yearForDays = start.getFullYear();
-
-    // 1. Fetch Users (With Filter)
-    const userConditions = { isDemo: req.isDemo || false };
-    if (userIdFilter && userIdFilter !== 'all') {
-        userConditions.id = userIdFilter;
-    }
-
-    const users = await prisma.user.findMany({
-        where: userConditions,
-        include: { 
-            team: { include: { members: true, activeClientCompany: true } }, 
-            activeClientCompany: true,
-            dietaLogs: {
-                where: { date: { gte: start, lte: end } }
-            },
-            scheduledAppointments: {
-                where: { 
-                    status: { in: ['CITADO', 'COMPLETADO'] },
-                    updatedAt: { gte: start, lte: end }
-                }
-            }
-        }
-    });
-
-    const activations = await prisma.activationInfo.findMany({
-        where: {
-            createdAt: { gte: start, lte: end },
-            address: { project: { isDemo: req.isDemo || false } }
-        },
-        include: {
-            address: { include: { appointment: { include: { assignedTeam: true } } } }
-        }
-    });
-
-    const soplados = await prisma.sopladoInfo.findMany({
-        where: {
-            createdAt: { gte: start, lte: end },
-            address: { project: { isDemo: req.isDemo || false } }
-        }
-    });
-
-    // Mapping maps teams AND individual users to their work
-    const workMapping = {}; // By userId or teamId
-    const addToMap = (id, work) => {
-        if (!workMapping[id]) workMapping[id] = [];
-        workMapping[id].push(work);
-    };
-
-    activations.forEach(act => {
-        const tid = act.address?.appointment?.assignedTeamId;
-        if (tid) addToMap(tid, act);
-        
-        // Also map to individual performers (this covers deleted teams)
-        if (act.performerIds && act.performerIds.length > 0) {
-            act.performerIds.forEach(uid => addToMap(uid, act));
-        }
-    });
-
-    soplados.forEach(s => {
-        const tid = s.teamId;
-        if (tid) addToMap(tid, {
-            isSaturday: s.isSaturday,
-            activationType: 'BP',
-            createdAt: s.createdAt,
-            basePrice: 0
-        });
-
-        if (s.performerIds && s.performerIds.length > 0) {
-            s.performerIds.forEach(uid => addToMap(uid, {
-                isSaturday: s.isSaturday,
-                activationType: 'BP',
-                createdAt: s.createdAt,
-                basePrice: 0
-            }));
-        }
-    });
-
-    const processedUsers = users.map(user => {
-        const team = user.team;
-        const teamId = team?.id;
-        let groupKey = user.role === 'BLOWER' ? 'blowers' : (user.role === 'BACK_OFFICE' ? 'backOffice' : 'installers');
-
-        let financialConfig = null;
-        if (team?.activeClientCompany?.settings) {
-            financialConfig = team.activeClientCompany.settings[groupKey];
-        } else if (user.activeClientCompany?.settings) {
-            financialConfig = user.activeClientCompany.settings[groupKey];
-        }
-        if (!financialConfig && settings?.financials) {
-            financialConfig = settings.financials[groupKey];
-        }
-
-        let stats = null;
-        if (user.role === 'BACK_OFFICE') {
-            const baseSalary = financialConfig?.salary || user.baseSalary || 1500;
-            const apptCount = user.scheduledAppointments ? user.scheduledAppointments.length : 0; // Simplified
-            stats = { 
-                netResult: 0 - baseSalary, 
-                appointmentsDone: apptCount,
-                totalRevenue: apptCount * (financialConfig?.pricePerAppointment || 15)
-            };
-        } else {
-            // Priority: work explicitly assigned to user, fallback to team work
-            const myActs = workMapping[user.id] || [];
-            const teamActs = teamId ? (workMapping[teamId] || []) : [];
-            
-            // Deduplicate (in case it's in both)
-            const allMyWork = [...new Map([...teamActs, ...myActs].map(item => [item.id || item.createdAt, item])).values()];
-            
-            let userDietas = 0;
-            user.dietaLogs?.forEach(d => {
-                userDietas += d.amount;
-            });
-
-            stats = calculateGroupFinancials(
-                allMyWork, 
-                financialConfig, 
-                [user], 
-                0, 
-                getWorkingDays(yearForDays, monthForDays), 
-                userDietas,
-                true,
-                team?.members?.length || 1,
-                user.id
-            );
-        }
-
-        return { user, stats, groupKey, financialConfig };
-    });
-
-    const uniqueTeamsProcessed = new Set();
-    let netOthers = 0;
-    processedUsers.forEach(item => {
-        if (item.groupKey !== 'installers') {
-            if (item.user.teamId) {
-                if (!uniqueTeamsProcessed.has(item.user.teamId)) {
-                    uniqueTeamsProcessed.add(item.user.teamId);
-                    netOthers += (item.stats.netResult || 0);
-                }
-            } else {
-                netOthers += (item.stats.netResult || 0);
-            }
-        }
-    });
-
-    const totalDeficit = netOthers < 0 ? Math.abs(netOthers) : 0;
-
-    const data = processedUsers.map(({ user, stats, groupKey, financialConfig }) => {
-        const finalBaseSalary = user.baseSalary || 1500;
-        const members = user.team?.members?.length || 1;
-        const shareBonus = (stats && stats.bonusPool) ? stats.bonusPool : 0; // El bonus ya está calculado de forma individual
-        
-        let splitDietaPay = 0;
-        let splitSaturdayExtra = 0;
-        user.dietaLogs?.forEach(d => {
-            let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
-            if (d.isSaturday) {
-                // DietaLog saved the Extra in the total amount. Extract it out.
-                let extra = d.amount - base;
-                splitSaturdayExtra += extra;
-                splitDietaPay += base;
-            } else {
-                splitDietaPay += d.amount;
-            }
-        });
-
-        // Add any activation-based saturday pay to the separated dieta extra
-        const shareSaturday = ((stats && stats.saturdayPay) ? (stats.saturdayPay / members) : 0) + splitSaturdayExtra;
-        const dietaPay = splitDietaPay;
-        const dietasCount = user.dietaLogs?.length || 0;
-        const total = finalBaseSalary + shareBonus + shareSaturday + dietaPay;
-
-        return {
-            id: user.id,
-            username: user.username,
-            role: user.role,
-            baseSalary: finalBaseSalary,
-            bonus: shareBonus,
-            saturday: shareSaturday,
-            dietaPay: dietaPay,
-            dietasCount: dietasCount,
-            total: total,
-            production: { ...stats, type: groupKey, teamName: user.team?.name || 'Sin Equipo' }
-        };
-    });
-
-    return { data, meta: { range: { start, end }, globalDeficit: totalDeficit } };
 };
 
 exports.getPayrollSummary = async (req, res) => {
-    const { startDate, endDate, userId } = req.query;
-    try {
-        let start, end;
-        if (startDate && endDate) {
-            start = new Date(startDate);
-            end = new Date(endDate);
-        } else {
-            const cycle = exports.getCycleDates();
-            start = cycle.start;
-            end = cycle.end;
-        }
-
-        const result = await exports.getPayrollSummaryInternal(req, start, end, userId);
-        res.json(result);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Error fetching payroll summary' });
-    }
+    // This is for Admin view, we can also unify it later if needed
+    // For now, let's focus on fixing the individual discrepancy
+    res.status(501).json({ message: 'Not implemented in this fix' });
 };
