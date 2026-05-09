@@ -626,7 +626,13 @@ const ActivationPage = () => {
                                 <div className="flex justify-between items-start mb-4">
                                     <div className="flex items-center gap-2 text-blue-600 font-bold">
                                         <Calendar size={18} />
-                                        {new Date(app.assignedDate).toLocaleDateString()} {new Date(app.assignedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        {app.assignedDate ? (
+                                            <>
+                                                {new Date(app.assignedDate).toLocaleDateString()} {new Date(app.assignedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </>
+                                        ) : (
+                                            <span className="text-slate-400">Sin fecha asignada</span>
+                                        )}
                                         {app.type === 'REPAIR' && <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full border border-red-200 ml-2">AVERÍA</span>}
                                     </div>
                                     {app.status === 'COMPLETADO' && (

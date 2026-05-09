@@ -848,8 +848,14 @@ const AppointmentsPage = () => {
                                     {filteredScheduled.map(app => (
                                         <tr key={app.id} className="hover:bg-slate-50">
                                             <td className="p-4 font-medium">
-                                                {new Date(app.assignedDate).toLocaleDateString('es-ES')}
-                                                <div className="text-xs text-slate-400">{new Date(app.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
+                                                {app.assignedDate ? (
+                                                    <>
+                                                        {new Date(app.assignedDate).toLocaleDateString('es-ES')}
+                                                        <div className="text-xs text-slate-400">{new Date(app.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
+                                                    </>
+                                                ) : (
+                                                    <span className="text-slate-400 italic text-xs">Sin fecha asignada</span>
+                                                )}
                                             </td>
                                             <td className="p-4">
                                                 <div className="flex items-center gap-2">

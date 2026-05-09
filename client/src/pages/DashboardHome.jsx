@@ -706,8 +706,8 @@ const DashboardHome = () => {
                                 >
                                     <div className="flex items-center gap-4">
                                         <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-xl transition-colors ${apt.status === 'COMPLETADO' ? 'bg-green-50 text-green-600 group-hover:bg-green-100' : 'bg-slate-100 text-slate-600 group-hover:bg-joa-blue group-hover:text-white'}`}>
-                                            <span className="text-xs font-bold uppercase">{new Date(apt.assignedDate).toLocaleDateString('es-ES', { month: 'short' })}</span>
-                                            <span className="text-xl font-bold">{new Date(apt.assignedDate).getDate()}</span>
+                                            <span className="text-xs font-bold uppercase">{apt.assignedDate ? new Date(apt.assignedDate).toLocaleDateString('es-ES', { month: 'short' }) : '--'}</span>
+                                            <span className="text-xl font-bold">{apt.assignedDate ? new Date(apt.assignedDate).getDate() : '?'}</span>
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-slate-800 flex items-center gap-2">
@@ -716,7 +716,7 @@ const DashboardHome = () => {
                                                     <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full border border-red-200 uppercase tracking-wider">AVERÍA</span>
                                                 )}
                                             </h4>
-                                            <p className="text-sm text-slate-500">{apt.address.project.name} • {new Date(apt.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</p>
+                                            <p className="text-sm text-slate-500">{apt.address.project.name} • {apt.assignedDate ? new Date(apt.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : 'Hora no asignada'}</p>
                                         </div>
                                     </div>
                                     <div className="hidden md:flex items-center gap-4">
