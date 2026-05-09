@@ -39,10 +39,11 @@ function calculateGroupFinancials(
         const performerCount = (performers && performers.length) ? performers.length : 1;
         
         // Strict implementation of the 1/N rule from the Core Memory
-        const divisor = Math.max(performerCount, teamSizeForSplit);
+        // If a technician is in a team (teamSizeForSplit > 1), we ALWAYS divide 
+        // the revenue by that team size, even if they forgot to add the partner
+        // to the activation report. This ensures the 120 houses/team (60/tech) rule.
+        const divisor = teamSizeForSplit > 1 ? teamSizeForSplit : (performerCount || 1);
         const weight = 1 / divisor;
-
-        console.log(`[MATH-LOG] Act: ${act.id}, PerfCount: ${performerCount}, TeamSize: ${teamSizeForSplit}, Weight: ${weight}`);
 
         const type = act.activationType || 'BP';
         const price = revenueWeights[type] || 145;
