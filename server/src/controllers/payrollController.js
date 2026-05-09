@@ -115,10 +115,7 @@ exports.getMyPayroll = async (req, res) => {
             const soplados = await prisma.sopladoInfo.findMany({
                 where: {
                     createdAt: { gte: start, lte: end },
-                    OR: [
-                        { performerIds: { has: userId } },
-                        { teamId: teamId || 'non-existent' }
-                    ],
+                    performerIds: { has: userId },
                     address: { project: { isDemo: req.isDemo || false } }
                 }
             });
@@ -126,7 +123,8 @@ exports.getMyPayroll = async (req, res) => {
                 isSaturday: s.isSaturday,
                 activationType: 'BP',
                 createdAt: s.createdAt,
-                basePrice: 0
+                basePrice: 0,
+                performerIds: s.performerIds
             }));
         } else {
             activations = await prisma.activationInfo.findMany({
@@ -155,7 +153,8 @@ exports.getMyPayroll = async (req, res) => {
                 activationType: 'GK',
                 createdAt: gk.createdAt,
                 basePrice: bonusToCredit,
-                spPrice: 0, taPrice: 0, mduPrice: 0, repairPrice: 0
+                spPrice: 0, taPrice: 0, mduPrice: 0, repairPrice: 0,
+                performerIds: [userId]
             });
         });
 
