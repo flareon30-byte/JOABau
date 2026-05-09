@@ -37,7 +37,8 @@ async function getUnifiedUserStats(userId, isDemo = false, customStartDate = nul
     const activations = await prisma.activationInfo.findMany({
         where: {
             createdAt: { gte: start, lte: end },
-            performerIds: { has: userId }
+            performerIds: { has: userId },
+            isDraft: false
         }
     });
 
