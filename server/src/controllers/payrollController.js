@@ -17,7 +17,7 @@ exports.getMyPayroll = async (req, res) => {
                 id: user.id,
                 username: user.username,
                 role: user.role,
-                salary: user.salary,
+                salary: user.baseSalary,
                 team: user.team
             },
             cycle: {
@@ -26,9 +26,9 @@ exports.getMyPayroll = async (req, res) => {
                 monthName: cycle.end.toLocaleString('es-ES', { month: 'long', year: 'numeric' })
             },
             summary: {
-                baseSalary: user.salary || 0,
+                baseSalary: user.baseSalary || 0,
                 variableEarnings: stats.bonusPool + stats.saturdayPay + stats.dietasPay,
-                totalBeforeTaxes: (user.salary || 0) + stats.bonusPool + stats.saturdayPay + stats.dietasPay,
+                totalBeforeTaxes: (user.baseSalary || 0) + stats.bonusPool + stats.saturdayPay + stats.dietasPay,
                 bonusFromProduction: stats.bonusPool,
                 saturdayExtras: stats.saturdayPay,
                 dietasExtras: stats.dietasPay,
@@ -95,12 +95,12 @@ exports.getPayrollSummary = async (req, res) => {
                 id: user.id,
                 username: user.username,
                 role: user.role,
-                baseSalary: user.salary || 0,
+                baseSalary: user.baseSalary || 0,
                 bonus: stats.bonusPool || 0,
                 saturday: stats.saturdayPay || 0,
                 dietaPay: stats.dietasPay || 0,
                 dietasCount: stats.dietasCount || 0,
-                total: (user.salary || 0) + (stats.bonusPool || 0) + (stats.saturdayPay || 0) + (stats.dietasPay || 0),
+                total: (user.baseSalary || 0) + (stats.bonusPool || 0) + (stats.saturdayPay || 0) + (stats.dietasPay || 0),
                 production: {
                     teamName: user.team?.name,
                     appointmentsDone: stats.counts?.bp || 0, // Fallback for backoffice
