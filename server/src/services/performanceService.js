@@ -32,13 +32,11 @@ async function getUnifiedUserStats(userId, isDemo = false, customStartDate = nul
     const teamMembersCount = user.team?.members?.length || 1;
 
     // ONLY GLASFASER PLUS (ActivationInfo)
-    // We look at activations created OR updated in the cycle to catch signed docs
+    // We look strictly at the creation date. Including updatedAt causes old activations
+    // edited by BackOffice to be counted again and re-paid in the current cycle.
     const activations = await prisma.activationInfo.findMany({
         where: {
-            OR: [
-                { createdAt: { gte: start, lte: end } },
-                { updatedAt: { gte: start, lte: end } }
-            ],
+            createdAt: { gte: start, lte: end },
             performerIds: { has: userId }
         }
     });
