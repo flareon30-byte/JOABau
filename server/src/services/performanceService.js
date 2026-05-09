@@ -27,12 +27,30 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     const groupKey = user.role === 'BLOWER' ? 'blowers' : 'installers';
     const teamMembersCount = user.team?.members?.length || 1;
 
-    const activations = await prisma.activationInfo.findMany({
-        where: {
-            createdAt: { gte: start, lte: end },
-            performerIds: { has: userId }
-        }
-    });
+    // FETCH BOTH: Regular Activations AND Simple Installations (G&K)
+    const [activations, simpleActivations] = await Promise.all([
+        prisma.activationInfo.findMany({
+            where: {
+                createdAt: { gte: start, lte: end },
+                performerIds: { has: userId }
+            }
+        }),
+        prisma.simpleInstallation.findMany({
+            where: {
+                createdAt: { gte: start, lte: end },
+                performerIds: { has: userId }
+            }
+        })
+    ]);
+
+    // Merge them
+    const allActs = [
+        ...activations,
+        ...simpleActivations.map(s => ({
+            ...s,
+            activationType: 'BP'
+        }))
+    ];
 
     const userDietasLogs = await prisma.dietaLog.findMany({
         where: {
@@ -65,7 +83,7 @@ async function getUnifiedUserStats(userId, isDemo = false) {
     financialConfig = financialConfig || {};
 
     const stats = calculateGroupFinancials(
-        activations,
+        allActs,
         financialConfig,
         [user],
         overheadToCover / teamMembersCount,
@@ -80,7 +98,7 @@ async function getUnifiedUserStats(userId, isDemo = false) {
         user,
         cycle: { start, end },
         stats,
-        activations
+        activations: allActs
     };
 }
 

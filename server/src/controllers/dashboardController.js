@@ -48,32 +48,64 @@ exports.getPayrollStats = async (req, res) => {
     try {
         const { start: startDate, end: endDate } = getCycleDates();
 
-        const activations = await prisma.activationInfo.findMany({
-            where: { createdAt: { gte: startDate, lte: endDate } },
-            include: {
-                address: {
-                    include: {
-                        appointment: {
-                            include: {
-                                assignedTeam: { include: { members: true } }
+        // FETCH BOTH: Regular Activations AND Simple Installations (G&K)
+        const [activations, simpleActivations] = await Promise.all([
+            prisma.activationInfo.findMany({
+                where: { createdAt: { gte: startDate, lte: endDate } },
+                include: {
+                    address: {
+                        include: {
+                            project: true,
+                            appointment: {
+                                include: {
+                                    assignedTeam: { include: { members: true } }
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            }),
+            prisma.simpleInstallation.findMany({
+                where: { createdAt: { gte: startDate, lte: endDate } },
+                include: {
+                    address: {
+                        include: {
+                            project: true,
+                            appointment: {
+                                include: {
+                                    assignedTeam: { include: { members: true } }
+                                }
+                            }
+                        }
+                    }
+                }
+            })
+        ]);
+
+        // Merge them for calculation
+        const allActs = [
+            ...activations,
+            ...simpleActivations.map(s => ({
+                ...s,
+                activationType: 'BP' // Simple installations are counted as BP
+            }))
+        ];
 
         const teamStats = {};
         const techStats = {};
+        
+        // Identify all performers across both types
+        const performerIds = [...new Set(allActs.flatMap(a => a.performerIds || []))];
         const allUsers = await prisma.user.findMany({
-            where: { id: { in: [...new Set(activations.flatMap(a => a.performerIds || []))] } },
+            where: { id: { in: performerIds } },
             select: { id: true, username: true }
         });
         const userMap = new Map(allUsers.map(u => [u.id, u.username]));
 
-        activations.forEach(act => {
+        allActs.forEach(act => {
             const performers = act.performerIds || [];
             if (performers.length === 0) return;
+            
             const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
             const share = actTotal / performers.length;
 
