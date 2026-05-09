@@ -76,8 +76,8 @@ exports.exportActivationPhotos = async (req, res) => {
 
         // PROCESS ACTIVATIONS
         for (const act of activations) {
-            const clientName = (act.address.clientName || 'SinCliente').replace(/[\\/:*?"<>|]/g, '').trim();
-            const folderName = `Doc_${act.address.street}_${act.address.number || ''}_${clientName}`.replace(/[\\/:*?"<>|]/g, '_');
+            const nvtPrefix = act.address.nvt ? `${act.address.nvt}_` : '';
+            const folderName = `${nvtPrefix}${act.address.street}_${act.address.number || ''}_${clientName}`.replace(/[\\/:*?"<>|]/g, '_');
             
             if (act.photos) {
                 act.photos.forEach((p, idx) => addFileToArchive(p, `${folderName}/Fotos/Foto_${idx}.jpeg`));
@@ -86,8 +86,8 @@ exports.exportActivationPhotos = async (req, res) => {
         }
 
         // PROCESS SIMPLE INSTALLATIONS
-        for (const inst of simpleInstallations) {
-            const folderName = `Inst_${inst.customerLastName || 'GK'}_${inst.address.street}_${inst.address.number || ''}`.replace(/[\\/:*?"<>|]/g, '_');
+            const nvtPrefix = inst.address.nvt ? `${inst.address.nvt}_` : '';
+            const folderName = `${nvtPrefix}Inst_${inst.customerLastName || 'GK'}_${inst.address.street}_${inst.address.number || ''}`.replace(/[\\/:*?"<>|]/g, '_');
             
             // Standard photos
             if (inst.photos) {
