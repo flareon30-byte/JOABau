@@ -6,11 +6,16 @@ const { getCycleDates } = require('./src/controllers/payrollController');
 const prisma = new PrismaClient();
 
 async function debug() {
-    const userId = '3a6d11f6-d183-4903-a128-4f24c3e7428e'; // Alvaro
+    const userId = '3a6d11f6-2db2-4ed0-a56a-d94b9a604b63'; // Alvaro CORRECT ID
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: { team: { include: { members: true, activeClientCompany: true } }, activeClientCompany: true }
     });
+
+    if (!user) {
+        console.log('USER NOT FOUND with ID:', userId);
+        process.exit(1);
+    }
 
     const { start, end } = getCycleDates();
     console.log('--- DEBUG START ---');
