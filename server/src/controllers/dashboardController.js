@@ -1,6 +1,6 @@
 const prisma = require('../prisma');
 const { calculateGroupFinancials, getWorkingDays, getCycleDates } = require('../utils/financialUtils');
-const { getGlobalSupportDeficit } = require('./financialService');
+const { getGlobalSupportDeficit } = require('../services/financialService');
 const { getUnifiedUserStats } = require('../services/performanceService');
 
 exports.getDashboardStats = async (req, res) => {
