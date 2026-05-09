@@ -47,7 +47,12 @@ exports.getPayrollStats = async (req, res) => {
 
         // ONLY REAL ACTIVATIONS (Glasfaser Plus)
         const activations = await prisma.activationInfo.findMany({
-            where: { createdAt: { gte: startDate, lte: endDate } },
+            where: {
+                OR: [
+                    { createdAt: { gte: startDate, lte: endDate } },
+                    { updatedAt: { gte: startDate, lte: endDate } }
+                ]
+            },
             include: {
                 address: {
                     include: {
