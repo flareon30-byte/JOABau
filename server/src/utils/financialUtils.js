@@ -81,7 +81,13 @@ function calculateGroupFinancials(
     const totalDietas = teamDietasCost;
 
     const totalPersonnelExpenses = totalSalaries + totalInsurance + totalSokaBau + totalDietas + totalMaterials + totalRent;
-    const totalTargetRevenue = totalPersonnelExpenses + overheadToCover;
+    let totalTargetRevenue = totalPersonnelExpenses + overheadToCover;
+
+    // Minimum target enforcement (60 houses x 145€ = 8700€)
+    // This ensures that the 100% bar represents the desired production level.
+    if (totalTargetRevenue < 8700) {
+        totalTargetRevenue = 8700;
+    }
 
     const progressPercent = totalTargetRevenue > 0 ? Math.min(100, (revenueMf / totalTargetRevenue) * 100) : 100;
 
