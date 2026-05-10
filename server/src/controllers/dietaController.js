@@ -170,6 +170,11 @@ exports.getUserDietas = async (req, res) => {
     const { userId, startDate, endDate } = req.query;
     if (!userId) return res.status(400).json({ message: 'userId es requerido' });
 
+    // Security: Only allow the user themselves or an admin to view this data
+    if (req.userRole !== 'SUPER_ADMIN' && req.userRole !== 'ADMIN' && req.userId !== userId) {
+        return res.status(403).json({ message: 'No tienes permiso para ver estas dietas' });
+    }
+
     try {
         const logs = await prisma.dietaLog.findMany({
             where: {
