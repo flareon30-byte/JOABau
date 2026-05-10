@@ -844,11 +844,11 @@ const DashboardHome = () => {
                                                         <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
                                                             <div
                                                                 className="h-full bg-gradient-to-r from-joa-blue to-joa-cyan"
-                                                                style={{ width: `${Math.min((team.earnings / 12000) * 100, 100)}%` }}
+                                                                style={{ width: `${team.progress}%` }}
                                                             ></div>
                                                         </div>
                                                         <span className="text-[10px] font-black text-slate-400">
-                                                            {Math.round(Math.min((team.earnings / 12000) * 100, 100))}%
+                                                            {Math.round(team.progress)}%
                                                         </span>
                                                     </div>
                                                 </td>
@@ -892,11 +892,11 @@ const DashboardHome = () => {
                                                         <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
                                                             <div
                                                                 className="h-full bg-gradient-to-r from-yellow-400 to-orange-500"
-                                                                style={{ width: `${Math.min((tech.earnings / 6000) * 100, 100)}%` }}
+                                                                style={{ width: `${tech.progress}%` }}
                                                             ></div>
                                                         </div>
                                                         <span className="text-[10px] font-black text-slate-400">
-                                                            {Math.round(Math.min((tech.earnings / 6000) * 100, 100))}%
+                                                            {Math.round(tech.progress)}%
                                                         </span>
                                                     </div>
                                                 </td>

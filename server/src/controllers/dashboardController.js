@@ -81,42 +81,45 @@ exports.getPayrollStats = async (req, res) => {
         const techStats = {};
         
         const performerIds = [...new Set(activations.flatMap(a => a.performerIds || []))];
-        const allUsers = await prisma.user.findMany({
-            where: { id: { in: performerIds } },
-            select: { id: true, username: true }
-        });
-        const userMap = new Map(allUsers.map(u => [u.id, u.username]));
+        
+        // Use the unified stats for each technician to get accurate data
+        for (const pid of performerIds) {
+            try {
+                const unified = await getUnifiedUserStats(pid, req.isDemo || false);
+                if (unified) {
+                    const { stats, user } = unified;
+                    techStats[pid] = {
+                        id: pid,
+                        name: user.username,
+                        earnings: stats.totalRevenue,
+                        target: stats.totalTargetRevenue,
+                        progress: stats.progressPercent,
+                        activations: stats.counts.bp + stats.counts.ta + stats.counts.mdu,
+                        teamId: user.teamId,
+                        teamName: user.team?.name || 'Individual'
+                    };
 
-        activations.forEach(act => {
-            const performers = act.performerIds || [];
-            if (performers.length === 0) return;
-            
-            const actTotal = (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
-            const share = actTotal / performers.length;
+                    const tId = user.teamId || ('virtual-' + pid);
+                    const tName = user.team?.name || ('Histórico: ' + user.username);
 
-            const team = act.address.appointment?.assignedTeam;
-            if (team) {
-                if (!teamStats[team.id]) teamStats[team.id] = { id: team.id, name: team.name, earnings: 0, activations: 0 };
-                teamStats[team.id].earnings += actTotal;
-                teamStats[team.id].activations += 1;
-            } else {
-                const virtualTeamId = 'virtual-' + [...performers].sort().join('-');
-                const virtualTeamName = 'Histórico: ' + performers.map(id => userMap.get(id) || 'Desconocido').join(' & ');
-                if (!teamStats[virtualTeamId]) teamStats[virtualTeamId] = { id: virtualTeamId, name: virtualTeamName, earnings: 0, activations: 0 };
-                teamStats[virtualTeamId].earnings += actTotal;
-                teamStats[virtualTeamId].activations += 1;
+                    if (!teamStats[tId]) {
+                        teamStats[tId] = { id: tId, name: tName, earnings: 0, target: 0, activations: 0 };
+                    }
+                    teamStats[tId].earnings += stats.totalRevenue;
+                    teamStats[tId].target += stats.totalTargetRevenue;
+                    teamStats[tId].activations += techStats[pid].activations;
+                }
+            } catch (err) {
+                console.error(`Error processing tech ${pid}:`, err);
             }
-
-            performers.forEach(pid => {
-                if (!techStats[pid]) techStats[pid] = { id: pid, name: userMap.get(pid) || 'Desconocido', earnings: 0, activations: 0 };
-                techStats[pid].earnings += share;
-                techStats[pid].activations += 1;
-            });
-        });
+        }
 
         res.json({
             period: { start: startDate, end: endDate },
-            teams: Object.values(teamStats),
+            teams: Object.values(teamStats).map(t => ({
+                ...t,
+                progress: t.target > 0 ? Math.min(100, (t.earnings / t.target) * 100) : 100
+            })),
             technicians: Object.values(techStats).sort((a, b) => b.earnings - a.earnings)
         });
     } catch (error) {
