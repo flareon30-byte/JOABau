@@ -90,20 +90,15 @@ exports.getGlobalSupportDeficit = async (isDemo = false, startDate = null, endDa
             }
         }
 
-        // 3. Manager/Owner Costs (Calculator App.jsx)
-        const OWNER_TOTAL_COST = 5000 + (5000 * 0.215);
+        // 3. Manager/Owner Costs (Exactly 5000€ as requested)
+        const OWNER_TOTAL_COST = 5000;
 
-        // 4. Count ALL Technicians in the field
-        const totalTechnicians = await prisma.user.count({
-            where: {
-                isDemo,
-                role: { in: ['ACTIVATOR', 'BLOWER'] }
-            }
-        });
+        // 4. Count Active Teams
+        const teamCount = await prisma.team.count();
 
-        // 5. Calculate Result (Per Person)
+        // 5. Calculate Result (Per Team)
         const totalDeficit = Math.abs(Math.min(0, totalSupportProfit)) + OWNER_TOTAL_COST;
-        return totalTechnicians > 0 ? (totalDeficit / totalTechnicians) : 0;
+        return teamCount > 0 ? (totalDeficit / teamCount) : (totalDeficit / 1);
 
     } catch (error) {
         console.error("Critical error calculating global deficit:", error);
