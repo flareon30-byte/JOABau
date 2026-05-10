@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Wallet, TrendingUp, Calendar, AlertCircle, Calculator, CheckCircle, Target, DollarSign, Truck, Users } from 'lucide-react';
+import { Wallet, TrendingUp, Calendar, AlertCircle, Calculator, CheckCircle, Target, DollarSign, Truck, Users, X } from 'lucide-react';
 
 const MyEarningsPage = () => {
     const [data, setData] = useState(null);
