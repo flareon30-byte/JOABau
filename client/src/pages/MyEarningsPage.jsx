@@ -6,6 +6,7 @@ const MyEarningsPage = () => {
     const [data, setData] = useState(null);
     const [history, setHistory] = useState([]);
     const [showHistory, setShowHistory] = useState(false);
+    const [showDietaCalendar, setShowDietaCalendar] = useState(false);
     const [loading, setLoading] = useState(true);
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
@@ -263,7 +264,16 @@ const MyEarningsPage = () => {
                         <div className="text-xs text-slate-400 mt-2 space-y-0.5">
                             <p>Bonus Producción: {money(accumulatedBonus)}</p>
                             <p>Extras Sábados: {money(personal?.mySaturdayPay)}</p>
-                            <p className="font-bold text-slate-600">Dietas (Hotel/Casa): {money(personal?.myDietasPay)}</p>
+                            <p>Extras Sábados: {money(personal?.mySaturdayPay)}</p>
+                            <div className="flex justify-between items-center font-bold text-slate-600">
+                                <p>Dietas (Hotel/Casa): {money(personal?.myDietasPay)}</p>
+                                <button 
+                                    onClick={() => setShowDietaCalendar(true)}
+                                    className="text-[10px] bg-joa-blue/10 text-joa-blue px-2 py-1 rounded hover:bg-joa-blue hover:text-white transition-all"
+                                >
+                                    Ver Calendario
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -368,8 +378,149 @@ const MyEarningsPage = () => {
             <div className="text-center text-slate-400 text-xs mt-10">
                 <p>Datos calculados en tiempo real según la rentabilidad de cada servicio realizado.</p>
             </div>
+
+            {showDietaCalendar && (
+                <ReadOnlyDietaCalendar 
+                    user={user} 
+                    onClose={() => setShowDietaCalendar(false)} 
+                />
+            )}
         </div>
     );
 };
+
+const ReadOnlyDietaCalendar = ({ user, onClose }) => {
+    const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val || 0);
+    const [currentMonth, setCurrentMonth] = useState(new Date());
+    const [dietas, setDietas] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    const fetchUserDietas = async () => {
+        setLoading(true);
+        try {
+            const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).toISOString();
+            const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
+            const res = await api.get(`/api/dietas/user?userId=${user.id}&startDate=${start}&endDate=${end.toISOString()}`);
+            setDietas(res.data);
+        } catch (error) {
+            console.error('Error fetching logs:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchUserDietas();
+    }, [currentMonth, user.id]);
+
+    const daysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
+    const firstDayOfMonth = (month, year) => new Date(year, month, 1).getDay();
+
+    const renderCalendar = () => {
+        const month = currentMonth.getMonth();
+        const year = currentMonth.getFullYear();
+        const totalDays = daysInMonth(month, year);
+        const startDay = (firstDayOfMonth(month, year) + 6) % 7; 
+        
+        const days = [];
+        for (let i = 0; i < startDay; i++) {
+            days.push(<div key={`empty-${i}`} className="p-4 border border-slate-50 opacity-20"></div>);
+        }
+
+        for (let d = 1; d <= totalDays; d++) {
+            const dieta = dietas.find(log => {
+                const logDate = new Date(log.date);
+                return logDate.getDate() === d && logDate.getMonth() === month;
+            });
+
+            const isToday = new Date().toDateString() === new Date(year, month, d).toDateString();
+
+            days.push(
+                <div 
+                    key={d} 
+                    className={`relative p-3 h-20 border border-slate-100 flex flex-col items-center justify-between
+                        ${isToday ? 'bg-blue-50/50' : ''}
+                        ${dieta?.type === 'HOTEL' ? 'bg-blue-600/10' : ''}
+                        ${dieta?.type === 'CASA' ? 'bg-slate-100' : ''}
+                    `}
+                >
+                    <span className={`text-xs font-bold ${isToday ? 'text-joa-blue underline decoration-2' : 'text-slate-400'}`}>{d}</span>
+                    {dieta && (
+                        <div className={`text-[9px] font-black uppercase px-1.5 py-0.5 rounded shadow-sm text-center w-full truncate
+                            ${dieta.isSaturday ? 'bg-orange-500 text-white' : (dieta.type === 'HOTEL' ? 'bg-blue-600 text-white' : 'bg-slate-400 text-white')}
+                        `}>
+                            {dieta.isSaturday ? `✨ SÁBADO (${money(dieta.amount)})` : (dieta.type === 'HOTEL' ? `🏨 HOTEL (${money(dieta.amount)})` : `🏠 CASA (${money(dieta.amount)})`)}
+                        </div>
+                    )}
+                    {!dieta && <div className="h-4"></div>}
+                </div>
+            );
+        }
+        return days;
+    };
+
+    return (
+        <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[150] p-4">
+            <div className="bg-white rounded-3xl w-full max-w-2xl overflow-hidden shadow-2xl relative border-4 border-slate-100 animate-in zoom-in-95 duration-200">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-800 z-50">
+                    <X size={24} />
+                </button>
+
+                <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-slate-800 p-2 rounded-xl text-white">
+                            <Calendar size={20} />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-slate-800 text-lg">Mi Registro de Dietas</h3>
+                            <p className="text-xs text-slate-500 italic">Visualización para comprobación personal</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                        <button 
+                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}
+                            className="p-1 hover:bg-slate-200 rounded-lg"
+                        >
+                            &larr;
+                        </button>
+                        <span className="text-sm font-black text-slate-700 uppercase">
+                            {currentMonth.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                        </span>
+                        <button 
+                            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}
+                            className="p-1 hover:bg-slate-200 rounded-lg"
+                        >
+                            &rarr;
+                        </button>
+                    </div>
+                </div>
+
+                <div className="p-1 bg-slate-100">
+                    <div className="grid grid-cols-7 text-center py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200">
+                        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => <div key={d}>{d}</div>)}
+                    </div>
+                    <div className="grid grid-cols-7 bg-white">
+                        {loading ? (
+                            <div className="col-span-7 h-64 flex items-center justify-center text-slate-400 text-sm italic">
+                                Cargando historial...
+                            </div>
+                        ) : renderCalendar()}
+                    </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 flex items-center justify-between text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    <div className="flex gap-4">
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-blue-600 rounded"></div> Hotel (28€)</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-slate-400 rounded"></div> Casa (14€)</div>
+                        <div className="flex items-center gap-1"><div className="w-2 h-2 bg-orange-500 rounded"></div> Sábado Extra</div>
+                    </div>
+                    <span className="text-slate-600">Solo lectura</span>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default MyEarningsPage;
