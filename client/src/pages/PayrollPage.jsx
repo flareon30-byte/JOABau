@@ -377,8 +377,9 @@ const DietaCalendarModal = ({ user, onClose, onSave }) => {
         setLoading(true);
         try {
             const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).toISOString();
-            const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).toISOString();
-            const res = await api.get(`/api/dietas/user?userId=${user.id}&startDate=${start}&endDate=${end}`);
+            const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+            end.setHours(23, 59, 59, 999);
+            const res = await api.get(`/api/dietas/user?userId=${user.id}&startDate=${start}&endDate=${end.toISOString()}`);
             setDietas(res.data);
         } catch (error) {
             console.error('Error fetching logs:', error);
