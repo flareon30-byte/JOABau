@@ -188,8 +188,8 @@ exports.getBillingData = async (req, res) => {
                 basePrice: { gt: 0 },
                 ...(type ? { 
                     OR: [
-                        { activationType: type },
-                        { customActivationName: type }
+                        ...(['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'].includes(type) ? [{ activationType: type }] : []),
+                        { customActivationName: { contains: type, mode: 'insensitive' } }
                     ]
                 } : {})
             },
@@ -444,8 +444,8 @@ exports.exportBillingExcel = async (req, res) => {
                 basePrice: { gt: 0 },
                 ...(type ? { 
                     OR: [
-                        { activationType: type },
-                        { customActivationName: type }
+                        ...(['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'].includes(type) ? [{ activationType: type }] : []),
+                        { customActivationName: { contains: type, mode: 'insensitive' } }
                     ]
                 } : {})
             },
