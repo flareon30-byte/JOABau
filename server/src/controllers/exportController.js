@@ -185,8 +185,13 @@ exports.getBillingData = async (req, res) => {
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
-                basePrice: { gt: 0 }, // 🟢 HIDE 0€ OR DERIVED WITHOUT PRODUCTION
-                ...(type ? { activationType: type } : {})
+                basePrice: { gt: 0 },
+                ...(type ? { 
+                    OR: [
+                        { activationType: type },
+                        { customActivationName: type }
+                    ]
+                } : {})
             },
             include: { 
                 address: { include: { project: true } },
@@ -436,8 +441,13 @@ exports.exportBillingExcel = async (req, res) => {
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
                 },
-                basePrice: { gt: 0 }, // 🟢 HIDE 0€ OR DERIVED WITHOUT PRODUCTION
-                ...(type ? { activationType: type } : {})
+                basePrice: { gt: 0 },
+                ...(type ? { 
+                    OR: [
+                        { activationType: type },
+                        { customActivationName: type }
+                    ]
+                } : {})
             },
             include: { address: { include: { project: true } } }
         });

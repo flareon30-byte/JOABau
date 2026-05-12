@@ -359,7 +359,7 @@ const BillingPage = () => {
                                         <td className="p-4">{row.address?.clientName || 'Sin Nombre'}</td>
                                         <td className="p-4">
                                             <div className="flex flex-col gap-1">
-                                                <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold w-fit">{row.activationType}</span>
+                                                <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-[10px] font-bold w-fit">{row.customActivationName || row.activationType}</span>
                                                 <div className="text-[10px] text-slate-500 font-black flex items-center gap-2">
                                                     <span className={(row.taInstalled || row.taPrice > 0 || row.activationType === 'SDU') ? 'text-blue-600' : ''}>
                                                         TA:{(row.taCount > 0) ? row.taCount : ((row.taInstalled || row.taPrice > 0 || row.activationType === 'SDU') ? 1 : 0)}
@@ -838,9 +838,10 @@ const BillingPage = () => {
                                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                                 >
                                     <option value="">Todos los tipos</option>
-                                    {[...new Set(billingData.activation.map(a => a.activationType))].sort().map(type => (
+                                    {[...new Set(billingData.activation.map(a => a.customActivationName || a.activationType))].sort().map(type => (
                                         <option key={type} value={type}>{type}</option>
                                     ))}
+
                                 </select>
                             </div>
                         </div>
