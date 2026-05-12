@@ -795,25 +795,18 @@ const ActivationPage = () => {
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Equipo de Red Adicional</label>
-                                <div className="grid grid-cols-2 gap-3">
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Equipo de Red Adicional (MDU)</label>
+                                <div className="grid grid-cols-1 gap-3">
                                     <button
                                         type="button"
-                                        onClick={() => setFormData({ ...formData, taInstalled: true, mduInstalled: false })}
-                                        className={`p-3 rounded-xl border font-bold text-sm transition-all ${formData.taInstalled ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200 scale-[1.02]' : 'bg-white border-slate-200 text-slate-600 hover:border-purple-200'}`}
-                                    >
-                                        Incluye TA
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setFormData({ ...formData, mduInstalled: true, taInstalled: false })}
+                                        onClick={() => setFormData({ ...formData, mduInstalled: !formData.mduInstalled, taInstalled: false })}
                                         className={`p-3 rounded-xl border font-bold text-sm transition-all ${formData.mduInstalled ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200 scale-[1.02]' : 'bg-white border-slate-200 text-slate-600 hover:border-purple-200'}`}
                                     >
                                         Incluye MDU
                                     </button>
                                 </div>
-                                {(!formData.taInstalled && !formData.mduInstalled) && (
-                                    <p className="text-[10px] text-red-500 mt-2 font-medium animate-pulse">Debes indicar si has instalado una TA o una MDU.</p>
+                                {!formData.mduInstalled && (
+                                    <p className="text-[10px] text-red-500 mt-2 font-medium animate-pulse">Debes indicar que has instalado una MDU.</p>
                                 )}
                             </div>
                         </div>
@@ -831,25 +824,29 @@ const ActivationPage = () => {
                                         <span className="text-slate-700">¿Hay más clientes potenciales?</span>
                                     </label>
 
-                                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.taInstalled}
-                                            onChange={(e) => setFormData({ ...formData, taInstalled: e.target.checked })}
-                                            className="w-5 h-5 text-green-600 rounded"
-                                        />
-                                        <span className="text-slate-700 font-medium">¿TA Instalado?</span>
-                                    </label>
+                                    {(formData.activationType === 'Unifamiliar' || formData.activationType === 'BP') && (
+                                        <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.taInstalled}
+                                                onChange={(e) => setFormData({ ...formData, taInstalled: e.target.checked })}
+                                                className="w-5 h-5 text-green-600 rounded"
+                                            />
+                                            <span className="text-slate-700 font-medium">¿TA Instalado?</span>
+                                        </label>
+                                    )}
 
-                                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.mduInstalled}
-                                            onChange={(e) => setFormData({ ...formData, mduInstalled: e.target.checked })}
-                                            className="w-5 h-5 text-green-600 rounded"
-                                        />
-                                        <span className="text-slate-700 font-medium">¿MDU Instalado?</span>
-                                    </label>
+                                    {(formData.activationType === 'Dos familias' || formData.activationType === 'BP_2_FAM') && (
+                                        <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.mduInstalled}
+                                                onChange={(e) => setFormData({ ...formData, mduInstalled: e.target.checked })}
+                                                className="w-5 h-5 text-green-600 rounded"
+                                            />
+                                            <span className="text-slate-700 font-medium">¿MDU Instalado?</span>
+                                        </label>
+                                    )}
                                 </div>
 
 
