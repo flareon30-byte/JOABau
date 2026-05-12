@@ -840,7 +840,18 @@ const ActivationPage = () => {
                                         />
                                         <span className="text-slate-700 font-medium">¿TA Instalado?</span>
                                     </label>
+
+                                    <label className="flex items-center gap-3 p-3 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.mduInstalled}
+                                            onChange={(e) => setFormData({ ...formData, mduInstalled: e.target.checked })}
+                                            className="w-5 h-5 text-green-600 rounded"
+                                        />
+                                        <span className="text-slate-700 font-medium">¿MDU Instalado?</span>
+                                    </label>
                                 </div>
+
 
                                 {formData.activationType !== 'BP_2_FAM' && (
                                     <div>
