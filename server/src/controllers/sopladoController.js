@@ -92,7 +92,8 @@ exports.submitSopladoReport = async (req, res) => {
 
         // 1. Get the target address details to identify the physical location
         const targetAddress = await prisma.address.findUnique({
-            where: { id: addressId }
+            where: { id: addressId },
+            include: { sopladoInfo: true, appointment: { include: { assignedTeam: { include: { members: true } } } } }
         });
 
         if (!targetAddress) {
@@ -100,66 +101,64 @@ exports.submitSopladoReport = async (req, res) => {
         }
 
         // 2. Find ALL addresses at this exact physical location (same project, street, number)
-        // This ensures that if there are multiple clients at the same address, they all get updated.
         const relatedAddresses = await prisma.address.findMany({
             where: {
                 projectId: targetAddress.projectId,
                 street: { equals: targetAddress.street, mode: 'insensitive' },
                 number: { equals: targetAddress.number, mode: 'insensitive' }
             },
-            select: { id: true }
+            include: { sopladoInfo: true, appointment: { include: { assignedTeam: { include: { members: true } } } } }
         });
         const relatedIds = relatedAddresses.map(a => a.id);
 
         // Transaction to ensure consistency
-        const result = await prisma.$transaction(async (prisma) => {
+        const result = await prisma.$transaction(async (tx) => {
             console.log(`Updating status to ${status} for ${relatedIds.length} addresses:`, relatedIds);
 
             // 3. Update Address Status for ALL related addresses
-            const updateResult = await prisma.address.updateMany({
+            await tx.address.updateMany({
                 where: { id: { in: relatedIds } },
                 data: { sopladoStatus: status }
             });
-            console.log('Update many result:', updateResult);
+
+            const currentUser = await tx.user.findUnique({ 
+                where: { id: req.userId },
+                include: { team: { include: { members: true } } }
+            });
 
             // 4. Create or Update SopladoInfo for ALL related addresses
-            // Recover team members from the logic above
-            let resIDs = [req.userId];
-            if (req.userId) {
-                const u = await prisma.user.findUnique({ 
-                    where: { id: req.userId },
-                    include: { team: { include: { members: true } } }
-                });
-                if (u?.team?.members) {
-                    resIDs = u.team.members.map(m => m.id);
+            const upsertPromises = relatedAddresses.map(addr => {
+                let resIDs = addr.sopladoInfo?.performerIds;
+                
+                // If no performers yet, use assigned team or current user's team
+                if (!resIDs || resIDs.length === 0) {
+                    resIDs = addr.appointment?.assignedTeam?.members.map(m => m.id) || currentUser?.team?.members.map(m => m.id) || [req.userId];
                 }
-            }
 
-            const sopladoInfoData = {
-                meters: parseFloat(meters) || 0,
-                tk: tk || '',
-                tubeColor: tubeColor || '',
-                failureReason: status === 'FALLIDO' ? failureReason : null,
-                photos: photoPaths,
-                teamId: teamId,
-                isSaturday: isSaturday,
-                saturdayPay: saturdayPay,
-                performerIds: resIDs
-            };
+                const sopladoInfoData = {
+                    meters: parseFloat(meters) || 0,
+                    tk: tk || '',
+                    tubeColor: tubeColor || '',
+                    failureReason: status === 'FALLIDO' ? failureReason : null,
+                    photos: photoPaths,
+                    teamId: teamId,
+                    isSaturday: isSaturday,
+                    saturdayPay: saturdayPay,
+                    performerIds: resIDs
+                };
 
-            // We must upsert one by one because sopladoInfo is 1:1 unique on addressId
-            const upsertPromises = relatedIds.map(id =>
-                prisma.sopladoInfo.upsert({
-                    where: { addressId: id },
+                return tx.sopladoInfo.upsert({
+                    where: { addressId: addr.id },
                     update: sopladoInfoData,
                     create: {
-                        addressId: id,
+                        addressId: addr.id,
                         ...sopladoInfoData
                     }
-                })
-            );
+                });
+            });
 
             await Promise.all(upsertPromises);
+
             console.log('Soplado Info upserted successfully.');
 
             return { message: 'Report updated for all clients at location', updatedCount: relatedIds.length };

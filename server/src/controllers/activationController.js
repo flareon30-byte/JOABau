@@ -201,7 +201,8 @@ exports.submitActivation = async (req, res) => {
             where: { id: addressId },
             include: { 
                 project: { include: { clientCompany: { include: { priceItems: true } } } },
-                activationInfo: true
+                activationInfo: true,
+                appointment: { include: { assignedTeam: { include: { members: true } } } }
             }
         });
 
@@ -323,7 +324,6 @@ exports.submitActivation = async (req, res) => {
             points += pointsConfig['MDU'];
         }
 
-
         const result = await prisma.$transaction(async (tx) => {
             if (klsId) {
                 await tx.address.update({
@@ -359,13 +359,17 @@ exports.submitActivation = async (req, res) => {
                 repairPrice: repairPriceTotal,
                 pdfPath: pdfPath ? pdfPath.split('?')[0] : null, // Clean query string before saving to DB
                 photos: allPhotos,
-                // If editing as admin, preserve existing performers if available
+                // --- ATTRIBUTION LOGIC ---
+                // If editing as admin, preserve existing performers if available.
+                // If it's a new activation closed by an admin, try to attribute it to the assigned team members.
                 performerIds: address.activationInfo?.performerIds?.length > 0 
                     ? address.activationInfo.performerIds 
-                    : (user?.team?.members.map(m => m.id) || [req.userId]),
-                createdById: address.activationInfo?.createdById || req.userId,
+                    : (address.appointment?.assignedTeam?.members.map(m => m.id) || user?.team?.members.map(m => m.id) || [req.userId]),
+                createdById: address.activationInfo?.createdById || (req.userRole === 'ADMIN' || req.userRole === 'SUPER_ADMIN' ? (address.appointment?.assignedTeam?.members[0]?.id || req.userId) : req.userId),
                 isDraft: false
             };
+
+
 
             // 🟢 FORCE NEW DATE ONLY IF IT WAS A DRAFT (This solves the "why does it have yesterday's date" problem)
             if (address.activationInfo && address.activationInfo.isDraft) {
@@ -708,12 +712,27 @@ exports.syncDraft = async (req, res) => {
         }
         const allPhotos = [...keptPhotos, ...newPhotoPaths];
 
+        // Fetch context for attribution
+        const address = await prisma.address.findUnique({
+            where: { id: addressId },
+            include: { 
+                activationInfo: true,
+                appointment: { include: { assignedTeam: { include: { members: true } } } }
+            }
+        });
+
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            include: { team: { include: { members: true } } }
+        });
+
         // VALIDATE ENUM Values
         const validEnumValues = ['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'];
         const finalActivationType = validEnumValues.includes(activationType) ? activationType : 'BP';
         const finalCustomName = !validEnumValues.includes(activationType) ? activationType : (description || '');
 
         const draft = await prisma.activationInfo.upsert({
+
             where: { addressId },
             update: {
                 activationType: finalActivationType,
@@ -729,7 +748,12 @@ exports.syncDraft = async (req, res) => {
                 pdfPath: (pdfPath === 'null' || !pdfPath) ? null : pdfPath,
                 photos: allPhotos,
                 isDraft: true,
-                points: 0 
+                points: 0,
+                // --- NEW: Attribution in Drafts ---
+                createdById: address.activationInfo?.createdById || (req.userRole === 'ADMIN' || req.userRole === 'SUPER_ADMIN' ? (address.appointment?.assignedTeam?.members[0]?.id || req.userId) : req.userId),
+                performerIds: address.activationInfo?.performerIds?.length > 0 
+                    ? address.activationInfo.performerIds 
+                    : (address.appointment?.assignedTeam?.members.map(m => m.id) || user?.team?.members.map(m => m.id) || [req.userId]),
             },
             create: {
                 addressId,
@@ -746,8 +770,11 @@ exports.syncDraft = async (req, res) => {
                 pdfPath: pdfPath || null,
                 photos: allPhotos,
                 isDraft: true,
-                points: 0
+                points: 0,
+                createdById: (req.userRole === 'ADMIN' || req.userRole === 'SUPER_ADMIN' ? (address.appointment?.assignedTeam?.members[0]?.id || req.userId) : req.userId),
+                performerIds: (address.appointment?.assignedTeam?.members.map(m => m.id) || user?.team?.members.map(m => m.id) || [req.userId]),
             }
+
         });
 
         res.json({ success: true, draft });
