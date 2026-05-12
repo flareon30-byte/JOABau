@@ -945,59 +945,54 @@ const ActivationPageV2 = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Equipo de Red Adicional</label>
-                                        <div className="grid grid-cols-2 gap-3">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Equipo de Red Adicional (MDU)</label>
+                                        <div className="grid grid-cols-1 gap-3">
                                             <button
                                                 type="button"
-                                                onClick={() => setFormData({ ...formData, taInstalled: true, mduInstalled: false })}
-                                                className={`p-3 rounded-xl border font-bold text-sm transition-all ${formData.taInstalled ? 'bg-purple-600 border-purple-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-600'}`}
-                                            >
-                                                Incluye TA
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setFormData({ ...formData, mduInstalled: true, taInstalled: false })}
+                                                onClick={() => setFormData({ ...formData, mduInstalled: !formData.mduInstalled, taInstalled: false })}
                                                 className={`p-3 rounded-xl border font-bold text-sm transition-all ${formData.mduInstalled ? 'bg-purple-600 border-purple-600 text-white shadow-lg' : 'bg-white border-slate-200 text-slate-600'}`}
                                             >
                                                 Incluye MDU
                                             </button>
                                         </div>
-                                        {(!formData.taInstalled && !formData.mduInstalled) && (
-                                            <p className="text-[10px] text-red-500 mt-1 font-medium italic">Debes indicar si has instalado una TA o una MDU.</p>
+                                        {!formData.mduInstalled && (
+                                            <p className="text-[10px] text-red-500 mt-1 font-medium italic">Debes indicar que has instalado una MDU.</p>
                                         )}
                                     </div>
                                 </div>
                             ) : (
                                 <>
                                     {/* ITEM: TA / SDU */}
-                                    <div className="space-y-2">
-                                        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                            <input
-                                                type="checkbox"
-                                                name="taInstalled"
-                                                checked={formData.taInstalled}
-                                                onChange={handleInputChange}
-                                                id="taCheck"
-                                                className="w-5 h-5 text-joa-blue rounded focus:ring-joa-blue"
-                                            />
-                                            <label htmlFor="taCheck" className="text-sm font-medium text-slate-700 flex-1">
-                                                ¿Se instaló TA / SDU?
-                                            </label>
-                                        </div>
-                                        {formData.taInstalled && (
-                                            <div className="pl-4 border-l-2 border-slate-200 animate-fadeIn">
-                                                <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Cantidad de TA</label>
+                                    {(formData.activationType === 'Unifamiliar' || formData.activationType === 'BP') && (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                                                 <input
-                                                    type="number"
-                                                    name="taCount"
-                                                    value={formData.taCount}
+                                                    type="checkbox"
+                                                    name="taInstalled"
+                                                    checked={formData.taInstalled}
                                                     onChange={handleInputChange}
-                                                    placeholder="1"
-                                                    className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
+                                                    id="taCheck"
+                                                    className="w-5 h-5 text-joa-blue rounded focus:ring-joa-blue"
                                                 />
+                                                <label htmlFor="taCheck" className="text-sm font-medium text-slate-700 flex-1">
+                                                    ¿Se instaló TA / SDU?
+                                                </label>
                                             </div>
-                                        )}
-                                    </div>
+                                            {formData.taInstalled && (
+                                                <div className="pl-4 border-l-2 border-slate-200 animate-fadeIn">
+                                                    <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Cantidad de TA</label>
+                                                    <input
+                                                        type="number"
+                                                        name="taCount"
+                                                        value={formData.taCount}
+                                                        onChange={handleInputChange}
+                                                        placeholder="1"
+                                                        className="w-full p-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* ITEM: SP */}
                                     {formData.activationType !== 'BP_2_FAM' && (
@@ -1015,19 +1010,21 @@ const ActivationPageV2 = () => {
                                     )}
 
                                     {/* ITEM: MDU Extra */}
-                                    <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
-                                        <input
-                                            type="checkbox"
-                                            name="mduInstalled"
-                                            checked={formData.mduInstalled}
-                                            onChange={handleInputChange}
-                                            id="mduCheck"
-                                            className="w-5 h-5 text-joa-blue rounded focus:ring-joa-blue"
-                                        />
-                                        <label htmlFor="mduCheck" className="text-sm font-medium text-slate-700 flex-1">
-                                            ¿Se instaló MDU / Multi Extra?
-                                        </label>
-                                    </div>
+                                    {(formData.activationType === 'Dos familias' || formData.activationType === 'Multi' || formData.activationType === 'BP_2_FAM') && (
+                                        <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                            <input
+                                                type="checkbox"
+                                                name="mduInstalled"
+                                                checked={formData.mduInstalled}
+                                                onChange={handleInputChange}
+                                                id="mduCheck"
+                                                className="w-5 h-5 text-joa-blue rounded focus:ring-joa-blue"
+                                            />
+                                            <label htmlFor="mduCheck" className="text-sm font-medium text-slate-700 flex-1">
+                                                ¿Se instaló MDU / Multi Extra?
+                                            </label>
+                                        </div>
+                                    )}
 
                                     {/* ITEM: Avería */}
                                     <div className="flex items-center gap-3 p-3 bg-red-50 rounded-xl border border-red-200">
