@@ -22,6 +22,10 @@ async function debug() {
         where: { clientCompanyId: act.address.project?.clientCompanyId || undefined }
     });
     console.log('Relevant Prices:', JSON.stringify(prices, null, 2));
+
+    const settings = await prisma.systemSettings.findFirst();
+    console.log('Global Financials:', JSON.stringify(settings.financials, null, 2));
 }
+
 
 debug();
