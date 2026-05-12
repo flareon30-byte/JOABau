@@ -377,8 +377,12 @@ exports.submitActivation = async (req, res) => {
 
 
             // 🟢 FORCE NEW DATE ONLY IF IT WAS A DRAFT (This solves the "why does it have yesterday's date" problem)
+            // If it was already closed, we MUST preserve the original date.
             if (address.activationInfo && address.activationInfo.isDraft) {
                 data.createdAt = new Date();
+            } else if (address.activationInfo) {
+                // Explicitly preserve original date if editing a closed one
+                data.createdAt = address.activationInfo.createdAt;
             }
 
             const activation = await tx.activationInfo.upsert({
@@ -752,7 +756,7 @@ exports.syncDraft = async (req, res) => {
                 description: description || undefined,
                 pdfPath: (pdfPath === 'null' || !pdfPath) ? null : pdfPath,
                 photos: allPhotos,
-                isDraft: true,
+                isDraft: address.activationInfo ? address.activationInfo.isDraft : true, // Preserve closed status if already closed
                 points: 0,
                 // --- NEW: Attribution in Drafts ---
                 createdById: address.activationInfo?.createdById || (req.userRole === 'ADMIN' || req.userRole === 'SUPER_ADMIN' ? (address.appointment?.assignedTeam?.members[0]?.id || req.userId) : req.userId),
@@ -774,7 +778,7 @@ exports.syncDraft = async (req, res) => {
                 description: description || '',
                 pdfPath: pdfPath || null,
                 photos: allPhotos,
-                isDraft: true,
+                isDraft: true, // New ones are always drafts initially
                 points: 0,
                 createdById: (req.userRole === 'ADMIN' || req.userRole === 'SUPER_ADMIN' ? (address.appointment?.assignedTeam?.members[0]?.id || req.userId) : req.userId),
                 performerIds: (address.appointment?.assignedTeam?.members.map(m => m.id) || user?.team?.members.map(m => m.id) || [req.userId]),
