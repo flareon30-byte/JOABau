@@ -193,3 +193,49 @@ exports.deleteVehicleLog = async (req, res) => {
         res.status(500).json({ message: 'Error deleting vehicle log' });
     }
 };
+
+exports.updateVehicleLog = async (req, res) => {
+    const { id } = req.params;
+    const { kms, amount, liters, date } = req.body;
+
+    try {
+        const logToUpdate = await prisma.vehicleLog.findUnique({ where: { id } });
+        if (!logToUpdate) return res.status(404).json({ message: 'Log not found' });
+
+        const vehicleId = logToUpdate.vehicleId;
+
+        // 1. Update the log
+        await prisma.vehicleLog.update({
+            where: { id },
+            data: {
+                kms: kms !== undefined ? parseFloat(kms) : undefined,
+                amount: amount !== undefined ? parseFloat(amount) : undefined,
+                liters: liters !== undefined ? parseFloat(liters) : undefined,
+                date: date ? new Date(date) : undefined
+            }
+        });
+
+        // 2. Recalculate Vehicle currentKms (get the most recent remaining log with Kms)
+        const lastValidLog = await prisma.vehicleLog.findFirst({
+            where: { 
+                vehicleId,
+                kms: { not: null }
+            },
+            orderBy: { kms: 'desc' }
+        });
+
+        const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+        const newCurrentKms = lastValidLog ? lastValidLog.kms : vehicle.initialKms;
+
+        await prisma.vehicle.update({
+            where: { id: vehicleId },
+            data: { currentKms: newCurrentKms }
+        });
+
+        res.json({ success: true, message: 'Log updated and vehicle kms recalculated', newCurrentKms });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error updating vehicle log' });
+    }
+};
+

@@ -21,6 +21,12 @@ const VehicleManagement = () => {
     // Image Viewer Modal
     const [viewerImage, setViewerImage] = useState(null);
 
+    // Editing Log State
+    const [editingLogId, setEditingLogId] = useState(null);
+    const [editLogData, setEditLogData] = useState({ amount: '', kms: '', liters: '' });
+
+
+
     const fetchVehicles = async () => {
         try {
             const { data } = await api.get('/api/vehicles');
@@ -56,6 +62,30 @@ const VehicleManagement = () => {
             alert('Error al eliminar registro');
         }
     };
+
+    const handleStartEditLog = (log) => {
+        setEditingLogId(log.id);
+        setEditLogData({
+            amount: log.amount || '',
+            kms: log.kms || '',
+            liters: log.liters || ''
+        });
+    };
+
+
+    const handleSaveEditLog = async (logId, vehicleId) => {
+        try {
+            await api.put(`/api/vehicles/log/${logId}`, editLogData);
+            setEditingLogId(null);
+            // Refresh both lists
+            fetchVehicles();
+            fetchVehicleHistory(vehicleId);
+        } catch (error) {
+            console.error('Error updating log', error);
+            alert('Error al actualizar registro');
+        }
+    };
+
 
     useEffect(() => {
         fetchVehicles();
@@ -343,18 +373,83 @@ const VehicleManagement = () => {
                                                             <p className="text-xs font-black text-slate-400 uppercase tracking-tight">
                                                                 {new Date(log.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                                                             </p>
-                                                            <h5 className="font-bold text-slate-800">
-                                                                {log.type === 'FUEL' ? `Repostaje: ${money(log.amount)} - ${log.kms} km` : `Odométro: ${log.kms} km`}
-                                                            </h5>
+                                                            {editingLogId === log.id ? (
+                                                                <div className="mt-2 flex flex-col gap-2">
+                                                                    <div className="flex gap-2">
+                                                                        {log.type === 'FUEL' && (
+                                                                            <div className="flex flex-col">
+                                                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Importe (€)</label>
+                                                                                <input 
+                                                                                    type="number"
+                                                                                    value={editLogData.amount}
+                                                                                    onChange={(e) => setEditLogData({ ...editLogData, amount: e.target.value })}
+                                                                                    className="p-1 border border-blue-300 rounded bg-blue-50 text-sm w-20 outline-none focus:ring-2 focus:ring-blue-500"
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                        {log.type === 'FUEL' && (
+                                                                            <div className="flex flex-col">
+                                                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Litros</label>
+                                                                                <input 
+                                                                                    type="number"
+                                                                                    value={editLogData.liters}
+                                                                                    onChange={(e) => setEditLogData({ ...editLogData, liters: e.target.value })}
+                                                                                    className="p-1 border border-blue-300 rounded bg-blue-50 text-sm w-20 outline-none focus:ring-2 focus:ring-blue-500"
+                                                                                />
+                                                                            </div>
+                                                                        )}
+                                                                        <div className="flex flex-col">
+                                                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Kilometraje</label>
+                                                                            <input 
+                                                                                type="number"
+                                                                                value={editLogData.kms}
+                                                                                onChange={(e) => setEditLogData({ ...editLogData, kms: e.target.value })}
+                                                                                className="p-1 border border-blue-300 rounded bg-blue-50 text-sm w-24 outline-none focus:ring-2 focus:ring-blue-500"
+                                                                            />
+                                                                        </div>
+
+                                                                    </div>
+                                                                    <div className="flex gap-2">
+                                                                        <button 
+                                                                            onClick={() => handleSaveEditLog(log.id, selectedVehicleStats.vehicle.id)}
+                                                                            className="px-3 py-1 bg-green-600 text-white text-[10px] font-bold rounded-lg hover:bg-green-700 transition-colors"
+                                                                        >
+                                                                            Guardar
+                                                                        </button>
+                                                                        <button 
+                                                                            onClick={() => setEditingLogId(null)}
+                                                                            className="px-3 py-1 bg-slate-200 text-slate-600 text-[10px] font-bold rounded-lg hover:bg-slate-300 transition-colors"
+                                                                        >
+                                                                            Cancelar
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            ) : (
+                                                                <h5 className="font-bold text-slate-800">
+                                                                    {log.type === 'FUEL' ? `Repostaje: ${money(log.amount)} - ${log.kms} km` : `Odométro: ${log.kms} km`}
+                                                                </h5>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <button 
-                                                        onClick={() => handleDeleteLog(log.id, selectedVehicleStats.vehicle.id)}
-                                                        className="p-2 text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                        title="Borrar registro"
-                                                    >
-                                                        <Trash2 size={16} />
-                                                    </button>
+                                                    <div className="flex gap-1">
+                                                        {editingLogId !== log.id && (
+                                                            <button 
+                                                                onClick={() => handleStartEditLog(log)}
+                                                                className="p-2 text-blue-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                                title="Editar registro"
+                                                            >
+                                                                <Edit3 size={16} />
+                                                            </button>
+                                                        )}
+                                                        <button 
+                                                            onClick={() => handleDeleteLog(log.id, selectedVehicleStats.vehicle.id)}
+                                                            className="p-2 text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="Borrar registro"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+
                                                 </div>
 
                                                 {/* Photos Row */}
