@@ -838,9 +838,10 @@ const BillingPage = () => {
                                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                                 >
                                     <option value="">Todos los tipos</option>
-                                    {[...new Set(billingData.activation.map(a => a.customActivationName || a.activationType))].sort().map(type => (
+                                    {['SDU', 'MDU', 'Dos familias', 'Unifamiliar', 'Multi'].map(type => (
                                         <option key={type} value={type}>{type}</option>
                                     ))}
+
 
                                 </select>
                             </div>
