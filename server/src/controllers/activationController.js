@@ -141,6 +141,11 @@ exports.submitActivation = async (req, res) => {
         pdfPath = signedPdfFile.path.replace(/\\/g, '/');
     }
 
+    const validEnumValues = ['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'];
+    const finalActivationType = validEnumValues.includes(activationType) ? activationType : 'BP';
+    const customActivationName = !validEnumValues.includes(activationType) ? activationType : null;
+
+
     // 🟢 COMPRESIÓN DE IMÁGENES (Dentro de try-catch para evitar Error 500 si falla el procesamiento)
     try {
         if (photos.length > 0) {
@@ -335,10 +340,6 @@ exports.submitActivation = async (req, res) => {
                     data: { klsId }
                 });
             }
-
-            const validEnumValues = ['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'];
-            const finalActivationType = validEnumValues.includes(activationType) ? activationType : 'BP';
-            const customActivationName = !validEnumValues.includes(activationType) ? activationType : null;
 
             const data = {
                 activationType: finalActivationType,
