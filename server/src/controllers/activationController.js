@@ -240,17 +240,21 @@ exports.submitActivation = async (req, res) => {
 
         // Try to find specific prices in ClientPriceItems
         // Try to find exact specific prices in ClientPriceItems BY NAME first, then fallback to legacy mapping
-        let matchingItem = priceItems.find(item => item.name === activationType);
+        let matchingItem = priceItems.find(item => item.name === activationType || (customActivationName && item.name === customActivationName));
 
         if (!matchingItem) {
             matchingItem = priceItems.find(item => {
-                if (activationType === 'BP' || activationType === 'BP_2_FAM') return item.name.includes('Caja') || item.name.includes('BP');
-                if (activationType === 'SDU') return item.name.includes('SDU') || item.name.includes('TA');
-                if (activationType === 'MDU') return item.name.includes('MDU');
-                if (activationType === 'BR_MULTI') return item.name.includes('BR') || item.name.includes('Multi');
+                const searchName = (item.name || '').toLowerCase();
+                if (activationType === 'BP' || activationType === 'BP_2_FAM') {
+                    return searchName.includes('caja') || searchName.includes('bp') || searchName.includes('unifamiliar');
+                }
+                if (activationType === 'SDU') return searchName.includes('sdu') || searchName.includes('ta');
+                if (activationType === 'MDU') return searchName.includes('mdu');
+                if (activationType === 'BR_MULTI') return searchName.includes('br') || searchName.includes('multi');
                 return false;
             });
         }
+
 
         if (matchingItem) {
             basePrice = matchingItem.priceToClient;

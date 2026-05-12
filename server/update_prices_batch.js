@@ -54,18 +54,24 @@ async function updatePrices() {
             let saturdayPay = 0;
             const isSaturday = act.isSaturday;
 
-            let matchingItem = priceItems.find(item => item.name === act.activationType);
+            // Try to find exact specific prices in ClientPriceItems BY NAME first, then fallback to legacy mapping
+            let matchingItem = priceItems.find(item => item.name === act.activationType || (act.customActivationName && item.name === act.customActivationName));
+
             if (!matchingItem) {
                 matchingItem = priceItems.find(item => {
-                    if (act.activationType === 'BP' || act.activationType === 'BP_2_FAM') return item.name.includes('Caja') || item.name.includes('BP');
-                    if (act.activationType === 'SDU') return item.name.includes('SDU') || item.name.includes('TA');
-                    if (act.activationType === 'MDU') return item.name.includes('MDU');
-                    if (act.activationType === 'BR_MULTI') return item.name.includes('BR') || item.name.includes('Multi');
+                    const searchName = (item.name || '').toLowerCase();
+                    if (act.activationType === 'BP' || act.activationType === 'BP_2_FAM') {
+                        return searchName.includes('caja') || searchName.includes('bp') || searchName.includes('unifamiliar');
+                    }
+                    if (act.activationType === 'SDU') return searchName.includes('sdu') || searchName.includes('ta');
+                    if (act.activationType === 'MDU') return searchName.includes('mdu');
+                    if (act.activationType === 'BR_MULTI') return searchName.includes('br') || searchName.includes('multi');
                     return false;
                 });
             }
 
             if (matchingItem) {
+
                 basePrice = matchingItem.priceToClient;
                 if (isSaturday) saturdayPay += (matchingItem.saturdayPay || 0);
             }
