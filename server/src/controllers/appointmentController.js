@@ -364,6 +364,7 @@ exports.exportAllByProject = async (req, res) => {
                 'Estado Orden': addr.orderStatus,
                 'Estado Cita': app ? app.status : 'SIN CITA',
                 'Fecha Cita': (app && app.assignedDate) ? new Date(app.assignedDate).toLocaleDateString('es-ES') : '',
+                'Hora Cita': (app && app.assignedDate) ? new Date(app.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '',
                 'Equipo': (app && app.assignedTeam) ? app.assignedTeam.name : '',
                 'Comentarios': commentsText,
                 'Historial Contacto': historyText
@@ -389,6 +390,7 @@ exports.exportAllByProject = async (req, res) => {
             {wch: 15}, // Estado Orden
             {wch: 15}, // Estado Cita
             {wch: 15}, // Fecha
+            {wch: 10}, // Hora
             {wch: 15}, // Equipo
             {wch: 50}, // Comentarios
             {wch: 50}  // Historial
