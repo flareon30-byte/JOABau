@@ -839,6 +839,7 @@ const AppointmentsPage = () => {
                                     <tr>
                                         <th className="p-4">Fecha</th>
                                         <th className="p-4">Dirección</th>
+                                        <th className="p-4">NVT</th>
                                         <th className="p-4">Equipo Asignado</th>
                                         <th className="p-4">Estado</th>
                                         <th className="p-4 text-right">Acciones</th>
@@ -889,6 +890,9 @@ const AppointmentsPage = () => {
                                                         <span className="whitespace-pre-wrap">{app.orientationComment}</span>
                                                     </div>
                                                 )}
+                                            </td>
+                                            <td className="p-4 font-medium text-slate-700">
+                                                {app.address.nvt || '-'}
                                             </td>
                                             <td className="p-4">
                                                 {app.assignedTeam ? (
