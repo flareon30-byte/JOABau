@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader, Save, Download } from 'lucide-react';
+import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader, Save, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 
 const AppointmentsPage = () => {
@@ -12,6 +12,8 @@ const AppointmentsPage = () => {
     const [teams, setTeams] = useState([]);
     const [view, setView] = useState(searchParams.get('view') || 'pending'); // 'pending', 'scheduled', 'protocols', 'escalated'
     const [scheduledViewMode, setScheduledViewMode] = useState('list'); // 'list' or 'calendar'
+    const [sortColumn, setSortColumn] = useState('date'); // 'date', 'address', 'nvt', 'team'
+    const [sortDirection, setSortDirection] = useState('asc'); // 'asc', 'desc'
 
     // Filters
     const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
@@ -441,7 +443,46 @@ const AppointmentsPage = () => {
         (!a.requiresProtocol || a.protocolStatus === 'OK') && a.sopladoStatus === 'OK'
     ));
 
-    const filteredScheduled = sortAddresses(filterAppointments(scheduledAppointments));
+    // Custom sort for Scheduled
+    const customSortScheduled = (list) => {
+        return [...list].sort((a, b) => {
+            const addrA = a.address || a;
+            const addrB = b.address || b;
+            
+            let comparison = 0;
+            
+            if (sortColumn === 'date') {
+                const dateA = a.assignedDate ? new Date(a.assignedDate).getTime() : 0;
+                const dateB = b.assignedDate ? new Date(b.assignedDate).getTime() : 0;
+                comparison = dateA - dateB;
+            } else if (sortColumn === 'address') {
+                const strA = `${addrA.street || ''} ${addrA.number || ''}`.trim();
+                const strB = `${addrB.street || ''} ${addrB.number || ''}`.trim();
+                comparison = strA.localeCompare(strB, undefined, { numeric: true, sensitivity: 'base' });
+            } else if (sortColumn === 'nvt') {
+                const nvtA = addrA.nvt || '';
+                const nvtB = addrB.nvt || '';
+                comparison = nvtA.localeCompare(nvtB, undefined, { numeric: true, sensitivity: 'base' });
+            } else if (sortColumn === 'team') {
+                const teamA = a.assignedTeam ? a.assignedTeam.name : '';
+                const teamB = b.assignedTeam ? b.assignedTeam.name : '';
+                comparison = teamA.localeCompare(teamB, undefined, { sensitivity: 'base' });
+            }
+
+            return sortDirection === 'asc' ? comparison : -comparison;
+        });
+    };
+
+    const filteredScheduled = customSortScheduled(filterAppointments(scheduledAppointments));
+
+    const handleSort = (column) => {
+        if (sortColumn === column) {
+            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortColumn(column);
+            setSortDirection('asc');
+        }
+    };
     const filteredEscalated = sortAddresses(filterAppointments(escalatedAddresses));
 
     return (
@@ -837,10 +878,18 @@ const AppointmentsPage = () => {
                             <table className="w-full text-left text-sm text-slate-600">
                                 <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200">
                                     <tr>
-                                        <th className="p-4">Fecha</th>
-                                        <th className="p-4">Dirección</th>
-                                        <th className="p-4">NVT</th>
-                                        <th className="p-4">Equipo Asignado</th>
+                                        <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('date')}>
+                                            <div className="flex items-center gap-1">Fecha {sortColumn === 'date' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                                        </th>
+                                        <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('address')}>
+                                            <div className="flex items-center gap-1">Dirección {sortColumn === 'address' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                                        </th>
+                                        <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('nvt')}>
+                                            <div className="flex items-center gap-1">NVT {sortColumn === 'nvt' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                                        </th>
+                                        <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('team')}>
+                                            <div className="flex items-center gap-1">Equipo Asignado {sortColumn === 'team' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                                        </th>
                                         <th className="p-4">Estado</th>
                                         <th className="p-4 text-right">Acciones</th>
                                     </tr>
