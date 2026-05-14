@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload, MapPin, Clock } from 'lucide-react';
+import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload, MapPin, Clock, RefreshCw } from 'lucide-react';
 
 const FusionDepartment = () => {
     const [projects, setProjects] = useState([]);
@@ -24,6 +24,7 @@ const FusionDepartment = () => {
         hours: ''
     });
     const [submitting, setSubmitting] = useState(false);
+    const [isLocating, setIsLocating] = useState(false);
 
     useEffect(() => { fetchProjects(); }, []);
 
@@ -78,24 +79,27 @@ const FusionDepartment = () => {
         setFormData({ ...formData, photos: Array.from(e.target.files) });
     };
 
+    const updateLocation = () => {
+        if ("geolocation" in navigator) {
+            setIsLocating(true);
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const { latitude, longitude } = position.coords;
+                setFormData(prev => ({ ...prev, address: `GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}` }));
+                setIsLocating(false);
+            }, (error) => {
+                console.warn("Geolocation error", error);
+                setIsLocating(false);
+                alert("No se pudo obtener la ubicación GPS.");
+            }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+        } else {
+            alert("Tu navegador no soporta geolocalización.");
+        }
+    };
+
     // Auto-fill location for Muffas
     useEffect(() => {
         if (isMuffaMode && !formData.address) {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(async (position) => {
-                    const { latitude, longitude } = position.coords;
-                    try {
-                        // Using a free reverse geocoding API or just coordinates if preferred
-                        // For now, let's just put coordinates or try to fetch a string if possible
-                        // A better way is to use Google Maps or similar, but for simplicity:
-                        setFormData(prev => ({ ...prev, address: `GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}` }));
-                    } catch (e) {
-                        console.error("Error geocoding", e);
-                    }
-                }, (error) => {
-                    console.warn("Geolocation error", error);
-                });
-            }
+            updateLocation();
         }
     }, [isMuffaMode]);
 
@@ -240,8 +244,18 @@ const FusionDepartment = () => {
                         {isMuffaMode && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="col-span-full">
-                                    <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2">
-                                        <MapPin size={16} className="text-purple-500" /> Dirección de la Muffa
+                                    <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <MapPin size={16} className="text-purple-500" /> Dirección de la Muffa
+                                        </div>
+                                        <button 
+                                            type="button" 
+                                            onClick={updateLocation}
+                                            className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded flex items-center gap-1 transition-colors font-bold"
+                                        >
+                                            <RefreshCw size={10} className={isLocating ? 'animate-spin' : ''} />
+                                            {isLocating ? 'Localizando...' : 'Actualizar GPS'}
+                                        </button>
                                     </label>
                                     <input
                                         type="text"
