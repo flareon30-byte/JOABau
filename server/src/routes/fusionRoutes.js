@@ -25,4 +25,7 @@ router.post('/log-work', upload.array('photos', 5), fusionController.logFusionWo
 // Get Fusion Works by Project (Optional filter ?nvt=...)
 router.get('/works/:projectId', fusionController.getFusionWorks);
 
+// Update Fusion Work
+router.put('/work/:id', upload.array('photos', 5), fusionController.updateFusionWork);
+
 module.exports = router;

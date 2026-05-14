@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
-import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload, MapPin, Clock, RefreshCw, X, Trash2 } from 'lucide-react';
+import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload, MapPin, Clock, RefreshCw, X, Trash2, Pencil, Edit } from 'lucide-react';
 import useBranding from '../hooks/useBranding';
 import { saveFusionDraft, getFusionDraft, deleteFusionDraft } from '../utils/offlineStorage';
 
@@ -25,11 +25,12 @@ const FusionDepartment = () => {
         address: '',
         hours: ''
     });
-    const [photos, setPhotos] = useState([]); // Array of objects: { blob, preview, name }
+    const [photos, setPhotos] = useState([]); // Array of objects: { blob, preview, name, isExisting, originalPath }
     const [submitting, setSubmitting] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
     const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
     const [viewingPhoto, setViewingPhoto] = useState(null);
+    const [editingWork, setEditingWork] = useState(null);
 
     // Get current user from localStorage
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -244,9 +245,40 @@ const FusionDepartment = () => {
         }
     };
 
+    const handleEdit = (work) => {
+        setEditingWork(work);
+        setFormData({
+            fusionCount: work.fusionCount,
+            isTray: work.isTray,
+            description: work.description || '',
+            address: work.address || '',
+            hours: work.hours || ''
+        });
+
+        // Load existing photos
+        const existing = (work.photos || []).map((path, i) => {
+            const cleanPath = path.replace(/\\/g, '/');
+            const fullUrl = `${api.defaults.baseURL || ''}/${encodedPath(cleanPath)}`;
+            return {
+                preview: fullUrl,
+                name: `Foto ${i + 1}`,
+                isExisting: true,
+                originalPath: path
+            };
+        });
+        setPhotos(existing);
+
+        // Scroll to top of form
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const encodedPath = (path) => {
+        return path.split('/').map(segment => encodeURIComponent(segment)).join('/');
+    };
+
     const removePhoto = (index) => {
         const photo = photos[index];
-        if (photo.preview.startsWith('blob:')) URL.revokeObjectURL(photo.preview);
+        if (photo.preview && photo.preview.startsWith('blob:')) URL.revokeObjectURL(photo.preview);
         setPhotos(prev => prev.filter((_, i) => i !== index));
     };
 
@@ -292,26 +324,42 @@ const FusionDepartment = () => {
         data.append('isTray', formData.isTray);
         data.append('description', formData.description);
 
+        const existingPaths = [];
         photos.forEach((p, i) => {
-            data.append('photos', p.blob, `foto_${i}.jpg`);
+            if (p.isExisting) {
+                existingPaths.push(p.originalPath);
+            } else {
+                data.append('photos', p.blob, `foto_${i}.jpg`);
+            }
         });
+        data.append('existingPhotos', JSON.stringify(existingPaths));
 
         try {
-            await api.post('/api/fusion/log-work', data, {
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            alert('Trabajo registrado correctamente');
+            if (editingWork) {
+                await api.put(`/api/fusion/work/${editingWork.id}`, data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                alert('Trabajo actualizado correctamente');
+            } else {
+                await api.post('/api/fusion/log-work', data, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                alert('Trabajo registrado correctamente');
+            }
             
-            // Clear draft
-            const draftId = getDraftId();
-            if (draftId) await deleteFusionDraft(draftId);
+            // Clear draft if it was a new log
+            if (!editingWork) {
+                const draftId = getDraftId();
+                if (draftId) await deleteFusionDraft(draftId);
+            }
 
             setFormData({ fusionCount: '', isTray: false, description: '', address: '', hours: '' });
             setPhotos([]);
+            setEditingWork(null);
             fetchFusionHistory();
         } catch (error) {
             console.error(error);
-            alert('Error al registrar trabajo');
+            alert('Error al guardar trabajo');
         } finally {
             setSubmitting(false);
         }
@@ -409,15 +457,32 @@ const FusionDepartment = () => {
                         <ArrowLeft size={24} className="text-slate-600" />
                     </button>
                     <div>
-                        <h2 className="text-xl font-bold text-slate-800">
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                             {isMuffaMode ? 'Trabajo en MUFFA' : `NVT: ${selectedNvt}`}
+                            {editingWork && <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-black flex items-center gap-1 border border-amber-200"><Pencil size={10}/> Modificando</span>}
                         </h2>
-                        <p className="text-sm text-slate-500">Registrar nuevo trabajo</p>
+                        <p className="text-sm text-slate-500">{editingWork ? 'Editando registro existente' : 'Registrar nuevo trabajo'}</p>
                     </div>
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
+                        {editingWork && (
+                            <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex justify-between items-center">
+                                <span className="text-xs text-amber-800 font-bold">Estás editando un trabajo anterior.</span>
+                                <button 
+                                    type="button" 
+                                    onClick={() => {
+                                        setEditingWork(null);
+                                        setFormData({ fusionCount: '', isTray: false, description: '', address: '', hours: '' });
+                                        setPhotos([]);
+                                    }}
+                                    className="text-xs bg-white text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 font-bold hover:bg-amber-100 transition-colors"
+                                >
+                                    Cancelar Edición
+                                </button>
+                            </div>
+                        )}
                         
                         {isMuffaMode && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -603,9 +668,17 @@ const FusionDepartment = () => {
                             <div key={work.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                                 <div className="flex justify-between items-start mb-2">
                                     <div className="flex flex-col">
-                                        <span className={`font-bold text-lg ${work.type === 'MUFFA' ? 'text-indigo-700' : 'text-purple-700'}`}>
-                                            {work.fusionCount} Fusiones
-                                        </span>
+                                        <div className="flex items-center gap-3">
+                                            <span className={`font-bold text-lg ${work.type === 'MUFFA' ? 'text-indigo-700' : 'text-purple-700'}`}>
+                                                {work.fusionCount} Fusiones
+                                            </span>
+                                            <button 
+                                                onClick={() => handleEdit(work)}
+                                                className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold"
+                                            >
+                                                <Edit size={14} /> Editar
+                                            </button>
+                                        </div>
                                         {work.type === 'MUFFA' && (
                                             <div className="flex items-center gap-2 mt-1">
                                                 <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">MUFFA</span>
