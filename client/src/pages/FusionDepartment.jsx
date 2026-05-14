@@ -29,6 +29,7 @@ const FusionDepartment = () => {
     const [submitting, setSubmitting] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
     const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
+    const [viewingPhoto, setViewingPhoto] = useState(null);
 
     // Get current user from localStorage
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -514,11 +515,16 @@ const FusionDepartment = () => {
                                 <div className="grid grid-cols-4 gap-2 mb-4">
                                     {photos.map((p, idx) => (
                                         <div key={idx} className="relative aspect-square group">
-                                            <img src={p.preview} alt="preview" className="w-full h-full object-cover rounded-lg border border-slate-200" />
+                                            <img 
+                                                src={p.preview} 
+                                                alt="preview" 
+                                                onClick={() => setViewingPhoto(p.preview)}
+                                                className="w-full h-full object-cover rounded-lg border border-slate-200 cursor-pointer" 
+                                            />
                                             <button 
                                                 type="button"
                                                 onClick={() => removePhoto(idx)}
-                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-lg z-10"
                                             >
                                                 <X size={12} />
                                             </button>
@@ -626,9 +632,18 @@ const FusionDepartment = () => {
                                 )}
                                 {work.photos && work.photos.length > 0 && (
                                     <div className="grid grid-cols-4 gap-1 mt-2">
-                                        {work.photos.slice(0, 4).map((p, i) => (
-                                            <img key={i} src={`${api.defaults.baseURL || ''}/${p.replace(/\\/g, '/')}`} className="w-full aspect-square object-cover rounded shadow-sm border border-slate-100" alt="fusion" />
-                                        ))}
+                                        {work.photos.slice(0, 4).map((p, i) => {
+                                            const fullUrl = `${api.defaults.baseURL || ''}/${p.replace(/\\/g, '/')}`;
+                                            return (
+                                                <img 
+                                                    key={i} 
+                                                    src={fullUrl} 
+                                                    onClick={() => setViewingPhoto(fullUrl)}
+                                                    className="w-full aspect-square object-cover rounded shadow-sm border border-slate-100 cursor-pointer hover:opacity-80 transition-opacity" 
+                                                    alt="fusion" 
+                                                />
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>
@@ -636,6 +651,22 @@ const FusionDepartment = () => {
                     )}
                 </div>
             </div>
+            {/* Modal for viewing photos */}
+            {viewingPhoto && (
+                <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <button 
+                        onClick={() => setViewingPhoto(null)}
+                        className="absolute top-6 right-6 text-white bg-white/10 hover:bg-white/20 p-3 rounded-full transition-colors"
+                    >
+                        <X size={32} />
+                    </button>
+                    <img 
+                        src={viewingPhoto} 
+                        alt="Full size" 
+                        className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                    />
+                </div>
+            )}
         </div>
     );
 };
