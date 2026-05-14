@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
-import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload, MapPin, Clock, RefreshCw } from 'lucide-react';
+import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload, MapPin, Clock, RefreshCw, X, Trash2 } from 'lucide-react';
+import useBranding from '../hooks/useBranding';
+import { saveFusionDraft, getFusionDraft, deleteFusionDraft } from '../utils/offlineStorage';
 
 const FusionDepartment = () => {
+    const { branding } = useBranding();
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
     const [addresses, setAddresses] = useState([]);
@@ -19,12 +22,16 @@ const FusionDepartment = () => {
         fusionCount: '',
         isTray: false,
         description: '',
-        photos: [],
         address: '',
         hours: ''
     });
+    const [photos, setPhotos] = useState([]); // Array of objects: { blob, preview, name }
     const [submitting, setSubmitting] = useState(false);
     const [isLocating, setIsLocating] = useState(false);
+    const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
+
+    // Get current user from localStorage
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
 
     useEffect(() => { fetchProjects(); }, []);
 
@@ -35,8 +42,9 @@ const FusionDepartment = () => {
     useEffect(() => {
         if ((selectedNvt || isMuffaMode) && selectedProject) {
             fetchFusionHistory();
+            loadDraft();
         }
-    }, [selectedNvt, isMuffaMode]);
+    }, [selectedNvt, isMuffaMode, selectedProject]);
 
     // Derive NVTs from addresses
     useEffect(() => {
@@ -75,8 +83,170 @@ const FusionDepartment = () => {
         } catch (error) { console.error(error); }
     };
 
-    const handleFileChange = (e) => {
-        setFormData({ ...formData, photos: Array.from(e.target.files) });
+    // --- DRAFT PERSISTENCE ---
+    const getDraftId = () => {
+        if (!selectedProject) return null;
+        return isMuffaMode 
+            ? `fusion_${selectedProject.id}_MUFFA`
+            : `fusion_${selectedProject.id}_${selectedNvt}`;
+    };
+
+    const loadDraft = async () => {
+        const draftId = getDraftId();
+        if (!draftId) return;
+
+        try {
+            const draft = await getFusionDraft(draftId);
+            if (draft) {
+                console.log("Recovering draft for", draftId);
+                setFormData(prev => ({ ...prev, ...draft.formData }));
+                if (draft.photos && draft.photos.length > 0) {
+                    const recoveredPhotos = draft.photos.map(p => ({
+                        ...p,
+                        preview: URL.createObjectURL(p.blob)
+                    }));
+                    setPhotos(recoveredPhotos);
+                }
+            }
+        } catch (err) {
+            console.error("Error loading draft", err);
+        }
+    };
+
+    useEffect(() => {
+        const draftId = getDraftId();
+        if (!draftId || isProcessingPhotos || submitting) return;
+
+        const autoSave = async () => {
+            try {
+                await saveFusionDraft(draftId, {
+                    formData,
+                    photos: photos.map(p => ({ blob: p.blob, name: p.name }))
+                });
+            } catch (err) {
+                console.error("Auto-save failed", err);
+            }
+        };
+
+        const timeout = setTimeout(autoSave, 2000);
+        return () => clearTimeout(timeout);
+    }, [formData, photos, isMuffaMode, selectedNvt, selectedProject]);
+
+    // --- PHOTO BRANDING ---
+    const processPhoto = async (file) => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                const MAX_DIM = 1600;
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > MAX_DIM) {
+                        height *= MAX_DIM / width;
+                        width = MAX_DIM;
+                    }
+                } else {
+                    if (height > MAX_DIM) {
+                        width *= MAX_DIM / height;
+                        height = MAX_DIM;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // Watermark logic
+                const finalize = (logoImg = null) => {
+                    const fontSize = Math.max(20, Math.floor(height * 0.025));
+                    const padding = fontSize * 1.5;
+                    
+                    ctx.save();
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
+
+                    let techYOffset = padding;
+
+                    if (logoImg) {
+                        const logoWidth = width * 0.18;
+                        const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
+                        ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
+                        ctx.drawImage(logoImg, padding, padding, logoWidth, logoHeight);
+                        techYOffset = padding + logoHeight + (fontSize * 0.5);
+                    }
+
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
+                    ctx.fillStyle = 'white';
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.textBaseline = 'top';
+                    const techName = user.username?.split('@')[0] || 'Técnico JOA';
+                    ctx.fillText(techName.toUpperCase(), padding, techYOffset);
+                    
+                    const today = new Date().toLocaleDateString('es-ES');
+                    ctx.fillText(today, padding, techYOffset + fontSize + 5);
+
+                    ctx.restore();
+
+                    canvas.toBlob((blob) => {
+                        URL.revokeObjectURL(objectUrl);
+                        resolve({
+                            blob,
+                            preview: URL.createObjectURL(blob),
+                            name: file.name
+                        });
+                    }, 'image/jpeg', 0.85);
+                };
+
+                if (branding.logoUrl) {
+                    const logoImg = new Image();
+                    logoImg.crossOrigin = "anonymous";
+                    logoImg.onload = () => finalize(logoImg);
+                    logoImg.onerror = () => finalize(null);
+                    logoImg.src = branding.logoUrl;
+                } else {
+                    finalize(null);
+                }
+            };
+            img.onerror = () => reject(new Error("Image load failed"));
+            img.src = objectUrl;
+        });
+    };
+
+    const handlePhotoSelect = async (e) => {
+        if (e.target.files && e.target.files.length > 0) {
+            setIsProcessingPhotos(true);
+            const selectedFiles = Array.from(e.target.files);
+            const processedPhotos = [];
+
+            for (const file of selectedFiles) {
+                try {
+                    const processed = await processPhoto(file);
+                    processedPhotos.push(processed);
+                } catch (err) {
+                    console.error("Error processing photo", err);
+                }
+            }
+
+            setPhotos(prev => [...prev, ...processedPhotos]);
+            setIsProcessingPhotos(false);
+        }
+    };
+
+    const removePhoto = (index) => {
+        const photo = photos[index];
+        if (photo.preview.startsWith('blob:')) URL.revokeObjectURL(photo.preview);
+        setPhotos(prev => prev.filter((_, i) => i !== index));
     };
 
     const updateLocation = () => {
@@ -121,8 +291,8 @@ const FusionDepartment = () => {
         data.append('isTray', formData.isTray);
         data.append('description', formData.description);
 
-        formData.photos.forEach(file => {
-            data.append('photos', file);
+        photos.forEach((p, i) => {
+            data.append('photos', p.blob, `foto_${i}.jpg`);
         });
 
         try {
@@ -130,7 +300,13 @@ const FusionDepartment = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert('Trabajo registrado correctamente');
-            setFormData({ fusionCount: '', isTray: false, description: '', photos: [], address: '', hours: '' });
+            
+            // Clear draft
+            const draftId = getDraftId();
+            if (draftId) await deleteFusionDraft(draftId);
+
+            setFormData({ fusionCount: '', isTray: false, description: '', address: '', hours: '' });
+            setPhotos([]);
             fetchFusionHistory();
         } catch (error) {
             console.error(error);
@@ -224,7 +400,8 @@ const FusionDepartment = () => {
                         onClick={() => {
                             setSelectedNvt(null);
                             setIsMuffaMode(false);
-                            setFormData({ fusionCount: '', isTray: false, description: '', photos: [], address: '', hours: '' });
+                            setFormData({ fusionCount: '', isTray: false, description: '', address: '', hours: '' });
+                            setPhotos([]);
                         }} 
                         className="p-2 hover:bg-slate-200 rounded-full transition-colors"
                     >
@@ -331,6 +508,30 @@ const FusionDepartment = () => {
 
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Fotos / Evidencias</label>
+                            
+                            {/* Photo Grid Preview */}
+                            {photos.length > 0 && (
+                                <div className="grid grid-cols-4 gap-2 mb-4">
+                                    {photos.map((p, idx) => (
+                                        <div key={idx} className="relative aspect-square group">
+                                            <img src={p.preview} alt="preview" className="w-full h-full object-cover rounded-lg border border-slate-200" />
+                                            <button 
+                                                type="button"
+                                                onClick={() => removePhoto(idx)}
+                                                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full p-1 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {isProcessingPhotos && (
+                                        <div className="aspect-square bg-slate-100 rounded-lg flex items-center justify-center border border-dashed border-slate-300">
+                                            <RefreshCw size={20} className="text-slate-400 animate-spin" />
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-2 gap-4 mb-4">
                                 {/* Camera Button */}
                                 <div className="border-2 border-dashed border-blue-400 bg-blue-50/50 rounded-xl flex flex-col items-center justify-center p-4 hover:bg-blue-100 transition-colors cursor-pointer relative aspect-square">
@@ -338,11 +539,9 @@ const FusionDepartment = () => {
                                         type="file"
                                         accept="image/*"
                                         capture="environment"
-                                        onChange={(e) => {
-                                            const newFiles = Array.from(e.target.files);
-                                            setFormData(prev => ({ ...prev, photos: [...prev.photos, ...newFiles] }));
-                                        }}
+                                        onChange={handlePhotoSelect}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        disabled={isProcessingPhotos}
                                     />
                                     <Camera className="text-blue-600 mb-2" size={28} />
                                     <div className="text-[10px] text-blue-700 font-extrabold uppercase text-center leading-tight">
@@ -358,11 +557,9 @@ const FusionDepartment = () => {
                                         type="file"
                                         multiple
                                         accept="image/*"
-                                        onChange={(e) => {
-                                            const newFiles = Array.from(e.target.files);
-                                            setFormData(prev => ({ ...prev, photos: [...prev.photos, ...newFiles] }));
-                                        }}
+                                        onChange={handlePhotoSelect}
                                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                                        disabled={isProcessingPhotos}
                                     />
                                     <Upload className="text-slate-500 mb-2" size={28} />
                                     <div className="text-[10px] text-slate-600 font-extrabold uppercase text-center leading-tight">
@@ -371,20 +568,12 @@ const FusionDepartment = () => {
                                         Varios
                                     </div>
                                 </div>
-
-                                {/* Preview of selected files */}
-                                {formData.photos.length > 0 && (
-                                    <div className="col-span-2 p-2 bg-slate-50 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-500 flex justify-between items-center">
-                                        <span>{formData.photos.length} fotos seleccionadas</span>
-                                        <button type="button" onClick={() => setFormData({ ...formData, photos: [] })} className="text-red-500">Limpiar</button>
-                                    </div>
-                                )}
                             </div>
                         </div>
 
                         <button
                             type="submit"
-                            disabled={submitting}
+                            disabled={submitting || isProcessingPhotos}
                             className={`w-full py-3 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 ${isMuffaMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700'}`}
                         >
                             <Save size={20} /> {submitting ? 'Guardando...' : 'Guardar Trabajo'}
@@ -436,8 +625,10 @@ const FusionDepartment = () => {
                                     <p className="text-slate-600 text-sm mb-2 italic">"{work.description}"</p>
                                 )}
                                 {work.photos && work.photos.length > 0 && (
-                                    <div className="text-xs text-slate-400 flex items-center gap-1">
-                                        <Camera size={12} /> {work.photos.length} fotos
+                                    <div className="grid grid-cols-4 gap-1 mt-2">
+                                        {work.photos.slice(0, 4).map((p, i) => (
+                                            <img key={i} src={`${api.defaults.baseURL || ''}/${p.replace(/\\/g, '/')}`} className="w-full aspect-square object-cover rounded shadow-sm border border-slate-100" alt="fusion" />
+                                        ))}
                                     </div>
                                 )}
                             </div>
@@ -449,4 +640,4 @@ const FusionDepartment = () => {
     );
 };
 
-export default FusionDepartment;
+export default FusionDepartment;partment;
