@@ -640,4 +640,4 @@ const FusionDepartment = () => {
     );
 };
 
-export default FusionDepartment;partment;
+export default FusionDepartment;
