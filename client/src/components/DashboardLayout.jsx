@@ -169,7 +169,7 @@ const DashboardLayout = () => {
             items: [
                 { icon: Folder, label: 'Proyectos', path: '/dashboard/projects', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Network, label: 'Soplado', path: '/dashboard/blowing', roles: ['BLOWER', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: Zap, label: 'Fusión', path: '/dashboard/fusion', roles: ['BLOWER', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: Zap, label: 'Fusión', path: '/dashboard/fusion', roles: ['BLOWER', 'ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: Calendar, label: 'Citas (Back Office)', path: '/dashboard/appointments', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: AlertTriangle, label: 'Averías / Incidencias', path: '/dashboard/issues', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: CheckCircle, label: 'Activaciones', path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },

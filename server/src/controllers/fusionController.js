@@ -3,12 +3,12 @@ const { processImages } = require('../utils/imageProcessor');
 
 // Log Fusion Work (New Workflow)
 exports.logFusionWork = async (req, res) => {
-    const { projectId, nvt, fusionCount, isTray, description } = req.body;
+    const { projectId, nvt, type, address, hours, fusionCount, isTray, description } = req.body;
     const files = req.files;
     const userId = req.userId;
 
-    if (!projectId || !nvt || !fusionCount) {
-        return res.status(400).json({ message: 'Project ID, NVT, and Fusion Count are required' });
+    if (!projectId || (!nvt && type !== 'MUFFA') || !fusionCount) {
+        return res.status(400).json({ message: 'Project ID, NVT (if NVT type), and Fusion Count are required' });
     }
 
     // 🟢 COMPRESIÓN DE IMÁGENES
@@ -24,7 +24,10 @@ exports.logFusionWork = async (req, res) => {
         const work = await prisma.fusionWork.create({
             data: {
                 projectId,
-                nvtName: nvt,
+                nvtName: nvt || null,
+                type: type || 'NVT',
+                address: address || null,
+                hours: hours ? parseFloat(hours) : null,
                 fusionCount: parseInt(fusionCount),
                 isTray: isTray === 'true' || isTray === true,
                 description,
@@ -43,12 +46,15 @@ exports.logFusionWork = async (req, res) => {
 // Get fusion works
 exports.getFusionWorks = async (req, res) => {
     const { projectId } = req.params;
-    const { nvt } = req.query;
+    const { nvt, type } = req.query;
 
     try {
         const where = { projectId };
-        // nvtName is case sensitive usually, but NVT names should be standardized. 
-        // We can use insensitive if we want.
+        
+        if (type) {
+            where.type = type;
+        }
+        
         if (nvt) {
             where.nvtName = { equals: nvt, mode: 'insensitive' };
         }

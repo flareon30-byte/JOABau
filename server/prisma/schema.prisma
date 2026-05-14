@@ -369,8 +369,11 @@ model FusionWork {
   id        String  @id @default(uuid())
   projectId String
   project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  nvtName   String // The NVT identifier (e.g. "NVT-01")
+  nvtName   String? // The NVT identifier (e.g. "NVT-01"), optional for Muffas
 
+  type        String  @default("NVT") // "NVT" or "MUFFA"
+  address     String? // Address for Muffas
+  hours       Float?  // Hours spent on Muffas
   fusionCount Int
   isTray      Boolean @default(false) // "en bandejas"
 

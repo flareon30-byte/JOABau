@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload } from 'lucide-react';
+import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload, MapPin, Clock } from 'lucide-react';
 
 const FusionDepartment = () => {
     const [projects, setProjects] = useState([]);
@@ -9,6 +9,7 @@ const FusionDepartment = () => {
     const [uniqueNvts, setUniqueNvts] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedNvt, setSelectedNvt] = useState(null);
+    const [isMuffaMode, setIsMuffaMode] = useState(false);
 
     // History State
     const [fusionHistory, setFusionHistory] = useState([]);
@@ -18,7 +19,9 @@ const FusionDepartment = () => {
         fusionCount: '',
         isTray: false,
         description: '',
-        photos: []
+        photos: [],
+        address: '',
+        hours: ''
     });
     const [submitting, setSubmitting] = useState(false);
 
@@ -29,10 +32,10 @@ const FusionDepartment = () => {
     }, [selectedProject]);
 
     useEffect(() => {
-        if (selectedNvt && selectedProject) {
+        if ((selectedNvt || isMuffaMode) && selectedProject) {
             fetchFusionHistory();
         }
-    }, [selectedNvt]);
+    }, [selectedNvt, isMuffaMode]);
 
     // Derive NVTs from addresses
     useEffect(() => {
@@ -63,7 +66,10 @@ const FusionDepartment = () => {
 
     const fetchFusionHistory = async () => {
         try {
-            const res = await api.get(`/api/fusion/works/${selectedProject.id}?nvt=${selectedNvt}`);
+            const url = isMuffaMode 
+                ? `/api/fusion/works/${selectedProject.id}?type=MUFFA`
+                : `/api/fusion/works/${selectedProject.id}?nvt=${selectedNvt}`;
+            const res = await api.get(url);
             setFusionHistory(res.data);
         } catch (error) { console.error(error); }
     };
@@ -72,13 +78,41 @@ const FusionDepartment = () => {
         setFormData({ ...formData, photos: Array.from(e.target.files) });
     };
 
+    // Auto-fill location for Muffas
+    useEffect(() => {
+        if (isMuffaMode && !formData.address) {
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    try {
+                        // Using a free reverse geocoding API or just coordinates if preferred
+                        // For now, let's just put coordinates or try to fetch a string if possible
+                        // A better way is to use Google Maps or similar, but for simplicity:
+                        setFormData(prev => ({ ...prev, address: `GPS: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}` }));
+                    } catch (e) {
+                        console.error("Error geocoding", e);
+                    }
+                }, (error) => {
+                    console.warn("Geolocation error", error);
+                });
+            }
+        }
+    }, [isMuffaMode]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setSubmitting(true);
 
         const data = new FormData();
         data.append('projectId', selectedProject.id);
-        data.append('nvt', selectedNvt);
+        if (isMuffaMode) {
+            data.append('type', 'MUFFA');
+            data.append('address', formData.address);
+            data.append('hours', formData.hours);
+        } else {
+            data.append('type', 'NVT');
+            data.append('nvt', selectedNvt);
+        }
         data.append('fusionCount', formData.fusionCount);
         data.append('isTray', formData.isTray);
         data.append('description', formData.description);
@@ -92,7 +126,7 @@ const FusionDepartment = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             alert('Trabajo registrado correctamente');
-            setFormData({ fusionCount: '', isTray: false, description: '', photos: [] });
+            setFormData({ fusionCount: '', isTray: false, description: '', photos: [], address: '', hours: '' });
             fetchFusionHistory();
         } catch (error) {
             console.error(error);
@@ -128,7 +162,7 @@ const FusionDepartment = () => {
     }
 
     // View: NVT Selection
-    if (!selectedNvt) {
+    if (!selectedNvt && !isMuffaMode) {
         return (
             <div className="space-y-6">
                 {/* Header & Search */}
@@ -136,7 +170,7 @@ const FusionDepartment = () => {
                     <button onClick={() => setSelectedProject(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                         <ArrowLeft size={24} className="text-slate-600" />
                     </button>
-                    <h2 className="text-2xl font-bold text-slate-800">{selectedProject.name} (Seleccionar NVT)</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">{selectedProject.name} (Seleccionar NVT o Muffa)</h2>
                 </div>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -151,6 +185,15 @@ const FusionDepartment = () => {
 
                 {/* List */}
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {/* Special Muffa Item */}
+                    <div
+                        onClick={() => setIsMuffaMode(true)}
+                        className="bg-gradient-to-br from-purple-600 to-indigo-700 p-6 rounded-xl shadow-lg border border-transparent cursor-pointer hover:scale-[1.02] transition-all flex items-center gap-3 text-white"
+                    >
+                        <Zap className="text-yellow-300" />
+                        <span className="font-black text-lg">NUEVA MUFFA</span>
+                    </div>
+
                     {filteredNvts.map(nvt => (
                         <div
                             key={nvt}
@@ -173,48 +216,102 @@ const FusionDepartment = () => {
             {/* Left: Form */}
             <div className="space-y-6">
                 <div className="flex items-center gap-4 mb-2">
-                    <button onClick={() => setSelectedNvt(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                    <button 
+                        onClick={() => {
+                            setSelectedNvt(null);
+                            setIsMuffaMode(false);
+                            setFormData({ fusionCount: '', isTray: false, description: '', photos: [], address: '', hours: '' });
+                        }} 
+                        className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+                    >
                         <ArrowLeft size={24} className="text-slate-600" />
                     </button>
                     <div>
-                        <h2 className="text-xl font-bold text-slate-800">NVT: {selectedNvt}</h2>
+                        <h2 className="text-xl font-bold text-slate-800">
+                            {isMuffaMode ? 'Trabajo en MUFFA' : `NVT: ${selectedNvt}`}
+                        </h2>
                         <p className="text-sm text-slate-500">Registrar nuevo trabajo</p>
                     </div>
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="flex gap-4">
-                            <div className="flex-1">
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nº Fusiones</label>
-                                <input
-                                    type="number"
-                                    value={formData.fusionCount}
-                                    onChange={e => setFormData({ ...formData, fusionCount: e.target.value })}
-                                    className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500"
-                                    required
-                                />
-                            </div>
-                            <div className="flex items-end mb-3">
-                                <label className="flex items-center gap-2 cursor-pointer">
+                        
+                        {isMuffaMode && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="col-span-full">
+                                    <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2">
+                                        <MapPin size={16} className="text-purple-500" /> Dirección de la Muffa
+                                    </label>
                                     <input
-                                        type="checkbox"
-                                        checked={formData.isTray}
-                                        onChange={e => setFormData({ ...formData, isTray: e.target.checked })}
-                                        className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                        type="text"
+                                        value={formData.address}
+                                        onChange={e => setFormData({ ...formData, address: e.target.value })}
+                                        placeholder="Se rellena automáticamente con GPS..."
+                                        className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                                        required
                                     />
-                                    <span className="text-slate-700 font-medium">En bandeja</span>
-                                </label>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2">
+                                        <Clock size={16} className="text-purple-500" /> Horas dedicadas
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.5"
+                                        value={formData.hours}
+                                        onChange={e => setFormData({ ...formData, hours: e.target.value })}
+                                        placeholder="Ej: 2.5"
+                                        className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 font-bold"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">Nº Fusiones Totales</label>
+                                    <input
+                                        type="number"
+                                        value={formData.fusionCount}
+                                        onChange={e => setFormData({ ...formData, fusionCount: e.target.value })}
+                                        className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 font-bold"
+                                        required
+                                    />
+                                </div>
                             </div>
-                        </div>
+                        )}
+
+                        {!isMuffaMode && (
+                            <div className="flex gap-4">
+                                <div className="flex-1">
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nº Fusiones</label>
+                                    <input
+                                        type="number"
+                                        value={formData.fusionCount}
+                                        onChange={e => setFormData({ ...formData, fusionCount: e.target.value })}
+                                        className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500"
+                                        required
+                                    />
+                                </div>
+                                <div className="flex items-end mb-3">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.isTray}
+                                            onChange={e => setFormData({ ...formData, isTray: e.target.checked })}
+                                            className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
+                                        />
+                                        <span className="text-slate-700 font-medium">En bandeja</span>
+                                    </label>
+                                </div>
+                            </div>
+                        )}
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Notas / Descripción</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Notas / Descripción del trabajo</label>
                             <textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 outline-none h-24 resize-none"
-                                placeholder="Detalles del trabajo..."
+                                placeholder="Detalla lo realizado..."
                             />
                         </div>
 
@@ -261,7 +358,7 @@ const FusionDepartment = () => {
                                     </div>
                                 </div>
 
-                                {/* Preview of selected files (simple list since we don't have previews easily here) */}
+                                {/* Preview of selected files */}
                                 {formData.photos.length > 0 && (
                                     <div className="col-span-2 p-2 bg-slate-50 rounded-lg border border-slate-200 text-[10px] font-bold text-slate-500 flex justify-between items-center">
                                         <span>{formData.photos.length} fotos seleccionadas</span>
@@ -274,7 +371,7 @@ const FusionDepartment = () => {
                         <button
                             type="submit"
                             disabled={submitting}
-                            className="w-full py-3 rounded-xl font-bold text-white bg-purple-600 hover:bg-purple-700 transition-all flex items-center justify-center gap-2"
+                            className={`w-full py-3 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 ${isMuffaMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700'}`}
                         >
                             <Save size={20} /> {submitting ? 'Guardando...' : 'Guardar Trabajo'}
                         </button>
@@ -285,7 +382,7 @@ const FusionDepartment = () => {
             {/* Right: History */}
             <div className="space-y-6">
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <History /> Historial en {selectedNvt}
+                    <History /> {isMuffaMode ? 'Historial de Muffas' : `Historial en ${selectedNvt}`}
                 </h3>
                 <div className="space-y-4">
                     {fusionHistory.length === 0 ? (
@@ -296,20 +393,33 @@ const FusionDepartment = () => {
                         fusionHistory.map(work => (
                             <div key={work.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200">
                                 <div className="flex justify-between items-start mb-2">
-                                    <span className="font-bold text-purple-700 text-lg">
-                                        {work.fusionCount} Fusiones
-                                    </span>
-                                    <span className="text-xs text-slate-400">
-                                        {new Date(work.createdAt).toLocaleDateString()}
+                                    <div className="flex flex-col">
+                                        <span className={`font-bold text-lg ${work.type === 'MUFFA' ? 'text-indigo-700' : 'text-purple-700'}`}>
+                                            {work.fusionCount} Fusiones
+                                        </span>
+                                        {work.type === 'MUFFA' && (
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-bold">MUFFA</span>
+                                                <span className="text-xs text-slate-500 font-bold flex items-center gap-1"><Clock size={12}/> {work.hours}h</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <span className="text-xs text-slate-400 font-medium">
+                                        {new Date(work.createdAt).toLocaleDateString('es-ES')}
                                     </span>
                                 </div>
+                                {work.address && (
+                                    <p className="text-xs text-slate-500 font-bold mb-2 flex items-center gap-1">
+                                        <MapPin size={12} className="text-slate-400"/> {work.address}
+                                    </p>
+                                )}
                                 {work.isTray && (
                                     <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold mb-2">
                                         En Bandeja
                                     </span>
                                 )}
                                 {work.description && (
-                                    <p className="text-slate-600 text-sm mb-2">{work.description}</p>
+                                    <p className="text-slate-600 text-sm mb-2 italic">"{work.description}"</p>
                                 )}
                                 {work.photos && work.photos.length > 0 && (
                                     <div className="text-xs text-slate-400 flex items-center gap-1">

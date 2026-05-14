@@ -379,6 +379,28 @@ exports.getBillingData = async (req, res) => {
             }
         });
 
+        // --- Part E: Fusion (NVTs and Muffas) ---
+        results.fusion.forEach(f => {
+            const client = getClientForWork(f);
+            const prices = client?.settings || clientsMap[client?.id]?.settings || {};
+            const fusionSettings = prices.fusion || {};
+            
+            let lineGross = 0;
+            if (f.type === 'MUFFA') {
+                const hourPrice = parseFloat(fusionSettings.muffaHourPrice || 35);
+                lineGross = (f.hours || 0) * hourPrice;
+                results.totals.itemsSummary['Muffas (Horas)'] = (results.totals.itemsSummary['Muffas (Horas)'] || 0) + (f.hours || 0);
+            } else {
+                const unitPrice = parseFloat(fusionSettings.fusionUnitPrice || 15);
+                lineGross = (f.fusionCount || 0) * unitPrice;
+                results.totals.itemsSummary['Fusiones (NVT)'] = (results.totals.itemsSummary['Fusiones (NVT)'] || 0) + (f.fusionCount || 0);
+            }
+
+            results.totals.euros += lineGross;
+            // Assuming weekday for now, unless we add isSaturday to FusionWork
+            results.totals.weekdayGross += lineGross; 
+        });
+
         res.json(results);
     } catch (error) {
         console.error(error);
@@ -525,8 +547,10 @@ exports.exportBillingExcel = async (req, res) => {
         const fusionRows = fusion.map(i => ({
             Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
             Proyecto: i.project?.name || 'N/A',
-            NVT: i.nvtName || '',
+            Tipo: i.type || 'NVT',
+            NVT_Direccion: i.type === 'MUFFA' ? (i.address || '-') : (i.nvtName || '-'),
             Fusiones: i.fusionCount || 0,
+            Horas: i.hours || '-',
             EnBandeja: i.isTray ? 'Sí' : 'No',
             Notas: i.description || '-'
         }));

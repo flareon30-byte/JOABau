@@ -59,6 +59,10 @@ const SettingsPage = () => {
             dietasPerDay: 0,
             opCostPerPerson: 200,
             extraSaturday: 50 // Added Extra Saturday for Dietas
+        },
+        fusion: {
+            muffaHourPrice: 35.0,
+            fusionUnitPrice: 15.0
         }
     });
 
@@ -405,6 +409,12 @@ const SettingsPage = () => {
                     >
                         Gestión: Back Office
                     </button>
+                    <button
+                        onClick={() => setActiveTab('fusion')}
+                        className={`px-4 md:px-6 py-3 font-bold border-b-2 transition-colors ${activeTab === 'fusion' ? 'border-joa-blue text-joa-blue' : 'border-transparent text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Precios: Fusión
+                    </button>
                 </div>
                 
                 {/* Client selection banner if configuring prices */}
@@ -431,6 +441,42 @@ const SettingsPage = () => {
                             {activeTab === 'blowers' && renderFinancialInputs('blowers', 'Configuración de Soplado / Obra Civil')}
                             {activeTab === 'backOffice' && renderBackOfficeInputs()}
                             {activeTab === 'protocols' && renderProtocolInputs()}
+                            {activeTab === 'fusion' && (
+                                <div className="space-y-6 animate-fadeIn">
+                                    <div className="flex items-center gap-2 mb-4">
+                                        <h3 className="text-xl font-bold text-slate-700">Configuración de Fusión y Muffas</h3>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-200">
+                                            <h4 className="font-bold text-blue-800 mb-4 flex items-center gap-2"><DollarSign size={18} /> Tarifas de Facturación</h4>
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-blue-600 uppercase">Horas Muffa (€/hora)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        value={financials.fusion?.muffaHourPrice || 35} 
+                                                        onChange={(e) => handleFinancialChange('fusion', 'muffaHourPrice', e.target.value)} 
+                                                        className="w-full p-2 border border-blue-200 rounded-lg font-bold" 
+                                                    />
+                                                    <p className="text-[10px] text-blue-700 mt-1">Precio cobrado al cliente por cada hora de trabajo en Muffas.</p>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-blue-600 uppercase">Precio por Fusión (€/unidad)</label>
+                                                    <input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        value={financials.fusion?.fusionUnitPrice || 15} 
+                                                        onChange={(e) => handleFinancialChange('fusion', 'fusionUnitPrice', e.target.value)} 
+                                                        className="w-full p-2 border border-blue-200 rounded-lg font-bold" 
+                                                    />
+                                                    <p className="text-[10px] text-blue-700 mt-1">Precio cobrado al cliente por cada fusión realizada en NVTs.</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="pt-8 mt-8 border-t border-slate-100 flex justify-end">
                                 <button

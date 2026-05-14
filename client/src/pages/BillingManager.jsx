@@ -262,7 +262,7 @@ const BillingPage = () => {
                 break;
             case 'fusion':
                 data = billingData.fusion;
-                columns = ['Fecha', 'Proyecto', 'NVT', 'Fusiones', 'Bandeja', 'Notas', 'Acciones'];
+                columns = ['Fecha', 'Proyecto', 'Tipo', 'NVT / Dirección', 'Fusiones', 'Horas', 'Bandeja', 'Notas', 'Acciones'];
                 emptyMsg = "No hay trabajos de fusión";
                 break;
             case 'activation':
@@ -326,8 +326,24 @@ const BillingPage = () => {
                                     <>
                                         <td className="p-4">{new Date(row.createdAt).toLocaleDateString('es-ES')}</td>
                                         <td className="p-4 font-medium text-slate-800">{row.project?.name}</td>
-                                        <td className="p-4 font-bold text-purple-600">{row.nvtName}</td>
-                                        <td className="p-4">{row.fusionCount}</td>
+                                        <td className="p-4">
+                                            <span className={`px-2 py-1 rounded-full text-[10px] font-bold ${row.type === 'MUFFA' ? 'bg-indigo-100 text-indigo-700' : 'bg-purple-100 text-purple-700'}`}>
+                                                {row.type || 'NVT'}
+                                            </span>
+                                        </td>
+                                        <td className="p-4 font-bold text-slate-700">
+                                            {row.type === 'MUFFA' ? (
+                                                <div className="flex items-center gap-1 text-indigo-600">
+                                                    <MapPin size={14} /> {row.address || 'Sin dirección'}
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-1 text-purple-600">
+                                                    <Layers size={14} /> {row.nvtName}
+                                                </div>
+                                            )}
+                                        </td>
+                                        <td className="p-4 font-black">{row.fusionCount}</td>
+                                        <td className="p-4">{row.hours ? `${row.hours}h` : '-'}</td>
                                         <td className="p-4">{row.isTray ? 'Sí' : 'No'}</td>
                                         <td className="p-4 text-slate-500 truncate max-w-xs">{row.description}</td>
                                     </>
