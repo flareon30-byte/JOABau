@@ -201,8 +201,14 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
             if (cancelledRef.current) return;
 
             // ---- place markers ----
-            // For addresses that returned the same coords (same street center), add tiny jitter
-            // so they don't pile on each other
+            // Group addresses that share the exact same geocoded point (Photon returned
+            // the street centre because the house number wasn't in OSM).
+            // Spread them in a compact 4-column grid with ~10m spacing so they stay
+            // close to the real street but don't pile on top of each other.
+            const JITTER_COLS  = 4;
+            const JITTER_LAT   = 0.00009;  // ≈ 10 m north-south
+            const JITTER_LNG   = 0.00014;  // ≈ 10 m east-west
+
             const coordCount = {};
             addresses.forEach((_, i) => {
                 const c = coordsList[i];
@@ -220,20 +226,21 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 if (!coords) {
                     coords = scatter(center, i);
                 } else {
-                    // If multiple dots share the exact same geocoded point, nudge them slightly
                     const k = `${coords.lat.toFixed(5)}_${coords.lng.toFixed(5)}`;
                     const total = coordCount[k] || 1;
                     if (total > 1) {
                         const idx = coordSeen[k] || 0;
                         coordSeen[k] = idx + 1;
-                        if (idx > 0) {
-                            // Tiny jitter in a tight circle ~5m radius
-                            const angle = (idx / total) * 2 * Math.PI;
-                            coords = {
-                                lat: coords.lat + 0.000045 * Math.sin(angle),
-                                lng: coords.lng + 0.000065 * Math.cos(angle)
-                            };
-                        }
+                        // Grid layout: row × col, centred around the original point
+                        const col      = idx % JITTER_COLS;
+                        const row      = Math.floor(idx / JITTER_COLS);
+                        const totalRows = Math.ceil(total / JITTER_COLS);
+                        const colOffset = (col - (JITTER_COLS - 1) / 2) * JITTER_LNG;
+                        const rowOffset = (row - (totalRows - 1) / 2) * JITTER_LAT;
+                        coords = {
+                            lat: coords.lat + rowOffset,
+                            lng: coords.lng + colOffset
+                        };
                     }
                 }
 
