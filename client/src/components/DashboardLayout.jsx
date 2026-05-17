@@ -1,33 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
 import { 
     LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, 
     Folder, Zap, ChevronRight, ChevronDown, Settings, Lock, ClipboardList, 
     Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase, Truck, 
-    FileText, Building2
+    FileText, Building2, Globe
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 
 import useBranding from '../hooks/useBranding';
 
-const Toast = ({ message, onClose }) => (
-    <div className="fixed top-24 right-4 z-[100] bg-white border-l-4 border-joa-blue shadow-2xl p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-right w-80">
-        <div className="bg-blue-100 p-2 rounded-full text-blue-600">
-            <Bell size={20} />
+const Toast = ({ message, onClose }) => {
+    const { t } = useTranslation();
+    return (
+        <div className="fixed top-24 right-4 z-[100] bg-white border-l-4 border-joa-blue shadow-2xl p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-right w-80">
+            <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+                <Bell size={20} />
+            </div>
+            <div className="flex-1">
+                <h4 className="font-bold text-slate-800 text-sm">{t('dashboard.new_notification')}</h4>
+                <p className="text-xs text-slate-600 mt-1 line-clamp-3">{message}</p>
+            </div>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+                <X size={16} />
+            </button>
         </div>
-        <div className="flex-1">
-            <h4 className="font-bold text-slate-800 text-sm">Nueva Notificación</h4>
-            <p className="text-xs text-slate-600 mt-1 line-clamp-3">{message}</p>
-        </div>
-        <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
-            <X size={16} />
-        </button>
-    </div>
-);
+    );
+};
 
 const DashboardLayout = () => {
+    const { t, i18n } = useTranslation();
     const { branding } = useBranding();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     usePushNotifications(user.id);
@@ -158,58 +163,58 @@ const DashboardLayout = () => {
         {
             id: 'main',
             items: [
-                { icon: LayoutDashboard, label: 'Resumen', path: '/dashboard' },
+                { icon: LayoutDashboard, label: t('dashboard.summary'), path: '/dashboard' },
             ]
         },
         {
             id: 'production',
-            label: 'Gestión de Producción',
+            label: t('dashboard.production_mgmt'),
             icon: Briefcase,
             roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'BLOWER', 'ACTIVATOR', 'PROTOCOL_MANAGER'],
             items: [
-                { icon: Folder, label: 'Proyectos', path: '/dashboard/projects', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Network, label: 'Soplado', path: '/dashboard/blowing', roles: ['BLOWER', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: Zap, label: 'Fusión', path: '/dashboard/fusion', roles: ['BLOWER', 'ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: Calendar, label: 'Citas (Back Office)', path: '/dashboard/appointments', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: AlertTriangle, label: 'Averías / Incidencias', path: '/dashboard/issues', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: CheckCircle, label: 'Activaciones', path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: ClipboardList, label: 'Protocolos', path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: Zap, label: 'Control de Producción', path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Folder, label: t('dashboard.projects'), path: '/dashboard/projects', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Network, label: t('dashboard.blowing'), path: '/dashboard/blowing', roles: ['BLOWER', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: Zap, label: t('dashboard.fusion'), path: '/dashboard/fusion', roles: ['BLOWER', 'ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: Calendar, label: t('dashboard.appointments'), path: '/dashboard/appointments', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: AlertTriangle, label: t('dashboard.issues'), path: '/dashboard/issues', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: CheckCircle, label: t('dashboard.activations'), path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: ClipboardList, label: t('dashboard.protocols'), path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: Zap, label: t('dashboard.prod_control'), path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
             ]
         },
         {
             id: 'economy',
-            label: 'Área Económica',
+            label: t('dashboard.economy_area'),
             icon: TrendingUp,
             roles: ['SUPER_ADMIN', 'ADMIN', 'ACTIVATOR', 'BLOWER'],
             items: [
-                { icon: Wallet, label: 'Mis Ganancias', path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER'] },
-                { icon: FileText, label: 'Facturación Clientes', path: '/dashboard/invoicing', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Wallet, label: 'Nóminas (Admin)', path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Truck, label: 'Control de Flota', path: '/dashboard/vehicles', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Building2, label: 'Mi Empresa', path: '/dashboard/company-settings', roles: ['SUPER_ADMIN'] },
-                { icon: Calculator, label: 'Sist. de Rentabilidad', path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
+                { icon: Wallet, label: t('dashboard.earnings'), path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER'] },
+                { icon: FileText, label: t('dashboard.invoicing'), path: '/dashboard/invoicing', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Wallet, label: t('dashboard.payroll'), path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Truck, label: t('dashboard.fleet'), path: '/dashboard/vehicles', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Building2, label: t('dashboard.company'), path: '/dashboard/company-settings', roles: ['SUPER_ADMIN'] },
+                { icon: Calculator, label: t('dashboard.profitability'), path: '/dashboard/settings', roles: ['SUPER_ADMIN'] },
             ]
         },
         {
             id: 'hr',
-            label: 'Recursos Humanos',
+            label: t('dashboard.hr'),
             icon: Users,
             roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'],
             items: [
-                { icon: Users, label: 'Usuarios', path: '/dashboard/users', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Users, label: 'Equipos', path: '/dashboard/teams', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Sun, label: 'Vacaciones Personal', path: '/dashboard/vacations-admin', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] },
+                { icon: Users, label: t('dashboard.users'), path: '/dashboard/users', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Users, label: t('dashboard.teams'), path: '/dashboard/teams', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Sun, label: t('dashboard.vacations_admin'), path: '/dashboard/vacations-admin', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] },
             ]
         },
         {
             id: 'services',
-            label: 'Servicios y Personal',
+            label: t('dashboard.services_personnel'),
             icon: Package,
             items: [
-                { icon: Package, label: 'Pedidos de Material', path: '/dashboard/material-orders' },
-                { icon: Truck, label: 'Mi Vehículo', path: '/dashboard/my-vehicle', roles: ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'], showIfVehicle: true },
-                { icon: Umbrella, label: 'Mis Vacaciones', path: '/dashboard/vacations' },
+                { icon: Package, label: t('dashboard.material_orders'), path: '/dashboard/material-orders' },
+                { icon: Truck, label: t('dashboard.my_vehicle'), path: '/dashboard/my-vehicle', roles: ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'], showIfVehicle: true },
+                { icon: Umbrella, label: t('dashboard.my_vacations'), path: '/dashboard/vacations' },
             ]
         }
     ];
@@ -367,7 +372,7 @@ const DashboardLayout = () => {
                             className="flex items-center w-full p-2 rounded-lg text-slate-500 hover:bg-[#1e293b] hover:text-white transition-colors text-sm"
                         >
                             <Lock size={16} className="mr-2" />
-                            Cambiar Contraseña
+                            {t('dashboard.change_password')}
                         </button>
                     )}
 
@@ -377,7 +382,7 @@ const DashboardLayout = () => {
                             }`}
                     >
                         <LogOut size={22} className={isSidebarOpen ? 'mr-3' : ''} />
-                        {isSidebarOpen && <span className="font-medium">Cerrar Sesión</span>}
+                        {isSidebarOpen && <span className="font-medium">{t('dashboard.logout')}</span>}
                     </button>
                 </div>
             </aside>
@@ -411,13 +416,25 @@ const DashboardLayout = () => {
                                 <h1 className="text-xl md:text-2xl font-heading font-bold text-slate-800 tracking-tight">
                                     {navGroups.flatMap(g => g.items).find(i => i.path === location.pathname)?.label || 'Dashboard'}
                                 </h1>
-                                <p className="text-xs md:text-sm text-slate-500 hidden md:block mt-0.5">Gestión integral de {branding.name}</p>
+                                <p className="text-xs md:text-sm text-slate-500 hidden md:block mt-0.5">{t('dashboard.management')} {branding.name}</p>
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-6">
+                        <div className="flex items-center gap-4 md:gap-6">
+                            
+                            {/* Language Switcher */}
+                            <div className="relative group">
+                                <button className="flex items-center gap-1.5 p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
+                                    <Globe size={18} />
+                                    <span className="text-xs font-bold uppercase">{i18n.language}</span>
+                                </button>
+                                <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+                                    <button onClick={() => i18n.changeLanguage('es')} className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${i18n.language === 'es' ? 'font-bold text-joa-blue bg-blue-50/50' : 'text-slate-600'}`}>🇪🇸 Español</button>
+                                    <button onClick={() => i18n.changeLanguage('de')} className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${i18n.language === 'de' ? 'font-bold text-joa-blue bg-blue-50/50' : 'text-slate-600'}`}>🇩🇪 Deutsch</button>
+                                </div>
+                            </div>
 
-                        {/* Notifications */}
+                            {/* Notifications */}
                         <div className="relative">
                             <button
                                 onClick={() => setShowNotifications(!showNotifications)}
@@ -433,7 +450,7 @@ const DashboardLayout = () => {
                                 <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50">
                                      <div className="p-3 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-slate-700 text-sm">Notificaciones</h3>
+                                            <h3 className="font-bold text-slate-700 text-sm">{t('dashboard.notifications')}</h3>
                                             {unreadCount > 0 && <span className="bg-blue-100 text-blue-600 px-1.5 py-0.5 rounded text-[10px] font-bold">{unreadCount}</span>}
                                         </div>
                                         {notifications.length > 0 && (
@@ -441,14 +458,14 @@ const DashboardLayout = () => {
                                                 onClick={clearNotifications}
                                                 className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider bg-red-50 px-2 py-1 rounded-md transition-colors"
                                             >
-                                                Limpiar todo
+                                                {t('dashboard.clear_all')}
                                             </button>
                                         )}
                                     </div>
                                     <div className="max-h-80 overflow-y-auto">
                                         {notifications.length === 0 ? (
                                             <div className="p-8 text-center text-slate-400 text-sm">
-                                                No tienes notificaciones.
+                                                {t('dashboard.no_notifications')}
                                             </div>
                                         ) : (
                                             notifications.map(n => (
@@ -472,9 +489,9 @@ const DashboardLayout = () => {
                             )}
                         </div>
 
-                        <div className="text-right">
-                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider hidden md:block">Fecha</p>
-                            <p className="text-xs md:text-sm font-medium text-slate-700">{new Date().toLocaleDateString('es-ES')}</p>
+                        <div className="text-right hidden sm:block">
+                            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{t('dashboard.date')}</p>
+                            <p className="text-xs md:text-sm font-medium text-slate-700">{new Date().toLocaleDateString(i18n.language === 'de' ? 'de-DE' : 'es-ES')}</p>
                         </div>
                     </div>
                 </header>
