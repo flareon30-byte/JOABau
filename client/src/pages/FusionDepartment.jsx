@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload, MapPin, Clock, RefreshCw, X, Trash2, Pencil, Edit } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import useBranding from '../hooks/useBranding';
 import { saveFusionDraft, getFusionDraft, deleteFusionDraft } from '../utils/offlineStorage';
 
 const FusionDepartment = () => {
+    const { t } = useTranslation();
     const { branding } = useBranding();
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
@@ -292,10 +294,10 @@ const FusionDepartment = () => {
             }, (error) => {
                 console.warn("Geolocation error", error);
                 setIsLocating(false);
-                alert("No se pudo obtener la ubicación GPS.");
+                alert(t('fusion.error_gps'));
             }, { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
         } else {
-            alert("Tu navegador no soporta geolocalización.");
+            alert(t('fusion.no_geolocation'));
         }
     };
 
@@ -339,12 +341,12 @@ const FusionDepartment = () => {
                 await api.put(`/api/fusion/work/${editingWork.id}`, data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
-                alert('Trabajo actualizado correctamente');
+                alert(t('fusion.success_update'));
             } else {
                 await api.post('/api/fusion/log-work', data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
-                alert('Trabajo registrado correctamente');
+                alert(t('fusion.success_create'));
             }
             
             // Clear draft if it was a new log
@@ -359,7 +361,7 @@ const FusionDepartment = () => {
             fetchFusionHistory();
         } catch (error) {
             console.error(error);
-            alert('Error al guardar trabajo');
+            alert(t('fusion.error_save'));
         } finally {
             setSubmitting(false);
         }
@@ -373,7 +375,7 @@ const FusionDepartment = () => {
     if (!selectedProject) {
         return (
             <div className="space-y-6">
-                <h2 className="text-2xl font-bold text-slate-800">Fusión: Selecciona un Proyecto</h2>
+                <h2 className="text-2xl font-bold text-slate-800">{t('fusion.select_project')}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     {projects.map(project => (
                         <div
@@ -382,7 +384,7 @@ const FusionDepartment = () => {
                             className="bg-white p-6 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:shadow-md hover:border-purple-400 transition-all"
                         >
                             <h3 className="font-bold text-lg text-slate-800">{project.name}</h3>
-                            <p className="text-sm text-slate-500 mt-2">{project._count?.addresses || 0} direcciones</p>
+                            <p className="text-sm text-slate-500 mt-2">{project._count?.addresses || 0} {t('fusion.addresses')}</p>
                         </div>
                     ))}
                 </div>
@@ -399,13 +401,13 @@ const FusionDepartment = () => {
                     <button onClick={() => setSelectedProject(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                         <ArrowLeft size={24} className="text-slate-600" />
                     </button>
-                    <h2 className="text-2xl font-bold text-slate-800">{selectedProject.name} (Seleccionar NVT o Muffa)</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">{selectedProject.name} ({t('fusion.select_nvt_muffa')})</h2>
                 </div>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
                     <input
                         type="text"
-                        placeholder="Buscar NVT..."
+                        placeholder={t('fusion.search_nvt')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-purple-500 outline-none"
@@ -420,7 +422,7 @@ const FusionDepartment = () => {
                         className="bg-gradient-to-br from-purple-600 to-indigo-700 p-6 rounded-xl shadow-lg border border-transparent cursor-pointer hover:scale-[1.02] transition-all flex items-center gap-3 text-white"
                     >
                         <Zap className="text-yellow-300" />
-                        <span className="font-black text-lg">NUEVA MUFFA</span>
+                        <span className="font-black text-lg">{t('fusion.new_muffa')}</span>
                     </div>
 
                     {filteredNvts.map(nvt => (
@@ -433,7 +435,7 @@ const FusionDepartment = () => {
                             <span className="font-bold text-slate-700">{nvt}</span>
                         </div>
                     ))}
-                    {filteredNvts.length === 0 && <div className="col-span-full text-center text-slate-500 py-8">No se encontraron resultados</div>}
+                    {filteredNvts.length === 0 && <div className="col-span-full text-center text-slate-500 py-8">{t('fusion.no_results')}</div>}
                 </div>
             </div>
         );
@@ -458,10 +460,10 @@ const FusionDepartment = () => {
                     </button>
                     <div>
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                            {isMuffaMode ? 'Trabajo en MUFFA' : `NVT: ${selectedNvt}`}
-                            {editingWork && <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-black flex items-center gap-1 border border-amber-200"><Pencil size={10}/> Modificando</span>}
+                            {isMuffaMode ? t('fusion.work_muffa') : `NVT: ${selectedNvt}`}
+                            {editingWork && <span className="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider font-black flex items-center gap-1 border border-amber-200"><Pencil size={10}/> {t('fusion.modifying')}</span>}
                         </h2>
-                        <p className="text-sm text-slate-500">{editingWork ? 'Editando registro existente' : 'Registrar nuevo trabajo'}</p>
+                        <p className="text-sm text-slate-500">{editingWork ? t('fusion.editing_record') : t('fusion.new_record')}</p>
                     </div>
                 </div>
 
@@ -469,7 +471,7 @@ const FusionDepartment = () => {
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {editingWork && (
                             <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex justify-between items-center">
-                                <span className="text-xs text-amber-800 font-bold">Estás editando un trabajo anterior.</span>
+                                <span className="text-xs text-amber-800 font-bold">{t('fusion.editing_alert')}</span>
                                 <button 
                                     type="button" 
                                     onClick={() => {
@@ -479,7 +481,7 @@ const FusionDepartment = () => {
                                     }}
                                     className="text-xs bg-white text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 font-bold hover:bg-amber-100 transition-colors"
                                 >
-                                    Cancelar Edición
+                                    {t('fusion.cancel_edit')}
                                 </button>
                             </div>
                         )}
@@ -489,7 +491,7 @@ const FusionDepartment = () => {
                                 <div className="col-span-full">
                                     <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center justify-between">
                                         <div className="flex items-center gap-2">
-                                            <MapPin size={16} className="text-purple-500" /> Dirección de la Muffa
+                                            <MapPin size={16} className="text-purple-500" /> {t('fusion.muffa_address')}
                                         </div>
                                         <button 
                                             type="button" 
@@ -497,34 +499,34 @@ const FusionDepartment = () => {
                                             className="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded flex items-center gap-1 transition-colors font-bold"
                                         >
                                             <RefreshCw size={10} className={isLocating ? 'animate-spin' : ''} />
-                                            {isLocating ? 'Localizando...' : 'Actualizar GPS'}
+                                            {isLocating ? t('fusion.locating') : t('fusion.update_gps')}
                                         </button>
                                     </label>
                                     <input
                                         type="text"
                                         value={formData.address}
                                         onChange={e => setFormData({ ...formData, address: e.target.value })}
-                                        placeholder="Se rellena automáticamente con GPS..."
+                                        placeholder={t('fusion.gps_placeholder')}
                                         className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 font-medium"
                                         required
                                     />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-bold text-slate-700 mb-1 flex items-center gap-2">
-                                        <Clock size={16} className="text-purple-500" /> Horas dedicadas
+                                        <Clock size={16} className="text-purple-500" /> {t('fusion.hours_dedicated')}
                                     </label>
                                     <input
                                         type="number"
                                         step="0.5"
                                         value={formData.hours}
                                         onChange={e => setFormData({ ...formData, hours: e.target.value })}
-                                        placeholder="Ej: 2.5"
+                                        placeholder={t('fusion.hours_placeholder')}
                                         className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-purple-500 font-bold"
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-bold text-slate-700 mb-1">Nº Fusiones Totales</label>
+                                    <label className="block text-sm font-bold text-slate-700 mb-1">{t('fusion.total_fusions')}</label>
                                     <input
                                         type="number"
                                         value={formData.fusionCount}
@@ -539,7 +541,7 @@ const FusionDepartment = () => {
                         {!isMuffaMode && (
                             <div className="flex gap-4">
                                 <div className="flex-1">
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nº Fusiones</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('fusion.fusions_num')}</label>
                                     <input
                                         type="number"
                                         value={formData.fusionCount}
@@ -556,24 +558,24 @@ const FusionDepartment = () => {
                                             onChange={e => setFormData({ ...formData, isTray: e.target.checked })}
                                             className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
                                         />
-                                        <span className="text-slate-700 font-medium">En bandeja</span>
+                                        <span className="text-slate-700 font-medium">{t('fusion.in_tray')}</span>
                                     </label>
                                 </div>
                             </div>
                         )}
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Notas / Descripción del trabajo</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('fusion.notes_desc')}</label>
                             <textarea
                                 value={formData.description}
                                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                 className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-purple-500 outline-none h-24 resize-none"
-                                placeholder="Detalla lo realizado..."
+                                placeholder={t('fusion.desc_placeholder')}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Fotos / Evidencias</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-2">{t('fusion.photos_evidence')}</label>
                             
                             {/* Photo Grid Preview */}
                             {photos.length > 0 && (
@@ -615,10 +617,8 @@ const FusionDepartment = () => {
                                         disabled={isProcessingPhotos}
                                     />
                                     <Camera className="text-blue-600 mb-2" size={28} />
-                                    <div className="text-[10px] text-blue-700 font-extrabold uppercase text-center leading-tight">
-                                        Hacer
-                                        <br />
-                                        Foto
+                                    <div className="text-[10px] text-blue-700 font-extrabold uppercase text-center leading-tight whitespace-pre-line">
+                                        {t('fusion.take_photo')}
                                     </div>
                                 </div>
 
@@ -633,10 +633,8 @@ const FusionDepartment = () => {
                                         disabled={isProcessingPhotos}
                                     />
                                     <Upload className="text-slate-500 mb-2" size={28} />
-                                    <div className="text-[10px] text-slate-600 font-extrabold uppercase text-center leading-tight">
-                                        Galería
-                                        <br />
-                                        Varios
+                                    <div className="text-[10px] text-slate-600 font-extrabold uppercase text-center leading-tight whitespace-pre-line">
+                                        {t('fusion.gallery_multi')}
                                     </div>
                                 </div>
                             </div>
@@ -647,7 +645,7 @@ const FusionDepartment = () => {
                             disabled={submitting || isProcessingPhotos}
                             className={`w-full py-3 rounded-xl font-bold text-white transition-all flex items-center justify-center gap-2 ${isMuffaMode ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-purple-600 hover:bg-purple-700'}`}
                         >
-                            <Save size={20} /> {submitting ? 'Guardando...' : 'Guardar Trabajo'}
+                            <Save size={20} /> {submitting ? t('fusion.saving') : t('fusion.save_work')}
                         </button>
                     </form>
                 </div>
@@ -656,12 +654,12 @@ const FusionDepartment = () => {
             {/* Right: History */}
             <div className="space-y-6">
                 <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <History /> {isMuffaMode ? 'Historial de Muffas' : `Historial en ${selectedNvt}`}
+                    <History /> {isMuffaMode ? t('fusion.history_muffa') : t('fusion.history_nvt').replace('{{nvt}}', selectedNvt)}
                 </h3>
                 <div className="space-y-4">
                     {fusionHistory.length === 0 ? (
                         <div className="text-slate-400 text-center py-8 bg-slate-50 rounded-xl border border-slate-100">
-                            No hay trabajos registrados
+                            {t('fusion.no_works')}
                         </div>
                     ) : (
                         fusionHistory.map(work => (
@@ -670,13 +668,13 @@ const FusionDepartment = () => {
                                     <div className="flex flex-col">
                                         <div className="flex items-center gap-3">
                                             <span className={`font-bold text-lg ${work.type === 'MUFFA' ? 'text-indigo-700' : 'text-purple-700'}`}>
-                                                {work.fusionCount} Fusiones
+                                                {work.fusionCount} {t('fusion.fusions_text')}
                                             </span>
                                             <button 
                                                 onClick={() => handleEdit(work)}
                                                 className="bg-slate-100 hover:bg-slate-200 text-slate-600 p-2 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold"
                                             >
-                                                <Edit size={14} /> Editar
+                                                <Edit size={14} /> {t('fusion.edit')}
                                             </button>
                                         </div>
                                         {work.type === 'MUFFA' && (
@@ -697,7 +695,7 @@ const FusionDepartment = () => {
                                 )}
                                 {work.isTray && (
                                     <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full font-bold mb-2">
-                                        En Bandeja
+                                        {t('fusion.in_tray_badge')}
                                     </span>
                                 )}
                                 {work.description && (
