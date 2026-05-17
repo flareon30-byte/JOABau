@@ -3,7 +3,8 @@ import api from '../api/axios';
 import { X, Loader2, Info, MapPin } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
-const CACHE_KEY = 'joa-map-geo-cache-v4';
+const CACHE_KEY = 'joa-map-geo-cache-v5'; // v5: Google Maps API
+const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
 const loadCache = () => {
     try { return JSON.parse(localStorage.getItem(CACHE_KEY) || '{}'); } catch { return {}; }
@@ -12,16 +13,34 @@ const saveCache = (cache) => {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
 };
 
-// Multi-stage geocoding for maximum precision
-// Stage 1 – Photon: fast, parallel-safe; only accepted if result is a specific house/building
-// Stage 2 – Nominatim STRUCTURED (separate housenumber param): much more accurate for German rural addresses
-// Stage 3 – Photon street-only: at least lands on the correct street
+// Multi-stage geocoding — Stage 1: Google Maps (most accurate, same as Google Maps app)
+// Stage 2: Photon (fast, free, good for Germany)
+// Stage 3: Nominatim structured (housenumber param, precise for German rural addresses)
+// Stage 4: Photon street-only (last resort)
 const geocodeFull = async (street, number, city, cache) => {
     const cacheKey = [street, number, city].filter(Boolean).join(' ').trim();
     if (!cacheKey) return null;
     if (cache[cacheKey]?.lat) return cache[cacheKey];
 
-    // Stage 1: Photon free-text – only trust if it confirms a house/building result
+    // Stage 1: Google Maps Geocoding API — same data source as Google Maps
+    if (GOOGLE_KEY) {
+        try {
+            const address = [street, number, city, 'Germany'].filter(Boolean).join(', ');
+            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_KEY}&region=de&language=de`;
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'OK' && data.results?.length > 0) {
+                    const loc = data.results[0].geometry.location;
+                    const coords = { lat: loc.lat, lng: loc.lng };
+                    cache[cacheKey] = coords;
+                    return coords;
+                }
+            }
+        } catch {}
+    }
+
+    // Stage 2: Photon — only accepted if result is a specific house/building
     try {
         const q = [street, number, city].filter(Boolean).join(', ').trim();
         const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=de`;
@@ -41,8 +60,7 @@ const geocodeFull = async (street, number, city, cache) => {
         }
     } catch {}
 
-    // Stage 2: Nominatim STRUCTURED search with separate housenumber – significantly more
-    // precise than free-text for German addresses with house numbers not in OSM text index
+    // Stage 3: Nominatim structured search with separate housenumber param
     if (number && street) {
         try {
             const params = new URLSearchParams({
@@ -68,7 +86,7 @@ const geocodeFull = async (street, number, city, cache) => {
         } catch {}
     }
 
-    // Stage 3: Photon street-only – last resort, at least lands on the correct street
+    // Stage 4: Photon street-only — at least lands on the correct street
     const streetKey = [street, city].filter(Boolean).join(', ').trim();
     if (cache[streetKey]?.lat) return cache[streetKey];
     try {
