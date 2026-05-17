@@ -267,7 +267,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
 
         const initMap = async () => {
             const firstCity = addresses.find(a => a.city)?.city || 'Gau-Bickelheim';
-            const center = await geocodeCity(firstCity) || { lat: 49.8358, lng: 8.0163 }; // Centered exactly at Gau-Bickelheim default coords
+            const center = await geocodeCity(firstCity) || { lat: 49.8358, lng: 8.0163 };
 
             if (!mapInstanceRef.current) {
                 mapInstanceRef.current = L.map(mapRef.current, {
@@ -290,7 +290,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
             const uniqueStreets = [...new Set(addresses.map(a => getCleanStreet(a.street)))].filter(Boolean);
             const streetCoordsMap = {};
 
-            // Sequential failsafe geocoding
+            // Sequential failsafe geocoding with short delay for uncached streets
             let streetIndex = 0;
             for (const str of uniqueStreets) {
                 const queryStr = `${str}, ${firstCity}`.trim();
@@ -301,7 +301,6 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                     cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
                 } catch (e) {}
 
-                // Use simple 80ms delay to make UI load smooth without rapid concurrent fetch issues
                 if (!cache[queryStr]) {
                     await new Promise(r => setTimeout(r, 80));
                 }
@@ -315,14 +314,14 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 setProgress(Math.round((streetIndex / uniqueStreets.length) * 100));
             }
 
-            // Gather address counts to spread points deterministic along each physical street
-            const streetCounts = {};
-            addresses.forEach(addr => {
-                const cleanStr = getCleanStreet(addr.street);
-                streetCounts[cleanStr] = (streetCounts[cleanStr] || 0) + 1;
-            });
-
             const streetIndexes = {};
+
+            // Tight compact grid layout: keeps all markers within ~25m of street center
+            // regardless of how many houses share the same street.
+            // ~0.00015 degrees ≈ 15 meters. Grid of 8 columns × N rows.
+            const COLS = 8;
+            const STEP_LAT = 0.00014; // ~15m north-south spacing
+            const STEP_LNG = 0.00020; // ~15m east-west spacing (slightly wider for lng)
 
             let addrIndex = 0;
             for (const addr of addresses) {
@@ -334,14 +333,17 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 if (streetCoords) {
                     const idxOnStreet = streetIndexes[cleanStr] || 0;
                     streetIndexes[cleanStr] = idxOnStreet + 1;
-                    
-                    // Creates a beautiful linear layout mimicking houses along the street vector
-                    const angle = (idxOnStreet * 45) * (Math.PI / 180);
-                    const radius = 0.00008 + idxOnStreet * 0.00005; // Tight offset radius so they sit physically on their real streets
+
+                    // Place in a compact rectangular grid around the street centroid
+                    const col = idxOnStreet % COLS;
+                    const row = Math.floor(idxOnStreet / COLS);
+                    // Offset symmetrically so they cluster tightly around the street point
+                    const colOffset = (col - (COLS - 1) / 2) * STEP_LNG;
+                    const rowOffset = (row - 0.5) * STEP_LAT;
 
                     coords = {
-                        lat: streetCoords.lat + Math.cos(angle) * radius,
-                        lng: streetCoords.lng + Math.sin(angle) * radius
+                        lat: streetCoords.lat + rowOffset,
+                        lng: streetCoords.lng + colOffset
                     };
                 } else {
                     // Fallback to spiral scatter if street geocoding failed
