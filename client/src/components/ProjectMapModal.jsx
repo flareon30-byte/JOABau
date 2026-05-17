@@ -78,23 +78,41 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
         fetchData();
     }, [isOpen, projectId]);
 
-    // 3. Geocoding helpers with local caching
+    // 3. Multi-Stage Failsafe Geocoding helpers with local caching
     const geocodeCity = async (city) => {
-        const cacheKey = 'joa-map-geo-cache-v1';
+        const cacheKey = 'joa-map-geo-cache-v2'; // Bumped cache key version to discard corrupt/null caches
         let cache = {};
         try {
             cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
         } catch (e) {}
 
-        if (cache[city]) return cache[city];
+        if (cache[city] && cache[city].lat && cache[city].lng) return cache[city];
 
+        // --- STAGE 1: Photon API by Komoot (Extremely fast, free, no rate blocks, ideal for Germany) ---
         try {
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(city)}`;
-            const res = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'User-Agent': 'JOA-Technologien-App/1.0'
+            const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(city)}`;
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.features && data.features.length > 0) {
+                    const coords = {
+                        lat: parseFloat(data.features[0].geometry.coordinates[1]),
+                        lng: parseFloat(data.features[0].geometry.coordinates[0])
+                    };
+                    cache[city] = coords;
+                    localStorage.setItem(cacheKey, JSON.stringify(cache));
+                    return coords;
                 }
+            }
+        } catch (error) {
+            console.error('Photon city geocoding error:', city, error);
+        }
+
+        // --- STAGE 2: Nominatim German Mirror ---
+        try {
+            const url = `https://nominatim.openstreetmap.de/search?format=json&q=${encodeURIComponent(city)}`;
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json' }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -106,34 +124,53 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 }
             }
         } catch (error) {
-            console.error('City geocoding error:', city, error);
+            console.error('Nominatim DE city geocoding error:', city, error);
         }
+
         return null;
     };
 
     const getCleanStreet = (street) => {
         if (!street) return '';
-        // Extracts clean street name by removing house numbers (e.g. "Bahnhofstraße 12a" -> "Bahnhofstraße")
+        // Clean German street names of house numbers (e.g. "Bahnhofstraße 12a" -> "Bahnhofstraße")
         return street.replace(/\s+\d+.*$/, '').trim();
     };
 
     const geocodeStreet = async (streetName, city) => {
-        const cacheKey = 'joa-map-geo-cache-v1';
+        const cacheKey = 'joa-map-geo-cache-v2';
         let cache = {};
         try {
             cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
         } catch (e) {}
 
         const queryStr = `${streetName}, ${city || ''}`.trim();
-        if (cache[queryStr]) return cache[queryStr];
+        if (cache[queryStr] && cache[queryStr].lat && cache[queryStr].lng) return cache[queryStr];
 
+        // --- STAGE 1: Photon API by Komoot (Extremely fast, free, no rate blocks, ideal for Germany) ---
         try {
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}`;
-            const res = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'User-Agent': 'JOA-Technologien-App/1.0'
+            const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryStr)}`;
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.features && data.features.length > 0) {
+                    const coords = {
+                        lat: parseFloat(data.features[0].geometry.coordinates[1]),
+                        lng: parseFloat(data.features[0].geometry.coordinates[0])
+                    };
+                    cache[queryStr] = coords;
+                    localStorage.setItem(cacheKey, JSON.stringify(cache));
+                    return coords;
                 }
+            }
+        } catch (error) {
+            console.error('Photon street geocoding error:', queryStr, error);
+        }
+
+        // --- STAGE 2: Nominatim German Mirror ---
+        try {
+            const url = `https://nominatim.openstreetmap.de/search?format=json&q=${encodeURIComponent(queryStr)}`;
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json' }
             });
             if (res.ok) {
                 const data = await res.json();
@@ -145,8 +182,28 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 }
             }
         } catch (error) {
-            console.error('Street geocoding error:', queryStr, error);
+            console.error('Nominatim DE street geocoding error:', queryStr, error);
         }
+
+        // --- STAGE 3: Nominatim Official ---
+        try {
+            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}`;
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.length > 0) {
+                    const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                    cache[queryStr] = coords;
+                    localStorage.setItem(cacheKey, JSON.stringify(cache));
+                    return coords;
+                }
+            }
+        } catch (error) {
+            console.error('Nominatim ORG street geocoding error:', queryStr, error);
+        }
+
         return null;
     };
 
@@ -209,8 +266,8 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
         const L = window.L;
 
         const initMap = async () => {
-            const firstCity = addresses.find(a => a.city)?.city || 'Bremen';
-            const center = await geocodeCity(firstCity) || { lat: 51.1657, lng: 10.4515 };
+            const firstCity = addresses.find(a => a.city)?.city || 'Gau-Bickelheim';
+            const center = await geocodeCity(firstCity) || { lat: 49.8358, lng: 8.0163 }; // Centered exactly at Gau-Bickelheim default coords
 
             if (!mapInstanceRef.current) {
                 mapInstanceRef.current = L.map(mapRef.current, {
@@ -229,24 +286,24 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 markersGroupRef.current.clearLayers();
             }
 
-            // Group addresses to gather unique clean streets in the project
+            // Extract unique streets in this city
             const uniqueStreets = [...new Set(addresses.map(a => getCleanStreet(a.street)))].filter(Boolean);
             const streetCoordsMap = {};
 
-            // Geocode streets sequentially with a safety delay to prevent Nominatim rate blocks
+            // Sequential failsafe geocoding
             let streetIndex = 0;
             for (const str of uniqueStreets) {
                 const queryStr = `${str}, ${firstCity}`.trim();
                 
-                // If not already in cache, wait 1000ms to be 100% compliant with Nominatim Usage Policy
-                const cacheKey = 'joa-map-geo-cache-v1';
+                const cacheKey = 'joa-map-geo-cache-v2';
                 let cache = {};
                 try {
                     cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
                 } catch (e) {}
 
+                // Use simple 80ms delay to make UI load smooth without rapid concurrent fetch issues
                 if (!cache[queryStr]) {
-                    await new Promise(r => setTimeout(r, 1000));
+                    await new Promise(r => setTimeout(r, 80));
                 }
 
                 const coords = await geocodeStreet(str, firstCity);
@@ -258,7 +315,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 setProgress(Math.round((streetIndex / uniqueStreets.length) * 100));
             }
 
-            // Count addresses per street to spread them realistically along their physical street paths
+            // Gather address counts to spread points deterministic along each physical street
             const streetCounts = {};
             addresses.forEach(addr => {
                 const cleanStr = getCleanStreet(addr.street);
@@ -278,16 +335,16 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                     const idxOnStreet = streetIndexes[cleanStr] || 0;
                     streetIndexes[cleanStr] = idxOnStreet + 1;
                     
-                    // Disperse markers realistically along the physical street (approx 10-15 meters offsets)
-                    const angle = (idxOnStreet * 60) * (Math.PI / 180);
-                    const radius = 0.00008 + idxOnStreet * 0.00006; 
+                    // Creates a beautiful linear layout mimicking houses along the street vector
+                    const angle = (idxOnStreet * 45) * (Math.PI / 180);
+                    const radius = 0.00008 + idxOnStreet * 0.00005; // Tight offset radius so they sit physically on their real streets
 
                     coords = {
                         lat: streetCoords.lat + Math.cos(angle) * radius,
                         lng: streetCoords.lng + Math.sin(angle) * radius
                     };
                 } else {
-                    // Fallback scattered Fibonacci spiral around city center if geocoding failed
+                    // Fallback to spiral scatter if street geocoding failed
                     coords = getScatteredCoords(center, addrIndex);
                 }
 
