@@ -124,6 +124,11 @@ const ProjectMapPage = () => {
     const [loadingMap, setLoadingMap] = useState(false);
     const [progress, setProgress] = useState(0);
     const [progressLabel, setProgressLabel] = useState('');
+    const [userLocation, setUserLocation] = useState(null);
+
+    // Retrieve logged-in user profile & role
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const isTechnician = ['BLOWER', 'ACTIVATOR', 'PROTOCOL_MANAGER'].includes(user.role);
 
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
@@ -132,6 +137,24 @@ const ProjectMapPage = () => {
 
     // Dynamic stats
     const [stats, setStats] = useState({ notBlown: 0, blown: 0, scheduled: 0, completed: 0 });
+
+    // Request browser Geolocation on mount
+    useEffect(() => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setUserLocation({
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude
+                    });
+                },
+                (error) => {
+                    console.warn('Geolocation access declined or unavailable:', error.message);
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+    }, []);
 
     // Load Leaflet dynamically
     useEffect(() => {
@@ -178,36 +201,35 @@ const ProjectMapPage = () => {
     }, []);
 
     // Fetch address data for selected project
-    useEffect(() => {
+    const fetchMapData = async () => {
         if (!selectedProjectId) return;
+        setLoadingData(true);
+        setAddresses([]);
+        try {
+            const res = await api.get(`/api/projects/${selectedProjectId}/map-data`);
+            setAddresses(res.data);
 
-        const fetchMapData = async () => {
-            setLoadingData(true);
-            setAddresses([]);
-            try {
-                const res = await api.get(`/api/projects/${selectedProjectId}/map-data`);
-                setAddresses(res.data);
+            // Compute stats
+            let notBlown = 0, blown = 0, scheduled = 0, completed = 0;
+            res.data.forEach(addr => {
+                const done =
+                    addr.appointment?.status === 'COMPLETADO' ||
+                    (addr.activationInfo && !addr.activationInfo.isDraft) ||
+                    addr.simpleInstallation !== null;
+                if (done) completed++;
+                else if (addr.appointment?.status === 'CITADO') scheduled++;
+                else if (addr.sopladoStatus === 'OK') blown++;
+                else notBlown++;
+            });
+            setStats({ notBlown, blown, scheduled, completed });
+        } catch (e) {
+            console.error('Error loading project map data:', e);
+        } finally {
+            setLoadingData(false);
+        }
+    };
 
-                // Compute stats
-                let notBlown = 0, blown = 0, scheduled = 0, completed = 0;
-                res.data.forEach(addr => {
-                    const done =
-                        addr.appointment?.status === 'COMPLETADO' ||
-                        (addr.activationInfo && !addr.activationInfo.isDraft) ||
-                        addr.simpleInstallation !== null;
-                    if (done) completed++;
-                    else if (addr.appointment?.status === 'CITADO') scheduled++;
-                    else if (addr.sopladoStatus === 'OK') blown++;
-                    else notBlown++;
-                });
-                setStats({ notBlown, blown, scheduled, completed });
-            } catch (e) {
-                console.error('Error loading project map data:', e);
-            } finally {
-                setLoadingData(false);
-            }
-        };
-
+    useEffect(() => {
         fetchMapData();
     }, [selectedProjectId]);
 
@@ -260,6 +282,36 @@ const ProjectMapPage = () => {
                     attribution: '&copy; OpenStreetMap'
                 }).addTo(mapInstanceRef.current);
                 markersGroupRef.current = L.featureGroup().addTo(mapInstanceRef.current);
+
+                // --- POPUP OPEN LISTENER FOR AJAX REQUEST BUTTONS ---
+                mapInstanceRef.current.on('popupopen', (e) => {
+                    const popupEl = e.popup.getElement();
+                    const btn = popupEl.querySelector('[id^="btn-request-"]');
+                    if (btn) {
+                        const addrId = btn.id.replace('btn-request-', '');
+                        btn.onclick = async () => {
+                            btn.disabled = true;
+                            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Solicitando...`;
+                            try {
+                                await api.post(`/api/appointments/request-appointment/${addrId}`);
+                                btn.className = "mt-3 w-full bg-emerald-500 text-white font-bold py-2 px-3 rounded-lg text-xs text-center flex items-center justify-center gap-1.5 shadow-sm";
+                                btn.innerHTML = `✓ Cita Solicitada`;
+                                btn.onclick = null;
+                                
+                                // Auto reload backend data to refresh state
+                                setTimeout(() => {
+                                    fetchMapData();
+                                }, 1500);
+                            } catch (err) {
+                                console.error(err);
+                                const errMsg = err.response?.data?.message || 'Error al solicitar la orden.';
+                                alert(errMsg);
+                                btn.disabled = false;
+                                btn.innerHTML = `📋 Solicitar cita para mi equipo`;
+                            }
+                        };
+                    }
+                });
             } else {
                 mapInstanceRef.current.setView([center.lat, center.lng], 14);
                 markersGroupRef.current.clearLayers();
@@ -291,6 +343,24 @@ const ProjectMapPage = () => {
 
             if (cancelledRef.current) return;
             setLoadingMap(false);
+
+            // ---- place user location marker if available ----
+            if (userLocation) {
+                const userIcon = L.divIcon({
+                    html: `
+                        <div class="relative flex items-center justify-center">
+                            <div class="absolute w-6 h-6 bg-blue-500 rounded-full animate-ping opacity-40"></div>
+                            <div class="relative w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-md"></div>
+                        </div>
+                    `,
+                    className: '',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 12]
+                });
+                const userMarker = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon });
+                userMarker.bindTooltip("Tu ubicación actual", { permanent: false, direction: 'top' });
+                markersGroupRef.current.addLayer(userMarker);
+            }
 
             // ---- place markers ----
             const JITTER_COLS  = 4;
@@ -351,6 +421,16 @@ const ProjectMapPage = () => {
                     );
                 }
 
+                // Render AJAX Request Button if red marker and user is technician
+                let requestBtnHtml = '';
+                if (status.color === 'red' && isTechnician) {
+                    requestBtnHtml = `
+                        <button id="btn-request-${addr.id}" style="margin-top:12px;width:100%;background:#4f46e5;color:#fff;font-weight:700;border:none;border-radius:8px;padding:8px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,.05)">
+                            📋 Solicitar cita para mi equipo
+                        </button>
+                    `;
+                }
+
                 marker.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
                         <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4338ca;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">🏠 Detalle del cliente</div>
@@ -360,6 +440,7 @@ const ProjectMapPage = () => {
                             <b>Ciudad:</b> ${addr.city || '—'}<br>
                             <b>NVT:</b> <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">${addr.nvt || '—'}</code>
                         </div>
+                        ${requestBtnHtml}
                     </div>
                 `, { maxWidth: 240 });
 
@@ -376,7 +457,7 @@ const ProjectMapPage = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, addresses]);
+    }, [leafletLoaded, addresses, userLocation]);
 
     return (
         <div className="flex flex-col gap-6 h-[calc(100vh-140px)] w-full">

@@ -734,3 +734,77 @@ exports.updateAddressDetails = async (req, res) => {
         res.status(500).json({ message: 'Error al actualizar los datos de la ficha' });
     }
 };
+
+// Request an appointment for a technician's team
+exports.requestAppointment = async (req, res) => {
+    const { addressId } = req.params;
+    const userId = req.userId;
+
+    try {
+        // Find user to check team membership
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { team: true }
+        });
+
+        if (!user || !user.teamId || !user.team) {
+            return res.status(400).json({ message: 'No perteneces a ningún equipo para solicitar esta cita.' });
+        }
+
+        const team = user.team;
+
+        // Find the address
+        const address = await prisma.address.findUnique({
+            where: { id: addressId }
+        });
+
+        if (!address) {
+            return res.status(404).json({ message: 'Dirección no encontrada.' });
+        }
+
+        const timestamp = new Date().toLocaleString('es-ES', { timeZone: 'Europe/Berlin' });
+        const historyEntry = `${timestamp}: Solicitada cita por el equipo ${team.name} (${user.username})`;
+
+        // Create or update appointment: assign team, status PENDIENTE
+        const appointment = await prisma.appointment.upsert({
+            where: { addressId },
+            update: {
+                assignedTeamId: team.id,
+                status: 'PENDIENTE',
+                contactHistory: { push: historyEntry }
+            },
+            create: {
+                addressId,
+                assignedTeamId: team.id,
+                status: 'PENDIENTE',
+                contactHistory: [historyEntry]
+            }
+        });
+
+        // Create notification for Back Office so they see it and can click to schedule
+        const notificationMsg = `El equipo ${team.name} ha solicitado la cita para el cliente en ${address.street} ${address.number || ''}`;
+        
+        await prisma.notification.create({
+            data: {
+                type: 'RECITE_REQUEST', // Reuse RECITE_REQUEST to trigger automatic search navigation on click
+                message: notificationMsg,
+                addressId: address.id,
+                createdById: userId,
+                targetRole: 'BACK_OFFICE'
+            }
+        });
+
+        // Also push notify Back Office
+        sendPushToRole('BACK_OFFICE', {
+            title: '📋 Solicitud de Cita por Equipo',
+            body: notificationMsg,
+            data: { addressId: address.id }
+        }).catch(e => console.error("Push notify error:", e.message));
+
+        res.json({ success: true, message: 'Solicitud enviada correctamente al equipo de Back Office.', appointment });
+    } catch (error) {
+        console.error("[Request Appointment Error]", error);
+        res.status(500).json({ message: 'Error al solicitar la cita para tu equipo.' });
+    }
+};
+

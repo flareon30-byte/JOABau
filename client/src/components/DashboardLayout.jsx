@@ -181,7 +181,7 @@ const DashboardLayout = () => {
                 { icon: CheckCircle, label: t('dashboard.activations'), path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: ClipboardList, label: t('dashboard.protocols'), path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: Zap, label: t('dashboard.prod_control'), path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Map, label: t('dashboard.project_map') || 'Mapa de Proyecto', path: '/dashboard/project-map', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: Map, label: t('dashboard.project_map') || 'Mapa de Proyecto', path: '/dashboard/project-map', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN', 'BLOWER', 'ACTIVATOR', 'PROTOCOL_MANAGER'] },
             ]
         },
         {

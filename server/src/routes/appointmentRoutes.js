@@ -38,6 +38,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 router.put('/:id/status', checkRole(operationalRoles), appointmentController.updateStatus);
+router.post('/request-appointment/:addressId', checkRole(operationalRoles), appointmentController.requestAppointment);
 router.put('/protocol-status/:addressId', checkRole(['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN']), appointmentController.updateProtocolStatus);
 router.post('/:id/recite', checkRole(operationalRoles), upload.array('photos', 5), appointmentController.reciteAppointment);
 router.delete('/:id', checkRole(allowedRoles), appointmentController.deleteAppointment);
