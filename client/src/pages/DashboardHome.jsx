@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
 import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target, Camera, Trash2, Navigation, Calculator, Truck, Percent, Wallet } from 'lucide-react';
 import OfflineSyncManager from '../components/OfflineSyncManager';
@@ -292,6 +293,7 @@ const DietaModal = ({ onLogged, onClose }) => {
 };
 
 const DashboardHome = () => {
+    const { t } = useTranslation();
     const navigate = useNavigate();
     const [stats, setStats] = useState({
         pendingAppointments: 0,
@@ -459,16 +461,16 @@ const DashboardHome = () => {
                     <div className="relative z-10">
                         <div className="flex justify-between items-start flex-col md:flex-row gap-6 mb-8">
                             <div>
-                                <h2 className="text-4xl font-heading font-black mb-3">Hola, <span className="text-transparent bg-clip-text bg-gradient-to-r from-joa-cyan to-white">{user.username?.split('.')[0]}</span>! 👋</h2>
+                                <h2 className="text-4xl font-heading font-black mb-3">{t('home.hello')}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-joa-cyan to-white">{user.username?.split('.')[0]}</span>! 👋</h2>
                                 <p className="text-slate-300 text-lg font-medium">
-                                    {isBlower ? 'Panel de Soplado - Resumen de rendimiento.' : 'Resumen económico • v3.0 OFFLINE READY'}
+                                    {isBlower ? t('home.blower_panel') : t('home.activator_panel')}
                                 </p>
                             </div>
                             
                             <div className="bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md self-stretch md:self-auto flex flex-col justify-center shadow-inner shadow-black/10">
-                                <label className="text-[10px] font-bold text-joa-cyan uppercase tracking-widest mb-1 block">Tu Cliente Activo</label>
+                                <label className="text-[10px] font-bold text-joa-cyan uppercase tracking-widest mb-1 block">{t('home.active_client')}</label>
                                 <div className="text-white text-base font-bold w-full md:w-48 truncate">
-                                    {user.activeClientCompany?.name || 'No asignado'}
+                                    {user.activeClientCompany?.name || t('home.not_assigned')}
                                 </div>
                             </div>
                         </div>
@@ -481,7 +483,7 @@ const DashboardHome = () => {
                                     className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-8 rounded-xl shadow-lg shadow-green-500/30 transition-transform hover:scale-105 flex items-center justify-center gap-2"
                                 >
                                     <MapPin />
-                                    Nuevo Informe de Instalación Profesional
+                                    {t('home.new_report')}
                                 </button>
                             </div>
                         )}
@@ -493,12 +495,12 @@ const DashboardHome = () => {
                                         <TrendingUp className="text-white" size={24} />
                                     </div>
                                     <div>
-                                        <h4 className="text-xl font-bold text-yellow-400">¡Bonus Activo! 💸</h4>
-                                        <p className="text-sm text-slate-300">Has cubierto tus gastos. ¡Ahora todo suma extra!</p>
+                                        <h4 className="text-xl font-bold text-yellow-400">{t('home.bonus_active')}</h4>
+                                        <p className="text-sm text-slate-300">{t('home.bonus_desc')}</p>
                                     </div>
                                 </div>
                                 <div className="text-right flex flex-col items-center md:items-end">
-                                    <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-1">Tu Bonus Acumulado</p>
+                                    <p className="text-[10px] font-bold text-yellow-500 uppercase tracking-widest mb-1">{t('home.accumulated_bonus')}</p>
                                     <p className="text-4xl font-black text-white">{money(stats.accumulatedBonus)}</p>
                                 </div>
                             </div>
@@ -507,7 +509,7 @@ const DashboardHome = () => {
                                 <div className="flex justify-between items-center mb-3">
                                     <div className="flex items-center gap-2">
                                         <Calculator className="text-joa-cyan" size={18} />
-                                        <p className="font-bold text-sm text-white">Objetivo de Rentabilidad (Gastos)</p>
+                                        <p className="font-bold text-sm text-white">{t('home.profitability_goal')}</p>
                                                                <p className="text-xs font-bold text-slate-300">
                                         {Math.round(stats.moneyProgressPercent)}% / 100%
                                     </p>
@@ -519,9 +521,9 @@ const DashboardHome = () => {
                                     ></div>
                                 </div>
                                 <div className="flex justify-between mt-2">
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">Inicio Mes</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">{t('home.month_start')}</p>
                                     <p className="text-[10px] text-joa-cyan font-black uppercase tracking-tight">
-                                        Falta un {Math.max(0, 100 - Math.round(stats.moneyProgressPercent))}% para entrar en nivel de Bonus
+                                        {t('home.missing_bonus').replace('{{percent}}', Math.max(0, 100 - Math.round(stats.moneyProgressPercent)))}
                                     </p>
                                 </div>
          </div>
@@ -537,7 +539,7 @@ const DashboardHome = () => {
                             <Target size={24} />
                         </div>
                         <div>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Progreso de Producción</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">{t('home.prod_progress')}</p>
                             <h3 className="text-2xl font-bold text-slate-800">{Math.round(stats.moneyProgressPercent)}%</h3>
                         </div>
                     </div>
@@ -547,7 +549,7 @@ const DashboardHome = () => {
                             <TrendingUp size={24} />
                         </div>
                         <div>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Objetivo del Mes</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">{t('home.month_goal')}</p>
                             <h3 className="text-2xl font-bold text-slate-800">100%</h3>
                         </div>
                     </div>
@@ -557,7 +559,7 @@ const DashboardHome = () => {
                             <DollarSign size={24} />
                         </div>
                         <div>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Tu Bonus Actual</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">{t('home.current_bonus')}</p>
                             <h3 className={`${stats.accumulatedBonus > 0 ? 'text-green-600' : 'text-slate-400'} text-2xl font-bold`}>
                                 {money(stats.accumulatedBonus)}
                             </h3>
@@ -569,13 +571,13 @@ const DashboardHome = () => {
                             <Percent size={24} />
                         </div>
                         <div>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Rentabilidad</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">{t('home.profitability')}</p>
                             <h3 className="text-2xl font-bold text-slate-800">{Math.round(stats.moneyProgressPercent)}%</h3>
                         </div>
                     </div>
                 </div>
                 <div className="mt-8">
-                    <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-4 px-2">Desglose de Producción (Mes Actual)</h3>
+                    <h3 className="text-slate-500 font-bold text-sm uppercase tracking-wider mb-4 px-2">{t('home.prod_breakdown')}</h3>
                     <div className="flex flex-wrap gap-4 md:gap-6">
                         {Object.entries(stats.counts).map(([label, count]) => {
                             // Don't show technical internal counters like 'viviendas' (for blowers) or 'gk'
@@ -595,10 +597,10 @@ const DashboardHome = () => {
                                     </div>
                                     <h3 className="text-4xl font-bold text-slate-800">{count}</h3>
                                     <p className="text-xs text-slate-400 font-bold uppercase mt-2">
-                                        {label === 'bp' ? 'Básicas' : 
-                                         label === 'ta' ? 'SDU / TA' : 
-                                         label === 'sp' ? 'Activación SP' : 
-                                         label === 'mdu' ? 'MDU' : label}
+                                        {label === 'bp' ? t('home.basic') : 
+                                         label === 'ta' ? t('home.sdu') : 
+                                         label === 'sp' ? t('home.sp') : 
+                                         label === 'mdu' ? t('home.mdu') : label}
                                     </p>
                                 </div>
                             );
@@ -611,26 +613,26 @@ const DashboardHome = () => {
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-2">
                             <Calendar className="text-orange-600" size={20} />
-                            <h3 className="font-bold text-slate-800">Producción de Sábados (Extra)</h3>
+                            <h3 className="font-bold text-slate-800">{t('home.sat_production')}</h3>
                         </div>
-                        <span className="bg-orange-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-orange-200">Bonus Directo</span>
+                        <span className="bg-orange-600 text-white px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-orange-200">{t('home.direct_bonus')}</span>
                     </div>
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-50">
                             <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">
-                                {isBlower ? 'Soplados Sábado' : 'Total Activaciones'}
+                                {isBlower ? t('home.sat_blows') : t('home.total_activations')}
                             </p>
                             <h4 className="text-2xl font-bold text-slate-800">{stats.saturdayActivations || 0}</h4>
                         </div>
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-orange-50">
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Ganancia Extra Sábado</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">{t('home.sat_extra_earn')}</p>
                             <h4 className="text-2xl font-bold text-orange-600">
                                 {money(saturdayMoney)}
                             </h4>
                         </div>
                         <div className="col-span-2 bg-gradient-to-br from-orange-500 to-orange-600 p-4 rounded-2xl shadow-lg flex items-center justify-between text-white">
                             <div>
-                                <p className="text-orange-100 text-[10px] font-bold uppercase mb-1">Ganancia Neta Estimada Sábados</p>
+                                <p className="text-orange-100 text-[10px] font-bold uppercase mb-1">{t('home.sat_net_earn')}</p>
                                 <h4 className="text-2xl font-bold">{money(saturdayMoney)}</h4>
                             </div>
                             <TrendingUp className="opacity-20" size={40} />
@@ -647,13 +649,13 @@ const DashboardHome = () => {
                                 onClick={() => setActiveTab('pending')}
                                 className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'pending' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
-                                Pendientes
+                                {t('home.pending')}
                             </button>
                             <button
                                 onClick={() => setActiveTab('completed')}
                                 className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'completed' ? 'bg-white text-green-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                             >
-                                Terminadas
+                                {t('home.completed')}
                             </button>
                         </div>
 
@@ -665,18 +667,18 @@ const DashboardHome = () => {
                                     onChange={(e) => setDateFilter(e.target.value)}
                                     className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-joa-blue/50"
                                 >
-                                    <option value="today">📅 Hoy</option>
-                                    <option value="tomorrow">📅 Mañana</option>
-                                    <option value="next3">📅 +3 Días</option>
-                                    <option value="week">📅 Semana</option>
-                                    <option value="all">📅 Todo</option>
+                                    <option value="today">{t('home.today')}</option>
+                                    <option value="tomorrow">{t('home.tomorrow')}</option>
+                                    <option value="next3">{t('home.next3')}</option>
+                                    <option value="week">{t('home.week')}</option>
+                                    <option value="all">{t('home.all')}</option>
                                 </select>
                             )}
 
                             <div className="relative flex-1 md:w-64">
                                 <input
                                     type="text"
-                                    placeholder="Buscar..."
+                                    placeholder={t('home.search')}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-joa-blue/50"
@@ -694,8 +696,8 @@ const DashboardHome = () => {
                                 <div className="text-slate-300 mb-2">
                                     {activeTab === 'pending' ? <Calendar size={48} className="mx-auto" /> : <CheckCircle size={48} className="mx-auto" />}
                                 </div>
-                                <p className="text-slate-500">{activeTab === 'pending' ? 'No hay activaciones pendientes.' : 'No has completado activaciones aún.'}</p>
-                                {searchQuery && <p className="text-xs text-slate-400 mt-2">Prueba con otra búsqueda.</p>}
+                                <p className="text-slate-500">{activeTab === 'pending' ? t('home.no_pending') : t('home.no_completed')}</p>
+                                {searchQuery && <p className="text-xs text-slate-400 mt-2">{t('home.try_search')}</p>}
                             </div>
                         ) : (
                             filteredAppointments.map(apt => (
@@ -713,20 +715,20 @@ const DashboardHome = () => {
                                             <h4 className="font-bold text-slate-800 flex items-center gap-2">
                                                 {apt.address.street} {apt.address.number}
                                                 {apt.type === 'REPAIR' && (
-                                                    <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full border border-red-200 uppercase tracking-wider">AVERÍA</span>
+                                                    <span className="bg-red-100 text-red-600 text-[10px] px-2 py-0.5 rounded-full border border-red-200 uppercase tracking-wider">{t('home.breakdown')}</span>
                                                 )}
                                             </h4>
-                                            <p className="text-sm text-slate-500">{apt.address.project.name} • {apt.assignedDate ? new Date(apt.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : 'Hora no asignada'}</p>
+                                            <p className="text-sm text-slate-500">{apt.address.project.name} • {apt.assignedDate ? new Date(apt.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : t('home.unassigned_time')}</p>
                                         </div>
                                     </div>
                                     <div className="hidden md:flex items-center gap-4">
                                         {apt.status === 'COMPLETADO' ? (
                                             <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold flex items-center gap-1">
-                                                <CheckCircle size={14} /> Completado
+                                                <CheckCircle size={14} /> {t('home.completed')}
                                             </span>
                                         ) : (
                                             <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold flex items-center gap-1">
-                                                <Clock size={14} /> Programado
+                                                <Clock size={14} /> {t('home.scheduled')}
                                             </span>
                                         )}
                                     </div>
@@ -753,15 +755,15 @@ const DashboardHome = () => {
                 <div className="relative z-10">
                     <div className="flex justify-between items-start flex-col md:flex-row gap-6">
                         <div>
-                            <h2 className="text-4xl font-heading font-black mb-3">¡Hola, <span className="text-transparent bg-clip-text bg-gradient-to-r from-joa-cyan to-white">{user.username?.split('.')[0]}</span>! 👋</h2>
+                            <h2 className="text-4xl font-heading font-black mb-3">{t('home.hello')}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-joa-cyan to-white">{user.username?.split('.')[0]}</span>! 👋</h2>
                             <p className="text-slate-300 text-lg font-medium max-w-xl mb-6">
-                                Bienvenido al panel central de comando de JOA Technologien.
+                                {t('home.welcome_admin')} {branding.name}.
                             </p>
                         </div>
 
                         {/* Client Switcher Selector for Admin */}
                         <div className="bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md self-stretch md:self-auto flex flex-col justify-center mb-6 md:mb-0 shadow-inner shadow-black/10">
-                            <label className="text-[10px] font-bold text-joa-cyan uppercase tracking-wider mb-2 block">Cliente Analizado</label>
+                            <label className="text-[10px] font-bold text-joa-cyan uppercase tracking-wider mb-2 block">{t('home.client_analyzed')}</label>
                             <div className="relative">
                                 <select 
                                     value={user.activeClientCompanyId || ''} 
@@ -769,7 +771,7 @@ const DashboardHome = () => {
                                     disabled={updatingClient}
                                     className="bg-transparent text-white border-0 border-b-2 border-white/20 focus:border-joa-cyan focus:ring-0 px-0 py-2 text-base font-bold w-full md:w-56 appearance-none cursor-pointer outline-none transition-colors"
                                 >
-                                    <option value="" className="text-slate-800">-- Selecciona Cliente --</option>
+                                    <option value="" className="text-slate-800">{t('home.select_client')}</option>
                                     {clients.map(c => (
                                         <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
                                     ))}
@@ -785,27 +787,27 @@ const DashboardHome = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard
-                    title="Citas Pendientes"
+                    title={t('home.pending_appointments')}
                     value={stats.pendingAppointments || 0}
                     icon={Clock}
                     colorClass="text-orange-500 bg-orange-500"
-                    subtext="Requieren atención del Back Office"
+                    subtext={t('home.pending_desc')}
                     onClick={() => navigate('/dashboard/appointments?view=pending')}
                 />
                 <StatCard
-                    title="Citas Asignadas"
+                    title={t('home.assigned_appointments')}
                     value={stats.assignedAppointments || 0}
                     icon={Calendar}
                     colorClass="text-joa-blue bg-joa-blue"
-                    subtext="Programadas y pendientes de cierre"
+                    subtext={t('home.assigned_desc')}
                     onClick={() => navigate('/dashboard/appointments?view=scheduled')}
                 />
                 <StatCard
-                    title="Activaciones Terminadas"
+                    title={t('home.completed_activations')}
                     value={stats.completedActivations || 0}
                     icon={CheckCircle}
                     colorClass="text-green-500 bg-green-500"
-                    subtext="Total histórico"
+                    subtext={t('home.completed_desc')}
                     onClick={() => navigate('/dashboard/billing')}
                 />
             </div>
@@ -817,16 +819,16 @@ const DashboardHome = () => {
                         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                 <Users size={20} className="text-joa-blue" />
-                                Rendimiento de Equipos
+                                {t('home.team_performance')}
                             </h3>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm text-slate-600">
                                 <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
                                     <tr>
-                                        <th className="p-4 pl-6">Equipo</th>
-                                        <th className="p-4">Producción</th>
-                                        <th className="p-4 text-right pr-6">Estado</th>
+                                        <th className="p-4 pl-6">{t('home.team')}</th>
+                                        <th className="p-4">{t('home.production')}</th>
+                                        <th className="p-4 text-right pr-6">{t('home.status')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -865,16 +867,16 @@ const DashboardHome = () => {
                         <div className="p-6 border-b border-slate-100 flex items-center justify-between">
                             <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                                 <Star size={20} className="text-yellow-500" />
-                                Producción por Técnico
+                                {t('home.tech_performance')}
                             </h3>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm text-slate-600">
                                 <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
                                     <tr>
-                                        <th className="p-4 pl-6">Técnico</th>
-                                        <th className="p-4">Total</th>
-                                        <th className="p-4 text-right pr-6">Progreso (Bonus)</th>
+                                        <th className="p-4 pl-6">{t('home.technician')}</th>
+                                        <th className="p-4">{t('home.total')}</th>
+                                        <th className="p-4 text-right pr-6">{t('home.progress_bonus')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
