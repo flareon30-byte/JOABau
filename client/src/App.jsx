@@ -28,6 +28,7 @@ import VehicleManagement from './pages/VehicleManagement';
 import VehicleLogForm from './pages/VehicleLogForm';
 import InvoicingPage from './pages/InvoicingPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
+import ProjectMapPage from './pages/ProjectMapPage';
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
           <Route path="my-vehicle" element={<VehicleLogForm />} />
           <Route path="invoicing" element={<InvoicingPage />} />
           <Route path="company-settings" element={<CompanySettingsPage />} />
+          <Route path="project-map" element={<ProjectMapPage />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>

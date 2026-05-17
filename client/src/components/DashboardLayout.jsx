@@ -6,7 +6,7 @@ import {
     LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, 
     Folder, Zap, ChevronRight, ChevronDown, Settings, Lock, ClipboardList, 
     Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase, Truck, 
-    FileText, Building2, Globe
+    FileText, Building2, Globe, Map
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -181,6 +181,7 @@ const DashboardLayout = () => {
                 { icon: CheckCircle, label: t('dashboard.activations'), path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: ClipboardList, label: t('dashboard.protocols'), path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: Zap, label: t('dashboard.prod_control'), path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: Map, label: t('dashboard.project_map') || 'Mapa de Proyecto', path: '/dashboard/project-map', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
             ]
         },
         {
