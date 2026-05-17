@@ -609,30 +609,30 @@ const ActivationPageV2 = () => {
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({
                             files: [file],
-                            title: 'Orden de Activación - Joa Technologien',
-                            text: 'Se adjunta el PDF de la orden de activación.'
+                            title: t('activations.share_pdf_title') || 'Orden de Activación - Joa Technologien',
+                            text: t('activations.share_pdf_text') || 'Se adjunta el PDF de la orden de activación.'
                         });
                     } else {
                         // Fallback to URL sharing
                         await navigator.share({
-                            title: 'Orden de Activación - Joa Technologien',
+                            title: t('activations.share_pdf_title') || 'Orden de Activación - Joa Technologien',
                             url: url
                         });
                     }
                 } catch (shareErr) {
                     console.warn('File share failed, falling back to link share:', shareErr);
                     await navigator.share({
-                        title: 'Orden de Activación - Joa Technologien',
+                        title: t('activations.share_pdf_title') || 'Orden de Activación - Joa Technologien',
                         url: url
                     });
                 }
             } else {
                 // Fallback for desktop or non-supported browsers
-                window.open(`mailto:?subject=Orden de Activación - Joa Technologien&body=Puedes descargar el PDF aquí: ${url}`);
+                window.open(`mailto:?subject=${encodeURIComponent(t('activations.share_pdf_title') || 'Orden de Activación - Joa Technologien')}&body=${encodeURIComponent((t('activations.share_pdf_body') || 'Puedes descargar el PDF aquí: ') + url)}`);
             }
         } catch (error) {
             console.error('Error sharing PDF:', error);
-            alert('No se pudo abrir el menú de compartir. Puedes intentar descargar el PDF directamente.');
+            alert(t('activations.share_pdf_err') || 'No se pudo abrir el menú de compartir. Puedes intentar descargar el PDF directamente.');
         }
     };
 
@@ -1059,7 +1059,7 @@ const ActivationPageV2 = () => {
                             name="homeId"
                             value={formData.homeId}
                             onChange={handleInputChange}
-                            placeholder="Ej: H-123456"
+                            placeholder={t('activations.placeholder_home_id') || "Ej: H-123456"}
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue font-mono"
                         />
                     </div>
@@ -1071,7 +1071,7 @@ const ActivationPageV2 = () => {
                             value={formData.description}
                             onChange={handleInputChange}
                             rows="3"
-                            placeholder="Detalles adicionales..."
+                            placeholder={t('activations.placeholder_description') || "Detalles adicionales..."}
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue resize-none"
                         ></textarea>
                     </div>
@@ -1098,7 +1098,7 @@ const ActivationPageV2 = () => {
                                 value={formData.klsId}
                                 onChange={(e) => setFormData({ ...formData, klsId: e.target.value })}
                                 className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-green-500 font-bold"
-                                placeholder="Bauauftrag ID / KLS"
+                                placeholder={t('activations.bauauftrag_kls') || "Bauauftrag ID / KLS"}
                             />
                         </div>
                     </div>

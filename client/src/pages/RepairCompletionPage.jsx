@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { Camera, Save, ArrowLeft, Trash2, X, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const RepairCompletionPage = () => {
+    const { t } = useTranslation();
     const { id } = useParams(); // Start with appointment ID or Address ID? Usually Appointment ID for routing, but backend needs Address ID or Appt ID.
     // In ActivationPageV2, route is /activation/:id/complete where :id is Appointment ID.
 
@@ -110,7 +112,7 @@ const RepairCompletionPage = () => {
         e.preventDefault();
         if (!appointment) return;
         if (!description.trim()) {
-            alert("Por favor, describe qué reparación se realizó.");
+            alert(t('issues.alert_describe_repair'));
             return;
         }
 
@@ -131,14 +133,14 @@ const RepairCompletionPage = () => {
             navigate('/dashboard');
         } catch (error) {
             console.error('Error submitting repair:', error);
-            alert('Error al guardar la reparación. ' + (error.response?.data?.message || ''));
+            alert(t('issues.error_save_repair') + (error.response?.data?.message || ''));
         } finally {
             setSubmitting(false);
         }
     };
 
-    if (loading) return <div className="p-8 text-center bg-slate-50 min-h-screen pt-20">Cargando...</div>;
-    if (!appointment) return <div className="p-8 text-center text-red-500 bg-slate-50 min-h-screen pt-20">Cita no encontrada o no tienes permisos.</div>;
+    if (loading) return <div className="p-8 text-center bg-slate-50 min-h-screen pt-20">{t('issues.loading')}</div>;
+    if (!appointment) return <div className="p-8 text-center text-red-500 bg-slate-50 min-h-screen pt-20">{t('issues.error_permission')}</div>;
 
     return (
         <div className="min-h-screen bg-slate-50 pb-20">
@@ -150,18 +152,17 @@ const RepairCompletionPage = () => {
                 <div>
                     <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                         <AlertTriangle className="text-red-500" size={20} />
-                        Finalizar Reparación
+                        {t('issues.finish_repair')}
                     </h1>
                     <p className="text-xs text-slate-500">{appointment.address.street} {appointment.address.number}</p>
                 </div>
             </div>
-
-            <form onSubmit={handleSubmit} className="p-4 space-y-6 max-w-lg mx-auto">
+            <form onSubmit={handleSubmit} className="p-4 space-y-6 max-w-lg mx-auto">
                 <div className="p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between shadow-sm">
                     <div>
-                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Identificador de Armario</p>
+                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">{t('issues.cabinet_id')}</p>
                         <h3 className="text-xl font-black text-purple-700 leading-none">
-                            NVT: {appointment.address.nvt || 'Sin asignar'}
+                            NVT: {appointment.address.nvt || t('issues.unassigned')}
                         </h3>
                     </div>
                     <div className="bg-purple-600 p-2 rounded-lg text-white">
@@ -175,7 +176,7 @@ const RepairCompletionPage = () => {
                             <AlertTriangle size={20} className="text-blue-500" />
                         </div>
                         <div>
-                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Nota del Back Office</p>
+                            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">{t('issues.back_office_note')}</p>
                             <p className="text-sm font-medium text-blue-900 whitespace-pre-wrap leading-snug">{appointment.orientationComment}</p>
                         </div>
                     </div>
@@ -183,24 +184,24 @@ const RepairCompletionPage = () => {
 
                 {/* Information Card */}
                 <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-500 uppercase mb-2">Detalles del problema</h3>
+                    <h3 className="text-sm font-bold text-slate-500 uppercase mb-2">{t('issues.problem_details')}</h3>
                     <div className="p-3 bg-red-50 rounded-lg text-red-800 text-sm border border-red-100">
                         {appointment.comments && appointment.comments.length > 0
                             ? appointment.comments[0].content
-                            : 'Sin descripción previa.'}
+                            : t('issues.no_previous_desc')}
                     </div>
                 </div>
 
                 {/* Description Input */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
-                    <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2">Solución Aplicada</h3>
+                    <h3 className="font-bold text-slate-800 border-b border-slate-100 pb-2">{t('issues.applied_solution')}</h3>
                     <div>
-                        <label className="block text-sm font-medium text-slate-600 mb-1">Descripción de la reparación *</label>
+                        <label className="block text-sm font-medium text-slate-600 mb-1">{t('issues.repair_description')}</label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
                             rows="4"
-                            placeholder="Describe qué se reparó (ej: cambio de router, fusión nueva, etc)..."
+                            placeholder={t('issues.repair_placeholder')}
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue resize-none"
                             required
                         ></textarea>
@@ -210,8 +211,8 @@ const RepairCompletionPage = () => {
                 {/* Photos */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-4">
                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                        <h3 className="font-bold text-slate-800">Fotos de la Reparación</h3>
-                        <span className="text-xs text-slate-400">{photos.length} fotos</span>
+                        <h3 className="font-bold text-slate-800">{t('issues.repair_photos')}</h3>
+                        <span className="text-xs text-slate-400">{photos.length} {t('issues.photos')}</span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
@@ -243,9 +244,7 @@ const RepairCompletionPage = () => {
                             />
                             <Camera className="text-blue-600 mb-2" size={28} />
                             <div className="text-[10px] text-blue-700 font-extrabold uppercase text-center leading-tight">
-                                Hacer
-                                <br />
-                                Foto
+                                {t('issues.take_photo')}
                             </div>
                         </div>
 
@@ -262,9 +261,7 @@ const RepairCompletionPage = () => {
                                 <span className="text-slate-400 text-lg">+</span>
                             </div>
                             <div className="text-[10px] text-slate-600 font-extrabold uppercase text-center leading-tight">
-                                Galería
-                                <br />
-                                Varios
+                                {t('issues.open_gallery')}
                             </div>
                         </div>
                     </div>
@@ -281,7 +278,7 @@ const RepairCompletionPage = () => {
                     ) : (
                         <>
                             <Save size={20} />
-                            Finalizar Avería
+                            {t('issues.finish_issue')}
                         </>
                     )}
                 </button>
@@ -311,7 +308,7 @@ const RepairCompletionPage = () => {
                         }}
                         className="mt-6 flex items-center gap-2 bg-red-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-700 transition"
                     >
-                        <Trash2 size={20} /> Eliminar Foto
+                        <Trash2 size={20} /> {t('issues.delete_photo')}
                     </button>
                 </div>
             )}

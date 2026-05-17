@@ -5,8 +5,10 @@ import {
     Filter, AlertCircle, FilePlus, Loader, ChevronRight,
     Euro, Trash2, CheckCircle, Clock, Pencil, Building2, RefreshCw
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const InvoicingPage = () => {
+    const { t } = useTranslation();
     const [activeTab, setActiveTab] = useState('pending'); // 'pending', 'invoices', 'clients'
     const [clients, setClients] = useState([]);
     const [selectedClient, setSelectedClient] = useState('');
@@ -76,7 +78,7 @@ const InvoicingPage = () => {
             });
         } catch (error) {
             console.error('Error factura:', error);
-            alert('Error cargando producción pendiente');
+            alert(t('invoicing.error_load_pending'));
         } finally {
             setLoading(false);
         }
@@ -101,11 +103,11 @@ const InvoicingPage = () => {
     const saveClient = async () => {
         try {
             await api.put(`/api/clients/${editingClient.id}`, clientForm);
-            alert('Cliente actualizado con éxito');
+            alert(t('invoicing.success_client_update'));
             setEditingClient(null);
             fetchData();
         } catch (error) {
-            alert('Error actualizando cliente');
+            alert(t('invoicing.error_client_update'));
         }
     };
 
@@ -128,12 +130,12 @@ const InvoicingPage = () => {
                 dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), 
                 itemIds: selectedItems
             });
-            alert('¡Factura generada con éxito!');
+            alert(t('invoicing.success_invoice_generate'));
             setPendingWork(null);
             setActiveTab('invoices');
             fetchData();
         } catch (error) {
-            alert('Error generando factura');
+            alert(t('invoicing.error_invoice_generate'));
         } finally {
             setGenerating(false);
         }
@@ -144,7 +146,7 @@ const InvoicingPage = () => {
             await api.patch(`/api/invoices/${id}/status`, { status });
             fetchData();
         } catch (error) {
-            alert('Error actualizando estado');
+            alert(t('invoicing.error_status_update'));
         }
     };
 
@@ -152,11 +154,11 @@ const InvoicingPage = () => {
         try {
             const { data } = await api.post(`/api/invoices/${id}/regenerate`);
             if (data.success) {
-                alert('¡PDF regenerado con éxito con el nuevo diseño!');
+                alert(t('invoicing.success_pdf_regenerate'));
                 fetchData();
             }
         } catch (error) {
-            alert('Error regenerando PDF');
+            alert(t('invoicing.error_pdf_regenerate'));
         }
     };
 
@@ -169,18 +171,18 @@ const InvoicingPage = () => {
                 <div>
                     <h2 className="text-3xl font-black text-slate-800 flex items-center gap-3">
                         <FileText className="text-blue-600" size={32} />
-                        Gestión Económica
+                        {t('invoicing.title')}
                     </h2>
-                    <p className="text-slate-500">Facturación, Cobros y Clientes</p>
+                    <p className="text-slate-500">{t('invoicing.subtitle')}</p>
                 </div>
             </div>
 
             {/* Tabs */}
             <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl w-fit">
                 {[
-                    { id: 'pending', label: 'Producción Pendiente', icon: FilePlus },
-                    { id: 'invoices', label: 'Historial Facturas', icon: Clock },
-                    { id: 'clients', label: 'Fichas Clientes', icon: Building2 }
+                    { id: 'pending', label: t('invoicing.tab_pending'), icon: FilePlus },
+                    { id: 'invoices', label: t('invoicing.tab_history'), icon: Clock },
+                    { id: 'clients', label: t('invoicing.tab_clients'), icon: Building2 }
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -201,23 +203,23 @@ const InvoicingPage = () => {
                         <div className="bg-white p-6 rounded-3xl shadow-xl shadow-slate-200/50 border border-slate-100">
                             <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2">
                                 <FilePlus className="text-blue-500" size={24} />
-                                Generar Nueva Factura
+                                {t('invoicing.generate_invoice')}
                             </h3>
                             
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400">Cliente</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400">{t('invoicing.client')}</label>
                                     <select 
                                         className="w-full bg-slate-50 p-3 rounded-xl font-bold border-none outline-none"
                                         value={selectedClient}
                                         onChange={(e) => setSelectedClient(e.target.value)}
                                     >
-                                        <option value="">Seleccionar Cliente...</option>
+                                        <option value="">{t('invoicing.select_client')}</option>
                                         {clients.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                                     </select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400">Desde</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400">{t('invoicing.from')}</label>
                                     <input 
                                         type="date"
                                         className="w-full bg-slate-50 p-3 rounded-xl font-bold border-none outline-none text-sm"
@@ -226,7 +228,7 @@ const InvoicingPage = () => {
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-[10px] font-black uppercase text-slate-400">Hasta</label>
+                                    <label className="text-[10px] font-black uppercase text-slate-400">{t('invoicing.to')}</label>
                                     <input 
                                         type="date"
                                         className="w-full bg-slate-50 p-3 rounded-xl font-bold border-none outline-none text-sm"
@@ -242,7 +244,7 @@ const InvoicingPage = () => {
                                 className="w-full py-4 bg-slate-800 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-900 transition-all flex items-center justify-center gap-3 shadow-lg"
                             >
                                 {loading ? <Loader className="animate-spin" /> : <Search size={20} />}
-                                Buscar Producción Pendiente
+                                {t('invoicing.btn_search')}
                             </button>
                         </div>
 
@@ -250,11 +252,11 @@ const InvoicingPage = () => {
                             <div className="bg-white rounded-3xl p-8 shadow-2xl border-2 border-blue-100 animate-in fade-in slide-in-from-bottom-4">
                                 <div className="flex justify-between items-center mb-6">
                                     <div>
-                                        <h4 className="text-xl font-black text-slate-800">Trabajos Detectados</h4>
-                                        <p className="text-sm text-slate-500">Selecciona elementos para la factura</p>
+                                        <h4 className="text-xl font-black text-slate-800">{t('invoicing.works_detected')}</h4>
+                                        <p className="text-sm text-slate-500">{t('invoicing.select_elements_hint')}</p>
                                     </div>
                                     <div className="text-right">
-                                        <p className="text-xs font-bold text-slate-400 uppercase">Total Seleccionado</p>
+                                        <p className="text-xs font-bold text-slate-400 uppercase">{t('invoicing.total_selected')}</p>
                                         <p className="text-2xl font-black text-blue-600">
                                             {money(
                                                 (pendingWork.activations.filter(i => selectedItems.activations.includes(i.id)).reduce((acc, a) => {
@@ -309,7 +311,7 @@ const InvoicingPage = () => {
                                             />
                                             <div className="flex-1">
                                                 <p className="font-bold text-slate-800 text-sm">{s.address.street} ({s.meters}m)</p>
-                                                <p className="text-[10px] text-slate-400 uppercase">Soplado de Fibra</p>
+                                                <p className="text-[10px] text-slate-400 uppercase">{t('billing.tab_blowing')}</p>
                                             </div>
                                             <span className="font-black text-orange-600 text-sm">{money(s.meters * 0.4)}</span>
                                         </div>
@@ -322,7 +324,7 @@ const InvoicingPage = () => {
                                     className="w-full mt-6 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-sm tracking-widest hover:bg-blue-700 shadow-xl"
                                 >
                                     {generating ? <Loader className="animate-spin" /> : <FilePlus size={20} className="inline mr-2" />}
-                                    Generar Factura Oficial
+                                    {t('invoicing.btn_generate_official')}
                                 </button>
                             </div>
                         )}
@@ -335,7 +337,7 @@ const InvoicingPage = () => {
                     {invoices.length === 0 ? (
                         <div className="col-span-full bg-white rounded-3xl p-20 text-center border-2 border-dashed border-slate-200">
                             <FileText size={48} className="mx-auto text-slate-200 mb-4" />
-                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No hay facturas emitidas</p>
+                            <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">{t('invoicing.no_invoices')}</p>
                         </div>
                     ) : (
                         invoices.map(invoice => (
@@ -348,7 +350,7 @@ const InvoicingPage = () => {
                                     <div className={`px-4 py-1 rounded-full text-[10px] font-black uppercase ${
                                         invoice.status === 'PAID' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
                                     }`}>
-                                        {invoice.status === 'PAID' ? 'Cobrada' : 'Pendiente'}
+                                        {invoice.status === 'PAID' ? t('invoicing.status_paid') : t('invoicing.status_pending')}
                                     </div>
                                 </div>
                                 <div className="p-4 bg-slate-50 rounded-2xl flex justify-between items-center mb-6">
@@ -366,11 +368,11 @@ const InvoicingPage = () => {
                                         </a>
                                         <button 
                                             onClick={async () => {
-                                                if (window.confirm(`¿Seguro que quieres borrar la factura ${invoice.number}? Los trabajos incluidos se liberarán para poder facturarlos de nuevo.`)) {
+                                                if (window.confirm(t('invoicing.confirm_delete_invoice', { number: invoice.number }))) {
                                                     try {
                                                         await api.delete(`/api/invoices/${invoice.id}`);
                                                         fetchData();
-                                                    } catch (e) { alert('Error al borrar factura'); }
+                                                    } catch (e) { alert(t('invoicing.error_status_update')); }
                                                 }
                                             }}
                                             className="p-3 bg-white text-red-600 rounded-xl shadow-md hover:bg-red-600 hover:text-white transition-all"
@@ -380,7 +382,7 @@ const InvoicingPage = () => {
                                     </div>
                                 </div>
                                 {invoice.status !== 'PAID' && (
-                                    <button onClick={() => updateInvoiceStatus(invoice.id, 'PAID')} className="w-full py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg">Marcar como Pagada</button>
+                                    <button onClick={() => updateInvoiceStatus(invoice.id, 'PAID')} className="w-full py-3 bg-blue-600 text-white rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg">{t('invoicing.mark_as_paid')}</button>
                                 )}
                             </div>
                         ))
@@ -393,31 +395,31 @@ const InvoicingPage = () => {
                     {editingClient ? (
                         <div className="bg-white rounded-3xl p-8 shadow-2xl border-2 border-blue-100 max-w-2xl mx-auto">
                             <div className="flex justify-between items-center mb-8">
-                                <h3 className="text-2xl font-black text-slate-800">Ficha: {editingClient.name}</h3>
-                                <button onClick={() => setEditingClient(null)} className="text-slate-400 font-bold">Cancelar</button>
+                                <h3 className="text-2xl font-black text-slate-800">{t('invoicing.client_card', { name: editingClient.name })}</h3>
+                                <button onClick={() => setEditingClient(null)} className="text-slate-400 font-bold">{t('invoicing.btn_cancel')}</button>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-bold text-slate-600">
                                 <div className="space-y-1">
-                                    <label className="uppercase text-[9px] text-slate-400">Nombre Descriptivo</label>
+                                    <label className="uppercase text-[9px] text-slate-400">{t('invoicing.name_desc')}</label>
                                     <input className="w-full bg-slate-50 p-3 rounded-xl border-none outline-none" value={clientForm.name} onChange={e => setClientForm({...clientForm, name: e.target.value})} />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="uppercase text-[9px] text-slate-400">Razón Social (Para facturas)</label>
+                                    <label className="uppercase text-[9px] text-slate-400">{t('invoicing.legal_name')}</label>
                                     <input className="w-full bg-slate-50 p-3 rounded-xl border-none outline-none" placeholder="EJ: Glasfaser Plus GMBH" value={clientForm.legalName} onChange={e => setClientForm({...clientForm, legalName: e.target.value})} />
                                 </div>
                                 <div className="md:col-span-2 space-y-1">
-                                    <label className="uppercase text-[9px] text-slate-400">Dirección Fiscal</label>
+                                    <label className="uppercase text-[9px] text-slate-400">{t('invoicing.billing_address')}</label>
                                     <textarea className="w-full bg-slate-50 p-3 rounded-xl border-none outline-none" rows="2" value={clientForm.address} onChange={e => setClientForm({...clientForm, address: e.target.value})} />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="uppercase text-[9px] text-slate-400">CIF / VAT</label>
+                                    <label className="uppercase text-[9px] text-slate-400">{t('invoicing.tax_id')}</label>
                                     <input className="w-full bg-slate-50 p-3 rounded-xl border-none outline-none" value={clientForm.taxId} onChange={e => setClientForm({...clientForm, taxId: e.target.value})} />
                                 </div>
                                 <div className="space-y-1">
-                                    <label className="uppercase text-[9px] text-slate-400">IVA (%)</label>
+                                    <label className="uppercase text-[9px] text-slate-400">{t('invoicing.vat_rate')}</label>
                                     <input type="number" className="w-full bg-slate-50 p-3 rounded-xl border-none outline-none" value={clientForm.defaultVat} onChange={e => setClientForm({...clientForm, defaultVat: e.target.value})} />
                                 </div>
-                                <button onClick={saveClient} className="md:col-span-2 py-4 bg-slate-800 text-white rounded-2xl font-black uppercase mt-4">Guardar Cambios</button>
+                                <button onClick={saveClient} className="md:col-span-2 py-4 bg-slate-800 text-white rounded-2xl font-black uppercase mt-4">{t('invoicing.btn_save_changes')}</button>
                             </div>
                         </div>
                     ) : (
@@ -425,10 +427,10 @@ const InvoicingPage = () => {
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                     <tr>
-                                        <th className="p-4 text-slate-800">Nombre</th>
-                                        <th className="p-4">CIF</th>
-                                        <th className="p-4">País</th>
-                                        <th className="p-4 text-center">Config. Fiscal</th>
+                                        <th className="p-4 text-slate-800">{t('invoicing.col_name')}</th>
+                                        <th className="p-4">{t('invoicing.col_tax_id')}</th>
+                                        <th className="p-4">{t('invoicing.col_country')}</th>
+                                        <th className="p-4 text-center">{t('invoicing.col_fiscal_config')}</th>
                                     </tr>
                                 </thead>
                                 <tbody>

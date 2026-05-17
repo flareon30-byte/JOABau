@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Package, Plus, Clock, CheckCircle, Search, AlertCircle, X, Trash2 } from 'lucide-react';
 import api from '../api/axios';
+import { useTranslation } from 'react-i18next';
 
 const MaterialOrdersPage = () => {
+    const { t } = useTranslation();
     const [orders, setOrders] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -26,7 +28,7 @@ const MaterialOrdersPage = () => {
             setOrders(res.data);
         } catch (error) {
             console.error('Error fetching orders:', error);
-            alert('Error al cargar los pedidos.');
+            alert(t('material.loading_orders'));
         } finally {
             setLoading(false);
         }
@@ -35,7 +37,7 @@ const MaterialOrdersPage = () => {
     const handleCreateOrder = async (e) => {
         e.preventDefault();
         if (!materialDescription.trim() || !timeRemaining.trim()) {
-            alert('Por favor, completa todos los campos.');
+            alert(t('material.complete_fields'));
             return;
         }
 
@@ -51,10 +53,10 @@ const MaterialOrdersPage = () => {
             setIsModalOpen(false);
             setMaterialDescription('');
             setTimeRemaining('');
-            alert('Pedido realizado con éxito.');
+            alert(t('material.success_order'));
         } catch (error) {
             console.error('Error creating order:', error);
-            alert('Hubo un error al realizar el pedido.');
+            alert(t('material.error_order'));
         } finally {
             setSubmitting(false);
         }
@@ -66,18 +68,18 @@ const MaterialOrdersPage = () => {
             setOrders(orders.map(o => o.id === id ? res.data : o));
         } catch (error) {
             console.error('Error updating status:', error);
-            alert('Hubo un error al actualizar el estado.');
+            alert(t('material.error_status'));
         }
     };
 
     const handleDeleteOrder = async (id) => {
-        if (!window.confirm('¿Estás seguro de que deseas eliminar este pedido?')) return;
+        if (!window.confirm(t('material.confirm_delete'))) return;
         try {
             await api.delete(`/api/material-orders/${id}`);
             setOrders(orders.filter(o => o.id !== id));
         } catch (error) {
             console.error('Error deleting order:', error);
-            alert('Hubo un error al eliminar el pedido.');
+            alert(t('material.error_delete'));
         }
     };
 
@@ -88,7 +90,7 @@ const MaterialOrdersPage = () => {
             return (
                 <span className="px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 flex items-center gap-1 w-max">
                     <Clock size={12} />
-                    PENDIENTE
+                    {t('material.status_pending')}
                 </span>
             );
         }
@@ -96,7 +98,7 @@ const MaterialOrdersPage = () => {
             return (
                 <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 flex items-center gap-1 w-max">
                     <Package size={12} />
-                    REALIZADO
+                    {t('material.status_realized')}
                 </span>
             );
         }
@@ -104,7 +106,7 @@ const MaterialOrdersPage = () => {
             return (
                 <span className="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 flex items-center gap-1 w-max">
                     <CheckCircle size={12} />
-                    YA EN ALMACÉN
+                    {t('material.status_in_warehouse')}
                 </span>
             );
         }
@@ -117,9 +119,9 @@ const MaterialOrdersPage = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
                         <Package className="text-joa-blue" />
-                        Pedidos de Material
+                        {t('material.title')}
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1">Revisa el estado o realiza un nuevo pedido para el almacén.</p>
+                    <p className="text-slate-500 text-sm mt-1">{t('material.subtitle')}</p>
                 </div>
                 
                 <button
@@ -127,7 +129,7 @@ const MaterialOrdersPage = () => {
                     className="bg-joa-blue hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-medium transition-colors shadow-lg shadow-joa-blue/20 flex items-center gap-2 w-full md:w-auto justify-center"
                 >
                     <Plus size={18} />
-                    Solicitar Material
+                    {t('material.btn_request')}
                 </button>
             </div>
 
@@ -138,8 +140,8 @@ const MaterialOrdersPage = () => {
             ) : orders.length === 0 ? (
                 <div className="bg-white rounded-2xl p-12 text-center border border-slate-200">
                     <Package className="mx-auto h-12 w-12 text-slate-300 mb-4" />
-                    <h3 className="text-lg font-medium text-slate-900">No hay pedidos registrados</h3>
-                    <p className="text-slate-500 mt-2">Puedes ser el primero en solicitar material.</p>
+                    <h3 className="text-lg font-medium text-slate-900">{t('material.no_orders_title')}</h3>
+                    <p className="text-slate-500 mt-2">{t('material.no_orders_subtitle')}</p>
                 </div>
             ) : (
                 <div className="bg-white border border-slate-200 shadow-sm rounded-2xl overflow-hidden">
@@ -147,13 +149,13 @@ const MaterialOrdersPage = () => {
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Técnico / Usuario</th>
-                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Descripción del Material</th>
-                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Urgencia (Tiempo restante)</th>
-                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Fecha</th>
-                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Estado</th>
+                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('material.col_tech')}</th>
+                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('material.col_description')}</th>
+                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('material.col_urgency')}</th>
+                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('material.col_date')}</th>
+                                    <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">{t('material.col_status')}</th>
                                     {isSuperAdmin && (
-                                        <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Acciones Admin</th>
+                                        <th className="p-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">{t('material.col_actions')}</th>
                                     )}
                                 </tr>
                             </thead>
@@ -161,9 +163,9 @@ const MaterialOrdersPage = () => {
                                 {orders.map((order) => (
                                     <tr key={order.id} className="hover:bg-slate-50/50 transition-colors">
                                         <td className="p-4">
-                                            <div className="font-medium text-slate-800">{order.user?.username || 'Usuario Desconocido'}</div>
+                                            <div className="font-medium text-slate-800">{order.user?.username || t('material.unknown_user')}</div>
                                             {order.user?.team && (
-                                                <div className="text-xs text-slate-500">Equipo: {order.user.team.name}</div>
+                                                <div className="text-xs text-slate-500">{t('material.team_label', { name: order.user.team.name })}</div>
                                             )}
                                         </td>
                                         <td className="p-4 text-sm text-slate-600 whitespace-pre-wrap max-w-xs">
@@ -189,14 +191,14 @@ const MaterialOrdersPage = () => {
                                                         onChange={(e) => handleUpdateStatus(order.id, e.target.value)}
                                                         className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-joa-blue focus:border-joa-blue p-2 cursor-pointer"
                                                     >
-                                                        <option value="PENDIENTE">PENDIENTE</option>
-                                                        <option value="REALIZADO">REALIZADO</option>
-                                                        <option value="EN_ALMACEN">YA EN ALMACÉN</option>
+                                                        <option value="PENDIENTE">{t('material.status_pending')}</option>
+                                                        <option value="REALIZADO">{t('material.status_realized')}</option>
+                                                        <option value="EN_ALMACEN">{t('material.status_in_warehouse')}</option>
                                                     </select>
                                                     <button
                                                         onClick={() => handleDeleteOrder(order.id)}
                                                         className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                        title="Eliminar pedido"
+                                                        title={t('material.confirm_delete')}
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>
@@ -218,7 +220,7 @@ const MaterialOrdersPage = () => {
                         <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-slate-50/50">
                             <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
                                 <Package className="text-joa-blue" size={20} />
-                                Nuevo Pedido de Material
+                                {t('material.modal_title')}
                             </h2>
                             <button
                                 onClick={() => setIsModalOpen(false)}
@@ -231,11 +233,11 @@ const MaterialOrdersPage = () => {
                         <form onSubmit={handleCreateOrder} className="p-6 space-y-5">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                    ¿Qué material necesitas? *
+                                    {t('material.label_description')}
                                 </label>
                                 <textarea
                                     className="w-full min-h-[120px] p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-joa-blue focus:border-transparent transition-all resize-none bg-slate-50"
-                                    placeholder="Describe detalladamente el material que te falta (Ej: 3 cajas de conectores RJ45, 50m de cable de fibra, etc.)"
+                                    placeholder={t('material.placeholder_description')}
                                     value={materialDescription}
                                     onChange={e => setMaterialDescription(e.target.value)}
                                     required
@@ -244,7 +246,7 @@ const MaterialOrdersPage = () => {
                             
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                    ¿Para cuánto tiempo te queda material? *
+                                    {t('material.label_urgency')}
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -253,7 +255,7 @@ const MaterialOrdersPage = () => {
                                     <input
                                         type="text"
                                         className="w-full pl-10 p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-joa-blue focus:border-transparent transition-all bg-slate-50"
-                                        placeholder="Ej: 1 día, 3 días, 1 semana... (Nos ayuda a saber la urgencia)"
+                                        placeholder={t('material.placeholder_urgency')}
                                         value={timeRemaining}
                                         onChange={e => setTimeRemaining(e.target.value)}
                                         required
@@ -267,7 +269,7 @@ const MaterialOrdersPage = () => {
                                     onClick={() => setIsModalOpen(false)}
                                     className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50 transition-colors flex-1"
                                 >
-                                    Cancelar
+                                    {t('material.btn_cancel')}
                                 </button>
                                 <button
                                     type="submit"
@@ -279,7 +281,7 @@ const MaterialOrdersPage = () => {
                                     ) : (
                                         <Plus size={18} />
                                     )}
-                                    {submitting ? 'Guardando...' : 'Guardar Pedido'}
+                                    {submitting ? t('material.btn_saving') : t('material.btn_submit')}
                                 </button>
                             </div>
                         </form>

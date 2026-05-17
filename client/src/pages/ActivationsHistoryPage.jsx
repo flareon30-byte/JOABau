@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Calendar, Filter, Download, Eye, X, Image as ImageIcon, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const getFileUrl = (path) => {
     if (!path) return '';
@@ -16,6 +17,7 @@ const getFileUrl = (path) => {
 };
 
 const ActivationsHistoryPage = () => {
+    const { t } = useTranslation();
     const [activations, setActivations] = useState([]);
     const [teams, setTeams] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -80,7 +82,18 @@ const ActivationsHistoryPage = () => {
     const exportToCSV = () => {
         if (activations.length === 0) return;
 
-        const headers = ['Fecha', 'Dirección', 'Proyecto', 'Equipo', 'Técnico', 'Tipo', 'Detalles', 'Home IDs', 'Comentarios', 'Puntos'];
+        const headers = [
+            t('activations.date') || 'Fecha', 
+            t('activations.address') || 'Dirección', 
+            t('activations.project') || 'Proyecto', 
+            t('activations.team') || 'Equipo', 
+            t('vehicles.tech') || 'Técnico', 
+            t('activations.type_label') || 'Tipo', 
+            t('activations.details') || 'Detalles', 
+            t('activations.home_ids_label') || 'Home IDs', 
+            t('activations.comments') || 'Comentarios', 
+            t('activations.points') || 'Puntos'
+        ];
         const rows = activations.map(act => [
             new Date(act.createdAt).toLocaleDateString('es-ES'),
             `${act.address.street} ${act.address.number}`,
@@ -165,25 +178,25 @@ const ActivationsHistoryPage = () => {
 
     const handleRepairSubmit = async () => {
         if (!repairForm.teamId || !repairForm.date) {
-            alert('Por favor selecciona equipo y fecha');
+            alert(t('activations.select_team_date') || 'Por favor selecciona equipo y fecha');
             return;
         }
 
         try {
             await api.post(`/api/appointments/repair/${selectedActivation.addressId}`, repairForm);
-            alert('Cita de reparación creada correctamente');
+            alert(t('activations.repair_success') || 'Cita de reparación creada correctamente');
             setIsRepairModalOpen(false);
-            fetchData(); // Refresh list (might not show changed status if we only list 'activations', but it changes the backend state)
+            fetchData();
         } catch (error) {
             console.error(error);
-            alert('Error al crear reparación');
+            alert(t('activations.repair_error') || 'Error al crear reparación');
         }
     };
 
     const RepairModal = () => {
         if (!isRepairModalOpen || !selectedActivation) return null;
 
-        const originalTeamName = selectedActivation.address.appointment?.assignedTeam?.name || 'Desconocido';
+        const originalTeamName = selectedActivation.address.appointment?.assignedTeam?.name || t('activations.unassigned') || 'Desconocido';
         const originalDate = new Date(selectedActivation.createdAt).toLocaleDateString('es-ES');
 
         return (
@@ -194,49 +207,49 @@ const ActivationsHistoryPage = () => {
                     </button>
 
                     <h3 className="text-xl font-bold text-red-600 mb-1 flex items-center gap-2">
-                        <AlertTriangle /> Reportar Incidencia / Reparación
+                        <AlertTriangle /> {t('activations.report_issue_repair') || 'Reportar Incidencia / Reparación'}
                     </h3>
                     <p className="text-sm text-slate-500 mb-6 border-b border-slate-100 pb-4">
                         {selectedActivation.address.street} {selectedActivation.address.number}
                     </p>
 
                     <div className="bg-yellow-50 p-4 rounded-lg mb-6 border border-yellow-200 text-sm text-yellow-800">
-                        <p><strong>Instalación Original:</strong></p>
+                        <p><strong>{t('activations.technical_info') || 'Instalación Original'}:</strong></p>
                         <ul className="list-disc pl-5 mt-1">
-                            <li>Realizada por: <strong>{originalTeamName}</strong></li>
-                            <li>Fecha: {originalDate}</li>
+                            <li>{t('activations.assigned_team') || 'Realizada por'}: <strong>{originalTeamName}</strong></li>
+                            <li>{t('activations.date') || 'Fecha'}: {originalDate}</li>
                         </ul>
                     </div>
 
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-sm font-bold text-slate-700 mb-2">Tipo de Incidencia</label>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('activations.report_issue_repair') || 'Tipo de Incidencia'}</label>
                             <div className="grid grid-cols-2 gap-4">
                                 <button
                                     onClick={() => setRepairForm({ ...repairForm, type: 'WARRANTY' })}
                                     className={`p-3 rounded-xl border text-center transition-all ${repairForm.type === 'WARRANTY' ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200' : 'border-slate-200 hover:border-slate-300'}`}
                                 >
-                                    <div className="font-bold">Reclamación</div>
+                                    <div className="font-bold">{t('activations.complaint') || 'Reclamación'}</div>
                                     <div className="text-xs opacity-75">(Garantía / Sin Cobro)</div>
                                 </button>
                                 <button
                                     onClick={() => setRepairForm({ ...repairForm, type: 'BILLABLE' })}
                                     className={`p-3 rounded-xl border text-center transition-all ${repairForm.type === 'BILLABLE' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
                                 >
-                                    <div className="font-bold">Avería Externa</div>
+                                    <div className="font-bold">{t('activations.external_breakdown') || 'Avería Externa'}</div>
                                     <div className="text-xs opacity-75">(Facturable)</div>
                                 </button>
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Asignar a Equipo</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.assign_to_team') || 'Asignar a Equipo'}</label>
                             <select
                                 value={repairForm.teamId}
                                 onChange={(e) => setRepairForm({ ...repairForm, teamId: e.target.value })}
                                 className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                             >
-                                <option value="">Selecciona un equipo</option>
+                                <option value="">{t('activations.select_team_date') || 'Selecciona un equipo'}</option>
                                 {teams.map(t => (
                                     <option key={t.id} value={t.id}>
                                         {t.name} {t.id === selectedActivation.address.appointment?.assignedTeamId ? '(Original)' : ''}
@@ -246,7 +259,7 @@ const ActivationsHistoryPage = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Fecha de Reparación</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.repair_date') || 'Fecha de Reparación'}</label>
                             <input
                                 type="date"
                                 value={repairForm.date}
@@ -256,12 +269,12 @@ const ActivationsHistoryPage = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Motivo / Descripción</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.reason_description') || 'Motivo / Descripción'}</label>
                             <textarea
                                 value={repairForm.reason}
                                 onChange={(e) => setRepairForm({ ...repairForm, reason: e.target.value })}
                                 className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                placeholder="Describe el problema reportado..."
+                                placeholder={t('activations.placeholder_observation') || "Describe el problema reportado..."}
                                 rows="2"
                             />
                         </div>
@@ -271,14 +284,14 @@ const ActivationsHistoryPage = () => {
                                 onClick={() => setIsRepairModalOpen(false)}
                                 className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
                             >
-                                Cancelar
+                                {t('activations.cancel') || 'Cancelar'}
                             </button>
                             <button
                                 onClick={handleRepairSubmit}
                                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-500/30 flex items-center gap-2"
                             >
                                 <AlertTriangle size={18} />
-                                Generar Cita de Reparación
+                                {t('activations.generate_repair_appointment') || 'Generar Cita de Reparación'}
                             </button>
                         </div>
                     </div>
@@ -290,19 +303,19 @@ const ActivationsHistoryPage = () => {
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h2 className="text-2xl font-bold text-slate-800">Historial de Activaciones</h2>
+                <h2 className="text-2xl font-bold text-slate-800">{t('activations.history_title') || 'Historial de Activaciones'}</h2>
                 <div className="flex gap-2">
                     <button
                         onClick={openExportModal}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                     >
-                        <ImageIcon size={18} /> Exportar Fotos
+                        <ImageIcon size={18} /> {t('activations.export_photos') || 'Exportar Fotos'}
                     </button>
                     <button
                         onClick={exportToCSV}
                         className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                     >
-                        <Download size={18} /> Exportar CSV
+                        <Download size={18} /> {t('activations.export_csv') || 'Exportar CSV'}
                     </button>
                 </div>
             </div>
@@ -310,7 +323,7 @@ const ActivationsHistoryPage = () => {
             {/* Filters */}
             <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Desde</label>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">{t('activations.from') || 'Desde'}</label>
                     <input
                         type="date"
                         name="startDate"
@@ -320,7 +333,7 @@ const ActivationsHistoryPage = () => {
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Hasta</label>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">{t('activations.to') || 'Hasta'}</label>
                     <input
                         type="date"
                         name="endDate"
@@ -330,26 +343,26 @@ const ActivationsHistoryPage = () => {
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Equipo</label>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">{t('activations.team') || 'Equipo'}</label>
                     <select
                         name="teamId"
                         value={filters.teamId}
                         onChange={handleFilterChange}
                         className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     >
-                        <option value="">Todos</option>
+                        <option value="">{t('activations.all_projects') || 'Todos'}</option>
                         {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Proyecto</label>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">{t('activations.project') || 'Proyecto'}</label>
                     <select
                         name="projectId"
                         value={filters.projectId}
                         onChange={handleFilterChange}
                         className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                     >
-                        <option value="">Todos</option>
+                        <option value="">{t('activations.all_projects') || 'Todos'}</option>
                         {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                 </div>
@@ -361,13 +374,13 @@ const ActivationsHistoryPage = () => {
                         }}
                         className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-blue-200 transition-all active:scale-95"
                     >
-                        <Calendar size={14} /> Ver Producción de Hoy
+                        <Calendar size={14} /> {t('activations.view_today_production') || 'Ver Producción de Hoy'}
                     </button>
                     <button
                         onClick={() => setFilters({ startDate: '', endDate: '', teamId: '', projectId: '' })}
                         className="bg-slate-50 text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 border border-slate-200 transition-all active:scale-95"
                     >
-                        <X size={14} /> Limpiar Filtros
+                        <X size={14} /> {t('activations.clear_filters') || 'Limpiar Filtros'}
                     </button>
                 </div>
             </div>
@@ -378,20 +391,20 @@ const ActivationsHistoryPage = () => {
                     <table className="w-full text-left text-sm text-slate-600">
                         <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200">
                             <tr>
-                                <th className="p-4">Fecha</th>
-                                <th className="p-4">Dirección</th>
-                                <th className="p-4">Equipo</th>
-                                <th className="p-4">Detalles</th>
-                                <th className="p-4">Comentarios</th>
-                                <th className="p-4">Puntos</th>
-                                <th className="p-4 text-right">Acciones</th>
+                                <th className="p-4">{t('activations.date') || 'Fecha'}</th>
+                                <th className="p-4">{t('activations.address') || 'Dirección'}</th>
+                                <th className="p-4">{t('activations.team') || 'Equipo'}</th>
+                                <th className="p-4">{t('activations.details') || 'Detalles'}</th>
+                                <th className="p-4">{t('activations.comments') || 'Comentarios'}</th>
+                                <th className="p-4">{t('activations.points') || 'Puntos'}</th>
+                                <th className="p-4 text-right">{t('activations.actions') || 'Acciones'}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
-                                <tr><td colSpan="7" className="p-8 text-center">Cargando...</td></tr>
-                            ) : activations.length === 0 ? (
-                                <tr><td colSpan="7" className="p-8 text-center text-slate-400">No se encontraron activaciones.</td></tr>
+                                <tr><td colSpan="7" className="p-8 text-center">{t('settings.loading')}</td></tr>
+                             ) : activations.length === 0 ? (
+                                <tr><td colSpan="7" className="p-8 text-center text-slate-400">{t('activations.no_activations_found') || 'No se encontraron activaciones.'}</td></tr>
                             ) : (
                                 activations.map(act => (
                                     <tr key={act.id} className="hover:bg-slate-50">
@@ -425,14 +438,14 @@ const ActivationsHistoryPage = () => {
                                                 <button
                                                     onClick={() => openRepairModal(act)}
                                                     className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
-                                                    title="Reportar Incidencia / Reparación"
+                                                    title={t('activations.report_issue_repair') || "Reportar Incidencia / Reparación"}
                                                 >
                                                     <AlertTriangle size={18} />
                                                 </button>
                                                 <button
                                                     onClick={() => setSelectedActivation(act)}
                                                     className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
-                                                    title="Ver Detalles y Fotos"
+                                                    title={t('activations.view_details_photos') || "Ver Detalles y Fotos"}
                                                 >
                                                     <Eye size={18} />
                                                 </button>
@@ -454,32 +467,32 @@ const ActivationsHistoryPage = () => {
                             <X size={24} />
                         </button>
 
-                        <h3 className="text-xl font-bold text-slate-800 mb-1">Detalles de Activación</h3>
+                        <h3 className="text-xl font-bold text-slate-800 mb-1">{t('activations.activation_details') || 'Detalles de Activación'}</h3>
                         <p className="text-slate-500 text-sm mb-6">
                             {selectedActivation.address.street} {selectedActivation.address.number} - {new Date(selectedActivation.createdAt).toLocaleString()}
                         </p>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <h4 className="font-bold text-slate-700 mb-2">Información Técnica</h4>
+                                <h4 className="font-bold text-slate-700 mb-2">{t('activations.technical_info') || 'Información Técnica'}</h4>
                                 <ul className="space-y-2 text-sm text-slate-600">
-                                    <li><span className="font-medium">Tipo:</span> {selectedActivation.activationType}</li>
-                                    <li><span className="font-medium">Puertos AP:</span> {selectedActivation.apPorts}</li>
-                                    <li><span className="font-medium">TA Instalada:</span> {selectedActivation.taInstalled ? `Sí (${selectedActivation.taCount})` : 'No'}</li>
-                                    <li><span className="font-medium">SP Instalados:</span> {selectedActivation.spInstalled}</li>
-                                    <li><span className="font-medium">Home IDs:</span> {selectedActivation.homeIds.join(', ')}</li>
+                                    <li><span className="font-medium">{t('activations.type_label') || 'Tipo'}:</span> {selectedActivation.activationType}</li>
+                                    <li><span className="font-medium">{t('activations.ap_ports_label') || 'Puertos AP'}:</span> {selectedActivation.apPorts}</li>
+                                    <li><span className="font-medium">{t('activations.ta_installed_label') || 'TA Instalada'}:</span> {selectedActivation.taInstalled ? `${t('yes') || 'Sí'} (${selectedActivation.taCount})` : (t('no') || 'No')}</li>
+                                    <li><span className="font-medium">{t('activations.sp_installed_label') || 'SP Instalados'}:</span> {selectedActivation.spInstalled}</li>
+                                    <li><span className="font-medium">{t('activations.home_ids_label') || 'Home IDs'}:</span> {selectedActivation.homeIds.join(', ')}</li>
                                 </ul>
                             </div>
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                <h4 className="font-bold text-slate-700 mb-2">Descripción</h4>
+                                <h4 className="font-bold text-slate-700 mb-2">{t('activations.description_label') || 'Descripción'}</h4>
                                 <p className="text-sm text-slate-600 whitespace-pre-wrap">
-                                    {selectedActivation.description || 'Sin descripción.'}
+                                    {selectedActivation.description || (t('activations.no_description') || 'Sin descripción.')}
                                 </p>
                             </div>
                         </div>
 
                         <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                            <ImageIcon size={20} /> Fotos Adjuntas
+                            <ImageIcon size={20} /> {t('activations.attached_photos') || 'Fotos Adjuntas'}
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                             {selectedActivation.photos && selectedActivation.photos.length > 0 ? (
@@ -501,7 +514,7 @@ const ActivationsHistoryPage = () => {
                                     );
                                 })
                             ) : (
-                                <p className="text-slate-400 text-sm col-span-full">No hay fotos adjuntas.</p>
+                                <p className="text-slate-400 text-sm col-span-full">{t('activations.no_photos_attached') || 'No hay fotos adjuntas.'}</p>
                             )}
                         </div>
                     </div>
@@ -536,25 +549,25 @@ const ActivationsHistoryPage = () => {
                         <button onClick={() => setIsExportModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
                             <X size={24} />
                         </button>
-                        <h3 className="text-xl font-bold text-slate-800 mb-4">Exportar Fotos de Activaciones</h3>
+                        <h3 className="text-xl font-bold text-slate-800 mb-4">{t('activations.export_activations_photos') || 'Exportar Fotos de Activaciones'}</h3>
                         <p className="text-sm text-slate-500 mb-6">
-                            Selecciona los filtros para generar un archivo ZIP con las fotos organizadas por carpetas (Dirección - Cliente).
+                            {t('activations.select_filters_zip') || 'Selecciona los filtros para generar un archivo ZIP con las fotos organizadas por carpetas (Dirección - Cliente).'}
                         </p>
                         <div className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Proyecto</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.project') || 'Proyecto'}</label>
                                 <select
                                     value={exportFiltersForm.projectId}
                                     onChange={(e) => setExportFiltersForm({ ...exportFiltersForm, projectId: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
-                                    <option value="">Todos los Proyectos</option>
+                                    <option value="">{t('activations.all_projects') || 'Todos los Proyectos'}</option>
                                     {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Desde</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.from') || 'Desde'}</label>
                                     <input
                                         type="date"
                                         value={exportFiltersForm.startDate}
@@ -563,7 +576,7 @@ const ActivationsHistoryPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Hasta</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.to') || 'Hasta'}</label>
                                     <input
                                         type="date"
                                         value={exportFiltersForm.endDate}
@@ -577,13 +590,13 @@ const ActivationsHistoryPage = () => {
                                     onClick={() => setIsExportModalOpen(false)}
                                     className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
                                 >
-                                    Cancelar
+                                    {t('activations.cancel') || 'Cancelar'}
                                 </button>
                                 <button
                                     onClick={handleExportPhotos}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
                                 >
-                                    Descargar ZIP
+                                    {t('activations.download_zip') || 'Descargar ZIP'}
                                 </button>
                             </div>
                         </div>

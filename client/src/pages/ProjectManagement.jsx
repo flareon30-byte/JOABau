@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Plus, Trash2, Upload, FileSpreadsheet, Folder, RefreshCw, Pencil, User } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const ProjectManagement = () => {
+    const { t, i18n } = useTranslation();
     const [projects, setProjects] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportMode, setIsImportMode] = useState(false);
@@ -61,7 +63,7 @@ const ProjectManagement = () => {
                 const response = await api.post('/api/projects/import', data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
-                alert(response.data.message || 'Proyecto importado correctamente');
+                alert(response.data.message || t('projects.success_import'));
             } else {
                 await api.post('/api/projects', { 
                     name: formData.name,
@@ -73,7 +75,7 @@ const ProjectManagement = () => {
             setFormData({ name: '', file: null, clientCompanyId: '' });
         } catch (error) {
             console.error('Error saving project:', error);
-            alert(error.response?.data?.message || 'Error al guardar proyecto');
+            alert(error.response?.data?.message || t('projects.error_save'));
         } finally {
             setUploading(false);
         }
@@ -96,7 +98,7 @@ const ProjectManagement = () => {
             setProjectToDelete(null);
         } catch (error) {
             console.error('Error deleting project:', error);
-            alert('Error al eliminar el proyecto');
+            alert(t('projects.error_delete'));
         }
     };
 
@@ -135,25 +137,25 @@ const ProjectManagement = () => {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-800">Gestión de Proyectos</h3>
+                <h3 className="text-lg font-bold text-slate-800">{t('projects.title')}</h3>
                 <div className="flex gap-2">
                     <button
                         onClick={() => openModal(false)}
                         className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                     >
-                        <Plus size={18} /> Nuevo Proyecto
+                        <Plus size={18} /> {t('projects.new_project')}
                     </button>
                     <button
                         onClick={() => openModal(true, 'standard')}
                         className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                     >
-                        <Upload size={18} /> Importar Excel
+                        <Upload size={18} /> {t('projects.import_excel')}
                     </button>
                     <button
                         onClick={() => openModal(true, 'protocol')}
                         className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                     >
-                        <Upload size={18} /> Importar Multiviviendas
+                        <Upload size={18} /> {t('projects.import_multi')}
                     </button>
                 </div>
             </div>
@@ -168,25 +170,25 @@ const ProjectManagement = () => {
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-slate-800 text-lg">{project.name}</h4>
-                                    <p className="text-sm text-slate-500">{project._count?.addresses || 0} direcciones</p>
+                                    <p className="text-sm text-slate-500">{project._count?.addresses || 0} {t('projects.addresses')}</p>
                                 </div>
                             </div>
                             <div className="flex gap-2">
                                 <button
                                     onClick={() => openEditPropertiesModal(project)}
                                     className="text-slate-400 hover:text-blue-600 transition-colors"
-                                    title="Editar Propiedades"
+                                    title={t('projects.edit_properties')}
                                 >
                                     <Pencil size={20} />
                                 </button>
                                 <button
                                     onClick={() => openUpdateModal(project)}
                                     className="text-slate-400 hover:text-blue-600 transition-colors"
-                                    title="Actualizar / Añadir Datos"
+                                    title={t('projects.update_data')}
                                 >
                                     <RefreshCw size={20} />
                                 </button>
-                                <button onClick={() => openDeleteModal(project)} className="text-slate-400 hover:text-red-500 transition-colors" title="Eliminar Proyecto">
+                                <button onClick={() => openDeleteModal(project)} className="text-slate-400 hover:text-red-500 transition-colors" title={t('projects.delete_project')}>
                                     <Trash2 size={20} />
                                 </button>
                             </div>
@@ -195,10 +197,10 @@ const ProjectManagement = () => {
                             <div className="flex items-center gap-2">
                                 <User size={14} className="text-slate-400" />
                                 <span className={project.clientCompany ? "font-bold text-slate-700" : "italic"}>
-                                    {project.clientCompany?.name || 'Sin Cliente Asignado'}
+                                    {project.clientCompany?.name || t('projects.no_client')}
                                 </span>
                             </div>
-                            <span>Creado: {new Date(project.createdAt).toLocaleDateString('es-ES')}</span>
+                            <span>{t('projects.created')}: {new Date(project.createdAt).toLocaleDateString(i18n.language)}</span>
                         </div>
                     </div>
                 ))}
@@ -209,15 +211,15 @@ const ProjectManagement = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
                         <h3 className="text-xl font-bold mb-4">
-                            {isUpdateMode ? 'Actualizar Proyecto' : (
-                                isImportMode ? (importType === 'protocol' ? 'Importar Multiviviendas (Protocolo)' : 'Importar Proyecto General') : 'Nuevo Proyecto'
+                            {isUpdateMode ? t('projects.update_title') : (
+                                isImportMode ? (importType === 'protocol' ? t('projects.import_multi_title') : t('projects.import_general')) : t('projects.new_project_title')
                             )}
                         </h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             {isImportMode && importType === 'protocol' ? (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                                        Seleccionar Proyecto Principal
+                                        {t('projects.select_main')}
                                     </label>
                                     <select
                                         value={formData.name}
@@ -225,24 +227,24 @@ const ProjectManagement = () => {
                                         className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                         required
                                     >
-                                        <option value="">Selecciona un proyecto...</option>
+                                        <option value="">{t('projects.select_project_placeholder')}</option>
                                         {projects.map(p => (
                                             <option key={p.id} value={p.name}>{p.name}</option>
                                         ))}
                                     </select>
                                     <p className="text-xs text-slate-500 mt-1">
-                                        Las direcciones del Excel se buscarán en este proyecto y se marcarán como "Requiere Protocolo".
+                                        {t('projects.protocol_hint')}
                                     </p>
                                 </div>
                             ) : (
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nombre del Proyecto</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('projects.project_name')}</label>
                                     <input
                                         type="text"
                                         value={formData.name}
                                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                         className={`w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none ${isUpdateMode ? 'bg-slate-100 text-slate-500' : ''}`}
-                                        placeholder="Nombre del Proyecto"
+                                        placeholder={t('projects.project_name')}
                                         required
                                         readOnly={isUpdateMode}
                                     />
@@ -252,25 +254,25 @@ const ProjectManagement = () => {
                             {/* Client Selection (For Create and Property Mode) */}
                             {(!isUpdateMode || isPropertyMode) && (
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Empresa Cliente (Dueño)</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('projects.client_company')}</label>
                                     <select
                                         value={formData.clientCompanyId}
                                         onChange={(e) => setFormData({ ...formData, clientCompanyId: e.target.value })}
                                         className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                     >
-                                        <option value="">Ninguno / Sin Asignar</option>
+                                        <option value="">{t('projects.none_unassigned')}</option>
                                         {clients.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
-                                    <p className="text-[10px] text-slate-400 mt-1 italic">Vincular a un cliente permite un filtrado correcto en el Área Económica.</p>
+                                    <p className="text-[10px] text-slate-400 mt-1 italic">{t('projects.client_hint')}</p>
                                 </div>
                             )}
 
                             {isImportMode && (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                                        Archivo Excel (.xlsx) {importType === 'protocol' && <span className="text-purple-600 font-bold">- Multiviviendas</span>}
+                                        {t('projects.excel_file')} {importType === 'protocol' && <span className="text-purple-600 font-bold">- Multiviviendas</span>}
                                     </label>
                                     <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:bg-slate-50 transition-colors cursor-pointer relative">
                                         <input
@@ -282,11 +284,11 @@ const ProjectManagement = () => {
                                         />
                                         <FileSpreadsheet className="mx-auto text-slate-400 mb-2" size={32} />
                                         <p className="text-sm text-slate-500">
-                                            {formData.file ? formData.file.name : 'Arrastra o selecciona un archivo'}
+                                            {formData.file ? formData.file.name : t('projects.drop_file')}
                                         </p>
                                     </div>
                                     <p className="text-xs text-slate-400 mt-2">
-                                        El Excel debe tener columnas: NVT, CALLE, NUMERO, CIUDAD, KLS... {importType === 'protocol' && <strong> y STATUS</strong>}
+                                        {t('projects.excel_hint_standard')} {importType === 'protocol' && <strong>{t('projects.excel_hint_protocol')}</strong>}
                                     </p>
                                 </div>
                             )}
@@ -297,14 +299,14 @@ const ProjectManagement = () => {
                                     onClick={() => setIsModalOpen(false)}
                                     className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                                 >
-                                    Cancelar
+                                    {t('projects.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={uploading}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
                                 >
-                                    {uploading ? 'Procesando...' : (isPropertyMode ? 'Guardar Cambios' : (isUpdateMode ? 'Actualizar Excel' : (isImportMode ? 'Importar' : 'Crear')))}
+                                    {uploading ? t('projects.processing') : (isPropertyMode ? t('projects.save_changes') : (isUpdateMode ? t('projects.update_excel') : (isImportMode ? t('projects.import') : t('projects.create'))))}
                                 </button>
                             </div>
                         </form>
@@ -320,16 +322,16 @@ const ProjectManagement = () => {
                             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
                                 <Trash2 size={32} />
                             </div>
-                            <h3 className="text-xl font-bold text-slate-800">¿Eliminar Proyecto?</h3>
+                            <h3 className="text-xl font-bold text-slate-800">{t('projects.delete_confirm_title')}</h3>
                             <p className="text-slate-500 mt-2">
-                                Esta acción eliminará permanentemente el proyecto <strong>{projectToDelete.name}</strong> y todas sus direcciones asociadas.
+                                {t('projects.delete_confirm_desc')} <strong>{projectToDelete.name}</strong> {t('projects.delete_confirm_desc2')}
                             </p>
                         </div>
 
                         <div className="space-y-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                                    Escribe <strong>{projectToDelete.name}</strong> para confirmar:
+                                    {t('projects.type_to_confirm')} <strong>{projectToDelete.name}</strong> {t('projects.to_confirm')}
                                 </label>
                                 <input
                                     type="text"
@@ -345,14 +347,14 @@ const ProjectManagement = () => {
                                     onClick={() => setDeleteModalOpen(false)}
                                     className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                                 >
-                                    Cancelar
+                                    {t('projects.cancel')}
                                 </button>
                                 <button
                                     onClick={confirmDelete}
                                     disabled={confirmName !== projectToDelete.name}
                                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    Eliminar Definitivamente
+                                    {t('projects.delete_permanently')}
                                 </button>
                             </div>
                         </div>

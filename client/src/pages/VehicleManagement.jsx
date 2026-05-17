@@ -199,7 +199,7 @@ const VehicleManagement = () => {
                                         className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg flex items-center gap-1 text-xs font-bold" 
                                         title={t('vehicles.view_history')}
                                     >
-                                        <Search size={14} /> Bitácora
+                                        <Search size={14} /> {t('vehicles.activity_log')}
                                     </button>
                                     <button onClick={() => handleOpenModal(v)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg">
                                         <Edit3 size={18} />

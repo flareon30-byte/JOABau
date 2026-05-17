@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Plus, Trash2, Users, Briefcase, Settings } from 'lucide-react';
 import TeamToolsModal from '../components/TeamToolsModal';
+import { useTranslation } from 'react-i18next';
 
 const TeamManagement = () => {
+    const { t } = useTranslation();
     const [teams, setTeams] = useState([]);
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -53,16 +55,11 @@ const TeamManagement = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (formData.memberIds.length < 1) {
-            alert('Un equipo debe tener al menos 1 miembro');
+            alert(t('teams.alert_min_members'));
             return;
         }
         try {
             if (editingTeam) {
-                // Update logic needed in backend likely, assuming PUT /api/teams/:id exists or create one.
-                // NOTE: I haven't created PUT /api/teams/:id yet in this session, but user asked to modify teams.
-                // I will assume for now I need to create it or just warn.
-                // Let's check teamController quickly... it DOES NOT have updateTeam. 
-                // I will create a quick updateTeam in teamController next.
                 await api.put(`/api/teams/${editingTeam.id}`, formData);
             } else {
                 await api.post('/api/teams', formData);
@@ -73,18 +70,18 @@ const TeamManagement = () => {
             setFormData({ name: '', department: 'BLOWING', memberIds: [], activeClientCompanyId: '' });
         } catch (error) {
             console.error('Error saving team:', error);
-            alert(error.response?.data?.message || 'Error al guardar equipo');
+            alert(error.response?.data?.message || t('teams.error_save'));
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('¿Eliminar equipo? Los usuarios quedarán libres.')) {
+        if (window.confirm(t('teams.confirm_delete'))) {
             try {
                 await api.delete(`/api/teams/${id}`);
                 fetchData();
             } catch (error) {
                 console.error('Error deleting team:', error);
-                alert(error.response?.data?.message || 'Error al eliminar equipo');
+                alert(error.response?.data?.message || t('teams.error_delete'));
             }
         }
     };
@@ -94,9 +91,18 @@ const TeamManagement = () => {
             if (prev.memberIds.includes(userId)) {
                 return { ...prev, memberIds: prev.memberIds.filter(id => id !== userId) };
             }
-            // Sin límite estricto, o un límite alto si se prefiere. Lo dejamos libre.
             return { ...prev, memberIds: [...prev.memberIds, userId] };
         });
+    };
+
+    const getDeptLabel = (dept) => {
+        switch(dept) {
+            case 'BLOWING': return t('teams.dept_blowing');
+            case 'ACTIVATION': return t('teams.dept_activation');
+            case 'BACK_OFFICE': return t('teams.dept_back_office');
+            case 'PROTOCOLS': return t('teams.dept_protocols');
+            default: return dept;
+        }
     };
 
     // Filter available users: Free users OR users already in THIS team (if editing)
@@ -108,12 +114,12 @@ const TeamManagement = () => {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-800">Gestión de Equipos</h3>
+                <h3 className="text-lg font-bold text-slate-800">{t('teams.title')}</h3>
                 <button
                     onClick={openCreateModal}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                 >
-                    <Plus size={18} /> Nuevo Equipo
+                    <Plus size={18} /> {t('teams.new_team')}
                 </button>
             </div>
 
@@ -123,27 +129,27 @@ const TeamManagement = () => {
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 <h4 className="font-bold text-slate-800 text-lg">{team.name}</h4>
-                                <div className="flex gap-2">
+                                <div className="flex gap-2 flex-wrap">
                                     <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded mt-1 inline-block">
-                                        {team.department}
+                                        {getDeptLabel(team.department)}
                                     </span>
                                     {team.activeClientCompany && (
                                         <span className="text-xs text-blue-600 bg-blue-50 border border-blue-200 px-2 py-1 rounded mt-1 inline-block font-bold">
-                                            Cliente: {team.activeClientCompany.name}
+                                            {t('teams.client')}: {team.activeClientCompany.name}
                                         </span>
                                     )}
                                     {team.vehicle && (
                                         <span className="text-xs text-green-600 bg-green-50 border border-green-200 px-2 py-1 rounded mt-1 inline-block font-bold">
-                                            Coche: {team.vehicle.plate}
+                                            {t('teams.vehicle')}: {team.vehicle.plate}
                                         </span>
                                     )}
                                 </div>
                             </div>
                             <div className="flex gap-1">
-                                <button onClick={() => openEditModal(team)} className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title="Editar Equipo">
+                                <button onClick={() => openEditModal(team)} className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded" title={t('teams.edit_team')}>
                                     <Settings size={18} />
                                 </button>
-                                <button onClick={() => handleDelete(team.id)} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title="Eliminar">
+                                <button onClick={() => handleDelete(team.id)} className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded" title={t('teams.col_actions')}>
                                     <Trash2 size={18} />
                                 </button>
                             </div>
@@ -163,7 +169,7 @@ const TeamManagement = () => {
                             className="w-full mt-2 py-2 border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center justify-center gap-2 font-medium transition-colors"
                         >
                             <Briefcase size={18} />
-                            Gestionar Herramientas
+                            {t('teams.manage_tools')}
                         </button>
                     </div>
                 ))}
@@ -173,10 +179,10 @@ const TeamManagement = () => {
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                        <h3 className="text-xl font-bold mb-4">{editingTeam ? 'Editar Equipo' : 'Nuevo Equipo'}</h3>
+                        <h3 className="text-xl font-bold mb-4">{editingTeam ? t('teams.edit_team') : t('teams.new_team')}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre del Equipo</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('teams.team_name')}</label>
                                 <input
                                     type="text"
                                     value={formData.name}
@@ -186,37 +192,37 @@ const TeamManagement = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Departamento</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('teams.department')}</label>
                                 <select
                                     value={formData.department}
                                     onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
-                                    <option value="BLOWING">Soplado</option>
-                                    <option value="ACTIVATION">Activación</option>
-                                    <option value="BACK_OFFICE">Back Office</option>
-                                    <option value="PROTOCOLS">Protocolos</option>
+                                    <option value="BLOWING">{t('teams.dept_blowing')}</option>
+                                    <option value="ACTIVATION">{t('teams.dept_activation')}</option>
+                                    <option value="BACK_OFFICE">{t('teams.dept_back_office')}</option>
+                                    <option value="PROTOCOLS">{t('teams.dept_protocols')}</option>
                                 </select>
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Empresa Cliente (Asignación)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('teams.client_company')}</label>
                                 <select
                                     value={formData.activeClientCompanyId}
                                     onChange={(e) => setFormData({ ...formData, activeClientCompanyId: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-joa-blue outline-none"
                                 >
-                                    <option value="">-- Sin Cliente Asignado --</option>
+                                    <option value="">{t('teams.no_client')}</option>
                                     {clients.map(c => (
                                         <option key={c.id} value={c.id}>{c.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-2">Seleccionar Miembros</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-2">{t('teams.select_members')}</label>
                                 <div className="border border-slate-200 rounded-lg max-h-40 overflow-y-auto p-2 space-y-1">
                                     {availableUsers.length === 0 ? (
-                                        <p className="text-sm text-slate-400 text-center py-2">No hay usuarios disponibles</p>
+                                        <p className="text-sm text-slate-400 text-center py-2">{t('teams.no_members')}</p>
                                     ) : (
                                         availableUsers.map(user => (
                                             <div
@@ -231,7 +237,7 @@ const TeamManagement = () => {
                                         ))
                                     )}
                                 </div>
-                                <p className="text-xs text-slate-500 mt-1 text-right">{formData.memberIds.length} seleccionados</p>
+                                <p className="text-xs text-slate-500 mt-1 text-right">{t('teams.selected_count', { count: formData.memberIds.length })}</p>
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
                                 <button
@@ -239,14 +245,14 @@ const TeamManagement = () => {
                                     onClick={() => setIsModalOpen(false)}
                                     className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                                 >
-                                    Cancelar
+                                    {t('teams.btn_cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={formData.memberIds.length < 1}
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    {editingTeam ? 'Guardar Cambios' : 'Crear Equipo'}
+                                    {editingTeam ? t('teams.btn_save_changes') : t('teams.create_team')}
                                 </button>
                             </div>
                         </form>
@@ -261,4 +267,4 @@ const TeamManagement = () => {
         </div>
     );
 };
-export default TeamManagement;
+export default TeamManagement;gement;

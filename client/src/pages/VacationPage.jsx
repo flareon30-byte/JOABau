@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Calendar, Plus, Clock, CheckCircle, XCircle, Trash2, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // Helper for Easter Calculation (Meeus/Jones/Butcher algorithm)
 const getEaster = (year) => {
@@ -89,6 +90,7 @@ const calculateBusinessDays = (start, end) => {
 };
 
 const VacationPage = () => {
+    const { t } = useTranslation();
     const [stats, setStats] = useState({ total: 0, used: 0, remaining: 0 });
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -124,7 +126,7 @@ const VacationPage = () => {
             setFormData({ startDate: '', endDate: '', type: 'VACATION', reason: '' });
             fetchVacations();
         } catch (error) {
-            alert('Error al solicitar vacaciones. Verifique que las fechas sean correctas.');
+            alert(t('vacation.error_request'));
         }
     };
 
@@ -148,15 +150,15 @@ const VacationPage = () => {
         <div className="p-6">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-800">Mis Vacaciones</h1>
-                    <p className="text-slate-500">Gestiona tus días de descanso y solicitudes</p>
+                    <h1 className="text-3xl font-bold text-slate-800">{t('vacation.title')}</h1>
+                    <p className="text-slate-500">{t('vacation.subtitle')}</p>
                 </div>
                 <button
                     onClick={() => setShowModal(true)}
                     className="flex items-center gap-2 bg-joa-blue text-white px-6 py-3 rounded-xl hover:bg-joa-blue-dark transition shadow-lg shadow-blue-100"
                 >
                     <Plus size={20} />
-                    Solicitar Vacaciones
+                    {t('vacation.btn_request')}
                 </button>
             </div>
 
@@ -169,7 +171,7 @@ const VacationPage = () => {
                         </div>
                     </div>
                     <div className="text-2xl font-bold text-slate-800">{stats.total}</div>
-                    <div className="text-slate-500 font-medium">Días Totales</div>
+                    <div className="text-slate-500 font-medium">{t('vacation.total_days')}</div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <div className="flex justify-between items-start mb-4">
@@ -178,7 +180,7 @@ const VacationPage = () => {
                         </div>
                     </div>
                     <div className="text-2xl font-bold text-slate-800">{stats.used}</div>
-                    <div className="text-slate-500 font-medium">Días Disfrutados</div>
+                    <div className="text-slate-500 font-medium">{t('vacation.used_days')}</div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                     <div className="flex justify-between items-start mb-4">
@@ -187,24 +189,24 @@ const VacationPage = () => {
                         </div>
                     </div>
                     <div className="text-2xl font-bold text-slate-800">{stats.remaining}</div>
-                    <div className="text-slate-500 font-medium">Días Restantes</div>
+                    <div className="text-slate-500 font-medium">{t('vacation.remaining_days')}</div>
                 </div>
             </div>
 
             {/* Requests Table */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                    <h2 className="text-xl font-bold text-slate-800">Historial de Solicitudes</h2>
+                    <h2 className="text-xl font-bold text-slate-800">{t('vacation.history')}</h2>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Período</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Tipo</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Días</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Estado</th>
-                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Comentario Admin</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_period')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_type')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_days')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_status')}</th>
+                                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_comment')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -217,7 +219,7 @@ const VacationPage = () => {
                                             <div className="font-medium text-slate-800">{start} - {end}</div>
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">
-                                            {request.type === 'VACATION' ? 'Vacaciones' : 'Día Libre'}
+                                            {request.type === 'VACATION' ? t('vacation.type_vacation') : t('vacation.type_day_off')}
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">
                                             {calculateBusinessDays(request.startDate, request.endDate).count}
@@ -225,11 +227,11 @@ const VacationPage = () => {
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusStyle(request.status)}`}>
                                                 {getStatusIcon(request.status)}
-                                                {request.status === 'PENDING' ? 'Pendiente' : request.status === 'APPROVED' ? 'Aprobado' : 'Denegado'}
+                                                {request.status === 'PENDING' ? t('vacation.status_pending') : request.status === 'APPROVED' ? t('vacation.status_approved') : t('vacation.status_denied')}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 text-slate-500 italic text-sm">
-                                            {request.managerComment || 'Sin comentarios'}
+                                            {request.managerComment || t('vacation.no_comments')}
                                         </td>
                                     </tr>
                                 );
@@ -237,7 +239,7 @@ const VacationPage = () => {
                             {requests.length === 0 && (
                                 <tr>
                                     <td colSpan="5" className="px-6 py-12 text-center text-slate-400">
-                                        No has realizado ninguna solicitud todavía.
+                                        {t('vacation.no_requests')}
                                     </td>
                                 </tr>
                             )}
@@ -251,13 +253,13 @@ const VacationPage = () => {
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="px-8 py-6 bg-joa-blue text-white">
-                            <h3 className="text-xl font-bold">Solicitud de Vacaciones</h3>
+                            <h3 className="text-xl font-bold">{t('vacation.modal_title')}</h3>
                             <p className="text-blue-100 text-sm">NRW (Renania del Norte-Westfalia) Calendar Sync</p>
                         </div>
                         <form onSubmit={handleSubmit} className="p-8 space-y-6">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Inicio</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('vacation.start_date')}</label>
                                     <input
                                         type="date"
                                         required
@@ -267,7 +269,7 @@ const VacationPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Fecha Fin</label>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('vacation.end_date')}</label>
                                     <input
                                         type="date"
                                         required
@@ -284,15 +286,15 @@ const VacationPage = () => {
                                     <div className="space-y-3">
                                         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 animate-fadeIn">
                                             <div className="flex justify-between items-center text-blue-800">
-                                                <span className="text-sm font-bold lowercase tracking-wider">Días laborables a descontar:</span>
-                                                <span className="text-lg font-black">{count} días</span>
+                                                <span className="text-sm font-bold tracking-wider">{t('vacation.business_days_deduct')}</span>
+                                                <span className="text-lg font-black">{t('vacation.days_suffix', { count })}</span>
                                             </div>
                                         </div>
                                         
                                         {holidaysFound.length > 0 && (
                                             <div className="bg-red-50 p-4 rounded-xl border border-red-100 animate-fadeIn">
                                                 <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-2 flex items-center gap-1">
-                                                    <Info size={12} /> Días Festivos Detectados (NRW)
+                                                    <Info size={12} /> {t('vacation.holidays_detected')}
                                                 </p>
                                                 <div className="flex flex-wrap gap-2">
                                                     {holidaysFound.map(d => (
@@ -301,7 +303,7 @@ const VacationPage = () => {
                                                         </span>
                                                     ))}
                                                 </div>
-                                                <p className="text-[9px] text-red-400 mt-2 font-bold italic">Estos días no se restarán de tu saldo de vacaciones.</p>
+                                                <p className="text-[9px] text-red-400 mt-2 font-bold italic">{t('vacation.holidays_hint')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -309,18 +311,18 @@ const VacationPage = () => {
                             })()}
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Tipo de Solicitud</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('vacation.request_type')}</label>
                                 <select
                                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-100 focus:border-joa-blue transition outline-none"
                                     value={formData.type}
                                     onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                                 >
-                                    <option value="VACATION">Vacaciones</option>
-                                    <option value="DAY_OFF">Día Libre</option>
+                                    <option value="VACATION">{t('vacation.type_vacation')}</option>
+                                    <option value="DAY_OFF">{t('vacation.type_day_off')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Motivo o Notas (Opcional)</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('vacation.reason')}</label>
                                 <textarea
                                     rows="3"
                                     className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-4 focus:ring-blue-100 focus:border-joa-blue transition outline-none resize-none"
@@ -334,13 +336,13 @@ const VacationPage = () => {
                                     onClick={() => setShowModal(false)}
                                     className="flex-1 px-6 py-3 rounded-xl border border-slate-200 font-bold text-slate-600 hover:bg-slate-50 transition"
                                 >
-                                    Cancelar
+                                    {t('vacation.btn_cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     className="flex-1 px-6 py-3 rounded-xl bg-joa-blue text-white font-bold hover:bg-joa-blue-dark transition shadow-lg shadow-blue-100"
                                 >
-                                    Enviar
+                                    {t('vacation.btn_submit')}
                                 </button>
                             </div>
                         </form>
@@ -351,4 +353,4 @@ const VacationPage = () => {
     );
 };
 
-export default VacationPage;
+export default VacationPage; VacationPage;

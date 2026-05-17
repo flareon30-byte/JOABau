@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Calendar as CalendarIcon, Clock, CheckCircle, XCircle, User, Filter, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 // Helper for Easter Calculation (Meeus/Jones/Butcher algorithm)
 const getEaster = (year) => {
@@ -41,6 +42,7 @@ const getGermanHolidays = (year) => {
 };
 
 const AdminVacationPage = () => {
+    const { t, i18n } = useTranslation();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [requests, setRequests] = useState([]);
     const [userStats, setUserStats] = useState([]);
@@ -72,21 +74,19 @@ const AdminVacationPage = () => {
             await api.put(`/api/vacations/${id}/status`, { status, managerComment: comment });
             fetchAllRequests();
         } catch (error) {
-            alert('Error al actualizar el estado.');
+            alert(t('vacation.error_status'));
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('¿Estás seguro de que deseas eliminar esta solicitud? Esto borrará el registro permanentemente.')) return;
+        if (!window.confirm(t('vacation.confirm_delete_req'))) return;
         try {
             await api.delete(`/api/vacations/${id}`);
             fetchAllRequests();
         } catch (error) {
-            alert('Error al eliminar la solicitud.');
+            alert(t('vacation.error_delete'));
         }
     };
-
-    // ... (calendar logic starts)
 
     const getStatusStyle = (status) => {
         switch (status) {
@@ -137,50 +137,51 @@ const AdminVacationPage = () => {
         setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + offset, 1));
     };
 
+    const daysShortList = t('vacation.days_short').split('_');
+
     return (
         <div className="p-6">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-800">Gestión de Vacaciones</h1>
-                    <p className="text-slate-500">Supervisa saldos de Renania del Norte-Westfalia (NRW) y aprueba solicitudes</p>
+                    <h1 className="text-3xl font-bold text-slate-800">{t('vacation.admin_title')}</h1>
+                    <p className="text-slate-500">{t('vacation.admin_subtitle')}</p>
                 </div>
                 <div className="flex bg-slate-100 p-1 rounded-xl">
                     <button
                         onClick={() => setActiveTab('list')}
                         className={`px-4 py-2 rounded-lg font-bold text-sm transition ${activeTab === 'list' ? 'bg-white text-joa-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        Solicitudes
+                        {t('vacation.tab_requests')}
                     </button>
                     <button
                         onClick={() => setActiveTab('calendar')}
                         className={`px-4 py-2 rounded-lg font-bold text-sm transition ${activeTab === 'calendar' ? 'bg-white text-joa-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        Calendario
+                        {t('vacation.tab_calendar')}
                     </button>
                     <button
                         onClick={() => setActiveTab('stats')}
                         className={`px-4 py-2 rounded-lg font-bold text-sm transition ${activeTab === 'stats' ? 'bg-white text-joa-blue shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        Saldos Equipo
+                        {t('vacation.tab_team_stats')}
                     </button>
                 </div>
             </div>
 
             {activeTab === 'list' ? (
-                // ... (existing list code)
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                     <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-slate-800">Solicitudes Recientes</h2>
+                        <h2 className="text-xl font-bold text-slate-800">{t('vacation.recent_requests')}</h2>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Técnico</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Período</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Tipo</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Estado</th>
-                                    {user.role !== 'BACK_OFFICE' && <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Acciones</th>}
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">{t('vacation.col_tech')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_period')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_type')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_status')}</th>
+                                    {user.role !== 'BACK_OFFICE' && <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_actions')}</th>}
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -198,11 +199,11 @@ const AdminVacationPage = () => {
                                             {new Date(request.startDate).toLocaleDateString('es-ES')} - {new Date(request.endDate).toLocaleDateString('es-ES')}
                                         </td>
                                         <td className="px-6 py-4 text-slate-600">
-                                            {request.type === 'VACATION' ? 'Vacaciones' : 'Día Libre'}
+                                            {request.type === 'VACATION' ? t('vacation.type_vacation') : t('vacation.type_day_off')}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${getStatusStyle(request.status)}`}>
-                                                {request.status === 'PENDING' ? 'Pendiente' : request.status === 'APPROVED' ? 'Aprobado' : 'Denegado'}
+                                                {request.status === 'PENDING' ? t('vacation.status_pending') : request.status === 'APPROVED' ? t('vacation.status_approved') : t('vacation.status_denied')}
                                             </span>
                                         </td>
                                          {user.role !== 'BACK_OFFICE' && (
@@ -213,17 +214,17 @@ const AdminVacationPage = () => {
                                                             <button
                                                                 onClick={() => handleUpdateStatus(request.id, 'APPROVED')}
                                                                 className="p-2 bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition"
-                                                                title="Aprobar"
+                                                                title={t('vacation.title_approve')}
                                                             >
                                                                 <CheckCircle size={18} />
                                                             </button>
                                                             <button
                                                                 onClick={() => {
-                                                                    const comm = prompt('Motivo de denegación:');
+                                                                    const comm = prompt(t('vacation.prompt_deny_reason'));
                                                                     if (comm !== null) handleUpdateStatus(request.id, 'DENIED', comm);
                                                                 }}
                                                                 className="p-2 bg-red-50 text-red-600 hover:bg-red-100 rounded-lg transition"
-                                                                title="Denegar"
+                                                                title={t('vacation.title_deny')}
                                                             >
                                                                 <XCircle size={18} />
                                                             </button>
@@ -231,20 +232,20 @@ const AdminVacationPage = () => {
                                                     ) : (
                                                         <button
                                                             onClick={() => {
-                                                                if (window.confirm('¿Deseas volver a poner esta solicitud como PENDIENTE para cambiar el estado?')) {
+                                                                if (window.confirm(t('vacation.confirm_reevaluate'))) {
                                                                     handleUpdateStatus(request.id, 'PENDING');
                                                                 }
                                                             }}
                                                             className="text-[10px] font-bold text-blue-600 hover:underline uppercase"
                                                         >
-                                                            Re-evaluar
+                                                            {t('vacation.reevaluate')}
                                                         </button>
                                                     )}
                                                     
                                                     <button
                                                         onClick={() => handleDelete(request.id)}
                                                         className="p-2 bg-slate-50 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition ml-2 border border-transparent hover:border-red-100"
-                                                        title="Eliminar solicitud"
+                                                        title={t('vacation.col_actions')}
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>
@@ -261,11 +262,11 @@ const AdminVacationPage = () => {
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                     <div className="flex justify-between items-center mb-6">
                         <h2 className="text-xl font-bold text-slate-800 capitalize">
-                            {currentMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+                            {currentMonth.toLocaleString(i18n.language === 'de' ? 'de-DE' : 'es-ES', { month: 'long', year: 'numeric' })}
                         </h2>
                         <div className="flex gap-2 text-[10px] items-center mr-4">
                             <span className="w-3 h-3 bg-red-500 rounded-full"></span>
-                            <span className="text-slate-500 font-bold uppercase">Festivo NRW</span>
+                            <span className="text-slate-500 font-bold uppercase">{t('vacation.holiday_nrw')}</span>
                         </div>
                         <div className="flex gap-2">
                             <button onClick={() => changeMonth(-1)} className="p-2 hover:bg-slate-100 rounded-lg text-slate-600"><ChevronLeft size={20} /></button>
@@ -273,7 +274,7 @@ const AdminVacationPage = () => {
                         </div>
                     </div>
                     <div className="grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden mt-2">
-                        {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(day => (
+                        {daysShortList.map(day => (
                             <div key={day} className="bg-slate-50 py-3 text-center text-xs font-bold text-slate-500 uppercase">{day}</div>
                         ))}
                         {calendarDays.map((dateObj, i) => {
@@ -309,18 +310,18 @@ const AdminVacationPage = () => {
                 /* Stats Tab */
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-fadeIn">
                     <div className="p-6 border-b border-slate-200">
-                        <h2 className="text-xl font-bold text-slate-800">Saldos de Vacaciones del Equipo</h2>
-                        <p className="text-sm text-slate-500">Días restantes calculados excluyendo festivos de Renania del Norte</p>
+                        <h2 className="text-xl font-bold text-slate-800">{t('vacation.team_stats_title')}</h2>
+                        <p className="text-sm text-slate-500">{t('vacation.team_stats_subtitle')}</p>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
                             <thead className="bg-slate-50 border-b border-slate-200">
                                 <tr>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Usuario</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Total Anual</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Días Usados</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Días Restantes</th>
-                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Progreso</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_user')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_total')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_used')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_remaining')}</th>
+                                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">{t('vacation.col_progress')}</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -335,7 +336,7 @@ const AdminVacationPage = () => {
                                             <td className="px-6 py-4 text-slate-600 font-bold">{stat.used}</td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2.5 py-1 rounded-lg text-sm font-black ${stat.remaining > 5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                    {stat.remaining} días
+                                                    {t('vacation.days_remaining_suffix', { count: stat.remaining })}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">

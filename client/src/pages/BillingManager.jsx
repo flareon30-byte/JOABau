@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Search, FileText, Download, Filter, Calendar, Trash2, Pencil, TrendingUp, Sun, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const BillingPage = () => {
     const navigate = useNavigate();
+    const { t } = useTranslation();
     // 1. Projects State
     const [projects, setProjects] = useState([]);
 
@@ -139,15 +141,15 @@ const BillingPage = () => {
     };
 
     const handleDelete = async (id, type) => {
-        if (!window.confirm('¿Estás seguro de que quieres eliminar este trabajo? Se revertirá el estado de la dirección.')) return;
+        if (!window.confirm(t('billing.confirm_delete'))) return;
 
         try {
             await api.delete(`/api/billing/${type}/${id}`);
-            alert('Registro eliminado');
+            alert(t('billing.success_delete'));
             fetchBillingData();
         } catch (error) {
             console.error(error);
-            alert('Error al eliminar');
+            alert(t('billing.error_delete'));
         }
     };
 
@@ -174,7 +176,7 @@ const BillingPage = () => {
             link.remove();
         } catch (error) {
             console.error('Error exporting excel:', error);
-            alert('Error al exportar Excel');
+            alert(t('billing.error_delete'));
         }
     };
 
@@ -182,7 +184,7 @@ const BillingPage = () => {
     const handleDownloadDocs = async (ids = []) => {
         const targetIds = ids.length > 0 ? ids : selectedIds;
         if (targetIds.length === 0) {
-            alert('Selecciona al menos una activación.');
+            alert(t('billing.alert_select_activation'));
             return;
         }
 
@@ -203,7 +205,7 @@ const BillingPage = () => {
             link.remove();
         } catch (error) {
             console.error('Error downloading docs:', error);
-            alert('Error al descargar documentación. Verifica que existan fotos/pdf.');
+            alert(t('billing.error_download_docs'));
         }
     };
 
@@ -257,46 +259,46 @@ const BillingPage = () => {
         switch (activeTab) {
             case 'soplado':
                 data = billingData.soplado;
-                columns = ['Fecha', 'Proyecto', 'Dirección', 'NVT', 'Metros', 'TK', 'Color', 'Acciones'];
-                emptyMsg = "No hay trabajos de soplado";
+                columns = [t('billing.col_date'), t('billing.col_project'), t('billing.col_address'), t('billing.col_nvt'), t('billing.col_meters'), t('billing.col_tk'), t('billing.col_color'), t('billing.col_actions')];
+                emptyMsg = t('billing.no_blowing');
                 break;
             case 'fusion':
                 data = billingData.fusion;
-                columns = ['Fecha', 'Proyecto', 'Tipo', 'NVT / Dirección', 'Fusiones', 'Horas', 'Bandeja', 'Notas', 'Acciones'];
-                emptyMsg = "No hay trabajos de fusión";
+                columns = [t('billing.col_date'), t('billing.col_project'), t('billing.col_type'), t('billing.col_nvt_address'), t('billing.col_fusions'), t('billing.col_hours'), t('billing.col_tray'), t('billing.col_notes'), t('billing.col_actions')];
+                emptyMsg = t('billing.no_fusion');
                 break;
             case 'activation':
                 data = billingData.activation;
                 // Add Checkbox column header if activation tab
                 columns = [
                     <div key="chk" className="flex items-center"><input type="checkbox" checked={data.length > 0 && selectedIds.length === data.length} onChange={() => toggleSelectAll(data)} className="w-4 h-4 rounded border-slate-300" /></div>,
-                    'Fecha', 'Proyecto', 'Dirección', 'Cliente', 'Detalles', 'Fotos', 'PDF', 'Total€', 'Comentarios', 'Acciones'
+                    t('billing.col_date'), t('billing.col_project'), t('billing.col_address'), t('billing.col_client'), t('billing.col_details'), t('billing.col_photos'), t('billing.col_pdf'), t('billing.col_total_euros'), t('billing.col_comments'), t('billing.col_actions')
                 ];
-                emptyMsg = "No hay activaciones";
+                emptyMsg = t('billing.no_activations');
                 break;
             case 'protocol':
                 data = billingData.protocol;
-                columns = ['Fecha', 'Proyecto', 'Dirección', 'NVT', 'Estado', 'Notas', 'Acciones'];
-                emptyMsg = "No hay protocolos completados";
+                columns = [t('billing.col_date'), t('billing.col_project'), t('billing.col_address'), t('billing.col_nvt'), t('billing.col_status'), t('billing.col_notes'), t('billing.col_actions')];
+                emptyMsg = t('billing.no_protocols');
                 break;
             case 'repair':
                 data = billingData.repair;
-                columns = ['Fecha', 'Proyecto', 'Dirección', 'NVT', 'Tipo', 'Detalles', 'Acciones'];
-                emptyMsg = "No hay reparaciones facturables completadas";
+                columns = [t('billing.col_date'), t('billing.col_project'), t('billing.col_address'), t('billing.col_nvt'), t('billing.col_type'), t('billing.col_details'), t('billing.col_actions')];
+                emptyMsg = t('billing.no_repairs');
                 break;
             case 'simpleInstallation':
                 data = billingData.simpleInstallation;
                 columns = [
                     <div key="chk" className="flex items-center"><input type="checkbox" checked={data.length > 0 && selectedIds.length === data.length} onChange={() => toggleSelectAll(data)} className="w-4 h-4 rounded border-slate-300" /></div>,
-                    'Fecha', 'Dirección', 'Conceptos / Items', 'Comentarios', 'Fotos', 'PDF', 'Técnico', 'Proyecto', 'Acciones'
+                    t('billing.col_date'), t('billing.col_address'), t('billing.col_concepts_items'), t('billing.col_comments'), t('billing.col_photos'), t('billing.col_pdf'), t('billing.col_tech'), t('billing.col_project'), t('billing.col_actions')
                 ];
-                emptyMsg = "No hay fichas de G&K / Otros enviadas";
+                emptyMsg = t('billing.no_simple_installations');
                 break;
             default:
                 break;
         }
 
-        if (loading) return <div className="p-8 text-center text-slate-500">Cargando datos...</div>;
+        if (loading) return <div className="p-8 text-center text-slate-500">{t('billing.loading')}</div>;
         if (!data || data.length === 0) return <div className="p-8 text-center text-slate-500">{emptyMsg}</div>;
 
         return (
@@ -448,7 +450,7 @@ const BillingPage = () => {
                                          <td 
                                             className="p-4 cursor-pointer hover:bg-slate-50 transition-colors"
                                             onClick={() => setCommentData({
-                                                title: 'Comentario del Técnico',
+                                                title: t('billing.tech_comment'),
                                                 text: row.description || 'Sin comentarios'
                                             })}
                                         >
@@ -488,7 +490,7 @@ const BillingPage = () => {
                                          <td 
                                             className="p-4 text-slate-500 max-w-xs truncate cursor-pointer hover:bg-slate-50 transition-colors"
                                             onClick={() => setCommentData({
-                                                title: 'Detalles de Instalación',
+                                                title: t('billing.col_details'),
                                                 text: row.comments || 'Sin comentarios'
                                             })}
                                         >
@@ -538,7 +540,7 @@ const BillingPage = () => {
                                          <td 
                                             className="p-4 text-slate-500 cursor-pointer hover:bg-slate-50 transition-colors"
                                             onClick={() => setCommentData({
-                                                title: 'Motivo de Recita/Derivación',
+                                                title: t('billing.recite_reason'),
                                                 text: row.reciteReason || 'Sin motivo especificado'
                                             })}
                                         >
@@ -556,7 +558,7 @@ const BillingPage = () => {
                                          <td 
                                             className="p-4 text-slate-500 italic cursor-pointer hover:bg-slate-50 transition-colors"
                                             onClick={() => setCommentData({
-                                                title: 'Detalle de la Avería',
+                                                title: t('billing.repair_details'),
                                                 text: row.comments?.[0]?.text || 'Sin detalle registrado'
                                             })}
                                         >
@@ -635,8 +637,8 @@ const BillingPage = () => {
                     <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-slate-200" onClick={e => e.stopPropagation()}>
                         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <div>
-                                <h3 className="font-bold text-slate-800">Galería de Fotos</h3>
-                                <p className="text-xs text-slate-500">{selectedPhotos.length} imágenes encontradas</p>
+                                <h3 className="font-bold text-slate-800">{t('billing.col_photos')}</h3>
+                                <p className="text-xs text-slate-500">{t('billing.works_done', { count: selectedPhotos.length })}</p>
                             </div>
                             <button onClick={() => setIsPhotoModalOpen(false)} className="bg-slate-200 hover:bg-slate-300 text-slate-600 p-2 rounded-full transition-colors">
                                 <Trash2 size={20} className="rotate-45" />
@@ -660,14 +662,14 @@ const BillingPage = () => {
                                             className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
                                         />
                                         <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center font-bold text-white text-xs">
-                                            Click para ampliar
+                                            {t('billing.click_zoom')}
                                         </div>
                                     </div>
                                 );
                             })}
                         </div>
                         <div className="p-4 border-t border-slate-100 text-center bg-slate-50">
-                            <button onClick={() => setIsPhotoModalOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-all shadow-lg">Cerrar Galería</button>
+                            <button onClick={() => setIsPhotoModalOpen(false)} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-black transition-all shadow-lg">{t('billing.btn_close_gallery')}</button>
                         </div>
                     </div>
                 </div>
@@ -695,9 +697,9 @@ const BillingPage = () => {
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <FileText className="text-blue-600" /> Facturación (v2.1)
+                        <FileText className="text-blue-600" /> {t('billing.title')}
                     </h2>
-                    <p className="text-slate-500 text-sm">Gestiona y exporta los trabajos realizados para facturar.</p>
+                    <p className="text-slate-500 text-sm">{t('billing.subtitle')}</p>
                 </div>
                 <div className="flex gap-2">
                     {(activeTab === 'activation' || activeTab === 'simpleInstallation') && selectedIds.length > 0 && (
@@ -705,14 +707,14 @@ const BillingPage = () => {
                             onClick={() => handleDownloadDocs()}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all"
                         >
-                            <Download size={20} /> Docs ({selectedIds.length})
+                            <Download size={20} /> {t('billing.btn_docs', { count: selectedIds.length })}
                         </button>
                     )}
                     <button
                         onClick={handleExport}
                         className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all"
                     >
-                        <Download size={20} /> Exportar Excel
+                        <Download size={20} /> {t('billing.btn_export')}
                     </button>
                 </div>
             </div>
@@ -725,13 +727,13 @@ const BillingPage = () => {
                         <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
                             <TrendingUp size={80} />
                         </div>
-                        <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">Producción del Mes (Bruta)</p>
+                        <p className="text-indigo-100 text-xs font-bold uppercase tracking-widest mb-1">{t('billing.prod_month_gross')}</p>
                         <h3 className="text-4xl font-black mb-2">
                             {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.euros || 0)}
                         </h3>
                         <div className="flex items-center gap-2 text-xs text-indigo-100/80">
-                            <span className="bg-white/20 px-2 py-0.5 rounded-full font-bold">Mes en curso</span>
-                            <span>{billingData.soplado.length + billingData.activation.length + billingData.simpleInstallation.length} trabajos realizados</span>
+                            <span className="bg-white/20 px-2 py-0.5 rounded-full font-bold">{t('billing.current_month')}</span>
+                            <span>{t('billing.works_done', { count: billingData.soplado.length + billingData.activation.length + billingData.simpleInstallation.length })}</span>
                         </div>
                     </div>
 
@@ -741,12 +743,12 @@ const BillingPage = () => {
                             <div className="bg-blue-100 p-2 rounded-xl text-blue-600">
                                 <Calendar size={20} />
                             </div>
-                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Lunes a Viernes</p>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">{t('billing.monday_friday')}</p>
                         </div>
                         <h3 className="text-3xl font-black text-slate-800">
                             {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.weekdayGross || 0)}
                         </h3>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Ingresos brutos generados este mes</p>
+                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">{t('billing.weekday_gross_hint')}</p>
                     </div>
 
                     {/* Saturday Card */}
@@ -755,12 +757,12 @@ const BillingPage = () => {
                             <div className="bg-orange-100 p-2 rounded-xl text-orange-600">
                                 <Sun size={20} />
                             </div>
-                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Sábados (Extra)</p>
+                            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">{t('billing.saturdays_extra')}</p>
                         </div>
                         <h3 className="text-3xl font-black text-slate-800">
                             {new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(billingData.totals.saturdayGross || 0)}
                         </h3>
-                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">Facturación adicional de sábados (mes actual)</p>
+                        <p className="text-[10px] text-slate-400 mt-1 font-medium italic">{t('billing.saturday_gross_hint')}</p>
                     </div>
                 </div>
             )}
@@ -769,7 +771,7 @@ const BillingPage = () => {
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                     <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Proyecto</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase">{t('billing.label_project')}</label>
                         <div className="relative">
                             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <select
@@ -777,7 +779,7 @@ const BillingPage = () => {
                                 value={filters.projectId}
                                 onChange={(e) => setFilters({ ...filters, projectId: e.target.value })}
                             >
-                                <option value="">Todos los proyectos</option>
+                                <option value="">{t('billing.all_projects')}</option>
                                 {projects.map(p => (
                                     <option key={p.id} value={p.id}>{p.name}</option>
                                 ))}
@@ -786,7 +788,7 @@ const BillingPage = () => {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Empresa Cliente</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase">{t('billing.label_client')}</label>
                         <div className="relative">
                             <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <select
@@ -794,7 +796,7 @@ const BillingPage = () => {
                                 value={filters.clientCompanyId}
                                 onChange={(e) => setFilters({ ...filters, clientCompanyId: e.target.value })}
                             >
-                                <option value="">Todos los Clientes</option>
+                                <option value="">{t('billing.all_clients')}</option>
                                 {clients.map(c => (
                                     <option key={c.id} value={c.id}>{c.name}</option>
                                 ))}
@@ -803,7 +805,7 @@ const BillingPage = () => {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Desde</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase">{t('billing.label_from')}</label>
                         <div className="relative">
                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input
@@ -816,7 +818,7 @@ const BillingPage = () => {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Hasta</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase">{t('billing.label_to')}</label>
                         <div className="relative">
                             <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input
@@ -829,12 +831,12 @@ const BillingPage = () => {
                     </div>
 
                     <div className="flex flex-col gap-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">Buscar NVT</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase">{t('billing.label_nvt')}</label>
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                             <input
                                 type="text"
-                                placeholder="Ej: NVT-01"
+                                placeholder={t('billing.placeholder_nvt')}
                                 className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
                                 value={filters.nvt}
                                 onChange={(e) => setFilters({ ...filters, nvt: e.target.value })}
@@ -845,7 +847,7 @@ const BillingPage = () => {
                     {/* Activation Type Filter - Only visible if 'activation' tab is active */}
                     {activeTab === 'activation' && (
                         <div className="flex flex-col gap-1">
-                            <label className="text-xs font-bold text-slate-500 uppercase">Tipo Activación</label>
+                            <label className="text-xs font-bold text-slate-500 uppercase">{t('billing.label_appt_type')}</label>
                             <div className="relative">
                                 <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                 <select
@@ -853,7 +855,7 @@ const BillingPage = () => {
                                     value={filters.type}
                                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                                 >
-                                    <option value="">Todos los tipos</option>
+                                    <option value="">{t('billing.all_types')}</option>
                                     {['SDU', 'MDU', 'Dos familias', 'Unifamiliar', 'Multi'].map(type => (
                                         <option key={type} value={type}>{type}</option>
                                     ))}
@@ -873,13 +875,13 @@ const BillingPage = () => {
                         }}
                         className="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors border border-emerald-100"
                     >
-                        <Calendar size={14} /> Ver Producción de Hoy
+                        <Calendar size={14} /> {t('billing.btn_today_production')}
                     </button>
                     <button 
                         onClick={resetFilters}
                         className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-100"
                     >
-                        <Filter size={14} /> Limpiar Filtros (Ver Mes Actual)
+                        <Filter size={14} /> {t('billing.btn_clear_filters')}
                     </button>
                 </div>
             </div>
@@ -888,12 +890,12 @@ const BillingPage = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div className="flex border-b border-slate-200 overflow-x-auto">
                     {[
-                        { id: 'soplado', label: 'Soplado', color: 'blue' },
-                        { id: 'fusion', label: 'Fusión', color: 'purple' },
-                        { id: 'activation', label: 'Activaciones', color: 'green' },
-                        { id: 'protocol', label: 'Protocolos', color: 'indigo' },
-                        { id: 'repair', label: 'Reparaciones', color: 'orange' },
-                        { id: 'simpleInstallation', label: 'G&K / Otros', color: 'cyan' }
+                        { id: 'soplado', label: t('billing.tab_blowing'), color: 'blue' },
+                        { id: 'fusion', label: t('billing.tab_fusion'), color: 'purple' },
+                        { id: 'activation', label: t('billing.tab_activations'), color: 'green' },
+                        { id: 'protocol', label: t('billing.tab_protocols'), color: 'indigo' },
+                        { id: 'repair', label: t('billing.tab_repairs'), color: 'orange' },
+                        { id: 'simpleInstallation', label: t('billing.tab_simple_installations'), color: 'cyan' }
                     ].map(tab => (
                         <button
                             key={tab.id}
@@ -917,7 +919,7 @@ const BillingPage = () => {
             {/* Summary details moved to top or hidden if preferred... keeping simplified count footer if items exist */}
             {billingData.totals && billingData.totals.itemsSummary && Object.keys(billingData.totals.itemsSummary).length > 0 && (
                 <div className="bg-slate-900 p-6 rounded-2xl shadow-lg mt-6 text-white">
-                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">Desglose de Unidades Facturadas</p>
+                    <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-4">{t('billing.units_summary')}</p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
                         {Object.entries(billingData.totals.itemsSummary).map(([name, count]) => (
                             <div key={name} className="bg-white/5 p-3 rounded-xl border border-white/10 text-center">
@@ -939,16 +941,16 @@ const BillingPage = () => {
                             <div className="bg-white/20 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3">
                                 <TrendingUp size={32} />
                             </div>
-                            <h3 className="font-bold text-lg">Detalles del Trabajo</h3>
+                            <h3 className="font-bold text-lg">{t('billing.col_details')}</h3>
                             <p className="text-blue-100 text-sm">{infoData.address}</p>
                         </div>
                         <div className="p-6 space-y-4">
                             <div className="flex justify-between items-center border-b border-slate-50 pb-3">
-                                <span className="text-slate-500 text-sm font-medium">Número NVT:</span>
+                                <span className="text-slate-500 text-sm font-medium">{t('billing.col_nvt')}:</span>
                                 <span className="font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded-lg">{infoData.nvt}</span>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500 text-sm font-medium">Cerrada por:</span>
+                                <span className="text-slate-500 text-sm font-medium">{t('billing.col_tech')}:</span>
                                 <span className="font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg">{infoData.closer}</span>
                             </div>
                         </div>
@@ -957,7 +959,7 @@ const BillingPage = () => {
                                 onClick={() => setInfoData(null)}
                                 className="w-full py-3 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all active:scale-95"
                             >
-                                Entendido
+                                {t('billing.btn_close_gallery')}
                             </button>
                         </div>
                     </div>
@@ -973,12 +975,12 @@ const BillingPage = () => {
                                 <ClipboardList className="text-joa-cyan" size={20} />
                                 <h3 className="font-bold text-lg">{commentData.title}</h3>
                             </div>
-                            <p className="text-slate-400 text-xs">Información registrada por el técnico</p>
+                            <p className="text-slate-400 text-xs">{t('billing.col_comments')}</p>
                         </div>
                         <div className="p-8">
                             <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 min-h-[120px]">
                                 <p className="text-slate-700 leading-relaxed text-sm whitespace-pre-wrap">
-                                    {commentData.text}
+                                     {commentData.text}
                                 </p>
                             </div>
                         </div>
@@ -987,7 +989,7 @@ const BillingPage = () => {
                                 onClick={() => setCommentData(null)}
                                 className="flex-1 py-3.5 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-100 transition-all active:scale-95"
                             >
-                                Cerrar
+                                {t('billing.btn_close_gallery')}
                             </button>
                             <button 
                                 onClick={() => {
@@ -995,7 +997,7 @@ const BillingPage = () => {
                                     // Could add a toast here
                                 }}
                                 className="px-5 py-3.5 bg-slate-900 text-white rounded-2xl font-bold hover:bg-black transition-all active:scale-95 flex items-center gap-2"
-                                title="Copiar texto"
+                                title={t('billing.copy_text')}
                             >
                                 <FileText size={18} />
                             </button>

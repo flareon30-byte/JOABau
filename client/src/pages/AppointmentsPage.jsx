@@ -3,8 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader, Save, Download, ChevronUp, ChevronDown } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
+import { useTranslation } from 'react-i18next';
 
 const AppointmentsPage = () => {
+    const { t } = useTranslation();
     const [searchParams] = useSearchParams();
     const [pendingAddresses, setPendingAddresses] = useState([]);
     const [scheduledAppointments, setScheduledAppointments] = useState([]);
@@ -107,13 +109,13 @@ const AppointmentsPage = () => {
             link.remove();
         } catch (error) {
             console.error('Export error:', error);
-            alert('Error al exportar las citas.');
+            alert(t('appointments.error_cancel_appointment')); // Can be used as general error
         }
     };
 
     const handleExportAll = async () => {
         if (!projectFilter) {
-            alert('Por favor, selecciona un proyecto primero.');
+            alert(t('appointments.select_project_first'));
             return;
         }
         try {
@@ -133,7 +135,7 @@ const AppointmentsPage = () => {
             link.remove();
         } catch (error) {
             console.error('Export error:', error);
-            alert('Error al exportar el reporte.');
+            alert(t('appointments.error_cancel_appointment'));
         }
     };
 
@@ -189,13 +191,13 @@ const AppointmentsPage = () => {
     };
 
     const handleCancelAppointment = async () => {
-        if (!window.confirm('¿Eliminar esta cita? La dirección volverá a la lista de pendientes.')) return;
+        if (!window.confirm(t('appointments.confirm_delete_appointment'))) return;
 
         const appointmentId = scheduleForm.appointmentId; // Relies on state being set in openScheduleModal
 
         if (!appointmentId) {
             // Fallback if accessed via other means, but usually form state has it
-            alert('Error: No se encontró ID de cita para cancelar.');
+            alert(t('appointments.error_no_appointment_id'));
             return;
         }
 
@@ -205,18 +207,18 @@ const AppointmentsPage = () => {
             fetchData();
         } catch (error) {
             console.error(error);
-            alert('Error al cancelar la cita');
+            alert(t('appointments.error_cancel_appointment'));
         }
     };
 
     const handleProtocolOverride = async (addressId) => {
-        if (!window.confirm('¿Seguro que deseas marcar el protocolo como OK manualmente? Esto permitirá agendar la activación.')) return;
+        if (!window.confirm(t('appointments.confirm_protocol_override'))) return;
         try {
             await api.put(`/api/appointments/protocol-status/${addressId}`, { status: 'OK' });
             fetchData();
         } catch (err) {
             console.error(err);
-            alert('Error al actualizar protocolo');
+            alert(t('appointments.error_protocol_override'));
         }
     };
 
@@ -232,7 +234,7 @@ const AppointmentsPage = () => {
     const handleDeriveSubmit = async (e) => {
         e.preventDefault();
         if (!deriveForm.reason.trim()) {
-            alert('Por favor, indica un motivo.');
+            alert(t('appointments.error_provide_reason'));
             return;
         }
 
@@ -250,14 +252,14 @@ const AppointmentsPage = () => {
     };
 
     const handleResetOrder = async (addressId) => {
-        if (!window.confirm('¿Deseas devolver esta dirección a la lista de pendientes? Se reiniciará a estado "geplant".')) return;
+        if (!window.confirm(t('appointments.confirm_reset_order'))) return;
 
         try {
             await api.put(`/api/appointments/address/${addressId}/order-status`, { status: 'geplant' });
             fetchData();
         } catch (err) {
             console.error(err);
-            alert('Error al restaurar el estado de la dirección');
+            alert(t('appointments.error_reset_order'));
         }
     };
 
@@ -278,7 +280,7 @@ const AppointmentsPage = () => {
             setBuildingClients(res.data);
         } catch (error) {
             console.error('Error fetching building clients:', error);
-            alert('Error al obtener los clientes del edificio');
+            alert(t('appointments.error_fetch_building'));
             setIsBuildingModalOpen(false);
         } finally {
             setIsBuildingLoading(false);
@@ -352,7 +354,7 @@ const AppointmentsPage = () => {
             fetchData();
         } catch (error) {
             console.error(error);
-            alert('Error al actualizar el comentario');
+            alert(t('appointments.error_cancel_appointment')); // Use a general error message if specific one not needed, or add one.
         } finally {
             setIsSavingComment(false);
         }
@@ -380,7 +382,7 @@ const AppointmentsPage = () => {
             fetchData();
         } catch (error) {
             console.error(error);
-            alert('Error al actualizar los datos de la ficha');
+            alert(t('appointments.error_cancel_appointment'));
         } finally {
             setIsSavingAddress(false);
         }
@@ -488,35 +490,35 @@ const AppointmentsPage = () => {
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h2 className="text-2xl font-bold text-slate-800">Gestión de Citas</h2>
+                <h2 className="text-2xl font-bold text-slate-800">{t('appointments.management_title')}</h2>
                 <div className="flex bg-slate-200 p-1 rounded-lg">
                     <button
                         onClick={() => setView('pending')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${view === 'pending' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
                             }`}
                     >
-                        Pendientes ({filteredPending.length})
+                        {t('appointments.pending')} ({filteredPending.length})
                     </button>
                     <button
                         onClick={() => setView('protocols')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${view === 'protocols' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
                             }`}
                     >
-                        Protocolos ({filteredProtocols.length})
+                        {t('appointments.protocols')} ({filteredProtocols.length})
                     </button>
                     <button
                         onClick={() => setView('scheduled')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${view === 'scheduled' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
                             }`}
                     >
-                        Agendadas ({filteredScheduled.length})
+                        {t('appointments.scheduled')} ({filteredScheduled.length})
                     </button>
                     <button
                         onClick={() => setView('escalated')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${view === 'escalated' ? 'bg-white text-orange-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
                             }`}
                     >
-                        Archivo ({filteredEscalated.length})
+                        {t('appointments.archived')} ({filteredEscalated.length})
                     </button>
                 </div>
             </div>
@@ -526,7 +528,7 @@ const AppointmentsPage = () => {
                 <div className="flex-1 w-full">
                     <input
                         type="text"
-                        placeholder="Buscar por dirección o cliente..."
+                        placeholder={t('appointments.search_placeholder')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
@@ -543,10 +545,10 @@ const AppointmentsPage = () => {
                                     setEndDate(today);
                                 }}
                                 className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-2 rounded-lg transition-all text-xs font-black uppercase tracking-tight border border-blue-200 active:scale-95 flex items-center gap-1.5 shadow-sm"
-                                title="Ver solo las citas de hoy"
+                                title={t('appointments.view_today')}
                             >
                                 <Calendar size={14} />
-                                VER HOY
+                                {t('appointments.view_today')}
                             </button>
                             <input
                                 type="date"
@@ -554,7 +556,7 @@ const AppointmentsPage = () => {
                                 onChange={(e) => setStartDate(e.target.value)}
                                 className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                             />
-                            <span className="text-slate-400 text-xs font-bold uppercase">al</span>
+                            <span className="text-slate-400 text-xs font-bold uppercase">{t('appointments.to')}</span>
                             <input
                                 type="date"
                                 value={endDate}
@@ -567,7 +569,7 @@ const AppointmentsPage = () => {
                             className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm active:scale-95"
                         >
                             <Download size={18} />
-                            <span>Exportar</span>
+                            <span>{t('appointments.export')}</span>
                         </button>
                     </div>
                 )}
@@ -578,7 +580,7 @@ const AppointmentsPage = () => {
                         onChange={(e) => setProjectFilter(e.target.value)}
                         className="w-full md:w-64 border border-slate-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
                     >
-                        <option value="">Todos los Proyectos</option>
+                        <option value="">{t('appointments.all_projects')}</option>
                         {projects.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
                         ))}
@@ -592,11 +594,11 @@ const AppointmentsPage = () => {
                             ? 'bg-indigo-600 hover:bg-indigo-700 text-white active:scale-95' 
                             : 'bg-slate-200 text-slate-400 cursor-not-allowed'
                         }`}
-                        title={!projectFilter ? "Selecciona un proyecto primero" : "Exportar reporte completo del proyecto"}
+                        title={!projectFilter ? t('appointments.select_project_first') : t('appointments.export_project_report')}
                     >
                         <Download size={18} />
-                        <span className="hidden md:inline">Exportar Reporte Proyecto</span>
-                        <span className="md:hidden">Exportar</span>
+                        <span className="hidden md:inline">{t('appointments.export_project_report')}</span>
+                        <span className="md:hidden">{t('appointments.export_project_report_mobile')}</span>
                     </button>
                 </div>
             </div>
@@ -635,10 +637,10 @@ const AppointmentsPage = () => {
                                 </div>
                                 <div className="text-right">
                                     <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-bold mb-1">
-                                        Intentos: {address.appointment?.contactAttempts || 0}/4
+                                        {t('appointments.attempts')}: {address.appointment?.contactAttempts || 0}/4
                                     </span>
                                     <p className="text-xs text-slate-400">
-                                        {address.appointment?.updatedAt ? new Date(address.appointment.updatedAt).toLocaleDateString('es-ES') : 'Sin contacto'}
+                                        {address.appointment?.updatedAt ? new Date(address.appointment.updatedAt).toLocaleDateString('es-ES') : t('appointments.no_contact')}
                                     </p>
                                 </div>
                             </div>
@@ -649,16 +651,16 @@ const AppointmentsPage = () => {
                                     <div className="flex items-center gap-2 text-purple-700">
                                         <FileText size={16} />
                                         <div className="text-xs">
-                                            <span className="font-bold block">Requiere Protocolo</span>
-                                            <span className="opacity-75">Estado actual: {address.protocolStatus}</span>
+                                            <span className="font-bold block">{t('appointments.requires_protocol')}</span>
+                                            <span className="opacity-75">{t('appointments.current_status')} {address.protocolStatus}</span>
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => handleProtocolOverride(address.id)}
                                         className="text-xs bg-purple-200 hover:bg-purple-300 text-purple-800 px-2 py-1 rounded transition-colors"
-                                        title="Marcar manualmente como OK"
+                                        title={t('appointments.force_ok')}
                                     >
-                                        Forzar OK
+                                        {t('appointments.force_ok')}
                                     </button>
                                 </div>
                             )}
@@ -671,7 +673,7 @@ const AppointmentsPage = () => {
                                     </div>
                                     <div className="flex-1">
                                         <div className="flex justify-between items-center mb-1">
-                                            <p className="text-xs font-black text-red-700 uppercase tracking-widest">Solicitud de Recita / Incidencia</p>
+                                            <p className="text-xs font-black text-red-700 uppercase tracking-widest">{t('appointments.recita_request')}</p>
                                             <div className="flex items-center gap-2">
                                                 <p className="text-[10px] text-red-400 font-bold">
                                                     {address.appointment.comments && address.appointment.comments.length > 0 ? address.appointment.comments[address.appointment.comments.length - 1].authorName : 'Técnico'}
@@ -679,7 +681,7 @@ const AppointmentsPage = () => {
                                                 <button 
                                                     onClick={() => openEditCommentModal(address)}
                                                     className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
-                                                    title="Editar incidencia / fotos"
+                                                    title={t('appointments.edit_evidences')}
                                                 >
                                                     <Pencil size={10} />
                                                 </button>
@@ -688,7 +690,7 @@ const AppointmentsPage = () => {
                                         <p className="text-sm text-red-900 font-medium mb-3">
                                             {address.appointment.comments && address.appointment.comments.length > 0
                                                 ? address.appointment.comments[address.appointment.comments.length - 1].content
-                                                : 'Sin motivo especificado'}
+                                                : t('appointments.no_reason')}
                                         </p>
 
                                         {/* FOTOS DE LA RECITA */}
@@ -720,7 +722,7 @@ const AppointmentsPage = () => {
                             {/* History Preview */}
                             {address.appointment?.contactHistory?.length > 0 && (
                                 <div className="mb-4 bg-slate-50 p-3 rounded-xl text-[11px] text-slate-600 space-y-2 border border-slate-100 shadow-inner">
-                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Últimas gestiones:</p>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('appointments.last_actions')}</p>
                                     {address.appointment.contactHistory.slice(-5).map((entry, i) => (
                                         <div key={i} className="flex gap-2">
                                             <span className="text-blue-400 font-bold">•</span>
@@ -736,29 +738,29 @@ const AppointmentsPage = () => {
                                         onClick={() => openContactModal(address)}
                                         className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm font-semibold"
                                     >
-                                        <Phone size={16} /> Contactar
+                                        <Phone size={16} /> {t('appointments.contact')}
                                     </button>
                                     <button
                                         onClick={() => openScheduleModal(address)}
                                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm font-semibold shadow-sm"
                                     >
-                                        <Calendar size={16} /> Agendar
+                                        <Calendar size={16} /> {t('appointments.schedule')}
                                     </button>
                                 </div>
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => openDeriveModal(address, 'DERIVADA')}
                                         className="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
-                                        title="Avisar a la empresa colaboradora para que envíen responsable"
+                                        title={t('appointments.order_derivation')}
                                     >
-                                        <Send size={14} /> Derivar
+                                        <Send size={14} /> {t('appointments.derive')}
                                     </button>
                                     <button
                                         onClick={() => openDeriveModal(address, 'CERRADA')}
                                         className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
-                                        title="Marcar como terminada por la empresa colaboradora"
+                                        title={t('appointments.order_closing')}
                                     >
-                                        <CheckSquare size={14} /> Orden Cerrada
+                                        <CheckSquare size={14} /> {t('appointments.order_closed')}
                                     </button>
                                 </div>
                             </div>
@@ -766,7 +768,7 @@ const AppointmentsPage = () => {
                     ))}
                     {filteredPending.length === 0 && (
                         <div className="col-span-full text-center py-12 text-slate-400">
-                            No se encontraron direcciones pendientes con los filtros actuales.
+                            {t('appointments.no_pending_found')}
                         </div>
                     )}
                 </div>
@@ -777,7 +779,7 @@ const AppointmentsPage = () => {
                     {filteredProtocols.map(address => (
                         <div key={address.id} className="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200 relative overflow-hidden">
                             <div className="absolute top-0 right-0 bg-purple-200 text-purple-800 text-xs px-2 py-1 rounded-bl-lg font-bold">
-                                PROTOCOLO REQUERIDO
+                                {t('appointments.requires_protocol').toUpperCase()}
                             </div>
 
                             <div className="flex justify-between items-start mb-4">
@@ -816,29 +818,29 @@ const AppointmentsPage = () => {
                                         onClick={() => openContactModal(address)}
                                         className="flex-1 bg-white hover:bg-slate-50 text-slate-700 py-2 rounded-lg flex items-center justify-center gap-2 border border-slate-200 transition-colors text-sm font-semibold"
                                     >
-                                        <Phone size={16} /> Contactar
+                                        <Phone size={16} /> {t('appointments.contact')}
                                     </button>
                                     <button
                                         onClick={() => openScheduleModal(address, null, 'PROTOCOL')}
                                         className="flex-1 bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-sm text-sm font-semibold"
                                     >
-                                        <Calendar size={16} /> Agendar Protocolo
+                                        <Calendar size={16} /> {t('appointments.schedule_protocol')}
                                     </button>
                                 </div>
                                 <div className="flex gap-3">
                                     <button
                                         onClick={() => openDeriveModal(address, 'DERIVADA')}
                                         className="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
-                                        title="Avisar a la empresa colaboradora para que envíen responsable"
+                                        title={t('appointments.order_derivation')}
                                     >
-                                        <Send size={14} /> Derivar
+                                        <Send size={14} /> {t('appointments.derive')}
                                     </button>
                                     <button
                                         onClick={() => openDeriveModal(address, 'CERRADA')}
                                         className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
-                                        title="Marcar como terminada por la empresa colaboradora"
+                                        title={t('appointments.order_closing')}
                                     >
-                                        <CheckSquare size={14} /> Orden Cerrada
+                                        <CheckSquare size={14} /> {t('appointments.order_closed')}
                                     </button>
                                 </div>
                             </div>
@@ -846,7 +848,7 @@ const AppointmentsPage = () => {
                     ))}
                     {filteredProtocols.length === 0 && (
                         <div className="col-span-full text-center py-12 text-slate-400">
-                            No hay direcciones pendientes de protocolo.
+                            {t('appointments.no_protocol_found')}
                         </div>
                     )}
                 </div>
@@ -859,14 +861,14 @@ const AppointmentsPage = () => {
                             <button
                                 onClick={() => setScheduledViewMode('list')}
                                 className={`p-2 rounded-md transition-all ${scheduledViewMode === 'list' ? 'bg-slate-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-                                title="Vista de Lista"
+                                title={t('appointments.view_list')}
                             >
                                 <List size={20} />
                             </button>
                             <button
                                 onClick={() => setScheduledViewMode('calendar')}
                                 className={`p-2 rounded-md transition-all ${scheduledViewMode === 'calendar' ? 'bg-slate-100 text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
-                                title="Vista de Calendario"
+                                title={t('appointments.view_calendar')}
                             >
                                 <Grid size={20} />
                             </button>
@@ -879,19 +881,19 @@ const AppointmentsPage = () => {
                                 <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200">
                                     <tr>
                                         <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('date')}>
-                                            <div className="flex items-center gap-1">Fecha {sortColumn === 'date' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                                            <div className="flex items-center gap-1">{t('appointments.date')} {sortColumn === 'date' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
                                         </th>
                                         <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('address')}>
-                                            <div className="flex items-center gap-1">Dirección {sortColumn === 'address' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                                            <div className="flex items-center gap-1">{t('appointments.address')} {sortColumn === 'address' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
                                         </th>
                                         <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('nvt')}>
                                             <div className="flex items-center gap-1">NVT {sortColumn === 'nvt' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
                                         </th>
                                         <th className="p-4 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => handleSort('team')}>
-                                            <div className="flex items-center gap-1">Equipo Asignado {sortColumn === 'team' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
+                                            <div className="flex items-center gap-1">{t('appointments.assigned_team')} {sortColumn === 'team' && (sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />)}</div>
                                         </th>
-                                        <th className="p-4">Estado</th>
-                                        <th className="p-4 text-right">Acciones</th>
+                                        <th className="p-4">{t('appointments.status')}</th>
+                                        <th className="p-4 text-right">{t('appointments.actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -904,7 +906,7 @@ const AppointmentsPage = () => {
                                                         <div className="text-xs text-slate-400">{new Date(app.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}</div>
                                                     </>
                                                 ) : (
-                                                    <span className="text-slate-400 italic text-xs">Sin fecha asignada</span>
+                                                    <span className="text-slate-400 italic text-xs">{t('appointments.no_date')}</span>
                                                 )}
                                             </td>
                                             <td className="p-4">
@@ -923,19 +925,19 @@ const AppointmentsPage = () => {
                                                 {/* Inline Compact Data */}
                                                 <div className="text-[10px] sm:text-xs flex flex-wrap gap-1 mt-1">
                                                     <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
-                                                        {app.clientName || 'Sin Cliente'}
+                                                        {app.clientName || t('appointments.no_client')}
                                                     </span>
                                                     <span className="bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
                                                         {app.apartmentCount || '?'} Apts
                                                     </span>
                                                     <span className={`px-1.5 py-0.5 rounded border ${app.type === 'REPAIR' ? 'bg-red-50 text-red-600 border-red-100' : 'bg-green-50 text-green-600 border-green-100'}`}>
-                                                        {app.type === 'REPAIR' ? 'AVERÍA' : (app.type || 'ACTIVACIÓN')}
+                                                        {app.type === 'REPAIR' ? t('appointments.repair') : (app.type || t('appointments.activation'))}
                                                     </span>
                                                 </div>
                                                 
                                                 {app.orientationComment && (
                                                     <div className="mt-1.5 text-xs bg-blue-50/80 text-blue-800 p-1.5 rounded-lg border border-blue-100 inline-block w-full">
-                                                        <span className="font-bold text-blue-600 mr-1">Nota:</span>
+                                                        <span className="font-bold text-blue-600 mr-1">{t('appointments.note')}</span>
                                                         <span className="whitespace-pre-wrap">{app.orientationComment}</span>
                                                     </div>
                                                 )}
@@ -948,7 +950,7 @@ const AppointmentsPage = () => {
                                                     <span className="flex items-center gap-2">
                                                         <Users size={14} /> {app.assignedTeam.name}
                                                     </span>
-                                                ) : <span className="text-red-400">Sin asignar</span>}
+                                                ) : <span className="text-red-400">{t('appointments.unassigned')}</span>}
                                             </td>
                                             <td className="p-4">
                                                 <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
@@ -983,11 +985,11 @@ const AppointmentsPage = () => {
                     <table className="w-full text-left text-sm text-slate-600">
                         <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200">
                             <tr>
-                                <th className="p-4">Dirección</th>
-                                <th className="p-4">Cliente</th>
-                                <th className="p-4">Proyecto</th>
-                                <th className="p-4">Estado (Causa)</th>
-                                <th className="p-4 text-right">Acciones</th>
+                                <th className="p-4">{t('appointments.address')}</th>
+                                <th className="p-4">{t('appointments.client')}</th>
+                                <th className="p-4">{t('appointments.project')}</th>
+                                <th className="p-4">{t('appointments.status_cause')}</th>
+                                <th className="p-4 text-right">{t('appointments.actions')}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -1024,16 +1026,16 @@ const AppointmentsPage = () => {
                                             <button
                                                 onClick={() => openHistoryModal(address)}
                                                 className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-md transition-colors"
-                                                title="Ver Historial y Motivo de Deriva"
+                                                title={t('appointments.history_and_cause')}
                                             >
                                                 <Clock size={16} />
                                             </button>
                                             <button
                                                 onClick={() => handleResetOrder(address.id)}
                                                 className="px-3 py-1 bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-md text-xs font-medium transition-colors"
-                                                title="Devolver a lista de Pendientes"
+                                                title={t('appointments.restore')}
                                             >
-                                                Restaurar
+                                                {t('appointments.restore')}
                                             </button>
                                         </div>
                                     </td>
@@ -1043,7 +1045,7 @@ const AppointmentsPage = () => {
                     </table>
                     {filteredEscalated.length === 0 && (
                         <div className="text-center py-12 text-slate-400">
-                            No hay direcciones archivadas.
+                            {t('appointments.no_archived')}
                         </div>
                     )}
                 </div>
@@ -1053,25 +1055,25 @@ const AppointmentsPage = () => {
             {isContactModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                        <h3 className="text-xl font-bold mb-4">Registrar Intento de Contacto</h3>
+                        <h3 className="text-xl font-bold mb-4">{t('appointments.register_contact')}</h3>
                         <p className="text-sm text-slate-500 mb-4">{selectedAddress?.street} {selectedAddress?.number}</p>
                         <form onSubmit={handleContactSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Resultado</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('appointments.result')}</label>
                                 <select
                                     value={contactForm.result}
                                     onChange={(e) => setContactForm({ ...contactForm, result: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
-                                    <option value="No contesta">No contesta</option>
-                                    <option value="Número equivocado">Número equivocado</option>
-                                    <option value="Buzón de voz">Buzón de voz</option>
-                                    <option value="Contactado - Pide llamar luego">Contactado - Pide llamar luego</option>
-                                    <option value="Contactado - Rechaza">Contactado - Rechaza</option>
+                                    <option value="No contesta">{t('appointments.no_answer')}</option>
+                                    <option value="Número equivocado">{t('appointments.wrong_number')}</option>
+                                    <option value="Buzón de voz">{t('appointments.voicemail')}</option>
+                                    <option value="Contactado - Pide llamar luego">{t('appointments.call_later')}</option>
+                                    <option value="Contactado - Rechaza">{t('appointments.rejects')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Comentario (Opcional)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('appointments.comment_optional')}</label>
                                 <textarea
                                     value={contactForm.comment}
                                     onChange={(e) => setContactForm({ ...contactForm, comment: e.target.value })}
@@ -1079,8 +1081,8 @@ const AppointmentsPage = () => {
                                 />
                             </div>
                             <div className="flex justify-end gap-3 mt-6">
-                                <button type="button" onClick={() => setIsContactModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cancelar</button>
-                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
+                                <button type="button" onClick={() => setIsContactModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">{t('appointments.cancel')}</button>
+                                <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{t('appointments.save')}</button>
                             </div>
                         </form>
                     </div>
@@ -1092,38 +1094,38 @@ const AppointmentsPage = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
                         <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-xl font-bold">Agendar Cita</h3>
+                            <h3 className="text-xl font-bold">{t('appointments.schedule_appointment')}</h3>
                             <button onClick={() => setIsGeneralCalendarOpen(true)} className="text-blue-600 text-sm font-bold hover:underline flex items-center gap-1">
-                                <Grid size={16} /> Ver Calendario General
+                                <Grid size={16} /> {t('appointments.view_general_calendar')}
                             </button>
                         </div>
                         <p className="text-sm text-slate-500 mb-4">{selectedAddress?.street} {selectedAddress?.number}</p>
                         <form onSubmit={handleScheduleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Cita</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('appointments.appointment_type')}</label>
                                 <select
                                     value={scheduleForm.type}
                                     onChange={(e) => setScheduleForm({ ...scheduleForm, type: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
-                                    <option value="ACTIVATION">Activación (Instalación)</option>
-                                    <option value="PROTOCOL">Protocolo (Medición)</option>
+                                    <option value="ACTIVATION">{t('appointments.type_activation')}</option>
+                                    <option value="PROTOCOL">{t('appointments.type_protocol')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre del Cliente</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('appointments.client_name')}</label>
                                 <input
                                     type="text"
                                     value={scheduleForm.clientName}
                                     onChange={(e) => setScheduleForm({ ...scheduleForm, clientName: e.target.value })}
                                     className={`w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none ${selectedAddress?.clientName ? 'bg-slate-100 text-slate-500' : ''}`}
-                                    placeholder="Nombre completo"
+                                    placeholder={t('appointments.client_name')}
                                     readOnly={!!selectedAddress?.clientName}
                                     required
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Número de Apartamentos</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('appointments.apartments_count')}</label>
                                 <input
                                     type="number"
                                     min="1"
@@ -1135,7 +1137,7 @@ const AppointmentsPage = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Fecha y Hora</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('appointments.date_time')}</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="datetime-local"
@@ -1148,28 +1150,28 @@ const AppointmentsPage = () => {
                                         type="button"
                                         onClick={() => setIsGeneralCalendarOpen(true)}
                                         className="bg-blue-100 hover:bg-blue-200 text-blue-600 p-2 rounded-lg transition-colors"
-                                        title="Seleccionar en Calendario"
+                                        title={t('appointments.view_calendar')}
                                     >
                                         <Calendar size={20} />
                                     </button>
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Asignar Equipo</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('appointments.assign_team')}</label>
                                 <select
                                     value={scheduleForm.teamId}
                                     onChange={(e) => setScheduleForm({ ...scheduleForm, teamId: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                     required
                                 >
-                                    <option value="">Seleccionar Equipo...</option>
+                                    <option value="">{t('appointments.select_team')}</option>
                                     {teams.map(team => (
                                         <option key={team.id} value={team.id}>{team.name} ({team.department})</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Comentario de Orientación (Para el Técnico)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('appointments.orientation_comment')}</label>
                                 <textarea
                                     value={scheduleForm.orientationComment}
                                     onChange={(e) => setScheduleForm({ ...scheduleForm, orientationComment: e.target.value })}
@@ -1184,12 +1186,12 @@ const AppointmentsPage = () => {
                                         onClick={handleCancelAppointment}
                                         className="px-4 py-2 text-red-600 hover:bg-red-50 hover:text-red-700 rounded-lg border border-red-200 transition-colors"
                                     >
-                                        Eliminar Cita
+                                        {t('appointments.delete_appointment')}
                                     </button>
                                 ) : <div></div>}
                                 <div className="flex gap-3">
-                                    <button type="button" onClick={() => setIsScheduleModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Cerrar</button>
-                                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Guardar</button>
+                                    <button type="button" onClick={() => setIsScheduleModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">{t('appointments.close')}</button>
+                                    <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">{t('appointments.save')}</button>
                                 </div>
                             </div>
                         </form>
@@ -1202,7 +1204,7 @@ const AppointmentsPage = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
                     <div className="bg-white rounded-2xl w-full max-w-5xl h-[80vh] shadow-2xl flex flex-col">
                         <div className="p-4 border-b border-slate-200 flex justify-between items-center">
-                            <h3 className="text-xl font-bold text-slate-800">Calendario General de Citas</h3>
+                            <h3 className="text-xl font-bold text-slate-800">{t('appointments.general_calendar_title')}</h3>
                             <button onClick={() => setIsGeneralCalendarOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
                                 <X size={24} />
                             </button>
@@ -1210,7 +1212,7 @@ const AppointmentsPage = () => {
                         <div className="flex-1 overflow-hidden p-4 bg-slate-50">
                             <div className="mb-4 bg-blue-50 p-3 rounded-lg text-blue-700 text-sm flex items-center gap-2">
                                 <CheckCircle size={16} />
-                                Haz clic en una franja horaria para seleccionarla automáticamente.
+                                {t('appointments.click_to_select')}
                             </div>
                             <CalendarView
                                 appointments={scheduledAppointments}
@@ -1241,9 +1243,9 @@ const AppointmentsPage = () => {
                             <div>
                                 <h3 className="text-xl font-black flex items-center gap-2">
                                     <Pencil size={20} className="text-blue-400" />
-                                    Editar Evidencias
+                                    {t('appointments.edit_evidences')}
                                 </h3>
-                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Refinar Reporte Técnico</p>
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">{t('appointments.refine_report')}</p>
                             </div>
                             <button onClick={() => setIsEditCommentModalOpen(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
                                 <X size={24} />
@@ -1253,7 +1255,7 @@ const AppointmentsPage = () => {
                         <form onSubmit={handleUpdateComment} className="p-8 space-y-6">
                             {/* TEXT CONTENT */}
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Motivo / Comentario</label>
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{t('appointments.reason_comment')}</label>
                                 <textarea 
                                     className="w-full bg-slate-50 p-4 rounded-2xl border-2 border-slate-100 outline-none focus:border-blue-500 transition-all font-medium text-slate-700 min-h-[120px]"
                                     value={editCommentForm.content}
@@ -1264,7 +1266,7 @@ const AppointmentsPage = () => {
 
                             {/* CURRENT PHOTOS WITH DELETE OPTION */}
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Fotos Actuales</label>
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{t('appointments.current_photos')}</label>
                                 <div className="grid grid-cols-4 gap-3">
                                     {editingComment?.photos?.filter(p => !editCommentForm.photosToRemove.includes(p)).map((photo, pIdx) => (
                                         <div key={pIdx} className="relative aspect-square group">
@@ -1283,7 +1285,7 @@ const AppointmentsPage = () => {
                                     ))}
                                     {editingComment?.photos?.length === 0 && (
                                         <div className="col-span-full py-4 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest border-2 border-dashed border-slate-100 rounded-2xl">
-                                            Sin fotos adjuntas
+                                            {t('appointments.no_photos')}
                                         </div>
                                     )}
                                 </div>
@@ -1291,7 +1293,7 @@ const AppointmentsPage = () => {
 
                             {/* ADD NEW PHOTOS */}
                             <div className="space-y-4">
-                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Agregar Nuevas Evidencias</label>
+                                <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">{t('appointments.add_new_evidences')}</label>
                                 <div className="flex gap-2 flex-wrap">
                                     {newEditPhotos.map((file, fIdx) => (
                                         <div key={fIdx} className="relative w-16 h-16">
@@ -1324,7 +1326,7 @@ const AppointmentsPage = () => {
                                 className="w-full py-4 bg-blue-600 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-3"
                             >
                                 {isSavingComment ? <Loader className="animate-spin" /> : <CheckCircle size={20} />}
-                                Guardar Cambios en Reporte
+                                {t('appointments.save_report_changes')}
                             </button>
                         </form>
                     </div>
@@ -1337,9 +1339,9 @@ const AppointmentsPage = () => {
                         <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
                             <div>
                                 <h3 className="text-xl font-bold flex items-center gap-2">
-                                    <Pencil size={20} className="text-blue-400" /> Editar Datos de la Ficha
+                                    <Pencil size={20} className="text-blue-400" /> {t('appointments.edit_master_data')}
                                 </h3>
-                                <p className="text-slate-400 text-xs mt-1 uppercase font-black tracking-widest">Corrección de datos maestros y contacto</p>
+                                <p className="text-slate-400 text-xs mt-1 uppercase font-black tracking-widest">{t('appointments.master_data_correction')}</p>
                             </div>
                             <button onClick={() => setIsEditAddressModalOpen(false)} className="bg-slate-800 p-2 rounded-xl text-slate-400 hover:text-white transition-all">
                                 <X size={20} />
@@ -1350,7 +1352,7 @@ const AppointmentsPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Nombre del Cliente / Referencia</label>
+                                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">{t('appointments.client_name_ref')}</label>
                                         <input 
                                             type="text" 
                                             value={editAddressForm.clientName} 
@@ -1361,7 +1363,7 @@ const AppointmentsPage = () => {
                                     </div>
                                     <div className="grid grid-cols-4 gap-2">
                                         <div className="col-span-3">
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Calle</label>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">{t('appointments.street')}</label>
                                             <input 
                                                 type="text" 
                                                 value={editAddressForm.street} 
@@ -1370,7 +1372,7 @@ const AppointmentsPage = () => {
                                             />
                                         </div>
                                         <div>
-                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Núm.</label>
+                                            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">{t('appointments.number')}</label>
                                             <input 
                                                 type="text" 
                                                 value={editAddressForm.number} 
@@ -1420,8 +1422,8 @@ const AppointmentsPage = () => {
                                     <FileText size={20} />
                                 </div>
                                 <div className="text-xs text-blue-800">
-                                    <p className="font-bold">⚠️ Nota Importante</p>
-                                    <p className="opacity-80">Estos cambios actualizarán la base de datos maestra. Todo el equipo de Joa verá los nuevos datos al instante.</p>
+                                    <p className="font-bold">{t('appointments.important_note')}</p>
+                                    <p className="opacity-80">{t('appointments.important_note_desc')}</p>
                                 </div>
                             </div>
 
@@ -1431,7 +1433,7 @@ const AppointmentsPage = () => {
                                 className="w-full py-4 bg-slate-900 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl hover:bg-black transition-all flex items-center justify-center gap-3"
                             >
                                 {isSavingAddress ? <Loader className="animate-spin" /> : <Save size={20} />}
-                                Guardar Cambios en la Ficha
+                                {t('appointments.save_card_changes')}
                             </button>
                         </form>
                     </div>
@@ -1445,9 +1447,9 @@ const AppointmentsPage = () => {
                         <div className={`p-6 text-white flex justify-between items-center ${deriveForm.status === 'DERIVADA' ? 'bg-orange-600' : 'bg-green-600'}`}>
                             <div>
                                 <h3 className="text-xl font-bold flex items-center gap-2">
-                                    <Send size={20} /> {deriveForm.status === 'DERIVADA' ? 'Derivación de Orden' : 'Cierre de Orden'}
+                                    <Send size={20} /> {deriveForm.status === 'DERIVADA' ? t('appointments.order_derivation') : t('appointments.order_closing')}
                                 </h3>
-                                <p className="text-white/80 text-[10px] mt-1 uppercase font-black tracking-widest">Se requiere justificación para el archivo</p>
+                                <p className="text-white/80 text-[10px] mt-1 uppercase font-black tracking-widest">{t('appointments.justification_required')}</p>
                             </div>
                             <button onClick={() => setIsDeriveModalOpen(false)} className="bg-white/10 p-2 rounded-xl hover:bg-white/20 transition-all text-white">
                                 <X size={20} />
@@ -1455,7 +1457,7 @@ const AppointmentsPage = () => {
                         </div>
                         <form onSubmit={handleDeriveSubmit} className="p-8 space-y-6">
                             <div>
-                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Especifique el motivo</label>
+                                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 ml-1">{t('appointments.specify_reason')}</label>
                                 <textarea 
                                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 outline-none focus:border-orange-500 transition-all font-bold text-slate-800 h-32 resize-none"
                                     placeholder={deriveForm.status === 'DERIVADA' ? "Ej: Acometida no instalada por obra civil..." : "Ej: Trabajo terminado por empresa colaboradora..."}
@@ -1463,14 +1465,14 @@ const AppointmentsPage = () => {
                                     onChange={(e) => setDeriveForm({ ...deriveForm, reason: e.target.value })}
                                     required
                                 />
-                                <p className="text-[10px] text-slate-400 mt-2 px-1">Este motivo quedará guardado permanentemente en el historial de la ficha.</p>
+                                <p className="text-[10px] text-slate-400 mt-2 px-1">{t('appointments.reason_saved')}</p>
                             </div>
                             <button
                                 type="submit"
                                 className={`w-full py-4 text-white rounded-3xl font-black uppercase tracking-widest shadow-xl transition-all flex items-center justify-center gap-3 ${deriveForm.status === 'DERIVADA' ? 'bg-orange-600 shadow-orange-100 hover:bg-orange-700' : 'bg-green-600 shadow-green-100 hover:bg-green-700'}`}
                             >
                                 <CheckCircle size={20} />
-                                {deriveForm.status === 'DERIVADA' ? 'Confirmar Derivación' : 'Confirmar Cierre'}
+                                {deriveForm.status === 'DERIVADA' ? t('appointments.confirm_derivation') : t('appointments.confirm_closing')}
                             </button>
                         </form>
                     </div>
@@ -1484,7 +1486,7 @@ const AppointmentsPage = () => {
                         <div className="bg-slate-900 p-6 text-white flex justify-between items-center">
                             <div>
                                 <h3 className="text-xl font-bold flex items-center gap-2">
-                                    <Clock size={20} className="text-blue-400" /> Historial de Gestiones
+                                    <Clock size={20} className="text-blue-400" /> {t('appointments.history_actions')}
                                 </h3>
                                 <p className="text-slate-400 text-[10px] mt-1 uppercase font-black tracking-widest">{historyAddressName}</p>
                             </div>
@@ -1512,7 +1514,7 @@ const AppointmentsPage = () => {
                                     <div className="bg-slate-50 w-16 h-16 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-300">
                                         <Clock size={32} />
                                     </div>
-                                    <p className="text-slate-400 font-bold">Sin historial registrado en el sistema.</p>
+                                    <p className="text-slate-400 font-bold">{t('appointments.no_history')}</p>
                                 </div>
                             )}
                         </div>
@@ -1521,7 +1523,7 @@ const AppointmentsPage = () => {
                                 onClick={() => setIsHistoryModalOpen(false)}
                                 className="px-6 py-2 bg-white border border-slate-300 rounded-2xl text-slate-700 font-black text-xs uppercase tracking-widest hover:bg-slate-50 transition-all"
                             >
-                                Cerrar Visor
+                                {t('appointments.close_viewer')}
                             </button>
                         </div>
                     </div>
@@ -1534,7 +1536,7 @@ const AppointmentsPage = () => {
                     <div className="bg-white rounded-3xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
                             <div>
-                                <h3 className="text-xl font-bold text-slate-800">Clientes en Edificio</h3>
+                                <h3 className="text-xl font-bold text-slate-800">{t('appointments.clients_in_building')}</h3>
                                 <p className="text-sm text-slate-500 mt-1">{buildingAddressName}</p>
                             </div>
                             <button onClick={() => setIsBuildingModalOpen(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
@@ -1545,10 +1547,10 @@ const AppointmentsPage = () => {
                             {isBuildingLoading ? (
                                 <div className="text-center py-8 text-slate-500 flex flex-col items-center gap-2">
                                     <Loader className="animate-spin text-blue-500" size={24} /> 
-                                    Cargando clientes...
+                                    {t('appointments.loading_clients')}
                                 </div>
                             ) : buildingClients.length === 0 ? (
-                                <div className="text-center py-8 text-slate-500">No se encontraron otros clientes.</div>
+                                <div className="text-center py-8 text-slate-500">{t('appointments.no_other_clients')}</div>
                             ) : (
                                 <div className="grid gap-3">
                                     {buildingClients.map(client => (
@@ -1562,7 +1564,7 @@ const AppointmentsPage = () => {
                                             </div>
                                             <div className="flex flex-wrap items-center gap-2 md:justify-end">
                                                 <span className={`px-3 py-1.5 text-xs font-bold rounded-full border ${client.orderStatus === 'CERRADA' ? 'bg-green-50 text-green-700 border-green-200' : client.orderStatus === 'DERIVADA' ? 'bg-orange-50 text-orange-700 border-orange-200' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                                                    {client.orderStatus || 'PENDIENTE'}
+                                                    {client.orderStatus || t('appointments.pending_status')}
                                                 </span>
                                             </div>
                                         </div>

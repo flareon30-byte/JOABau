@@ -4,16 +4,20 @@ import api from '../api/axios';
 import { CheckCircle, Camera, ArrowLeft, Calendar, MapPin, Trash2, X, FileText, PenTool } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
+import { useTranslation } from 'react-i18next';
 
 const BASE_URL = import.meta.env.PROD ? window.location.origin : 'http://localhost:3000';
 
 const ActivationPage = () => {
+    const { t } = useTranslation();
+    const navigate = useNavigate();
+    const location = useLocation();
+
     const [appointments, setAppointments] = useState([]);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [activeTab, setActiveTab] = useState('pending');
     const [searchQuery, setSearchQuery] = useState('');
-    const location = useLocation();
 
     // Photo Viewer State
     const [viewingPhotoIndex, setViewingPhotoIndex] = useState(null);
@@ -426,7 +430,7 @@ const ActivationPage = () => {
 
     const handleSignatureSave = async () => {
         if (!signaturePadRef.current || signaturePadRef.current.isEmpty()) {
-            alert('Por favor, firme antes de continuar.');
+            alert(t('activations.please_sign'));
             return;
         }
 
@@ -451,7 +455,7 @@ const ActivationPage = () => {
 
     const handleGeneratePdf = async (currentSignatures = null) => {
         if (!formData.klsId) {
-            alert('Por favor, indica el KLS ID antes de generar el PDF.');
+            alert(t('activations.kls_required'));
             return;
         }
 
@@ -459,7 +463,7 @@ const ActivationPage = () => {
         const sigs = currentSignatures || signatures;
 
         if (!sigs.client || !sigs.tech) {
-            alert('Faltan las firmas. Por favor inicie el proceso de firma.');
+            alert(t('activations.signatures_missing'));
             return;
         }
 
@@ -487,7 +491,7 @@ const ActivationPage = () => {
             }
         } catch (error) {
             console.error('Error creating PDF:', error);
-            alert('Error al generar el PDF.');
+            alert(t('activations.pdf_error'));
         }
     };
 
@@ -495,11 +499,11 @@ const ActivationPage = () => {
         e.preventDefault();
 
         if (pdfPath) {
-            const confirmed = window.confirm('¿Has rellenado correctamente el documento PDF de GlasfaserPlus?');
+            const confirmed = window.confirm(t('activations.confirm_pdf_completed') || '¿Has rellenado correctamente el documento PDF de GlasfaserPlus?');
             if (!confirmed) return;
         } else {
             // Optional: prevent saving if not generated, or just warn
-            if (!confirm('No has generado el documento PDF. ¿Estás seguro de que deseas guardar sin él? (Podrías tener problemas para finalizar)')) {
+            if (!confirm(t('activations.confirm_save_without_pdf') || 'No has generado el documento PDF. ¿Estás seguro de que deseas guardar sin él? (Podrías tener problemas para finalizar)')) {
                 return;
             }
         }
@@ -529,13 +533,13 @@ const ActivationPage = () => {
             await api.post(`/api/activations/report/${selectedAppointment.addressId}`, data, {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
-            alert('Activación guardada correctamente');
+            alert(t('activations.success_save') || 'Activación guardada correctamente');
             setSelectedAppointment(null);
             fetchAppointments();
         } catch (error) {
             console.error('Error submitting activation:', error);
             const serverMsg = error.response?.data?.error || error.response?.data?.message || error.message;
-            alert(`Error al enviar reporte: ${serverMsg}`);
+            alert(`${t('activations.save_error')}: ${serverMsg}`);
         } finally {
             setSubmitting(false);
         }
@@ -555,13 +559,13 @@ const ActivationPage = () => {
         return (
             <div className="space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <h2 className="text-2xl font-bold text-slate-800">Mis Citas Asignadas</h2>
+                    <h2 className="text-2xl font-bold text-slate-800">{t('activations.my_assigned_appointments') || 'Mis Citas Asignadas'}</h2>
 
                     {/* Search Bar */}
                     <div className="relative w-full md:w-64">
                         <input
                             type="text"
-                            placeholder="Buscar..."
+                            placeholder={t('dashboard.search_placeholder') || "Buscar..."}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
@@ -578,13 +582,13 @@ const ActivationPage = () => {
                         onClick={() => setActiveTab('pending')}
                         className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'pending' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        Pendientes
+                        {t('activations.tab_pending') || 'Pendientes'}
                     </button>
                     <button
                         onClick={() => setActiveTab('completed')}
                         className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'completed' ? 'bg-white text-green-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        Terminadas
+                        {t('activations.tab_completed') || 'Terminadas'}
                     </button>
                 </div>
 
@@ -595,8 +599,8 @@ const ActivationPage = () => {
                         </div>
                         <p className="text-slate-500">
                             {activeTab === 'pending'
-                                ? 'No tienes citas pendientes que coincidan con la búsqueda.'
-                                : 'No tienes citas completadas que coincidan con la búsqueda.'}
+                                ? (t('activations.no_pending_search') || 'No tienes citas pendientes que coincidan con la búsqueda.')
+                                : (t('activations.no_completed_search') || 'No tienes citas completadas que coincidan con la búsqueda.')}
                         </p>
                     </div>
                 ) : (
@@ -631,13 +635,13 @@ const ActivationPage = () => {
                                                 {new Date(app.assignedDate).toLocaleDateString()} {new Date(app.assignedDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </>
                                         ) : (
-                                            <span className="text-slate-400">Sin fecha asignada</span>
+                                            <span className="text-slate-400">{t('activations.no_date_assigned') || 'Sin fecha asignada'}</span>
                                         )}
-                                        {app.type === 'REPAIR' && <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full border border-red-200 ml-2">AVERÍA</span>}
+                                        {app.type === 'REPAIR' && <span className="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full border border-red-200 ml-2">{t('activations.repair_badge') || 'AVERÍA'}</span>}
                                     </div>
                                     {app.status === 'COMPLETADO' && (
                                         <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold flex items-center gap-1">
-                                            <CheckCircle size={14} /> Completado
+                                            <CheckCircle size={14} /> {t('activations.completed_badge') || 'Completado'}
                                         </span>
                                     )}
                                 </div>
@@ -666,7 +670,7 @@ const ActivationPage = () => {
                     <div>
                         <h2 className="text-xl font-bold text-slate-800">{selectedAppointment.address.street} {selectedAppointment.address.number}</h2>
                         <p className="text-sm text-slate-500">
-                            {selectedAppointment.status === 'COMPLETADO' ? 'Modificar Activación' : 'Completar Activación'}
+                            {selectedAppointment.status === 'COMPLETADO' ? t('activations.modify_activation') : t('activations.complete_activation')}
                         </p>
                     </div>
                 </div>
@@ -674,12 +678,12 @@ const ActivationPage = () => {
                     {isSyncing ? (
                         <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-500 rounded-full text-[10px] font-bold animate-pulse border border-blue-100">
                             <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
-                            SINCRONIZANDO...
+                            {t('activations.syncing_uppercase') || 'SINCRONIZANDO...'}
                         </div>
                     ) : lastSyncTime ? (
                         <div className="flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-bold border border-green-100">
                             <CheckCircle size={10} />
-                            SINCRONIZADO {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            {t('activations.synced_uppercase') || 'SINCRONIZADO'} {lastSyncTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </div>
                     ) : (
                         <button 
@@ -687,7 +691,7 @@ const ActivationPage = () => {
                             className="flex items-center gap-1.5 px-3 py-1 bg-slate-50 text-slate-400 rounded-full text-[10px] font-bold border border-slate-100 hover:bg-blue-50 hover:text-blue-500 transition-colors"
                         >
                             <PenTool size={10} />
-                            GUARDAR BORRADOR
+                            {t('activations.save_draft') || 'GUARDAR BORRADOR'}
                         </button>
                     )}
                 </div>
@@ -696,9 +700,9 @@ const ActivationPage = () => {
             <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
                 <div className="mb-6 p-4 bg-purple-50 rounded-2xl border border-purple-100 flex items-center justify-between">
                     <div>
-                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">Identificador de Armario</p>
+                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1">{t('activations.cabinet_identifier') || 'Identificador de Armario'}</p>
                         <h3 className="text-2xl font-black text-purple-700 leading-none">
-                            NVT: {selectedAppointment.address.nvt || 'Sin asignar'}
+                            NVT: {selectedAppointment.address.nvt || (t('activations.unassigned') || 'Sin asignar')}
                         </h3>
                     </div>
                     <div className="bg-purple-600 p-2.5 rounded-xl text-white shadow-lg shadow-purple-200">
@@ -709,7 +713,7 @@ const ActivationPage = () => {
                 <form onSubmit={handleSubmit} className="space-y-6">
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Tipo de Activación</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.activation_type')}</label>
                         <select
                             value={formData.activationType}
                             onChange={(e) => setFormData({ ...formData, activationType: e.target.value })}
@@ -722,7 +726,7 @@ const ActivationPage = () => {
                                     </option>
                                 ))
                             ) : (
-                                <option value="">No hay conceptos cargados - Revise DB</option>
+                                <option value="">{t('activations.no_concepts')}</option>
                             )}
                         </select>
                     </div>
@@ -730,7 +734,7 @@ const ActivationPage = () => {
                     {!['SDU', 'MDU'].includes(formData.activationType) && (
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Cant. Familias</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.families_count')}</label>
                                 <input
                                     type="number"
                                     min="1"
@@ -740,7 +744,7 @@ const ActivationPage = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Puertos AP</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.ap_ports')}</label>
                                 <input
                                     type="number"
                                     min="1"
@@ -753,36 +757,37 @@ const ActivationPage = () => {
                     )}
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Home ID</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.home_id')}</label>
                         <input
                             type="text"
                             value={formData.homeId}
                             onChange={(e) => setFormData({ ...formData, homeId: e.target.value })}
-                            className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none"
+                            placeholder={t('activations.placeholder_home_id') || "Ej: H-123456"}
+                            className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none font-mono"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">KLS ID (Automático)</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.kls_id_auto') || 'KLS ID (Automático)'}</label>
                         <input
                             type="text"
-                            value={formData.klsId || 'No disponible'}
+                            value={formData.klsId || (t('activations.unassigned') || 'No disponible')}
                             readOnly
-                            className="w-full border border-slate-200 bg-slate-100 rounded-lg p-3 text-slate-600 outline-none"
+                            className="w-full border border-slate-200 bg-slate-100 rounded-lg p-3 text-slate-600 outline-none font-bold"
                         />
-                        {!formData.klsId && <p className="text-xs text-red-500 mt-1">Error: KLS ID no encontrado en la ficha.</p>}
+                        {!formData.klsId && <p className="text-xs text-red-500 mt-1">{t('activations.error_kls_not_found') || 'Error: KLS ID no encontrado en la ficha.'}</p>}
                     </div>
 
                     {formData.activationType === 'BR_MULTI' ? (
                         <div className="p-5 bg-purple-50 rounded-2xl border border-purple-100 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2">
                             <div className="flex items-center justify-between">
-                                <h4 className="font-bold text-purple-700 text-sm uppercase tracking-wider">Desglose Multi (3 Partes)</h4>
-                                <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-bold">BP Incluido</span>
+                                <h4 className="font-bold text-purple-700 text-sm uppercase tracking-wider">{t('activations.multi_breakdown')}</h4>
+                                <span className="bg-purple-100 text-purple-700 text-[10px] px-2 py-0.5 rounded-full font-bold">{t('activations.bp_included')}</span>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Cantidad de SP instaladas</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">{t('activations.sp_installed_qty')}</label>
                                 <input
                                     type="number"
                                     min="1"
@@ -791,22 +796,22 @@ const ActivationPage = () => {
                                     onChange={(e) => setFormData({ ...formData, spInstalled: parseInt(e.target.value) || 0 })}
                                     className="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-purple-400 bg-white"
                                 />
-                                <p className="text-[10px] text-slate-500 mt-2 italic">Estas son las SP que se cobrarán al cliente.</p>
+                                <p className="text-[10px] text-slate-500 mt-2 italic">{t('activations.sp_charged_note')}</p>
                             </div>
 
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-3">Equipo de Red Adicional (MDU)</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-3">{t('activations.mdu_equipment')}</label>
                                 <div className="grid grid-cols-1 gap-3">
                                     <button
                                         type="button"
                                         onClick={() => setFormData({ ...formData, mduInstalled: !formData.mduInstalled, taInstalled: false })}
                                         className={`p-3 rounded-xl border font-bold text-sm transition-all ${formData.mduInstalled ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200 scale-[1.02]' : 'bg-white border-slate-200 text-slate-600 hover:border-purple-200'}`}
                                     >
-                                        Incluye MDU
+                                        {t('activations.includes_mdu')}
                                     </button>
                                 </div>
                                 {!formData.mduInstalled && (
-                                    <p className="text-[10px] text-red-500 mt-2 font-medium animate-pulse">Debes indicar que has instalado una MDU.</p>
+                                    <p className="text-[10px] text-red-500 mt-2 font-medium animate-pulse">{t('activations.must_indicate_mdu')}</p>
                                 )}
                             </div>
                         </div>
@@ -821,7 +826,7 @@ const ActivationPage = () => {
                                             onChange={(e) => setFormData({ ...formData, hasMoreClients: e.target.checked })}
                                             className="w-5 h-5 text-green-600 rounded"
                                         />
-                                        <span className="text-slate-700">¿Hay más clientes potenciales?</span>
+                                        <span className="text-slate-700">{t('activations.more_clients')}</span>
                                     </label>
 
                                     {(formData.activationType === 'Unifamiliar' || formData.activationType === 'BP') && (
@@ -832,7 +837,7 @@ const ActivationPage = () => {
                                                 onChange={(e) => setFormData({ ...formData, taInstalled: e.target.checked })}
                                                 className="w-5 h-5 text-green-600 rounded"
                                             />
-                                            <span className="text-slate-700 font-medium">¿TA Instalado?</span>
+                                            <span className="text-slate-700 font-medium">{t('activations.ta_sdu_installed')}</span>
                                         </label>
                                     )}
 
@@ -844,7 +849,7 @@ const ActivationPage = () => {
                                                 onChange={(e) => setFormData({ ...formData, mduInstalled: e.target.checked })}
                                                 className="w-5 h-5 text-green-600 rounded"
                                             />
-                                            <span className="text-slate-700 font-medium">¿MDU Instalado?</span>
+                                            <span className="text-slate-700 font-medium">{t('activations.mdu_multi_extra_installed')}</span>
                                         </label>
                                     )}
                                 </div>
@@ -852,7 +857,7 @@ const ActivationPage = () => {
 
                                 {formData.activationType !== 'BP_2_FAM' && (
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">SP Instalados</label>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.sp_installed')}</label>
                                         <input
                                             type="number"
                                             min="0"
@@ -868,11 +873,11 @@ const ActivationPage = () => {
 
                     {/* Technician Comments */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Comentarios del Técnico</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.tech_comments') || 'Comentarios del Técnico'}</label>
                         <textarea
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            placeholder="Escribe aquí cualquier observación relevante..."
+                            placeholder={t('activations.placeholder_observation') || "Escribe aquí cualquier observación relevante..."}
                             rows="3"
                             className="w-full border border-slate-300 rounded-lg p-3 outline-none focus:ring-2 focus:ring-green-500 resize-none"
                         ></textarea>
@@ -880,7 +885,7 @@ const ActivationPage = () => {
 
                     {/* Photos Section */}
                     <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-2">Fotos</label>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">{t('activations.photos') || 'Fotos'}</label>
 
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                             {photos.map((photo, index) => (
@@ -911,9 +916,7 @@ const ActivationPage = () => {
                                 />
                                 <Camera className="text-blue-600 mb-2" size={28} />
                                 <div className="text-[10px] text-blue-700 font-extrabold uppercase text-center leading-tight">
-                                    {processingPhotos ? 'Cargando...' : 'Hacer'}
-                                    <br />
-                                    {processingPhotos ? '' : 'Foto'}
+                                    {processingPhotos ? t('settings.loading') : t('activations.take_photo')}
                                 </div>
                             </div>
 
@@ -928,31 +931,28 @@ const ActivationPage = () => {
                                 />
                                 <FileText className="text-slate-500 mb-2" size={28} />
                                 <div className="text-[10px] text-slate-600 font-extrabold uppercase text-center leading-tight">
-                                    Galería
-                                    <br />
-                                    Varios
+                                    {t('activations.gallery') || 'Galería'}
                                 </div>
                             </div>
                         </div>
                     </div>
 
                     {/* PDF Document Section */}
-                    {/* PDF Document Section */}
                     <div className={`p-4 rounded-xl border-2 ${pdfPath ? 'border-green-200 bg-green-50' : 'border-blue-200 bg-blue-50'}`}>
                         <div className="flex justify-between items-center mb-2">
                             <label className="text-base font-bold text-slate-700 flex items-center gap-2">
                                 <FileText size={20} className={pdfPath ? 'text-green-600' : 'text-blue-500'} />
-                                Firmas y Documentación V2
+                                {t('activations.signatures_docs_v2') || 'Firmas y Documentación V2'}
                             </label>
                             {pdfPath && (
-                                <span className="text-xs text-green-700 font-bold bg-white px-2 py-1 rounded-full border border-green-200">¡Firmado!</span>
+                                <span className="text-xs text-green-700 font-bold bg-white px-2 py-1 rounded-full border border-green-200">{t('activations.signed_badge') || '¡Firmado!'}</span>
                             )}
                         </div>
 
                         {pdfPath ? (
                             <div className="space-y-4">
                                 <p className="text-sm text-green-700">
-                                    El documento ha sido generado y firmado digitalmente.
+                                    {t('activations.doc_generated_signed')}
                                 </p>
                                 <button
                                     type="button"
@@ -974,20 +974,20 @@ const ActivationPage = () => {
                                     className="w-full py-3 bg-white border-2 border-green-500 text-green-700 font-bold rounded-xl transition-all flex items-center justify-center gap-2 hover:bg-green-50"
                                 >
                                     <FileText size={18} />
-                                    Ver PDF Generado
+                                    {t('activations.view_pdf')}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => { setPdfPath(null); setSignatures({ client: null, tech: null }); }}
                                     className="w-full py-2 text-slate-500 text-sm hover:text-red-500 transition-colors"
                                 >
-                                    Volver a firmar (Borrar actual)
+                                    {t('activations.resign')}
                                 </button>
                             </div>
                         ) : (
                             <div>
                                 <p className="text-sm text-slate-600 mb-4">
-                                    Se requiere la firma del cliente y del técnico.
+                                    {t('activations.signatures_required')}
                                 </p>
                                 <button
                                     type="button"
@@ -995,7 +995,7 @@ const ActivationPage = () => {
                                     className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
                                 >
                                     <PenTool size={18} />
-                                    Iniciar Proceso de Firma
+                                    {t('activations.start_signing')}
                                 </button>
                             </div>
                         )}
@@ -1006,7 +1006,7 @@ const ActivationPage = () => {
                         disabled={submitting}
                         className="w-full py-4 rounded-xl font-bold text-white bg-green-600 hover:bg-green-700 transition-all disabled:opacity-50"
                     >
-                        {submitting ? 'Guardando...' : (selectedAppointment.status === 'COMPLETADO' ? 'Actualizar Activación' : 'Finalizar Activación')}
+                        {submitting ? t('settings.updating') : (selectedAppointment.status === 'COMPLETADO' ? t('activations.update_activation') : t('activations.finish_activation'))}
                     </button>
                 </form>
                 {/* Signature Modal */}
@@ -1016,10 +1016,10 @@ const ActivationPage = () => {
                             <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
                                 <div>
                                     <h3 className="text-xl font-bold text-slate-800">
-                                        {isSigning === 'CLIENT' ? 'Firma del Cliente' : 'Firma del Técnico'}
+                                        {isSigning === 'CLIENT' ? t('activations.client_signature') : t('activations.tech_signature')}
                                     </h3>
                                     <p className="text-sm text-slate-500">
-                                        {isSigning === 'CLIENT' ? 'Por favor, pida al cliente que firme.' : 'Firme usted para confirmar.'}
+                                        {isSigning === 'CLIENT' ? t('activations.ask_client_sign') : t('activations.ask_tech_sign')}
                                     </p>
                                 </div>
                                 <button onClick={() => setIsSigning('NONE')} className="text-slate-400 hover:text-slate-600">
@@ -1034,7 +1034,7 @@ const ActivationPage = () => {
                                     className="w-full h-full touch-none"
                                 ></canvas>
                                 <div className="absolute bottom-2 right-2 text-[10px] text-slate-300 pointer-events-none">
-                                    Área de Firma
+                                    {t('activations.sign_area')}
                                 </div>
                             </div>
 
@@ -1044,14 +1044,14 @@ const ActivationPage = () => {
                                     onClick={() => signaturePadRef.current?.clear()}
                                     className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
                                 >
-                                    Borrar / Corregir
+                                    {t('activations.clear_correct')}
                                 </button>
                                 <button
                                     type="button"
                                     onClick={handleSignatureSave}
                                     className="flex-1 py-3 bg-joa-blue text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-200"
                                 >
-                                    {isSigning === 'CLIENT' ? 'Siguiente (Técnico)' : 'Finalizar y Generar'}
+                                    {isSigning === 'CLIENT' ? t('activations.next_tech') : t('activations.finish_generate')}
                                 </button>
                             </div>
                         </div>
@@ -1084,7 +1084,7 @@ const ActivationPage = () => {
                         }}
                         className="mt-6 flex items-center gap-2 bg-red-600/80 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-red-700 transition transform active:scale-95"
                     >
-                        <Trash2 size={20} /> Eliminar Foto
+                        <Trash2 size={20} /> {t('activations.delete_photo')}
                     </button>
                 </div>
             )}

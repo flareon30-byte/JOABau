@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X, Grid, List, ChevronRight, Filter, Edit, Trash2 } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
+import { useTranslation } from 'react-i18next';
 
 const IssuesPage = () => {
+    const { t } = useTranslation();
     // ... existing state
     const [activeTab, setActiveTab] = useState('search');
     const [loading, setLoading] = useState(false);
@@ -95,7 +97,7 @@ const IssuesPage = () => {
                     setSearchResult([]);
                     setHasSearched(true);
                 } else {
-                    setError("Error al cargar datos: " + (err.response?.data?.message || "Error de conexión"));
+                    setError(t('issues.error_load') + " " + (err.response?.data?.message || "Error de conexión"));
                 }
             } finally {
                 setLoading(false);
@@ -138,7 +140,7 @@ const IssuesPage = () => {
         try {
             const { city, street, number } = searchParams;
             if (!street) {
-                setError("La calle es obligatoria");
+                setError(t('issues.error_search')); // Simplificado
                 setLoading(false);
                 return;
             }
@@ -155,7 +157,7 @@ const IssuesPage = () => {
                 setHasSearched(true);
                 setSearchResult(null);
             } else {
-                setError("Error al buscar la dirección. Intente nuevamente.");
+                setError(t('issues.error_search'));
             }
         } finally {
             setLoading(false);
@@ -171,12 +173,12 @@ const IssuesPage = () => {
 
         try {
             await api.post('/api/issues/create', manualIssue);
-            setSuccessMessage("Avería registrada exitosamente. Se ha creado una cita de reparación.");
+            setSuccessMessage(t('issues.success_create_manual'));
             setManualIssue({ ...manualIssue, city: '', street: '', number: '', clientName: '', description: '' });
             setActiveTab('search');
         } catch (err) {
             console.error(err);
-            setError("Error al crear la avería. Verifique los datos");
+            setError(t('issues.error_create_manual'));
         } finally {
             setLoading(false);
         }
@@ -215,7 +217,7 @@ const IssuesPage = () => {
     const handleCreateClaim = async (e) => {
         e.preventDefault();
         if (!claimData.teamId || !claimData.date) {
-            alert("Por favor seleccione fecha y equipo.");
+            alert(t('issues.error_create_manual')); // Reused generic error
             return;
         }
 
@@ -225,14 +227,14 @@ const IssuesPage = () => {
                 addressId: selectedAddress.id,
                 ...claimData
             });
-            setSuccessMessage("Reclamación creada y asignada correctamente.");
+            setSuccessMessage(t('issues.success_claim'));
             setClaimModalOpen(false);
             // Refresh search results to show new appointment?
             // Simplified: just trigger search again if simple enough, or hack state
             handleSearch(e); // Re-run search to update view
         } catch (err) {
             console.error(err);
-            alert("Error al crear reclamación: " + (err.response?.data?.message || err.message));
+            alert(t('issues.error_create') + " " + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
         }
@@ -275,16 +277,16 @@ const IssuesPage = () => {
     const [editingRepair, setEditingRepair] = useState(null);
 
     const handleDeleteRepair = async (id) => {
-        if (!window.confirm('¿Estás seguro de que quieres eliminar esta avería pendiente? Esta acción no se puede deshacer.')) return;
+        if (!window.confirm(t('issues.confirm_delete'))) return;
 
         setLoading(true);
         try {
             await api.delete(`/api/issues/repair/${id}`);
-            setSuccessMessage("Avería eliminada correctamente.");
+            setSuccessMessage(t('issues.success_delete'));
             fetchRepairs();
         } catch (err) {
             console.error(err);
-            alert("Error al eliminar: " + (err.response?.data?.message || err.message));
+            alert(t('issues.error_delete') + " " + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
         }
@@ -309,12 +311,12 @@ const IssuesPage = () => {
                 date: editingRepair.date,
                 description: editingRepair.description
             });
-            setSuccessMessage("Avería actualizada correctamente.");
+            setSuccessMessage(t('issues.success_update'));
             setEditModalOpen(false);
             fetchRepairs();
         } catch (err) {
             console.error(err);
-            alert("Error al actualizar: " + (err.response?.data?.message || err.message));
+            alert(t('issues.error_update') + " " + (err.response?.data?.message || err.message));
         } finally {
             setLoading(false);
         }
@@ -326,9 +328,9 @@ const IssuesPage = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                         <AlertTriangle className="text-joa-blue" />
-                        Gestión de Averías e Incidencias
+                        {t('issues.title_main')}
                     </h1>
-                    <p className="text-slate-500">Busca el historial de una dirección o registra nuevas incidencias externas.</p>
+                    <p className="text-slate-500">{t('issues.subtitle')}</p>
                 </div>
 
                 <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
@@ -336,19 +338,19 @@ const IssuesPage = () => {
                         onClick={() => setActiveTab('search')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'search' ? 'bg-joa-blue text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        <Search size={16} /> Buscar Dirección
+                        <Search size={16} /> {t('issues.search_address')}
                     </button>
                     <button
                         onClick={() => setActiveTab('create')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'create' ? 'bg-joa-blue text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        <Plus size={16} /> Nueva Avería Manual
+                        <Plus size={16} /> {t('issues.new_manual')}
                     </button>
                     <button
                         onClick={() => setActiveTab('manage')}
                         className={`px-4 py-2 rounded-md text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'manage' ? 'bg-joa-blue text-white shadow-md' : 'text-slate-500 hover:text-slate-700'}`}
                     >
-                        <List size={16} /> Gestión de Averías
+                        <List size={16} /> {t('issues.manage_issues')}
                     </button>
                 </div>
             </div>
@@ -374,7 +376,7 @@ const IssuesPage = () => {
                         <div className="flex-1 w-full relative">
                             <input
                                 type="text"
-                                placeholder="Filtrar por calle, número o ciudad..."
+                                placeholder={t('issues.filter_placeholder')}
                                 value={searchParams.query || ''}
                                 onChange={(e) => {
                                     setSearchParams({ ...searchParams, query: e.target.value });
@@ -385,9 +387,9 @@ const IssuesPage = () => {
                         </div>
                         <div className="text-sm text-slate-500 font-medium whitespace-nowrap">
                             {loading ? (
-                                <span className="flex items-center gap-2 text-joa-blue"><div className="animate-spin h-4 w-4 border-2 border-joa-blue border-t-transparent rounded-full"></div> Buscando...</span>
+                                <span className="flex items-center gap-2 text-joa-blue"><div className="animate-spin h-4 w-4 border-2 border-joa-blue border-t-transparent rounded-full"></div> {t('issues.searching')}</span>
                             ) : (
-                                <span>{searchResult?.length || 0} Resultados</span>
+                                <span>{searchResult?.length || 0} {t('issues.results')}</span>
                             )}
                         </div>
                     </div>
@@ -399,15 +401,15 @@ const IssuesPage = () => {
                                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 mb-4">
                                     <Search size={32} />
                                 </div>
-                                <h3 className="text-lg font-bold text-slate-700">No hay resultados</h3>
+                                <h3 className="text-lg font-bold text-slate-700">{t('issues.no_results_title')}</h3>
                                 <p className="text-slate-500 max-w-md mx-auto">
-                                    No encontramos direcciones completadas con ese criterio.
+                                    {t('issues.no_results_desc')}
                                 </p>
                                 <button
                                     onClick={prefillManualFromSearch}
                                     className="mt-4 bg-joa-blue text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-all shadow-md inline-flex items-center gap-2"
                                 >
-                                    <Plus size={16} /> Registrar Avería Externa Manual
+                                    <Plus size={16} /> {t('issues.register_manual')}
                                 </button>
                             </div>
                         )}
@@ -419,7 +421,7 @@ const IssuesPage = () => {
                                     <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="text-xs font-bold uppercase text-blue-600 bg-blue-50 px-2 py-1 rounded">
-                                                {result.project?.name || 'Proyecto Desconocido'}
+                                                {result.project?.name || t('issues.unknown_project')}
                                             </span>
                                             {result.nvt && (
                                                 <span className="text-xs font-bold uppercase text-slate-500 bg-slate-100 px-2 py-1 rounded">
@@ -436,11 +438,11 @@ const IssuesPage = () => {
                                         <div className="flex flex-wrap gap-4 mt-3">
                                             <div className="flex items-center gap-2 text-sm text-slate-600">
                                                 <Network className={result.sopladoStatus === 'OK' ? "text-green-500" : "text-slate-400"} size={16} />
-                                                Soplado: <span className="font-medium">{result.sopladoStatus || 'Pendiente'}</span>
+                                                {t('issues.blown')}: <span className="font-medium">{result.sopladoStatus || t('issues.pending')}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-slate-600">
                                                 <CheckCircle className={result.activationInfo ? "text-green-500" : "text-slate-400"} size={16} />
-                                                Activación: <span className="font-medium">{result.activationInfo ? 'Completada' : 'Pendiente'}</span>
+                                                {t('issues.activation')}: <span className="font-medium">{result.activationInfo ? t('issues.completed') : t('issues.pending')}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -452,7 +454,7 @@ const IssuesPage = () => {
                                             className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2 font-medium border border-red-100 w-full"
                                         >
                                             <AlertTriangle size={16} />
-                                            Crear Reclamación
+                                            {t('issues.create_claim')}
                                         </button>
                                     </div>
                                 </div>
@@ -463,10 +465,10 @@ const IssuesPage = () => {
                                         {result.activationInfo && (
                                             <div className="bg-green-50/50 p-3 rounded-lg border border-green-100 text-sm">
                                                 <div className="font-bold text-green-800 flex items-center gap-2 mb-1">
-                                                    <CheckCircle size={14} /> Activación Exitosa
+                                                    <CheckCircle size={14} /> {t('issues.activation_success')}
                                                 </div>
                                                 <p className="text-green-700">
-                                                    Fecha: {new Date(result.activationInfo.createdAt).toLocaleDateString('es-ES')}
+                                                    {t('issues.date')}: {new Date(result.activationInfo.createdAt).toLocaleDateString('es-ES')}
                                                 </p>
                                                 <p className="text-green-600 text-xs text-ellipsis overflow-hidden">
                                                     Técnico: {result.activationInfo.assignedTeam?.name || 'Técnico'}
@@ -477,7 +479,7 @@ const IssuesPage = () => {
                                         {result.repairs?.map(repair => (
                                             <div key={repair.id} className="bg-purple-50/50 p-3 rounded-lg border border-purple-100 text-sm">
                                                 <div className="font-bold text-purple-800 flex items-center gap-2 mb-1">
-                                                    <AlertTriangle size={14} /> Reparación Realizada
+                                                    <AlertTriangle size={14} /> {t('issues.repair_done')}
                                                 </div>
                                                 <p className="text-purple-700">
                                                     {new Date(repair.createdAt).toLocaleDateString('es-ES')}
@@ -497,13 +499,13 @@ const IssuesPage = () => {
                 <div className="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
                     <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
                         <Plus className="text-joa-blue" />
-                        Registrar Incidencia / Avería Manual
+                        {t('issues.register_manual_title')}
                     </h2>
                     <form onSubmit={handleCreateManual} className="space-y-6">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Ciudad</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.city')}</label>
                                     <input
                                         type="text"
                                         name="city"
@@ -514,7 +516,7 @@ const IssuesPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Calle</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.street')}</label>
                                     <input
                                         type="text"
                                         name="street"
@@ -525,7 +527,7 @@ const IssuesPage = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Número</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.number')}</label>
                                     <input
                                         type="text"
                                         name="number"
@@ -539,32 +541,32 @@ const IssuesPage = () => {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Cliente</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.client_name')}</label>
                                     <input
                                         type="text"
                                         name="clientName"
                                         value={manualIssue.clientName}
                                         onChange={handleManualChange}
                                         className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
-                                        placeholder="Opcional"
+                                        placeholder={t('issues.optional')}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Asignar Equipo</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.assign_team')}</label>
                                     <select
                                         name="teamId"
                                         value={manualIssue.teamId}
                                         onChange={handleManualChange}
                                         className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
                                     >
-                                        <option value="">-- Sin asignar --</option>
+                                        <option value="">{t('issues.unassigned')}</option>
                                         {teams.map(team => (
                                             <option key={team.id} value={team.id}>{team.name}</option>
                                         ))}
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Cita</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.appointment_date')}</label>
                                     <input
                                         type="date"
                                         name="date"
@@ -578,14 +580,14 @@ const IssuesPage = () => {
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Descripción del Problema</label>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.problem_desc')}</label>
                             <textarea
                                 name="description"
                                 value={manualIssue.description}
                                 onChange={handleManualChange}
                                 rows="3"
                                 className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
-                                placeholder="Detalles de la avería..."
+                                placeholder={t('issues.problem_placeholder')}
                             ></textarea>
                         </div>
 
@@ -595,14 +597,14 @@ const IssuesPage = () => {
                                 onClick={() => setActiveTab('search')}
                                 className="px-6 py-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
                             >
-                                Cancelar
+                                {t('issues.cancel')}
                             </button>
                             <button
                                 type="submit"
                                 disabled={loading}
                                 className="px-6 py-2 rounded-lg bg-joa-blue text-white hover:bg-blue-600 transition-colors shadow-lg shadow-joa-blue/30 font-medium"
                             >
-                                {loading ? 'Procesando...' : 'Crear Avería y Cita'}
+                                {loading ? t('issues.processing') : t('issues.create_issue_btn')}
                             </button>
                         </div>
                     </form>
@@ -616,26 +618,26 @@ const IssuesPage = () => {
                     <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
                         <div className="flex items-center gap-4">
                             <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                                <Filter size={16} /> Estado:
+                                <Filter size={16} /> {t('issues.status')}
                             </span>
                             <div className="flex bg-slate-100 p-1 rounded-lg">
                                 <button
                                     onClick={() => setRepairsFilter('PENDING')}
                                     className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${repairsFilter === 'PENDING' ? 'bg-white text-yellow-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    Pendientes
+                                    {t('issues.status_pending_tab')}
                                 </button>
                                 <button
                                     onClick={() => setRepairsFilter('COMPLETED')}
                                     className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${repairsFilter === 'COMPLETED' ? 'bg-white text-green-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    Completadas
+                                    {t('issues.status_completed_tab')}
                                 </button>
                                 <button
                                     onClick={() => setRepairsFilter('ALL')}
                                     className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${repairsFilter === 'ALL' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    Todas
+                                    {t('issues.status_all_tab')}
                                 </button>
                             </div>
                         </div>
@@ -647,19 +649,19 @@ const IssuesPage = () => {
                     {/* Table */}
                     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                         {loading && repairsList.length === 0 ? (
-                            <div className="p-12 text-center text-slate-400">Cargando reclamaciones...</div>
+                            <div className="p-12 text-center text-slate-400">{t('issues.loading_claims')}</div>
                         ) : repairsList.length === 0 ? (
-                            <div className="p-12 text-center text-slate-400">No hay reclamaciones en este estado.</div>
+                            <div className="p-12 text-center text-slate-400">{t('issues.no_claims')}</div>
                         ) : (
                             <table className="w-full text-left border-collapse">
                                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 text-xs uppercase font-bold tracking-wider">
                                     <tr>
-                                        <th className="p-4">Fecha Cita / Solicitud</th>
-                                        <th className="p-4">Dirección</th>
-                                        <th className="p-4">Problema Reportado</th>
-                                        <th className="p-4">Equipo Asignado</th>
-                                        <th className="p-4">Estado</th>
-                                        <th className="p-4">Acciones</th>
+                                        <th className="p-4">{t('issues.col_date')}</th>
+                                        <th className="p-4">{t('issues.col_address')}</th>
+                                        <th className="p-4">{t('issues.col_problem')}</th>
+                                        <th className="p-4">{t('issues.col_team')}</th>
+                                        <th className="p-4">{t('issues.col_status')}</th>
+                                        <th className="p-4">{t('issues.col_actions')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
@@ -669,8 +671,8 @@ const IssuesPage = () => {
                                         const date = isRepairObj ? item.updatedAt : item.assignedDate;
                                         const status = isRepairObj ? 'COMPLETADO' : item.status;
                                         const problemDesc = !isRepairObj
-                                            ? (item.comments && item.comments.length > 0 ? item.comments[0].content : 'Sin descripción')
-                                            : 'Ver Detalle';
+                                            ? (item.comments && item.comments.length > 0 ? item.comments[0].content : t('issues.no_desc'))
+                                            : t('issues.view_detail');
 
                                         return (
                                             <tr key={item.id} className="hover:bg-slate-50 transition-colors">
@@ -689,14 +691,14 @@ const IssuesPage = () => {
                                                 </td>
                                                 <td className="p-4 max-w-xs truncate" title={problemDesc}>
                                                     {isRepairObj ? (
-                                                        <span className="text-green-600 font-medium italic">✔ Resuelta</span>
+                                                        <span className="text-green-600 font-medium italic">{t('issues.resolved')}</span>
                                                     ) : (
                                                         <span className="text-red-500">{problemDesc}</span>
                                                     )}
                                                 </td>
                                                 <td className="p-4">
                                                     {!isRepairObj ? (
-                                                        item.assignedTeam ? <span className="flex items-center gap-1"><User size={14} /> {item.assignedTeam.name}</span> : <span className="text-red-300">Sin Asignar</span>
+                                                        item.assignedTeam ? <span className="flex items-center gap-1"><User size={14} /> {item.assignedTeam.name}</span> : <span className="text-red-300">{t('issues.unassigned')}</span>
                                                     ) : (
                                                         address.appointment?.assignedTeam?.name || 'Técnico'
                                                     )}
@@ -710,7 +712,7 @@ const IssuesPage = () => {
                                                             onClick={() => { setSelectedRepair(item); setDetailsModalOpen(true); }}
                                                             className="text-blue-600 hover:text-blue-800 font-bold text-xs flex items-center gap-1 border border-blue-200 px-2 py-1.5 rounded hover:bg-blue-50 transition-colors"
                                                         >
-                                                            <FileText size={14} /> Ver Informe
+                                                            <FileText size={14} /> {t('issues.view_report')}
                                                         </button>
                                                     )}
                                                     {!isRepairObj && repairsFilter !== 'COMPLETED' && (
@@ -718,14 +720,14 @@ const IssuesPage = () => {
                                                             <button
                                                                 onClick={() => openEditModal(item)}
                                                                 className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                                title="Modificar Cita"
+                                                                title={t('issues.modify_appt')}
                                                             >
                                                                 <Edit size={16} />
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDeleteRepair(item.id)}
                                                                 className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                                title="Eliminar Avería"
+                                                                title={t('issues.delete_issue')}
                                                             >
                                                                 <Trash2 size={16} />
                                                             </button>
@@ -750,7 +752,7 @@ const IssuesPage = () => {
                             <div>
                                 <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                     <CheckCircle className="text-green-500" />
-                                    Informe de Reparación
+                                    {t('issues.report_title')}
                                 </h3>
                                 <p className="text-sm text-slate-500">
                                     {selectedRepair.address.street} {selectedRepair.address.number}, {selectedRepair.address.city}
@@ -764,24 +766,24 @@ const IssuesPage = () => {
                         <div className="p-6 overflow-y-auto space-y-6">
                             {/* Solution Description */}
                             <div className="bg-green-50 p-4 rounded-xl border border-green-100">
-                                <h4 className="font-bold text-green-800 mb-2 border-b border-green-200 pb-1">Solución Técnica Aplicada</h4>
+                                <h4 className="font-bold text-green-800 mb-2 border-b border-green-200 pb-1">{t('issues.tech_solution')}</h4>
                                 <p className="text-slate-700 whitespace-pre-wrap">{selectedRepair.description}</p>
                             </div>
 
                             {/* Date Info */}
                             <div className="flex gap-4 text-sm text-slate-500">
                                 <div className="flex items-center gap-2">
-                                    <Calendar size={16} /> Fecha: {new Date(selectedRepair.createdAt).toLocaleDateString('es-ES')}
+                                    <Calendar size={16} /> {t('issues.date')}: {new Date(selectedRepair.createdAt).toLocaleDateString('es-ES')}
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <Clock size={16} /> Hora: {new Date(selectedRepair.createdAt).toLocaleTimeString()}
+                                    <Clock size={16} /> {t('issues.time')} {new Date(selectedRepair.createdAt).toLocaleTimeString()}
                                 </div>
                             </div>
 
                             {/* Photos */}
                             <div>
                                 <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                                    <Image size={18} className="text-blue-500" /> Evidencia Fotográfica
+                                    <Image size={18} className="text-blue-500" /> {t('issues.photo_evidence')}
                                 </h4>
                                 {selectedRepair.photos && selectedRepair.photos.length > 0 ? (
                                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -803,7 +805,7 @@ const IssuesPage = () => {
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-slate-400 italic text-sm">No se adjuntaron fotos.</p>
+                                    <p className="text-slate-400 italic text-sm">{t('issues.no_photos')}</p>
                                 )}
                             </div>
                         </div>
@@ -813,13 +815,13 @@ const IssuesPage = () => {
                                 onClick={() => setDetailsModalOpen(false)}
                                 className="px-6 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors text-sm font-bold"
                             >
-                                Cerrar Informe
+                                {t('issues.close_report')}
                             </button>
                             <button
                                 onClick={() => window.print()}
                                 className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-bold ml-3"
                             >
-                                Imprimir / PDF
+                                {t('issues.print_pdf')}
                             </button>
                         </div>
                     </div>
@@ -833,7 +835,7 @@ const IssuesPage = () => {
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                             <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                 <AlertTriangle className="text-red-500" />
-                                Crear Reclamación / Avería
+                                {t('issues.create_claim_title')}
                             </h3>
                             <button onClick={() => setClaimModalOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                                 <X size={24} />
@@ -847,21 +849,21 @@ const IssuesPage = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Nombre Cliente</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.client_name')}</label>
                                     <input
                                         type="text"
                                         name="clientName"
                                         value={claimData.clientName}
                                         onChange={handleClaimDataChange}
                                         className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
-                                        placeholder="Nombre del cliente"
+                                        placeholder={t('issues.client_name')}
                                     />
-                                    <p className="text-xs text-slate-400 mt-1">Si dejas este campo vacío, se mantendrá el actual.</p>
+                                    <p className="text-xs text-slate-400 mt-1">{t('issues.leave_empty')}</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Asignar Equipo *</label>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.assign_team')} *</label>
                                         <select
                                             name="teamId"
                                             value={claimData.teamId}
@@ -869,14 +871,14 @@ const IssuesPage = () => {
                                             className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
                                             required
                                         >
-                                            <option value="">-- Seleccionar --</option>
+                                            <option value="">{t('issues.select')}</option>
                                             {teams.map(team => (
                                                 <option key={team.id} value={team.id}>{team.name}</option>
                                             ))}
                                         </select>
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Cita *</label>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.appointment_date')} *</label>
                                         <div className="flex gap-2">
                                             <input
                                                 type="date"
@@ -899,14 +901,14 @@ const IssuesPage = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">Motivo / Descripción *</label>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.reason_desc')}</label>
                                     <textarea
                                         name="description"
                                         value={claimData.description}
                                         onChange={handleClaimDataChange}
                                         rows="3"
                                         className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
-                                        placeholder="Explica el problema o avería..."
+                                        placeholder={t('issues.reason_placeholder')}
                                         required
                                     ></textarea>
                                 </div>
@@ -917,14 +919,14 @@ const IssuesPage = () => {
                                     onClick={() => setClaimModalOpen(false)}
                                     className="px-4 py-2 rounded-lg text-slate-600 hover:bg-slate-200 transition-colors bg-white border border-slate-200 shadow-sm"
                                 >
-                                    Cancelar
+                                    {t('issues.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={loading}
                                     className="px-6 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition-colors shadow-lg shadow-red-600/30 font-medium"
                                 >
-                                    {loading ? 'Creando...' : 'Crear Reclamación'}
+                                    {loading ? t('issues.processing') : t('issues.create_claim_btn')}
                                 </button>
                             </div>
                         </form>
@@ -938,8 +940,8 @@ const IssuesPage = () => {
                     <div className="bg-white rounded-2xl w-full max-w-5xl h-[80vh] shadow-2xl flex flex-col">
                         <div className="p-4 border-b border-slate-200 flex justify-between items-center">
                             <div>
-                                <h3 className="text-xl font-bold text-slate-800">Calendario de Disponibilidad</h3>
-                                <p className="text-sm text-slate-500">Selecciona una fecha libre para asignar la avería.</p>
+                                <h3 className="text-xl font-bold text-slate-800">{t('issues.calendar_title')}</h3>
+                                <p className="text-sm text-slate-500">{t('issues.calendar_desc')}</p>
                             </div>
                             <button onClick={() => setIsCalendarOpen(false)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500">
                                 <X size={24} />
@@ -948,7 +950,7 @@ const IssuesPage = () => {
                         <div className="flex-1 overflow-hidden p-4 bg-slate-50">
                             <div className="mb-4 bg-blue-50 p-3 rounded-lg text-blue-700 text-sm flex items-center gap-2">
                                 <CheckCircle size={16} />
-                                Haz clic en una casilla para seleccionar esa fecha automáticamente.
+                                {t('issues.calendar_hint')}
                             </div>
                             <CalendarView
                                 appointments={scheduledAppointments}
@@ -965,7 +967,7 @@ const IssuesPage = () => {
                         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                             <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                                 <Edit className="text-blue-500" />
-                                Modificar Avería / Cita
+                                {t('issues.edit_issue_title')}
                             </h3>
                             <button onClick={() => setEditModalOpen(false)} className="text-slate-400 hover:text-slate-600 bg-white p-2 rounded-full shadow-sm hover:shadow transition-all">
                                 <X size={20} />
@@ -973,7 +975,7 @@ const IssuesPage = () => {
                         </div>
                         <form onSubmit={handleUpdateRepair} className="p-6 space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Fecha Cita</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.appointment_date')}</label>
                                 <input
                                     type="date"
                                     value={editingRepair.date || ''}
@@ -983,27 +985,27 @@ const IssuesPage = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Equipo Asignado</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.assign_team')}</label>
                                 <select
                                     value={editingRepair.teamId || ''}
                                     onChange={(e) => setEditingRepair({ ...editingRepair, teamId: e.target.value })}
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
                                     required
                                 >
-                                    <option value="">-- Sin Asignar --</option>
+                                    <option value="">{t('issues.unassigned')}</option>
                                     {teams.map(team => (
                                         <option key={team.id} value={team.id}>{team.name}</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Notas / Razón Cambio</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.notes_reason')}</label>
                                 <textarea
                                     value={editingRepair.description || ''}
                                     onChange={(e) => setEditingRepair({ ...editingRepair, description: e.target.value })}
                                     rows="3"
                                     className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
-                                    placeholder="Detalles..."
+                                    placeholder={t('issues.notes_placeholder')}
                                     required
                                 ></textarea>
                             </div>
@@ -1014,13 +1016,13 @@ const IssuesPage = () => {
                                     onClick={() => setEditModalOpen(false)}
                                     className="px-4 py-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors"
                                 >
-                                    Cancelar
+                                    {t('issues.cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/30 font-bold"
                                 >
-                                    Guardar Cambios
+                                    {t('issues.save_changes')}
                                 </button>
                             </div>
                         </form>

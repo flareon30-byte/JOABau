@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const UserManagement = () => {
+    const { t } = useTranslation();
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState(null); // For editing
@@ -59,31 +61,43 @@ const UserManagement = () => {
             setIsModalOpen(false);
         } catch (error) {
             console.error('Error saving user:', error);
-            alert('Error al guardar usuario: ' + (error.response?.data?.details || error.message));
+            alert(t('users.error_save') + (error.response?.data?.details || error.message));
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('¿Estás seguro de eliminar este usuario?')) {
+        if (window.confirm(t('users.confirm_delete'))) {
             try {
                 await api.delete(`/api/users/${id}`);
                 fetchData();
             } catch (error) {
                 console.error('Error deleting user:', error);
-                alert(error.response?.data?.message || 'Error al eliminar usuario');
+                alert(error.response?.data?.message || t('users.error_delete'));
             }
+        }
+    };
+
+    const getRoleLabel = (role) => {
+        switch(role) {
+            case 'SUPER_ADMIN': return t('users.role_super_admin');
+            case 'ADMIN': return t('users.role_admin');
+            case 'BACK_OFFICE': return t('users.role_back_office');
+            case 'ACTIVATOR': return t('users.role_activator');
+            case 'BLOWER': return t('users.role_blower');
+            case 'PROTOCOL_MANAGER': return t('users.role_protocol_manager');
+            default: return role;
         }
     };
 
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
             <div className="p-6 border-b border-slate-200 flex justify-between items-center">
-                <h3 className="text-lg font-bold text-slate-800">Gestión de Usuarios</h3>
+                <h3 className="text-lg font-bold text-slate-800">{t('users.title')}</h3>
                 <button
                     onClick={() => handleOpenModal()}
                     className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                 >
-                    <Plus size={18} /> Nuevo Usuario
+                    <Plus size={18} /> {t('users.new_user')}
                 </button>
             </div>
 
@@ -92,7 +106,7 @@ const UserManagement = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
                     <input
                         type="text"
-                        placeholder="Buscar usuarios..."
+                        placeholder={t('users.search_placeholder')}
                         className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                 </div>
@@ -102,13 +116,13 @@ const UserManagement = () => {
                 <table className="w-full text-left">
                     <thead className="bg-slate-50 text-slate-500 text-xs uppercase font-semibold">
                         <tr>
-                            <th className="px-6 py-4">Usuario</th>
-                            <th className="px-6 py-4">Teléfono</th>
-                            <th className="px-6 py-4">Rol</th>
-                            <th className="px-6 py-4">Equipo</th>
-                            <th className="px-6 py-4">Vehículo</th>
-                            <th className="px-6 py-4">Sueldo Base</th>
-                            <th className="px-6 py-4 text-right">Acciones</th>
+                            <th className="px-6 py-4">{t('users.col_user')}</th>
+                            <th className="px-6 py-4">{t('users.col_phone')}</th>
+                            <th className="px-6 py-4">{t('users.col_role')}</th>
+                            <th className="px-6 py-4">{t('users.col_team')}</th>
+                            <th className="px-6 py-4">{t('users.col_vehicle')}</th>
+                            <th className="px-6 py-4">{t('users.col_salary')}</th>
+                            <th className="px-6 py-4 text-right">{t('users.col_actions')}</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200">
@@ -121,7 +135,7 @@ const UserManagement = () => {
                                         user.role === 'ADMIN' ? 'bg-blue-100 text-blue-700' :
                                             'bg-slate-100 text-slate-700'
                                         }`}>
-                                        {user.role}
+                                        {getRoleLabel(user.role)}
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 text-slate-500">{user.teamId || '-'}</td>
@@ -149,10 +163,10 @@ const UserManagement = () => {
             {isModalOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl">
-                        <h3 className="text-xl font-bold mb-4">{currentUser ? 'Editar Usuario' : 'Nuevo Usuario'}</h3>
+                        <h3 className="text-xl font-bold mb-4">{currentUser ? t('users.edit_user') : t('users.new_user')}</h3>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Nombre de Usuario</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('users.label_username')}</label>
                                 <input
                                     type="text"
                                     value={formData.username}
@@ -162,17 +176,17 @@ const UserManagement = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Contraseña</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('users.label_password')}</label>
                                 <input
                                     type="password"
                                     value={formData.password}
                                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                    placeholder={currentUser ? 'Dejar en blanco para mantener' : ''}
+                                    placeholder={currentUser ? t('users.password_placeholder') : ''}
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Teléfono</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('users.label_phone')}</label>
                                 <input
                                     type="text"
                                     value={formData.phone}
@@ -182,35 +196,35 @@ const UserManagement = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Rol</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('users.label_role')}</label>
                                 <select
                                     value={formData.role}
                                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
-                                    <option value="SUPER_ADMIN">Super Admin</option>
-                                    <option value="ADMIN">Admin</option>
-                                    <option value="BACK_OFFICE">Back Office</option>
-                                    <option value="ACTIVATOR">Activador</option>
-                                    <option value="BLOWER">Soplador</option>
-                                    <option value="PROTOCOL_MANAGER">Gestor de Protocolos</option>
+                                    <option value="SUPER_ADMIN">{t('users.role_super_admin')}</option>
+                                    <option value="ADMIN">{t('users.role_admin')}</option>
+                                    <option value="BACK_OFFICE">{t('users.role_back_office')}</option>
+                                    <option value="ACTIVATOR">{t('users.role_activator')}</option>
+                                    <option value="BLOWER">{t('users.role_blower')}</option>
+                                    <option value="PROTOCOL_MANAGER">{t('users.role_protocol_manager')}</option>
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Vehículo Asignado</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('users.label_vehicle')}</label>
                                 <select
                                     value={formData.vehicleId}
                                     onChange={(e) => setFormData({ ...formData, vehicleId: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
-                                    <option value="">-- Sin Vehículo Asignado --</option>
+                                    <option value="">{t('users.no_vehicle')}</option>
                                     {vehicles.map(v => (
                                         <option key={v.id} value={v.id}>{v.make} {v.model} ({v.plate})</option>
                                     ))}
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Salario Base Mensual (€)</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('users.label_salary')}</label>
                                 <input
                                     type="number"
                                     value={formData.baseSalary}
@@ -220,7 +234,7 @@ const UserManagement = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Días de Vacaciones Totales</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('users.label_vacations')}</label>
                                 <input
                                     type="number"
                                     value={formData.vacationDaysTotal}
@@ -235,13 +249,13 @@ const UserManagement = () => {
                                     onClick={() => setIsModalOpen(false)}
                                     className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                                 >
-                                    Cancelar
+                                    {t('users.btn_cancel')}
                                 </button>
                                 <button
                                     type="submit"
                                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                                 >
-                                    Guardar
+                                    {t('users.btn_save')}
                                 </button>
                             </div>
                         </form>

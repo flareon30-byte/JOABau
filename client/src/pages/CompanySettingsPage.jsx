@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { Building2, Save, Mail, Phone, MapPin, CreditCard, Image as ImageIcon, Loader } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const CompanySettingsPage = () => {
+    const { t } = useTranslation();
     const [settings, setSettings] = useState({
         name: '',
         taxId: '',
@@ -68,9 +70,9 @@ const CompanySettingsPage = () => {
                 }
                 setSettings(res.data);
             }
-            alert('Datos de empresa actualizados correctamente');
+            alert(t('company.success_save'));
         } catch (error) {
-            alert('Error al guardar los datos');
+            alert(t('company.error_save'));
         } finally {
             setSaving(false);
         }
@@ -86,8 +88,8 @@ const CompanySettingsPage = () => {
                         <Building2 size={32} />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-black text-slate-800">Mi Empresa (Emisor)</h2>
-                        <p className="text-slate-500">Configura tus datos fiscales para las facturas</p>
+                        <h2 className="text-2xl font-black text-slate-800">{t('company.title')}</h2>
+                        <p className="text-slate-500">{t('company.subtitle')}</p>
                     </div>
                 </div>
 
@@ -95,7 +97,7 @@ const CompanySettingsPage = () => {
                     {/* Basic Info */}
                     <div className="space-y-4">
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">Nombre de la Empresa</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">{t('company.label_name')}</label>
                             <input 
                                 name="name"
                                 value={settings.name}
@@ -104,42 +106,42 @@ const CompanySettingsPage = () => {
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">CIF / NIF / Steuernummer</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">{t('company.label_tax_id')}</label>
                             <div className="relative">
                                 <input 
                                     name="taxId"
                                     value={settings.taxId}
                                     onChange={handleChange}
-                                    placeholder="Ej: B12345678"
+                                    placeholder={t('company.placeholder_tax_id')}
                                     className="w-full bg-slate-50 border-none rounded-xl p-3 pl-10 font-bold text-slate-700 outline-none"
                                 />
                                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">Ciudad / Población</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">{t('company.label_city')}</label>
                             <input 
                                 name="city"
                                 value={settings.city || ''}
                                 onChange={handleChange}
-                                className="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all font-bold"
+                                className="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
                             />
                         </div>
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">País Emisor</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">{t('company.label_country')}</label>
                             <select 
                                 name="country"
                                 value={settings.country || 'ES'}
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border-none rounded-xl p-3 font-bold text-slate-700 outline-none focus:ring-2 focus:ring-blue-500/20 shadow-inner"
                             >
-                                <option value="ES">España (ES)</option>
-                                <option value="DE">Alemania (DE)</option>
+                                <option value="ES">{t('company.country_es')}</option>
+                                <option value="DE">{t('company.country_de')}</option>
                             </select>
-                            <p className="text-[10px] text-slate-500 mt-1 font-bold italic">Determina el prefijo (ES- o DE-)</p>
+                            <p className="text-[10px] text-slate-500 mt-1 font-bold italic">{t('company.hint_country')}</p>
                         </div>
                         <div className="md:col-span-2">
-                             <label className="block text-xs font-black text-slate-400 uppercase mb-2">Dirección Fiscal Completa</label>
+                             <label className="block text-xs font-black text-slate-400 uppercase mb-2">{t('company.label_address')}</label>
                              <textarea 
                                 name="address"
                                 value={settings.address || ''}
@@ -158,7 +160,7 @@ const CompanySettingsPage = () => {
                             ) : (
                                 <div className="text-center text-slate-400">
                                     <ImageIcon size={40} className="mx-auto mb-2" />
-                                    <p className="text-xs font-bold uppercase">Sube tu Logo</p>
+                                    <p className="text-xs font-bold uppercase">{t('company.label_logo')}</p>
                                 </div>
                             )}
                             <input 
@@ -168,12 +170,12 @@ const CompanySettingsPage = () => {
                                 onChange={handleLogoUpload}
                             />
                             <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
-                                <p className="bg-white px-4 py-2 rounded-full text-xs font-black text-blue-600 shadow-xl uppercase">Cambiar Logo</p>
+                                <p className="bg-white px-4 py-2 rounded-full text-xs font-black text-blue-600 shadow-xl uppercase">{t('company.change_logo')}</p>
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">Email corporativo</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">{t('company.label_email')}</label>
                             <div className="relative">
                                 <input 
                                     name="email"
@@ -186,7 +188,7 @@ const CompanySettingsPage = () => {
                         </div>
 
                         <div>
-                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">Teléfono</label>
+                            <label className="block text-xs font-black text-slate-400 uppercase mb-2">{t('company.label_phone')}</label>
                             <div className="relative">
                                 <input 
                                     name="phone"
@@ -200,13 +202,13 @@ const CompanySettingsPage = () => {
                     </div>
 
                     <div className="md:col-span-2">
-                        <label className="block text-xs font-black text-slate-400 uppercase mb-2">Datos Bancarios (Para cobros)</label>
+                        <label className="block text-xs font-black text-slate-400 uppercase mb-2">{t('company.label_bank')}</label>
                         <div className="relative">
                             <input 
                                 name="bankDetails"
                                 value={settings.bankDetails}
                                 onChange={handleChange}
-                                placeholder="IBAN: ES00 0000..."
+                                placeholder={t('company.placeholder_bank')}
                                 className="w-full bg-blue-50/50 border-2 border-blue-100 rounded-xl p-4 font-black text-blue-900 outline-none"
                             />
                             <CreditCard className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-300" size={24} />
@@ -219,7 +221,7 @@ const CompanySettingsPage = () => {
                         className="md:col-span-2 py-4 bg-slate-800 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-900 transition-all shadow-xl shadow-slate-200 flex items-center justify-center gap-3"
                     >
                         {saving ? <Loader className="animate-spin" /> : <Save size={20} />}
-                        {saving ? 'Guardando...' : 'Guardar Configuración Fiscal'}
+                        {saving ? t('company.btn_saving') : t('company.btn_save')}
                     </button>
                 </form>
             </div>
