@@ -50,6 +50,7 @@ const DashboardLayout = () => {
     const [notifications, setNotifications] = useState([]);
     const [showNotifications, setShowNotifications] = useState(false);
     const [toast, setToast] = useState(null);
+    const [isLangOpen, setIsLangOpen] = useState(false);
     const prevUnreadCountRef = React.useRef(0);
 
     const location = useLocation();
@@ -423,14 +424,33 @@ const DashboardLayout = () => {
                         <div className="flex items-center gap-4 md:gap-6">
                             
                             {/* Language Switcher */}
-                            <div className="relative group">
-                                <button className="flex items-center gap-1.5 p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors">
+                            <div className="relative group" onMouseLeave={() => setIsLangOpen(false)}>
+                                <button 
+                                    onClick={() => setIsLangOpen(!isLangOpen)}
+                                    className="flex items-center gap-1.5 p-2 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+                                >
                                     <Globe size={18} />
                                     <span className="text-xs font-bold uppercase">{i18n.language}</span>
                                 </button>
-                                <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-100 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
-                                    <button onClick={() => i18n.changeLanguage('es')} className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${i18n.language === 'es' ? 'font-bold text-joa-blue bg-blue-50/50' : 'text-slate-600'}`}>🇪🇸 Español</button>
-                                    <button onClick={() => i18n.changeLanguage('de')} className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${i18n.language === 'de' ? 'font-bold text-joa-blue bg-blue-50/50' : 'text-slate-600'}`}>🇩🇪 Deutsch</button>
+                                <div className={`absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-100 transition-all z-50 overflow-hidden ${isLangOpen ? 'opacity-100 visible' : 'opacity-0 invisible group-hover:opacity-100 group-hover:visible'}`}>
+                                    <button 
+                                        onClick={() => {
+                                            i18n.changeLanguage('es');
+                                            setIsLangOpen(false);
+                                        }} 
+                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${i18n.language === 'es' ? 'font-bold text-joa-blue bg-blue-50/50' : 'text-slate-600'}`}
+                                    >
+                                        🇪🇸 Español
+                                    </button>
+                                    <button 
+                                        onClick={() => {
+                                            i18n.changeLanguage('de');
+                                            setIsLangOpen(false);
+                                        }} 
+                                        className={`w-full text-left px-4 py-2 text-sm hover:bg-slate-50 ${i18n.language === 'de' ? 'font-bold text-joa-blue bg-blue-50/50' : 'text-slate-600'}`}
+                                    >
+                                        🇩🇪 Deutsch
+                                    </button>
                                 </div>
                             </div>
 
