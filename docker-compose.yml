@@ -27,7 +27,10 @@ services:
       - "3000:3000"
 
   client:
-    build: ./client
+    build:
+      context: ./client
+      args:
+        VITE_GOOGLE_MAPS_KEY: AIzaSyDJiKbyOAUHXATnA_gurI9L7ViIJd73yOk
     restart: always
     ports:
       - "8080:80"
