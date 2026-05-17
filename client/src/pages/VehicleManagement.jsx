@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Truck, Plus, Trash2, Edit3, AlertCircle, Fuel, Gauge, TrendingUp, Search, X } from 'lucide-react';
 import api from '../api/axios';
+import { useTranslation } from 'react-i18next';
 
 const VehicleManagement = () => {
+    const { t } = useTranslation();
     const [vehicles, setVehicles] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentVehicle, setCurrentVehicle] = useState(null);
@@ -44,14 +46,14 @@ const VehicleManagement = () => {
             setSelectedVehicleStats(data);
         } catch (error) {
             console.error('Error fetching vehicle stats', error);
-            alert('Error cargando historial');
+            alert(t('vehicles.error_load_history'));
         } finally {
             setLoadingStats(false);
         }
     };
 
     const handleDeleteLog = async (logId, vehicleId) => {
-        if (!window.confirm('¿Eliminar este registro de bitácora? Esto recalculará el kilometraje actual del coche.')) return;
+        if (!window.confirm(t('vehicles.confirm_delete_log'))) return;
         try {
             await api.delete(`/api/vehicles/log/${logId}`);
             // Refresh both lists
@@ -59,7 +61,7 @@ const VehicleManagement = () => {
             fetchVehicleHistory(vehicleId);
         } catch (error) {
             console.error('Error deleting log', error);
-            alert('Error al eliminar registro');
+            alert(t('vehicles.error_delete_log'));
         }
     };
 
@@ -82,7 +84,7 @@ const VehicleManagement = () => {
             fetchVehicleHistory(vehicleId);
         } catch (error) {
             console.error('Error updating log', error);
-            alert('Error al actualizar registro');
+            alert(t('vehicles.error_update_log'));
         }
     };
 
@@ -119,17 +121,17 @@ const VehicleManagement = () => {
             fetchVehicles();
             setIsModalOpen(false);
         } catch (error) {
-            alert('Error guardando vehículo');
+            alert(t('vehicles.error_save_vehicle'));
         }
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('¿Eliminar este vehículo?')) return;
+        if (!window.confirm(t('vehicles.confirm_delete_vehicle'))) return;
         try {
             await api.delete(`/api/vehicles/${id}`);
             fetchVehicles();
         } catch (error) {
-            alert('Error eliminando');
+            alert(t('vehicles.error_delete_vehicle'));
         }
     };
 
@@ -152,15 +154,15 @@ const VehicleManagement = () => {
             <div className="flex justify-between items-center bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                        <Truck className="text-blue-600" /> Control de Flota (Admin)
+                        <Truck className="text-blue-600" /> {t('vehicles.fleet_control')}
                     </h1>
-                    <p className="text-slate-500 text-sm">Auditoría de gastos, tickets y kilometraje real.</p>
+                    <p className="text-slate-500 text-sm">{t('vehicles.fleet_control_desc')}</p>
                 </div>
                 <button 
                     onClick={() => handleOpenModal()}
                     className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-blue-700 transition-all shadow-lg hover:shadow-blue-200"
                 >
-                    <Plus size={20} /> Añadir Vehículo
+                    <Plus size={20} /> {t('vehicles.add_vehicle')}
                 </button>
             </div>
 
@@ -170,7 +172,7 @@ const VehicleManagement = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                         type="text" 
-                        placeholder="Buscar por matrícula o marca..."
+                        placeholder={t('vehicles.search_placeholder')}
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 outline-none"
@@ -195,7 +197,7 @@ const VehicleManagement = () => {
                                     <button 
                                         onClick={() => fetchVehicleHistory(v.id)}
                                         className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg flex items-center gap-1 text-xs font-bold" 
-                                        title="Ver historial y fotos"
+                                        title={t('vehicles.view_history')}
                                     >
                                         <Search size={14} /> Bitácora
                                     </button>
@@ -217,7 +219,7 @@ const VehicleManagement = () => {
 
                             <div className="space-y-4 flex-grow">
                                 <div className="flex justify-between items-end text-sm">
-                                    <span className="text-slate-500 font-medium">Uso del Seguro (10k km/año)</span>
+                                    <span className="text-slate-500 font-medium">{t('vehicles.insurance_usage')}</span>
                                     <span className={`font-bold ${isAlert ? 'text-red-600' : 'text-slate-700'}`}>{kmsDriven.toFixed(0)} / {v.annualKmLimit} km</span>
                                 </div>
                                 <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
@@ -229,19 +231,19 @@ const VehicleManagement = () => {
 
                                 <div className="grid grid-cols-2 gap-4 pt-2">
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Kms Actuales</p>
+                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">{t('vehicles.current_kms')}</p>
                                         <p className="font-bold text-slate-700 flex items-center gap-1"><Gauge size={14} className="text-blue-500" /> {v.currentKms}</p>
                                     </div>
                                     <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">Usuarios Asignados</p>
-                                        <p className="font-bold text-slate-700 truncate">{v.users && v.users.length > 0 ? v.users.map(u => u.username).join(', ') : 'Libre'}</p>
+                                        <p className="text-[10px] uppercase font-bold text-slate-400 mb-1">{t('vehicles.assigned_users')}</p>
+                                        <p className="font-bold text-slate-700 truncate">{v.users && v.users.length > 0 ? v.users.map(u => u.username).join(', ') : t('vehicles.free')}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {isAlert && (
                                 <div className="mt-4 flex items-center gap-2 text-red-600 text-xs font-bold animate-pulse">
-                                    <AlertCircle size={14} /> LÍMITE DE SEGURO PRÓXIMO - PARAR COCHE
+                                    <AlertCircle size={14} /> {t('vehicles.insurance_alert')}
                                 </div>
                             )}
                         </div>
@@ -254,13 +256,13 @@ const VehicleManagement = () => {
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-scaleIn">
                         <div className="p-6 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                            <h2 className="text-xl font-bold text-slate-800">{currentVehicle ? 'Editar Vehículo' : 'Nuevo Vehículo'}</h2>
+                            <h2 className="text-xl font-bold text-slate-800">{currentVehicle ? t('vehicles.edit_vehicle') : t('vehicles.new_vehicle')}</h2>
                             <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Marca</label>
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">{t('vehicles.make')}</label>
                                     <input 
                                         type="text" 
                                         required 
@@ -271,7 +273,7 @@ const VehicleManagement = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Modelo</label>
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">{t('vehicles.model')}</label>
                                     <input 
                                         type="text" 
                                         required 
@@ -283,7 +285,7 @@ const VehicleManagement = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">Matrícula</label>
+                                <label className="block text-sm font-medium text-slate-600 mb-1">{t('vehicles.plate')}</label>
                                 <input 
                                     type="text" 
                                     required 
@@ -295,7 +297,7 @@ const VehicleManagement = () => {
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Kms Iniciales</label>
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">{t('vehicles.initial_kms')}</label>
                                     <input 
                                         type="number" 
                                         required 
@@ -305,7 +307,7 @@ const VehicleManagement = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-600 mb-1">Límite Seguro (Km)</label>
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">{t('vehicles.annual_km_limit')}</label>
                                     <input 
                                         type="number" 
                                         required 
@@ -316,8 +318,8 @@ const VehicleManagement = () => {
                                 </div>
                             </div>
                             <div className="pt-4 flex gap-3">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-all">Cancelar</button>
-                                <button type="submit" className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">Guardar</button>
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-3 text-slate-600 font-bold hover:bg-slate-100 rounded-xl transition-all">{t('vehicles.cancel')}</button>
+                                <button type="submit" className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200">{t('vehicles.save')}</button>
                             </div>
                         </form>
                     </div>
@@ -333,8 +335,8 @@ const VehicleManagement = () => {
                                     <TrendingUp size={20} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-bold text-slate-800">Bitácora de Actividad</h2>
-                                    <p className="text-xs text-slate-500">Repasando: <b>{selectedVehicleStats?.vehicle.plate}</b></p>
+                                    <h2 className="text-xl font-bold text-slate-800">{t('vehicles.activity_log')}</h2>
+                                    <p className="text-xs text-slate-500">{t('vehicles.reviewing')} <b>{selectedVehicleStats?.vehicle.plate}</b></p>
                                 </div>
                             </div>
                             <button onClick={() => setIsLogsModalOpen(false)} className="bg-slate-100 p-2 rounded-full text-slate-400 hover:text-slate-800 hover:bg-slate-200 transition-all">
@@ -344,19 +346,19 @@ const VehicleManagement = () => {
 
                         <div className="flex-grow overflow-y-auto p-6">
                             {loadingStats ? (
-                                <div className="text-center py-12 text-slate-400 font-bold animate-pulse">Sincronizando registros...</div>
+                                <div className="text-center py-12 text-slate-400 font-bold animate-pulse">{t('vehicles.syncing_logs')}</div>
                             ) : selectedVehicleStats?.vehicle.logs.length === 0 ? (
-                                <div className="text-center py-12 text-slate-400 italic">No hay registros de actividad para este vehículo.</div>
+                                <div className="text-center py-12 text-slate-400 italic">{t('vehicles.no_logs')}</div>
                             ) : (
                                 <div className="space-y-6">
                                     {/* Stats Mini Banner */}
                                     <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 flex justify-between items-center">
                                         <div>
-                                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Gasto Acumulado Gasolina</p>
+                                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">{t('vehicles.accumulated_fuel_cost')}</p>
                                             <h4 className="text-2xl font-black text-blue-700">{money(selectedVehicleStats?.stats.totalFuelCost)}</h4>
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 text-right">Kms Recorridos</p>
+                                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1 text-right">{t('vehicles.kms_driven')}</p>
                                             <h4 className="text-2xl font-black text-blue-700 text-right">{selectedVehicleStats?.stats.kmsDriven.toFixed(0)} km</h4>
                                         </div>
                                     </div>
@@ -378,7 +380,7 @@ const VehicleManagement = () => {
                                                                     <div className="flex gap-2">
                                                                         {log.type === 'FUEL' && (
                                                                             <div className="flex flex-col">
-                                                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Importe (€)</label>
+                                                                                <label className="text-[10px] font-bold text-slate-400 uppercase">{t('vehicles.amount')}</label>
                                                                                 <input 
                                                                                     type="number"
                                                                                     value={editLogData.amount}
@@ -389,7 +391,7 @@ const VehicleManagement = () => {
                                                                         )}
                                                                         {log.type === 'FUEL' && (
                                                                             <div className="flex flex-col">
-                                                                                <label className="text-[10px] font-bold text-slate-400 uppercase">Litros</label>
+                                                                                <label className="text-[10px] font-bold text-slate-400 uppercase">{t('vehicles.liters')}</label>
                                                                                 <input 
                                                                                     type="number"
                                                                                     value={editLogData.liters}
@@ -399,7 +401,7 @@ const VehicleManagement = () => {
                                                                             </div>
                                                                         )}
                                                                         <div className="flex flex-col">
-                                                                            <label className="text-[10px] font-bold text-slate-400 uppercase">Kilometraje</label>
+                                                                            <label className="text-[10px] font-bold text-slate-400 uppercase">{t('vehicles.mileage')}</label>
                                                                             <input 
                                                                                 type="number"
                                                                                 value={editLogData.kms}
@@ -414,19 +416,19 @@ const VehicleManagement = () => {
                                                                             onClick={() => handleSaveEditLog(log.id, selectedVehicleStats.vehicle.id)}
                                                                             className="px-3 py-1 bg-green-600 text-white text-[10px] font-bold rounded-lg hover:bg-green-700 transition-colors"
                                                                         >
-                                                                            Guardar
+                                                                            {t('vehicles.save')}
                                                                         </button>
                                                                         <button 
                                                                             onClick={() => setEditingLogId(null)}
                                                                             className="px-3 py-1 bg-slate-200 text-slate-600 text-[10px] font-bold rounded-lg hover:bg-slate-300 transition-colors"
                                                                         >
-                                                                            Cancelar
+                                                                            {t('vehicles.cancel')}
                                                                         </button>
                                                                     </div>
                                                                 </div>
                                                             ) : (
                                                                 <h5 className="font-bold text-slate-800">
-                                                                    {log.type === 'FUEL' ? `Repostaje: ${money(log.amount)} - ${log.kms} km` : `Odométro: ${log.kms} km`}
+                                                                    {log.type === 'FUEL' ? `${t('vehicles.refueling')} ${money(log.amount)} - ${log.kms} km` : `${t('vehicles.odometer')} ${log.kms} km`}
                                                                 </h5>
                                                             )}
                                                         </div>
@@ -436,7 +438,7 @@ const VehicleManagement = () => {
                                                             <button 
                                                                 onClick={() => handleStartEditLog(log)}
                                                                 className="p-2 text-blue-300 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                                title="Editar registro"
+                                                                title={t('vehicles.edit_log')}
                                                             >
                                                                 <Edit3 size={16} />
                                                             </button>
@@ -444,7 +446,7 @@ const VehicleManagement = () => {
                                                         <button 
                                                             onClick={() => handleDeleteLog(log.id, selectedVehicleStats.vehicle.id)}
                                                             className="p-2 text-red-300 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                                            title="Borrar registro"
+                                                            title={t('vehicles.delete_log')}
                                                         >
                                                             <Trash2 size={16} />
                                                         </button>
@@ -477,7 +479,7 @@ const VehicleManagement = () => {
                         </div>
 
                         <div className="p-4 bg-slate-50 border-t border-slate-100 text-center">
-                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">Joa Technologien Auditoría de Flota</p>
+                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic">{t('vehicles.audit_footer')}</p>
                         </div>
                     </div>
                 </div>
