@@ -12,38 +12,74 @@ const saveCache = (cache) => {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
 };
 
-// Attempt to geocode a full address using Photon (Komoot) – no rate limits, excellent for Germany
+// Multi-stage geocoding for maximum precision
+// Stage 1 – Photon: fast, parallel-safe; only accepted if result is a specific house/building
+// Stage 2 – Nominatim STRUCTURED (separate housenumber param): much more accurate for German rural addresses
+// Stage 3 – Photon street-only: at least lands on the correct street
 const geocodeFull = async (street, number, city, cache) => {
-    const q = [street, number, city].filter(Boolean).join(' ').trim();
-    if (!q) return null;
-    if (cache[q]?.lat) return cache[q];
+    const cacheKey = [street, number, city].filter(Boolean).join(' ').trim();
+    if (!cacheKey) return null;
+    if (cache[cacheKey]?.lat) return cache[cacheKey];
 
+    // Stage 1: Photon free-text – only trust if it confirms a house/building result
     try {
-        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1`;
+        const q = [street, number, city].filter(Boolean).join(', ').trim();
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=de`;
         const res = await fetch(url);
         if (res.ok) {
             const data = await res.json();
             if (data?.features?.length > 0) {
-                const [lng, lat] = data.features[0].geometry.coordinates;
-                const coords = { lat: parseFloat(lat), lng: parseFloat(lng) };
-                cache[q] = coords;
-                return coords;
+                const feat = data.features[0];
+                const [lng, lat] = feat.geometry.coordinates;
+                const type = feat.properties?.type || '';
+                if (['house', 'building', 'amenity', 'tourism'].includes(type)) {
+                    const coords = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                    cache[cacheKey] = coords;
+                    return coords;
+                }
             }
         }
     } catch {}
 
-    // Fallback: street only
-    const qs = [street, city].filter(Boolean).join(' ').trim();
-    if (cache[qs]?.lat) return cache[qs];
+    // Stage 2: Nominatim STRUCTURED search with separate housenumber – significantly more
+    // precise than free-text for German addresses with house numbers not in OSM text index
+    if (number && street) {
+        try {
+            const params = new URLSearchParams({
+                format: 'json',
+                housenumber: number,
+                street: street,
+                city: city || '',
+                countrycodes: 'de',
+                limit: '1',
+            });
+            const url = `https://nominatim.openstreetmap.org/search?${params}`;
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json', 'Accept-Language': 'de' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.length > 0) {
+                    const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                    cache[cacheKey] = coords;
+                    return coords;
+                }
+            }
+        } catch {}
+    }
+
+    // Stage 3: Photon street-only – last resort, at least lands on the correct street
+    const streetKey = [street, city].filter(Boolean).join(', ').trim();
+    if (cache[streetKey]?.lat) return cache[streetKey];
     try {
-        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(qs)}&limit=1`;
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(streetKey)}&limit=1&lang=de`;
         const res = await fetch(url);
         if (res.ok) {
             const data = await res.json();
             if (data?.features?.length > 0) {
                 const [lng, lat] = data.features[0].geometry.coordinates;
                 const coords = { lat: parseFloat(lat), lng: parseFloat(lng) };
-                cache[qs] = coords;
+                cache[streetKey] = coords;
                 return coords;
             }
         }
