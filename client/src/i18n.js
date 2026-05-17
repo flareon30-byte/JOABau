@@ -38,7 +38,8 @@ const resources = {
         no_notifications: "No tienes notificaciones.",
         date: "Fecha",
         management: "Gestión integral de",
-        new_notification: "Nueva Notificación"
+        new_notification: "Nueva Notificación",
+        project_map: "Mapa del Proyecto"
       },
       home: {
         hello: "¡Hola",
@@ -1219,7 +1220,8 @@ const resources = {
         no_notifications: "Sie haben keine Benachrichtigungen.",
         date: "Datum",
         management: "Integrierte Verwaltung von",
-        new_notification: "Neue Benachrichtigung"
+        new_notification: "Neue Benachrichtigung",
+        project_map: "Projektkarte"
       },
       home: {
         hello: "Hallo",
