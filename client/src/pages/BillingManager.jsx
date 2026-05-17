@@ -3,10 +3,12 @@ import api from '../api/axios';
 import { Search, FileText, Download, Filter, Calendar, Trash2, Pencil, TrendingUp, Sun, ClipboardList } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import ProjectMapModal from '../components/ProjectMapModal';
 
 const BillingPage = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
+    const [isMapOpen, setIsMapOpen] = useState(false);
     // 1. Projects State
     const [projects, setProjects] = useState([]);
 
@@ -867,22 +869,34 @@ const BillingPage = () => {
                     )}
                 </div>
                 
-                <div className="mt-4 flex justify-end gap-2">
-                    <button 
-                        onClick={() => {
-                            const today = new Date().toISOString().split('T')[0];
-                            setFilters({ ...filters, startDate: today, endDate: today });
-                        }}
-                        className="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors border border-emerald-100"
-                    >
-                        <Calendar size={14} /> {t('billing.btn_today_production')}
-                    </button>
-                    <button 
-                        onClick={resetFilters}
-                        className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-100"
-                    >
-                        <Filter size={14} /> {t('billing.btn_clear_filters')}
-                    </button>
+                <div className="mt-4 flex justify-between items-center">
+                    <div>
+                        {filters.projectId && (
+                            <button
+                                onClick={() => setIsMapOpen(true)}
+                                className="text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 flex items-center gap-1.5 px-4 py-2.5 rounded-xl transition-all border border-indigo-500 shadow-md shadow-indigo-100 hover:shadow-lg hover:shadow-indigo-200 cursor-pointer active:scale-95"
+                            >
+                                <span>🗺️</span> {t('billing.btn_view_map') || 'Ver Mapa del Proyecto'}
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={() => {
+                                const today = new Date().toISOString().split('T')[0];
+                                setFilters({ ...filters, startDate: today, endDate: today });
+                            }}
+                            className="text-xs font-bold text-emerald-600 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 px-3 py-1.5 rounded-lg transition-colors border border-emerald-100"
+                        >
+                            <Calendar size={14} /> {t('billing.btn_today_production')}
+                        </button>
+                        <button 
+                            onClick={resetFilters}
+                            className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors border border-blue-100"
+                        >
+                            <Filter size={14} /> {t('billing.btn_clear_filters')}
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1005,6 +1019,13 @@ const BillingPage = () => {
                     </div>
                 </div>
             )}
+
+            {/* Project Map Modal */}
+            <ProjectMapModal
+                isOpen={isMapOpen}
+                projectId={filters.projectId}
+                onClose={() => setIsMapOpen(false)}
+            />
         </div>
     );
 };

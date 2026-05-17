@@ -407,3 +407,23 @@ exports.deleteProject = async (req, res) => {
         res.status(500).json({ message: 'Error deleting project' });
     }
 };
+
+exports.getProjectMapData = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const addresses = await prisma.address.findMany({
+            where: { projectId: id },
+            include: {
+                sopladoInfo: true,
+                appointment: true,
+                activationInfo: true,
+                simpleInstallation: true
+            }
+        });
+        res.json(addresses);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching map data' });
+    }
+};
+

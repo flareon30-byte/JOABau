@@ -11,6 +11,9 @@ router.use(verifyToken);
 // List projects (Available to all authenticated users? Or just admins? Let's say all for now so workers can select)
 router.get('/', projectController.getAllProjects);
 
+// Get map data for a specific project
+router.get('/:id/map-data', projectController.getProjectMapData);
+
 // Admin only actions
 router.post('/', checkRole(['ADMIN', 'SUPER_ADMIN']), projectController.createProject);
 router.post('/import', checkRole(['ADMIN', 'SUPER_ADMIN']), upload.single('file'), projectController.importProject);

@@ -1057,6 +1057,7 @@ const resources = {
         title: "Facturación (v2.1)",
         subtitle: "Gestiona y exporta los trabajos realizados para facturar.",
         btn_export: "Exportar Excel",
+        btn_view_map: "Ver Mapa del Proyecto",
         btn_docs: "Docs ({{count}})",
         prod_month_gross: "Producción del Mes (Bruta)",
         current_month: "Mes en curso",
@@ -1130,6 +1131,14 @@ const resources = {
         recite_reason: "Motivo de Recita/Derivación",
         units_summary: "Desglose de Unidades Facturadas",
         copy_text: "Copiar texto"
+      },
+      map: {
+        loading: "Cargando Proyecto...",
+        total_addresses: "Clientes / Puntos de Red",
+        status_completed: "Terminada",
+        status_scheduled: "Citada",
+        status_blown: "Soplado sin cita",
+        status_not_blown: "No soplado"
       },
       invoicing: {
         title: "Gestión Económica",
@@ -2228,6 +2237,7 @@ const resources = {
         title: "Abrechnung (v2.1)",
         subtitle: "Verwalten und exportieren Sie die erbrachten Leistungen zur Abrechnung.",
         btn_export: "Excel exportieren",
+        btn_view_map: "Projektkarte anzeigen",
         btn_docs: "Dokumente ({{count}})",
         prod_month_gross: "Monatliche Bruttoproduktion",
         current_month: "Laufender Monat",
@@ -2301,6 +2311,14 @@ const resources = {
         recite_reason: "Grund für Terminverschiebung/Weiterleitung",
         units_summary: "Aufschlüsselung der abgerechneten Einheiten",
         copy_text: "Text kopieren"
+      },
+      map: {
+        loading: "Projekt wird geladen...",
+        total_addresses: "Kunden / Netzwerkpunkte",
+        status_completed: "Abgeschlossen",
+        status_scheduled: "Terminiert",
+        status_blown: "Einblasen ohne Termin",
+        status_not_blown: "Nicht eingeblasen"
       },
       invoicing: {
         title: "Finanzverwaltung",
