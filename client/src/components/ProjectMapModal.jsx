@@ -111,18 +111,21 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
         return null;
     };
 
-    const geocodeAddress = async (street, number, city) => {
+    const getCleanStreet = (street) => {
+        if (!street) return '';
+        // Extracts clean street name by removing house numbers (e.g. "Bahnhofstraße 12a" -> "Bahnhofstraße")
+        return street.replace(/\s+\d+.*$/, '').trim();
+    };
+
+    const geocodeStreet = async (streetName, city) => {
         const cacheKey = 'joa-map-geo-cache-v1';
         let cache = {};
         try {
             cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
         } catch (e) {}
 
-        const queryStr = `${street} ${number || ''}, ${city || ''}`.trim();
+        const queryStr = `${streetName}, ${city || ''}`.trim();
         if (cache[queryStr]) return cache[queryStr];
-
-        // Small random sleep to prevent concurrent hits to OSM
-        await new Promise(r => setTimeout(r, Math.random() * 200));
 
         try {
             const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryStr)}`;
@@ -142,7 +145,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 }
             }
         } catch (error) {
-            console.error('Geocoding error:', queryStr, error);
+            console.error('Street geocoding error:', queryStr, error);
         }
         return null;
     };
@@ -226,13 +229,66 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 markersGroupRef.current.clearLayers();
             }
 
-            let index = 0;
+            // Group addresses to gather unique clean streets in the project
+            const uniqueStreets = [...new Set(addresses.map(a => getCleanStreet(a.street)))].filter(Boolean);
+            const streetCoordsMap = {};
+
+            // Geocode streets sequentially with a safety delay to prevent Nominatim rate blocks
+            let streetIndex = 0;
+            for (const str of uniqueStreets) {
+                const queryStr = `${str}, ${firstCity}`.trim();
+                
+                // If not already in cache, wait 1000ms to be 100% compliant with Nominatim Usage Policy
+                const cacheKey = 'joa-map-geo-cache-v1';
+                let cache = {};
+                try {
+                    cache = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+                } catch (e) {}
+
+                if (!cache[queryStr]) {
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+
+                const coords = await geocodeStreet(str, firstCity);
+                if (coords) {
+                    streetCoordsMap[str] = coords;
+                }
+                
+                streetIndex++;
+                setProgress(Math.round((streetIndex / uniqueStreets.length) * 100));
+            }
+
+            // Count addresses per street to spread them realistically along their physical street paths
+            const streetCounts = {};
+            addresses.forEach(addr => {
+                const cleanStr = getCleanStreet(addr.street);
+                streetCounts[cleanStr] = (streetCounts[cleanStr] || 0) + 1;
+            });
+
+            const streetIndexes = {};
+
+            let addrIndex = 0;
             for (const addr of addresses) {
                 const status = getAddressStatus(addr);
-                let coords = await geocodeAddress(addr.street, addr.number, addr.city);
-                
-                if (!coords) {
-                    coords = getScatteredCoords(center, index);
+                const cleanStr = getCleanStreet(addr.street);
+                const streetCoords = streetCoordsMap[cleanStr];
+
+                let coords;
+                if (streetCoords) {
+                    const idxOnStreet = streetIndexes[cleanStr] || 0;
+                    streetIndexes[cleanStr] = idxOnStreet + 1;
+                    
+                    // Disperse markers realistically along the physical street (approx 10-15 meters offsets)
+                    const angle = (idxOnStreet * 60) * (Math.PI / 180);
+                    const radius = 0.00008 + idxOnStreet * 0.00006; 
+
+                    coords = {
+                        lat: streetCoords.lat + Math.cos(angle) * radius,
+                        lng: streetCoords.lng + Math.sin(angle) * radius
+                    };
+                } else {
+                    // Fallback scattered Fibonacci spiral around city center if geocoding failed
+                    coords = getScatteredCoords(center, addrIndex);
                 }
 
                 const iconHtml = `<div class="w-4.5 h-4.5 rounded-full border-2 border-white shadow-md transition-all duration-300 transform hover:scale-130 flex items-center justify-center ${status.class}"></div>`;
@@ -292,8 +348,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 });
 
                 markersGroupRef.current.addLayer(marker);
-                index++;
-                setProgress(Math.round((index / addresses.length) * 100));
+                addrIndex++;
             }
 
             if (markersGroupRef.current.getLayers().length > 0) {
@@ -353,10 +408,10 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                         <div className="absolute inset-0 bg-white/90 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center p-6 text-center">
                             <Loader2 className="animate-spin text-indigo-600 mb-4" size={48} />
                             <h4 className="font-extrabold text-slate-800 text-lg">
-                                {loading ? 'Cargando información del proyecto...' : 'Geolocalizando clientes en el mapa...'}
+                                {loading ? 'Cargando información del proyecto...' : 'Geolocalizando calles del proyecto...'}
                             </h4>
                             <p className="text-slate-500 text-sm mt-1 max-w-sm">
-                                {loading ? 'Esto tardará solo un instante.' : 'Estamos localizando la dirección de cada cliente para mapearlo.'}
+                                {loading ? 'Esto tardará solo un instante.' : 'Estamos localizando las calles de forma segura para posicionar a los clientes.'}
                             </p>
                             
                             {!loading && (
@@ -368,7 +423,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                                 </div>
                             )}
                             <span className="text-xs font-bold text-indigo-600 mt-2">
-                                {loading ? '' : `${progress}% completado`}
+                                {loading ? '' : `Analizando calles: ${progress}%`}
                             </span>
                         </div>
                     )}
