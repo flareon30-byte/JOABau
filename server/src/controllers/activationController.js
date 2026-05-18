@@ -29,21 +29,31 @@ exports.getMyAppointments = async (req, res) => {
 
         const appointments = await prisma.appointment.findMany({
             where: {
-                OR: [
-                    { assignedTeamId: teamId },
-                    { 
-                        address: { 
-                            activationInfo: { 
-                                performerIds: { has: userId } 
-                            } 
-                        } 
+                AND: [
+                    {
+                        OR: [
+                            { assignedTeamId: null },
+                            { assignedTeamId: teamId }
+                        ]
                     },
                     {
-                        address: {
-                            sopladoInfo: {
-                                performerIds: { has: userId }
+                        OR: [
+                            { assignedTeamId: teamId },
+                            { 
+                                address: { 
+                                    activationInfo: { 
+                                        performerIds: { has: userId } 
+                                    } 
+                                } 
+                            },
+                            {
+                                address: {
+                                    sopladoInfo: {
+                                        performerIds: { has: userId }
+                                    }
+                                }
                             }
-                        }
+                        ]
                     }
                 ]
             },

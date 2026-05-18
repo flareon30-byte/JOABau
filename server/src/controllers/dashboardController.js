@@ -138,10 +138,20 @@ exports.getActivatorDashboard = async (req, res) => {
 
         const appointments = await prisma.appointment.findMany({
             where: {
-                OR: [
-                    { assignedTeamId: user.teamId || 'no-team' },
-                    { address: { activationInfo: { performerIds: { has: user.id } } } },
-                    { address: { sopladoInfo: { performerIds: { has: user.id } } } }
+                AND: [
+                    {
+                        OR: [
+                            { assignedTeamId: null },
+                            { assignedTeamId: user.teamId || 'no-team' }
+                        ]
+                    },
+                    {
+                        OR: [
+                            { assignedTeamId: user.teamId || 'no-team' },
+                            { address: { activationInfo: { performerIds: { has: user.id } } } },
+                            { address: { sopladoInfo: { performerIds: { has: user.id } } } }
+                        ]
+                    }
                 ]
             },
             include: {
