@@ -23,7 +23,7 @@ router.use(verifyToken);
 router.get('/addresses/:projectId', sopladoController.getProjectAddresses);
 
 // Submit report (photos are optional but supported)
-router.post('/report/:addressId', upload.array('photos', 5), sopladoController.submitSopladoReport);
+router.post('/report/:addressId', upload.array('photos', 25), sopladoController.submitSopladoReport);
 
 // Quick Toggle Status
 router.post('/toggle-status/:addressId', sopladoController.toggleSopladoStatus);

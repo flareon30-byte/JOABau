@@ -40,10 +40,10 @@ const upload = multer({ storage: storage });
 router.put('/:id/status', checkRole(operationalRoles), appointmentController.updateStatus);
 router.post('/request-appointment/:addressId', checkRole(operationalRoles), appointmentController.requestAppointment);
 router.put('/protocol-status/:addressId', checkRole(['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN']), appointmentController.updateProtocolStatus);
-router.post('/:id/recite', checkRole(operationalRoles), upload.array('photos', 5), appointmentController.reciteAppointment);
+router.post('/:id/recite', checkRole(operationalRoles), upload.array('photos', 25), appointmentController.reciteAppointment);
 router.delete('/:id', checkRole(allowedRoles), appointmentController.deleteAppointment);
 router.put('/address/:id/order-status', checkRole(allowedRoles), appointmentController.updateOrderStatus);
 router.put('/address/:addressId/details', checkRole(allowedRoles), appointmentController.updateAddressDetails);
-router.put('/comments/:commentId', checkRole(allowedRoles), upload.array('photos', 5), appointmentController.updateComment);
+router.put('/comments/:commentId', checkRole(allowedRoles), upload.array('photos', 25), appointmentController.updateComment);
 
 module.exports = router;
