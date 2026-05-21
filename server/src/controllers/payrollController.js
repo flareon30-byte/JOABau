@@ -95,6 +95,14 @@ exports.getPayrollSummary = async (req, res) => {
             if (!unified) continue;
 
             const { stats } = unified;
+
+            // Fetch actual dietas count for the period
+            const dietasCount = await prisma.dietaLog.count({
+                where: {
+                    userId: user.id,
+                    date: { gte: startDate, lte: endDate }
+                }
+            });
             
             // Reconstruct the expected frontend object
             summary.push({
@@ -105,11 +113,11 @@ exports.getPayrollSummary = async (req, res) => {
                 bonus: stats.bonusPool || 0,
                 saturday: stats.saturdayPay || 0,
                 dietaPay: stats.dietasPay || 0,
-                dietasCount: stats.dietasCount || 0,
+                dietasCount: dietasCount,
                 total: (user.baseSalary || 0) + (stats.bonusPool || 0) + (stats.saturdayPay || 0) + (stats.dietasPay || 0),
                 production: {
                     teamName: user.team?.name || 'Sin Equipo',
-                    appointmentsDone: stats.counts?.bp || 0,
+                    appointmentsDone: (stats.counts?.bp || 0) + (stats.counts?.ta || 0) + (stats.counts?.sp || 0) + (stats.counts?.mdu || 0) + (stats.counts?.repair || 0),
                     totalRevenue: stats.totalRevenue || 0,
                     counts: {
                         bp: stats.counts?.bp || 0,
@@ -136,9 +144,133 @@ exports.getPayrollSummary = async (req, res) => {
 
 // --- RESTORED FUNCTIONS TO PREVENT BOOT CRASH ---
 exports.archiveCurrentCycle = async (req, res) => {
-    res.status(501).json({ message: 'Function temporarily disabled for cleanup' });
+    try {
+        let start, end;
+        if (req.body.startDate && req.body.endDate) {
+            start = new Date(req.body.startDate);
+            end = new Date(req.body.endDate);
+            end.setHours(23, 59, 59, 999);
+        } else {
+            // Fallback to the cycle that ended most recently.
+            // If today is the 21st, we want the cycle that ended yesterday (on the 20th).
+            // So we check the cycle for today - 24 hours.
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const dates = getCycleDates(yesterday);
+            start = dates.start;
+            end = dates.end;
+        }
+
+        const month = end.getMonth() + 1;
+        const year = end.getFullYear();
+
+        // 1. Fetch Users
+        const users = await prisma.user.findMany({
+            where: {
+                role: { in: ['BLOWER', 'ACTIVATOR', 'BACK_OFFICE', 'PROTOCOL_MANAGER'] }
+            },
+            include: { 
+                team: {
+                    include: { members: true }
+                } 
+            }
+        });
+
+        console.log(`[Archive] Guardando Foto Finish del ciclo ${month}/${year} (${start.toISOString().split('T')[0]} al ${end.toISOString().split('T')[0]})...`);
+
+        let count = 0;
+        for (const user of users) {
+            try {
+                const unified = await getUnifiedUserStats(user.id, req.isDemo || false, start, end);
+                if (!unified) continue;
+
+                const { stats } = unified;
+
+                const dietasCount = await prisma.dietaLog.count({
+                    where: {
+                        userId: user.id,
+                        date: { gte: start, lte: end }
+                    }
+                });
+
+                const baseSalary = user.baseSalary || 0;
+                const bonus = stats.bonusPool || 0;
+                const saturday = stats.saturdayPay || 0;
+                const dietaPay = stats.dietasPay || 0;
+                const total = baseSalary + bonus + saturday + dietaPay;
+
+                const appointmentsDone = (stats.counts?.bp || 0) + (stats.counts?.ta || 0) + (stats.counts?.sp || 0) + (stats.counts?.mdu || 0) + (stats.counts?.repair || 0);
+
+                await prisma.payrollLog.upsert({
+                    where: {
+                        userId_month_year: { userId: user.id, month, year }
+                    },
+                    update: {
+                        points: appointmentsDone,
+                        pointEarnings: bonus,
+                        dietasCount: dietasCount,
+                        dietasAmount: dietaPay,
+                        saturdayPay: saturday,
+                        totalEuros: total,
+                        cycleStart: start,
+                        cycleEnd: end
+                    },
+                    create: {
+                        userId: user.id,
+                        month,
+                        year,
+                        points: appointmentsDone,
+                        pointEarnings: bonus,
+                        dietasCount: dietasCount,
+                        dietasAmount: dietaPay,
+                        saturdayPay: saturday,
+                        totalEuros: total,
+                        cycleStart: start,
+                        cycleEnd: end
+                    }
+                });
+                count++;
+            } catch (e) {
+                console.error(`[Archive Error] Error for user ${user.username}:`, e);
+            }
+        }
+
+        res.json({ success: true, message: `Foto finish completada para ${count} trabajadores.` });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ message: 'Error archiving cycle' });
+    }
 };
 
 exports.getArchiveHistory = async (req, res) => {
-    res.status(501).json({ message: 'Function temporarily disabled for cleanup' });
+    try {
+        const { userId: filterUserId } = req.query;
+        let logs;
+
+        if (req.userRole === 'SUPER_ADMIN' || req.userRole === 'ADMIN') {
+            if (filterUserId && filterUserId !== 'all') {
+                logs = await prisma.payrollLog.findMany({
+                    where: { userId: filterUserId },
+                    include: { user: true },
+                    orderBy: [{ year: 'desc' }, { month: 'desc' }]
+                });
+            } else {
+                logs = await prisma.payrollLog.findMany({
+                    include: { user: true },
+                    orderBy: [{ year: 'desc' }, { month: 'desc' }]
+                });
+            }
+        } else {
+            logs = await prisma.payrollLog.findMany({
+                where: { userId: req.userId },
+                include: { user: true },
+                orderBy: [{ year: 'desc' }, { month: 'desc' }]
+            });
+        }
+
+        res.json(logs);
+    } catch (error) {
+        console.error('Error fetching payroll history:', error);
+        res.status(500).json({ message: 'Error fetching payroll history' });
+    }
 };

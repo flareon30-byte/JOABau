@@ -75,7 +75,10 @@ const PayrollPage = () => {
         
         setIsArchiving(true);
         try {
-            const res = await api.post('/api/payroll/archive');
+            const res = await api.post('/api/payroll/archive', {
+                startDate: filters.startDate,
+                endDate: filters.endDate
+            });
             alert(res.data.message);
             fetchPayrollData();
             fetchHistory();
