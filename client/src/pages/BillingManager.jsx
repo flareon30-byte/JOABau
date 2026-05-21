@@ -266,7 +266,7 @@ const BillingPage = () => {
                 break;
             case 'fusion':
                 data = billingData.fusion;
-                columns = [t('billing.col_date'), t('billing.col_project'), t('billing.col_type'), t('billing.col_nvt_address'), t('billing.col_fusions'), t('billing.col_hours'), t('billing.col_tray'), t('billing.col_notes'), t('billing.col_actions')];
+                columns = [t('billing.col_date'), t('billing.col_project'), t('billing.col_type'), t('billing.col_nvt_address'), t('billing.col_fusions'), t('billing.col_hours'), t('billing.col_tray'), t('billing.col_total_euros'), t('billing.col_notes'), t('billing.col_actions')];
                 emptyMsg = t('billing.no_fusion');
                 break;
             case 'activation':
@@ -349,6 +349,7 @@ const BillingPage = () => {
                                         <td className="p-4 font-black">{row.fusionCount}</td>
                                         <td className="p-4">{row.hours ? `${row.hours}h` : '-'}</td>
                                         <td className="p-4">{row.isTray ? 'Sí' : 'No'}</td>
+                                        <td className="p-4 font-black text-slate-800">{row.totalEuros !== undefined ? `${row.totalEuros}€` : '-'}</td>
                                         <td className="p-4 text-slate-500 truncate max-w-xs">{row.description}</td>
                                     </>
                                 )}
@@ -572,16 +573,15 @@ const BillingPage = () => {
                                 {/* ACTIONS COLUMN */}
                                 <td className="p-4 w-28">
                                     <div className="flex items-center gap-2">
-                                        {(activeTab === 'activation' || activeTab === 'simpleInstallation') && (
+                                        {(activeTab === 'activation' || activeTab === 'simpleInstallation' || activeTab === 'fusion') && (
                                             <>
                                                 <button
                                                     onClick={() => {
-                                                        const addressId = row.addressId || row.address?.id;
                                                         if (activeTab === 'activation') {
+                                                            const addressId = row.addressId || row.address?.id;
                                                             navigate(`/dashboard/activations?editAddressId=${addressId}`);
-                                                        } else {
-                                                            // For SimpleInstallation we might need another page, but user specifically asked for activations
-                                                            // navigate(`/dashboard/gnk-installation?editId=${row.id}`);
+                                                        } else if (activeTab === 'fusion') {
+                                                            navigate(`/dashboard/fusion?editId=${row.id}`);
                                                         }
                                                     }}
                                                     className="text-amber-500 hover:text-amber-700 hover:bg-amber-50 p-2 rounded-lg transition-colors"
@@ -589,13 +589,15 @@ const BillingPage = () => {
                                                 >
                                                     <Pencil size={18} />
                                                 </button>
-                                                <button
-                                                    onClick={() => handleDownloadDocs([row.id])} // Download ZIP for single item
-                                                    className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors"
-                                                    title="Descargar ZIP (Fotos + PDF)"
-                                                >
-                                                    <Download size={18} />
-                                                </button>
+                                                {(activeTab === 'activation' || activeTab === 'simpleInstallation') && (
+                                                    <button
+                                                        onClick={() => handleDownloadDocs([row.id])} // Download ZIP for single item
+                                                        className="text-blue-500 hover:text-blue-700 hover:bg-blue-50 p-2 rounded-lg transition-colors"
+                                                        title="Descargar ZIP (Fotos + PDF)"
+                                                    >
+                                                        <Download size={18} />
+                                                    </button>
+                                                )}
                                             </>
                                         )}
 

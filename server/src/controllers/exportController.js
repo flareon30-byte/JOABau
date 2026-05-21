@@ -396,6 +396,8 @@ exports.getBillingData = async (req, res) => {
                 results.totals.itemsSummary['Fusiones (NVT)'] = (results.totals.itemsSummary['Fusiones (NVT)'] || 0) + (f.fusionCount || 0);
             }
 
+            f.totalEuros = lineGross;
+
             results.totals.euros += lineGross;
             // Assuming weekday for now, unless we add isSaturday to FusionWork
             results.totals.weekdayGross += lineGross; 

@@ -41,4 +41,7 @@ router.get('/works/:projectId', fusionController.getFusionWorks);
 // Update Fusion Work
 router.put('/work/:id', uploadMiddleware, fusionController.updateFusionWork);
 
+// Get Fusion Work by ID
+router.get('/work/:id', fusionController.getFusionWorkById);
+
 module.exports = router;

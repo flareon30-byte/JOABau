@@ -73,7 +73,7 @@ exports.getFusionWorks = async (req, res) => {
 // Update Fusion Work
 exports.updateFusionWork = async (req, res) => {
     const { id } = req.params;
-    const { fusionCount, isTray, description, address, hours, existingPhotos } = req.body;
+    const { projectId, nvt, type, fusionCount, isTray, description, address, hours, existingPhotos } = req.body;
     const files = req.files;
     const userId = req.userId;
 
@@ -100,11 +100,14 @@ exports.updateFusionWork = async (req, res) => {
         const updated = await prisma.fusionWork.update({
             where: { id },
             data: {
+                projectId: projectId || undefined,
+                nvtName: nvt !== undefined ? (nvt || null) : undefined,
+                type: type || undefined,
                 fusionCount: fusionCount ? parseInt(fusionCount) : undefined,
                 isTray: isTray !== undefined ? (isTray === 'true' || isTray === true) : undefined,
                 description: description !== undefined ? description : undefined,
                 address: address !== undefined ? address : undefined,
-                hours: hours ? parseFloat(hours) : undefined,
+                hours: hours !== undefined ? (hours ? parseFloat(hours) : null) : undefined,
                 photos: photoPaths
             }
         });
@@ -113,5 +116,21 @@ exports.updateFusionWork = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error updating fusion work' });
+    }
+};
+
+// Get Fusion Work by ID
+exports.getFusionWorkById = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const work = await prisma.fusionWork.findUnique({
+            where: { id },
+            include: { project: true }
+        });
+        if (!work) return res.status(404).json({ message: 'Work not found' });
+        res.json(work);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching fusion work' });
     }
 };

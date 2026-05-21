@@ -140,7 +140,8 @@ const resources = {
         success_create: "Trabajo registrado correctamente",
         error_save: "Error al guardar trabajo",
         error_gps: "No se pudo obtener la ubicación GPS.",
-        no_geolocation: "Tu navegador no soporta geolocalización."
+        no_geolocation: "Tu navegador no soporta geolocalización.",
+        error_loading_work: "Error al cargar el trabajo para editar"
       },
       blowing: {
         select_project: "Selecciona un Proyecto",
@@ -1322,7 +1323,8 @@ const resources = {
         success_create: "Arbeit erfolgreich erfasst",
         error_save: "Fehler beim Speichern der Arbeit",
         error_gps: "GPS-Standort konnte nicht ermittelt werden.",
-        no_geolocation: "Ihr Browser unterstützt keine Geolokalisierung."
+        no_geolocation: "Ihr Browser unterstützt keine Geolokalisierung.",
+        error_loading_work: "Fehler beim Laden der Arbeit zur Bearbeitung"
       },
       blowing: {
         select_project: "Projekt auswählen",

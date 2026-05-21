@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 import { Search, Camera, ArrowLeft, Zap, Layers, History, Save, Upload, MapPin, Clock, RefreshCw, X, Trash2, Pencil, Edit } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import useBranding from '../hooks/useBranding';
 import { saveFusionDraft, getFusionDraft, deleteFusionDraft } from '../utils/offlineStorage';
 
@@ -21,6 +22,10 @@ const getFileUrl = (path) => {
 const FusionDepartment = () => {
     const { t } = useTranslation();
     const { branding } = useBranding();
+    const [searchParams] = useSearchParams();
+    const navigate = useNavigate();
+    const editId = searchParams.get('editId');
+
     const [projects, setProjects] = useState([]);
     const [selectedProject, setSelectedProject] = useState(null);
     const [addresses, setAddresses] = useState([]);
@@ -62,6 +67,59 @@ const FusionDepartment = () => {
             loadDraft();
         }
     }, [selectedNvt, isMuffaMode, selectedProject]);
+
+    // Fetch and hydrate editing work if editId is provided
+    useEffect(() => {
+        if (!editId) return;
+
+        const fetchAndHydrate = async () => {
+            try {
+                const res = await api.get(`/api/fusion/work/${editId}`);
+                const work = res.data;
+                
+                // Hydrate project
+                if (work.project) {
+                    setSelectedProject(work.project);
+                }
+                
+                // Hydrate modes
+                if (work.type === 'MUFFA') {
+                    setIsMuffaMode(true);
+                    setSelectedNvt(null);
+                } else {
+                    setIsMuffaMode(false);
+                    setSelectedNvt(work.nvtName);
+                }
+
+                // Set edit state
+                setEditingWork(work);
+                setFormData({
+                    fusionCount: work.fusionCount,
+                    isTray: work.isTray,
+                    description: work.description || '',
+                    address: work.address || '',
+                    hours: work.hours || ''
+                });
+
+                // Load existing photos
+                const existing = (work.photos || []).map((path, i) => {
+                    const fullUrl = getFileUrl(path);
+                    return {
+                        preview: fullUrl,
+                        name: `Foto ${i + 1}`,
+                        isExisting: true,
+                        originalPath: path
+                    };
+                });
+                setPhotos(existing);
+            } catch (error) {
+                console.error("Error fetching work for edit:", error);
+                alert(t('fusion.error_loading_work') || "Error al cargar el trabajo para editar");
+            }
+        };
+
+        fetchAndHydrate();
+    }, [editId]);
 
     // Derive NVTs from addresses
     useEffect(() => {
@@ -109,6 +167,7 @@ const FusionDepartment = () => {
     };
 
     const loadDraft = async () => {
+        if (editId || editingWork) return;
         const draftId = getDraftId();
         if (!draftId) return;
 
@@ -131,6 +190,7 @@ const FusionDepartment = () => {
     };
 
     useEffect(() => {
+        if (editId || editingWork) return;
         const draftId = getDraftId();
         if (!draftId || isProcessingPhotos || submitting) return;
 
@@ -354,6 +414,10 @@ const FusionDepartment = () => {
                     headers: { 'Content-Type': 'multipart/form-data' }
                 });
                 alert(t('fusion.success_update'));
+                if (editId) {
+                    navigate('/dashboard/billing');
+                    return;
+                }
             } else {
                 await api.post('/api/fusion/log-work', data, {
                     headers: { 'Content-Type': 'multipart/form-data' }
@@ -461,10 +525,14 @@ const FusionDepartment = () => {
                 <div className="flex items-center gap-4 mb-2">
                     <button 
                         onClick={() => {
-                            setSelectedNvt(null);
-                            setIsMuffaMode(false);
-                            setFormData({ fusionCount: '', isTray: false, description: '', address: '', hours: '' });
-                            setPhotos([]);
+                            if (editId) {
+                                navigate('/dashboard/billing');
+                            } else {
+                                setSelectedNvt(null);
+                                setIsMuffaMode(false);
+                                setFormData({ fusionCount: '', isTray: false, description: '', address: '', hours: '' });
+                                setPhotos([]);
+                            }
                         }} 
                         className="p-2 hover:bg-slate-200 rounded-full transition-colors"
                     >
@@ -490,6 +558,9 @@ const FusionDepartment = () => {
                                         setEditingWork(null);
                                         setFormData({ fusionCount: '', isTray: false, description: '', address: '', hours: '' });
                                         setPhotos([]);
+                                        if (editId) {
+                                            navigate('/dashboard/billing');
+                                        }
                                     }}
                                     className="text-xs bg-white text-amber-700 px-3 py-1.5 rounded-lg border border-amber-200 font-bold hover:bg-amber-100 transition-colors"
                                 >
