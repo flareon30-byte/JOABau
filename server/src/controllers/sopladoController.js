@@ -188,13 +188,17 @@ exports.toggleSopladoStatus = async (req, res) => {
         const isSaturday = new Date().getDay() === 6;
         let teamId = null;
         let saturdayPay = 0;
+        let performerIds = [req.userId];
 
         if (req.userId) {
             const user = await prisma.user.findUnique({ 
                 where: { id: req.userId },
-                include: { team: { include: { activeClientCompany: { include: { priceItems: true } } } } }
+                include: { team: { include: { members: true, activeClientCompany: { include: { priceItems: true } } } } }
             });
             teamId = user?.teamId || null;
+            if (user?.team?.members) {
+                performerIds = user.team.members.map(m => m.id);
+            }
 
             if (isSaturday && user.team?.activeClientCompany?.priceItems) {
                 const sopladoItem = user.team.activeClientCompany.priceItems.find(item => item.department === 'BLOWING' || item.name.toLowerCase().includes('soplado'));
@@ -271,6 +275,7 @@ exports.toggleSopladoStatus = async (req, res) => {
         res.status(500).json({ message: 'Error updating status' });
     }
 };
+
 // Bulk Update Status
 exports.bulkUpdateSopladoStatus = async (req, res) => {
     const { addressIds, status } = req.body; // status: 'OK', 'PENDIENTE', 'FALLIDO'
@@ -281,6 +286,7 @@ exports.bulkUpdateSopladoStatus = async (req, res) => {
 
     try {
         await prisma.$transaction(async (prisma) => {
+            let dataPerformerIds = [req.userId];
             for (const id of addressIds) {
                 // 1. Find address to get location info
                 const target = await prisma.address.findUnique({ where: { id } });
