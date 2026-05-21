@@ -22,12 +22,25 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+const uploadMiddleware = (req, res, next) => {
+    upload.any()(req, res, (err) => {
+        if (err) {
+            console.error(`[Multer Error on route ${req.method} ${req.url}]`, err);
+            return res.status(400).json({
+                message: `Error al subir imágenes: ${err.message}`,
+                code: err.code
+            });
+        }
+        next();
+    });
+};
+
 router.get('/search', checkRole(allowedRoles), issueController.searchAddressHistory);
 router.post('/create', checkRole(allowedRoles), issueController.createManualIssue);
 router.post('/create-existing', checkRole(allowedRoles), issueController.createFromExisting);
 
 // Repair Routes
-router.post('/repair/:addressId', upload.array('photos', 25), issueController.submitRepair);
+router.post('/repair/:addressId', uploadMiddleware, issueController.submitRepair);
 router.get('/repairs', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), issueController.getRepairs);
 router.delete('/repair/:appointmentId', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), issueController.deleteIssue);
 router.put('/repair/:appointmentId', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), issueController.updateIssue);

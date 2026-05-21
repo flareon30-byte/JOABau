@@ -17,13 +17,26 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+const uploadMiddleware = (req, res, next) => {
+    upload.any()(req, res, (err) => {
+        if (err) {
+            console.error(`[Multer Error on route ${req.method} ${req.url}]`, err);
+            return res.status(400).json({
+                message: `Error al subir imágenes: ${err.message}`,
+                code: err.code
+            });
+        }
+        next();
+    });
+};
+
 router.use(verifyToken);
 
 // Get addresses for a project
 router.get('/addresses/:projectId', sopladoController.getProjectAddresses);
 
 // Submit report (photos are optional but supported)
-router.post('/report/:addressId', upload.array('photos', 25), sopladoController.submitSopladoReport);
+router.post('/report/:addressId', uploadMiddleware, sopladoController.submitSopladoReport);
 
 // Quick Toggle Status
 router.post('/toggle-status/:addressId', sopladoController.toggleSopladoStatus);

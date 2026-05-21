@@ -37,13 +37,26 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+const uploadMiddleware = (req, res, next) => {
+    upload.any()(req, res, (err) => {
+        if (err) {
+            console.error(`[Multer Error on route ${req.method} ${req.url}]`, err);
+            return res.status(400).json({
+                message: `Error al subir imágenes: ${err.message}`,
+                code: err.code
+            });
+        }
+        next();
+    });
+};
+
 router.put('/:id/status', checkRole(operationalRoles), appointmentController.updateStatus);
 router.post('/request-appointment/:addressId', checkRole(operationalRoles), appointmentController.requestAppointment);
 router.put('/protocol-status/:addressId', checkRole(['BACK_OFFICE', 'ADMIN', 'SUPER_ADMIN']), appointmentController.updateProtocolStatus);
-router.post('/:id/recite', checkRole(operationalRoles), upload.array('photos', 25), appointmentController.reciteAppointment);
+router.post('/:id/recite', checkRole(operationalRoles), uploadMiddleware, appointmentController.reciteAppointment);
 router.delete('/:id', checkRole(allowedRoles), appointmentController.deleteAppointment);
 router.put('/address/:id/order-status', checkRole(allowedRoles), appointmentController.updateOrderStatus);
 router.put('/address/:addressId/details', checkRole(allowedRoles), appointmentController.updateAddressDetails);
-router.put('/comments/:commentId', checkRole(allowedRoles), upload.array('photos', 25), appointmentController.updateComment);
+router.put('/comments/:commentId', checkRole(allowedRoles), uploadMiddleware, appointmentController.updateComment);
 
 module.exports = router;

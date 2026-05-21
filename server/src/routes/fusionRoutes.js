@@ -17,15 +17,28 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+const uploadMiddleware = (req, res, next) => {
+    upload.any()(req, res, (err) => {
+        if (err) {
+            console.error(`[Multer Error on route ${req.method} ${req.url}]`, err);
+            return res.status(400).json({
+                message: `Error al subir imágenes: ${err.message}`,
+                code: err.code
+            });
+        }
+        next();
+    });
+};
+
 router.use(verifyToken);
 
 // Log Fusion Work
-router.post('/log-work', upload.array('photos', 25), fusionController.logFusionWork);
+router.post('/log-work', uploadMiddleware, fusionController.logFusionWork);
 
 // Get Fusion Works by Project (Optional filter ?nvt=...)
 router.get('/works/:projectId', fusionController.getFusionWorks);
 
 // Update Fusion Work
-router.put('/work/:id', upload.array('photos', 25), fusionController.updateFusionWork);
+router.put('/work/:id', uploadMiddleware, fusionController.updateFusionWork);
 
 module.exports = router;
