@@ -5,6 +5,19 @@ import { useTranslation } from 'react-i18next';
 import useBranding from '../hooks/useBranding';
 import { saveFusionDraft, getFusionDraft, deleteFusionDraft } from '../utils/offlineStorage';
 
+const getFileUrl = (path) => {
+    if (!path) return '';
+    let cleanPath = path.split('?')[0].replace(/\\/g, '/');
+    if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+
+    let baseUrl = api.defaults.baseURL || '';
+    if (baseUrl === '/') baseUrl = '';
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+    
+    const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+    return `${baseUrl}${encodedPath}`;
+};
+
 const FusionDepartment = () => {
     const { t } = useTranslation();
     const { branding } = useBranding();
@@ -259,8 +272,7 @@ const FusionDepartment = () => {
 
         // Load existing photos
         const existing = (work.photos || []).map((path, i) => {
-            const cleanPath = path.replace(/\\/g, '/');
-            const fullUrl = `${api.defaults.baseURL || ''}/${encodedPath(cleanPath)}`;
+            const fullUrl = getFileUrl(path);
             return {
                 preview: fullUrl,
                 name: `Foto ${i + 1}`,
@@ -704,7 +716,7 @@ const FusionDepartment = () => {
                                 {work.photos && work.photos.length > 0 && (
                                     <div className="grid grid-cols-4 gap-1 mt-2">
                                         {work.photos.slice(0, 4).map((p, i) => {
-                                            const fullUrl = `${api.defaults.baseURL || ''}/${p.replace(/\\/g, '/')}`;
+                                            const fullUrl = getFileUrl(p);
                                             return (
                                                 <img 
                                                     key={i} 
