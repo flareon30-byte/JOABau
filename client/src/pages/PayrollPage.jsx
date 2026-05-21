@@ -539,56 +539,105 @@ const DietaCalendarModal = ({ user, onClose, onSave }) => {
 const PayrollHistoryModal = ({ history, onClose }) => {
     const money = (val) => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(val || 0);
 
+    const handleExportHistoryCSV = () => {
+        if (history.length === 0) return;
+        const headers = ["Trabajador", "Mes/Año", "Periodo", "Sueldo Base", "Bonus Producción", "Sábados", "Dietas", "Total Neto"];
+        const rows = history.map(log => {
+            const baseSalary = Math.max(0, (log.totalEuros || 0) - (log.pointEarnings || 0) - (log.saturdayPay || 0) - (log.dietasAmount || 0));
+            const periodStr = `${log.cycleStart ? log.cycleStart.split('T')[0] : '---'} al ${log.cycleEnd ? log.cycleEnd.split('T')[0] : '---'}`;
+            const monthStr = new Date(log.year, log.month - 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+            return [
+                `"${log.user?.username || 'Usuario'}"`,
+                `"${monthStr}"`,
+                `"${periodStr}"`,
+                baseSalary.toFixed(2).replace('.', ','),
+                (log.pointEarnings || 0).toFixed(2).replace('.', ','),
+                (log.saturdayPay || 0).toFixed(2).replace('.', ','),
+                (log.dietasAmount || 0).toFixed(2).replace('.', ','),
+                (log.totalEuros || 0).toFixed(2).replace('.', ',')
+            ];
+        });
+        const csvContent = "\uFEFF" + [headers.join(";"), ...rows.map(r => r.join(";"))].join("\n");
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Historico_Nominas_Gestoria.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center z-[110] p-4">
-            <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[80vh] overflow-hidden shadow-2xl relative flex flex-col border-4 border-slate-100">
+            <div className="bg-white rounded-3xl w-full max-w-6xl max-h-[85vh] overflow-hidden shadow-2xl relative flex flex-col border-4 border-slate-100">
                 <button onClick={onClose} className="absolute top-6 right-6 text-slate-400 hover:text-slate-800 z-50">
                     <X size={28} />
                 </button>
 
-                <div className="p-8 bg-slate-50 border-b border-slate-100">
-                    <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
-                        <Calendar className="text-joa-blue" size={28} /> Archivo de Nóminas Cerradas
-                    </h3>
-                    <p className="text-slate-500 text-sm font-medium">Historial de Foto Finish (Ciclos 21-20)</p>
+                <div className="p-8 bg-slate-50 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-800 flex items-center gap-3">
+                            <Calendar className="text-joa-blue" size={28} /> Archivo de Nóminas Cerradas
+                        </h3>
+                        <p className="text-slate-500 text-sm font-medium">Historial de Foto Finish (Ciclos 21-20)</p>
+                    </div>
+                    {history.length > 0 && (
+                        <button
+                            onClick={handleExportHistoryCSV}
+                            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider shadow-lg shadow-green-200 transition-all transform active:scale-95"
+                        >
+                            <Download size={16} /> Exportar Tabla para Gestoría
+                        </button>
+                    )}
                 </div>
 
-                <div className="flex-grow overflow-y-auto p-4 md:p-8">
+                <div className="flex-grow overflow-auto p-4 md:p-8">
                     {history.length === 0 ? (
                         <div className="text-center py-20 text-slate-400 italic">No hay ciclos cerrados todavía.</div>
                     ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {history.map(log => (
-                                <div key={log.id} className="bg-white border-2 border-slate-100 rounded-2xl p-5 hover:border-joa-blue/30 transition-all group">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div>
-                                            <div className="text-[10px] font-black text-joa-blue uppercase tracking-widest">{log.user?.username || 'Usuario'}</div>
-                                            <div className="text-lg font-black text-slate-800 uppercase">
-                                                {new Date(log.year, log.month - 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
-                                            </div>
-                                        </div>
-                                        <div className="bg-slate-100 px-3 py-1 rounded-full text-[10px] font-black text-slate-500">
-                                            {log.cycleStart ? log.cycleStart.split('T')[0].split('-').reverse().join('/') : '---'} - {log.cycleEnd ? log.cycleEnd.split('T')[0].split('-').reverse().join('/') : '---'}
-                                        </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                            <div className="text-[9px] text-slate-400 font-bold uppercase">Puntos</div>
-                                            <div className="text-sm font-black text-slate-700">{log.points} pts</div>
-                                        </div>
-                                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                                            <div className="text-[9px] text-slate-400 font-bold uppercase">Dietas ({log.dietasCount})</div>
-                                            <div className="text-sm font-black text-slate-700">{money(log.dietasAmount)}</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-between items-center bg-slate-900 text-white p-3 rounded-xl">
-                                        <span className="text-[10px] font-bold uppercase">Neto Foto Finish</span>
-                                        <span className="text-lg font-black">{money(log.totalEuros)}</span>
-                                    </div>
-                                </div>
-                            ))}
+                        <div className="overflow-x-auto rounded-2xl border border-slate-100 shadow-sm">
+                            <table className="w-full border-collapse text-left text-sm text-slate-500">
+                                <thead className="bg-slate-50 text-xs font-black uppercase tracking-wider text-slate-700 border-b border-slate-100">
+                                    <tr>
+                                        <th className="px-6 py-4">Trabajador</th>
+                                        <th className="px-6 py-4">Mes/Año</th>
+                                        <th className="px-6 py-4">Periodo</th>
+                                        <th className="px-6 py-4 text-right">Sueldo Base</th>
+                                        <th className="px-6 py-4 text-right">Bonus Prod.</th>
+                                        <th className="px-6 py-4 text-right">Sábados</th>
+                                        <th className="px-6 py-4 text-right">Dietas</th>
+                                        <th className="px-6 py-4 text-right">Total Neto</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 bg-white">
+                                    {history.map(log => {
+                                        const baseSalary = Math.max(0, (log.totalEuros || 0) - (log.pointEarnings || 0) - (log.saturdayPay || 0) - (log.dietasAmount || 0));
+                                        const monthStr = new Date(log.year, log.month - 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                                        return (
+                                            <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="px-6 py-4 font-black text-slate-800 uppercase">{log.user?.username || 'Usuario'}</td>
+                                                <td className="px-6 py-4 capitalize">{monthStr}</td>
+                                                <td className="px-6 py-4 text-xs font-mono text-slate-400">
+                                                    {log.cycleStart ? log.cycleStart.split('T')[0].split('-').reverse().join('/') : '---'} - {log.cycleEnd ? log.cycleEnd.split('T')[0].split('-').reverse().join('/') : '---'}
+                                                </td>
+                                                <td className="px-6 py-4 text-right font-semibold text-slate-700">{money(baseSalary)}</td>
+                                                <td className="px-6 py-4 text-right font-semibold text-green-600">+{money(log.pointEarnings)}</td>
+                                                <td className="px-6 py-4 text-right font-semibold text-blue-600">+{money(log.saturdayPay)}</td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <div className="font-semibold text-slate-700">+{money(log.dietasAmount)}</div>
+                                                    <div className="text-[10px] text-slate-400 font-bold uppercase">{log.dietasCount || 0} Días</div>
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className="inline-flex items-center rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-black text-white">
+                                                        {money(log.totalEuros)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </div>

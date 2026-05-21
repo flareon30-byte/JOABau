@@ -49,10 +49,13 @@ async function getUnifiedUserStats(userId, isDemo = false, customStartDate = nul
         }
     });
     let myDietasPayOnly = 0;
+    let mySaturdayExtraPay = 0;
     userDietasLogs.forEach(d => {
         let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
-        if (d.isSaturday) myDietasPayOnly += base;
-        else myDietasPayOnly += (d.amount || 0);
+        myDietasPayOnly += base;
+        if (d.isSaturday) {
+            mySaturdayExtraPay += Math.max(0, (d.amount || base) - base);
+        }
     });
 
     const overheadToCover = await getGlobalSupportDeficit(isDemo, start, end);
@@ -83,6 +86,9 @@ async function getUnifiedUserStats(userId, isDemo = false, customStartDate = nul
         teamMembersCount,
         userId
     );
+
+    // Add Saturday extra pay from dietas to Saturday pay total
+    stats.saturdayPay += mySaturdayExtraPay;
 
     return {
         user,
