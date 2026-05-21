@@ -25,6 +25,7 @@ const processImages = async (files, technicianName = 'Técnico JOA') => {
             if (fs.existsSync(absoluteLogoPath)) {
                 logoBuffer = await sharp(absoluteLogoPath)
                     .resize({ width: 150, fit: 'inside' }) // Logo más pequeño para la esquina
+                    .png()
                     .toBuffer();
             }
         }
@@ -36,7 +37,7 @@ const processImages = async (files, technicianName = 'Técnico JOA') => {
     if (!logoBuffer) {
         const DEFAULT_LOGO = path.join(__dirname, 'logo.png');
         if (fs.existsSync(DEFAULT_LOGO)) {
-            logoBuffer = await sharp(DEFAULT_LOGO).resize({ width: 150 }).toBuffer();
+            logoBuffer = await sharp(DEFAULT_LOGO).resize({ width: 150 }).png().toBuffer();
         }
     }
 
@@ -49,53 +50,53 @@ const processImages = async (files, technicianName = 'Técnico JOA') => {
         if (!['.jpg', '.jpeg', '.png', '.webp'].includes(ext)) continue;
 
         try {
-            const metadata = await sharp(filePath).metadata();
-            
-            // 2. Crear el SVG para el nombre del técnico (Estilo más elegante)
-            const textSvg = `
-                <svg width="500" height="120">
-                    <style>
-                        .name { fill: white; font-size: 24px; font-family: 'Segoe UI', Arial, sans-serif; font-weight: 900; letter-spacing: 1px; }
-                        .date { fill: rgba(255,255,255,0.8); font-size: 16px; font-family: Arial, sans-serif; font-weight: 600; }
-                        .shadow { filter: drop-shadow(3px 3px 3px rgba(0,0,0,0.9)); }
-                    </style>
-                    <g class="shadow">
-                        <text x="490" y="35" class="name" text-anchor="end">${technicianName.toUpperCase()}</text>
-                        <text x="490" y="65" class="date" text-anchor="end">${today}</text>
-                    </g>
-                </svg>
-            `;
-            const textBuffer = Buffer.from(textSvg);
-
+            const fileBuffer = fs.readFileSync(filePath);
             const isSignature = file.fieldname && (file.fieldname.includes('signature') || file.fieldname.includes('Signature'));
             
-            let builder = sharp(filePath)
+            let builder = sharp(fileBuffer)
                 .rotate()
                 .resize(1600, 1600, { fit: 'inside', withoutEnlargement: true });
 
             if (!isSignature) {
-                const compositeLayers = [];
-
-                // Logo en la esquina superior derecha (Northeast)
+                // Crear el SVG combinado (logo + texto) para evitar problemas de composición con Sharp
+                let combinedSvg;
                 if (logoBuffer) {
-                    compositeLayers.push({ 
-                        input: logoBuffer, 
-                        gravity: 'northeast',
-                        top: 25,
-                        left: undefined, // Usar gravity
-                        right: 25 // Sharp usa offsets relativos a la gravedad si se pasan top/left
-                    });
+                    const logoBase64 = logoBuffer.toString('base64');
+                    combinedSvg = `
+                        <svg width="500" height="250">
+                            <style>
+                                .name { fill: white; font-size: 24px; font-family: 'Segoe UI', Arial, sans-serif; font-weight: 900; letter-spacing: 1px; }
+                                .date { fill: rgba(255,255,255,0.8); font-size: 16px; font-family: Arial, sans-serif; font-weight: 600; }
+                                .shadow { filter: drop-shadow(3px 3px 3px rgba(0,0,0,0.9)); }
+                            </style>
+                            <g class="shadow">
+                                <image href="data:image/png;base64,${logoBase64}" x="325" y="20" width="150" height="75" />
+                                <text x="475" y="115" class="name" text-anchor="end">${technicianName.toUpperCase()}</text>
+                                <text x="475" y="145" class="date" text-anchor="end">${today}</text>
+                            </g>
+                        </svg>
+                    `;
+                } else {
+                    combinedSvg = `
+                        <svg width="500" height="250">
+                            <style>
+                                .name { fill: white; font-size: 24px; font-family: 'Segoe UI', Arial, sans-serif; font-weight: 900; letter-spacing: 1px; }
+                                .date { fill: rgba(255,255,255,0.8); font-size: 16px; font-family: Arial, sans-serif; font-weight: 600; }
+                                .shadow { filter: drop-shadow(3px 3px 3px rgba(0,0,0,0.9)); }
+                            </style>
+                            <g class="shadow">
+                                <text x="475" y="45" class="name" text-anchor="end">${technicianName.toUpperCase()}</text>
+                                <text x="475" y="75" class="date" text-anchor="end">${today}</text>
+                            </g>
+                        </svg>
+                    `;
                 }
+                const combinedBuffer = Buffer.from(combinedSvg);
 
-                // Nombre y fecha ajustados a la derecha
-                compositeLayers.push({ 
-                    input: textBuffer, 
-                    gravity: 'northeast',
-                    top: 100,
-                    right: 25
-                });
-
-                builder = builder.composite(compositeLayers);
+                builder = builder.composite([{
+                    input: combinedBuffer,
+                    gravity: 'northeast'
+                }]);
             }
 
             const buffer = await builder
