@@ -278,15 +278,14 @@ exports.getBillingData = async (req, res) => {
             itemsSummary: {} 
         };
 
-        // Pre-fetch clients map for performance if no clientCompanyId is selected
-        let clientsMap = {};
-        if (!clientCompanyId) {
-            const allClients = await prisma.clientCompany.findMany();
-            allClients.forEach(c => { clientsMap[c.id] = c; });
-        }
+        // Pre-fetch all clients with their priceItems for performance
+        const allClients = await prisma.clientCompany.findMany({
+            include: { priceItems: true }
+        });
+        const clientsMap = {};
+        allClients.forEach(c => { clientsMap[c.id] = c; });
 
         const getClientForWork = (work) => {
-            if (clientCompanyId) return { id: clientCompanyId }; // Placeholder, won't use it much
             const cid = work.address?.project?.clientCompanyId || work.project?.clientCompanyId;
             return clientsMap[cid];
         };
@@ -330,8 +329,8 @@ exports.getBillingData = async (req, res) => {
 
         // --- Part B: Soplados (Need client lookup for price or stored price) ---
         results.soplado.forEach(s => {
-            const client = clientCompanyId ? { id: clientCompanyId } : getClientForWork(s);
-            const prices = client?.settings || clientsMap[client?.id]?.settings || {};
+            const client = getClientForWork(s);
+            const prices = client?.settings || {};
             
             // Use stored price if available (snapshot), otherwise fallback to current client price, otherwise 60
             const sopladoPrice = parseFloat(s.priceCharged || prices.apLPrice || 60);
@@ -369,7 +368,7 @@ exports.getBillingData = async (req, res) => {
         // --- Part D: Protocols (If they have a price set in client settings) ---
         results.protocol.forEach(p => {
             const client = getClientForWork(p);
-            const prices = client?.settings || clientsMap[client?.id]?.settings || {};
+            const prices = client?.settings || {};
             const protocolPrice = parseFloat(prices.protocolPrice || 0);
             
             if (protocolPrice > 0) {
@@ -382,16 +381,27 @@ exports.getBillingData = async (req, res) => {
         // --- Part E: Fusion (NVTs and Muffas) ---
         results.fusion.forEach(f => {
             const client = getClientForWork(f);
-            const prices = client?.settings || clientsMap[client?.id]?.settings || {};
-            const fusionSettings = prices.fusion || {};
             
             let lineGross = 0;
             if (f.type === 'MUFFA') {
-                const hourPrice = parseFloat(fusionSettings.muffaHourPrice || 35);
+                let matchingItem = null;
+                if (client && client.priceItems) {
+                    matchingItem = client.priceItems.find(item => 
+                        (item.name || '').toLowerCase().includes('muffa')
+                    );
+                }
+                const hourPrice = matchingItem ? matchingItem.priceToClient : 60.00;
                 lineGross = (f.hours || 0) * hourPrice;
                 results.totals.itemsSummary['Muffas (Horas)'] = (results.totals.itemsSummary['Muffas (Horas)'] || 0) + (f.hours || 0);
             } else {
-                const unitPrice = parseFloat(fusionSettings.fusionUnitPrice || 15);
+                let matchingItem = null;
+                if (client && client.priceItems) {
+                    matchingItem = client.priceItems.find(item => {
+                        const name = (item.name || '').toLowerCase();
+                        return name.includes('fusion') || name.includes('fusión');
+                    });
+                }
+                const unitPrice = matchingItem ? matchingItem.priceToClient : 3.00;
                 lineGross = (f.fusionCount || 0) * unitPrice;
                 results.totals.itemsSummary['Fusiones (NVT)'] = (results.totals.itemsSummary['Fusiones (NVT)'] || 0) + (f.fusionCount || 0);
             }
@@ -399,8 +409,9 @@ exports.getBillingData = async (req, res) => {
             f.totalEuros = lineGross;
 
             results.totals.euros += lineGross;
-            // Assuming weekday for now, unless we add isSaturday to FusionWork
-            results.totals.weekdayGross += lineGross; 
+            const isSat = f.createdAt && new Date(f.createdAt).getDay() === 6;
+            if (isSat) results.totals.saturdayGross += lineGross;
+            else results.totals.weekdayGross += lineGross; 
         });
 
         res.json(results);
@@ -424,6 +435,18 @@ exports.exportBillingExcel = async (req, res) => {
     if (clientCompanyId) projectFilter.clientCompanyId = clientCompanyId;
 
     try {
+        // Pre-fetch all clients with their priceItems for performance
+        const allClients = await prisma.clientCompany.findMany({
+            include: { priceItems: true }
+        });
+        const clientsMap = {};
+        allClients.forEach(c => { clientsMap[c.id] = c; });
+
+        const getClientForWork = (work) => {
+            const cid = work.address?.project?.clientCompanyId || work.project?.clientCompanyId;
+            return clientsMap[cid];
+        };
+
         const soplado = await prisma.sopladoInfo.findMany({
             where: {
                 meters: { gt: 0 }, // Billable only
@@ -546,16 +569,42 @@ exports.exportBillingExcel = async (req, res) => {
         XLSX.utils.book_append_sheet(wb, wsSoplado, "Soplado");
 
         // 2. Fusion Sheet
-        const fusionRows = fusion.map(i => ({
-            Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
-            Proyecto: i.project?.name || 'N/A',
-            Tipo: i.type || 'NVT',
-            NVT_Direccion: i.type === 'MUFFA' ? (i.address || '-') : (i.nvtName || '-'),
-            Fusiones: i.fusionCount || 0,
-            Horas: i.hours || '-',
-            EnBandeja: i.isTray ? 'Sí' : 'No',
-            Notas: i.description || '-'
-        }));
+        const fusionRows = fusion.map(i => {
+            const client = getClientForWork(i);
+            let lineGross = 0;
+            if (i.type === 'MUFFA') {
+                let matchingItem = null;
+                if (client && client.priceItems) {
+                    matchingItem = client.priceItems.find(item => 
+                        (item.name || '').toLowerCase().includes('muffa')
+                    );
+                }
+                const hourPrice = matchingItem ? matchingItem.priceToClient : 60.00;
+                lineGross = (i.hours || 0) * hourPrice;
+            } else {
+                let matchingItem = null;
+                if (client && client.priceItems) {
+                    matchingItem = client.priceItems.find(item => {
+                        const name = (item.name || '').toLowerCase();
+                        return name.includes('fusion') || name.includes('fusión');
+                    });
+                }
+                const unitPrice = matchingItem ? matchingItem.priceToClient : 3.00;
+                lineGross = (i.fusionCount || 0) * unitPrice;
+            }
+
+            return {
+                Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
+                Proyecto: i.project?.name || 'N/A',
+                Tipo: i.type || 'NVT',
+                NVT_Direccion: i.type === 'MUFFA' ? (i.address || '-') : (i.nvtName || '-'),
+                Fusiones: i.fusionCount || 0,
+                Horas: i.hours || '-',
+                'Importe (€)': parseFloat(lineGross.toFixed(2)),
+                EnBandeja: i.isTray ? 'Sí' : 'No',
+                Notas: i.description || '-'
+            };
+        });
         const wsFusion = XLSX.utils.json_to_sheet(fusionRows);
         XLSX.utils.book_append_sheet(wb, wsFusion, "Fusiones");
 
