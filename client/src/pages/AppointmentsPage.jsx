@@ -437,12 +437,17 @@ const AppointmentsPage = () => {
 
     const allPendingFiltered = sortAddresses(filterAppointments(pendingAddresses));
 
-    // Addresses that NEED Protocol check
-    const filteredProtocols = sortAddresses(allPendingFiltered.filter(a => a.requiresProtocol && a.protocolStatus !== 'OK'));
+    // Addresses with Recita/Incident requests
+    const filteredRecite = sortAddresses(allPendingFiltered.filter(a => a.appointment?.status === 'RECITAR'));
 
-    // Addresses ready for Activation (or standard)
+    // Addresses that NEED Protocol check (excluding RECITAR)
+    const filteredProtocols = sortAddresses(allPendingFiltered.filter(a => 
+        a.requiresProtocol && a.protocolStatus !== 'OK' && a.appointment?.status !== 'RECITAR'
+    ));
+
+    // Addresses ready for Activation (or standard) (excluding RECITAR)
     const filteredPending = sortAddresses(allPendingFiltered.filter(a =>
-        (!a.requiresProtocol || a.protocolStatus === 'OK') && a.sopladoStatus === 'OK'
+        (!a.requiresProtocol || a.protocolStatus === 'OK') && a.sopladoStatus === 'OK' && a.appointment?.status !== 'RECITAR'
     ));
 
     // Custom sort for Scheduled
@@ -505,6 +510,13 @@ const AppointmentsPage = () => {
                             }`}
                     >
                         {t('appointments.protocols')} ({filteredProtocols.length})
+                    </button>
+                    <button
+                        onClick={() => setView('recita')}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${view === 'recita' ? 'bg-white text-red-600 shadow-sm' : 'text-slate-600 hover:text-slate-800'
+                            }`}
+                    >
+                        {t('appointments.recitas')} ({filteredRecite.length})
                     </button>
                     <button
                         onClick={() => setView('scheduled')}
@@ -769,6 +781,177 @@ const AppointmentsPage = () => {
                     {filteredPending.length === 0 && (
                         <div className="col-span-full text-center py-12 text-slate-400">
                             {t('appointments.no_pending_found')}
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {view === 'recita' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {filteredRecite.map(address => (
+                        <div key={address.id} className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                            <div className="flex justify-between items-start mb-4">
+                                <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-lg text-slate-800">{address.street} {address.number}</h3>
+                                        <button 
+                                            onClick={() => openEditAddressModal(address)}
+                                            className="text-slate-400 hover:text-blue-600 transition-colors p-1"
+                                            title="Editar ficha (Nombre, Bauauftrag, KLS, NVT)"
+                                        >
+                                            <Pencil size={14} />
+                                        </button>
+                                    </div>
+                                    {address.clientName && (
+                                        <p className="text-sm font-semibold text-blue-600 mb-1">{address.clientName}</p>
+                                    )}
+                                    <p className="text-sm text-slate-500">
+                                        {address.project.name} | NVT: {address.nvt} | Bauauftrag: {address.bauauftragId || address.klsId || 'N/A'}
+                                        {address.apartmentCount ? (
+                                            <> | <span 
+                                                onClick={() => openBuildingClientsModal(address)} 
+                                                className="cursor-pointer font-bold text-blue-600 hover:text-blue-800 hover:underline inline-flex items-center gap-1"
+                                                title="Ver todos los clientes de este edificio"
+                                            >
+                                                Aptos: {address.apartmentCount}
+                                            </span></>
+                                        ) : ''}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <span className="inline-block px-2 py-1 bg-yellow-100 text-yellow-700 text-xs rounded-full font-bold mb-1">
+                                        {t('appointments.attempts')}: {address.appointment?.contactAttempts || 0}/4
+                                    </span>
+                                    <p className="text-xs text-slate-400">
+                                        {address.appointment?.updatedAt ? new Date(address.appointment.updatedAt).toLocaleDateString('es-ES') : t('appointments.no_contact')}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Alert for Protocol */}
+                            {address.requiresProtocol && address.protocolStatus !== 'OK' && (
+                                <div className="mb-4 bg-purple-50 border border-purple-100 p-3 rounded-lg flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 text-purple-700">
+                                        <FileText size={16} />
+                                        <div className="text-xs">
+                                            <span className="font-bold block">{t('appointments.requires_protocol')}</span>
+                                            <span className="opacity-75">{t('appointments.current_status')} {address.protocolStatus}</span>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleProtocolOverride(address.id)}
+                                        className="text-xs bg-purple-200 hover:bg-purple-300 text-purple-800 px-2 py-1 rounded transition-colors"
+                                        title={t('appointments.force_ok')}
+                                    >
+                                        {t('appointments.force_ok')}
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Alert for Recite */}
+                            {address.appointment?.status === 'RECITAR' && (
+                                <div className="mb-4 bg-red-50 border border-red-100 p-4 rounded-xl flex items-start gap-4">
+                                    <div className="bg-red-500 p-2 rounded-lg text-white">
+                                        <MessageSquare size={18} />
+                                    </div>
+                                    <div className="flex-1">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <p className="text-xs font-black text-red-700 uppercase tracking-widest">{t('appointments.recita_request')}</p>
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-[10px] text-red-400 font-bold">
+                                                    {address.appointment.comments && address.appointment.comments.length > 0 ? address.appointment.comments[address.appointment.comments.length - 1].authorName : 'Técnico'}
+                                                </p>
+                                                <button 
+                                                    onClick={() => openEditCommentModal(address)}
+                                                    className="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors"
+                                                    title={t('appointments.edit_evidences')}
+                                                >
+                                                    <Pencil size={10} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <p className="text-sm text-red-900 font-medium mb-3">
+                                            {address.appointment.comments && address.appointment.comments.length > 0
+                                                ? address.appointment.comments[address.appointment.comments.length - 1].content
+                                                : t('appointments.no_reason')}
+                                        </p>
+
+                                        {/* FOTOS DE LA RECITA */}
+                                        {address.appointment.comments && 
+                                         address.appointment.comments.length > 0 && 
+                                         address.appointment.comments[address.appointment.comments.length - 1].photos?.length > 0 && (
+                                            <div className="flex gap-2 flex-wrap mt-2">
+                                                {address.appointment.comments[address.appointment.comments.length - 1].photos.map((photo, pIdx) => (
+                                                    <a 
+                                                        key={pIdx} 
+                                                        href={`${BASE_URL}${photo.startsWith('/') ? photo : '/' + photo}`} 
+                                                        target="_blank" 
+                                                        rel="noreferrer"
+                                                        className="block w-16 h-16 rounded-lg overflow-hidden border-2 border-red-200 hover:border-red-500 transition-all shadow-sm"
+                                                    >
+                                                        <img 
+                                                            src={`${BASE_URL}${photo.startsWith('/') ? photo : '/' + photo}`} 
+                                                            alt="Evidencia recita" 
+                                                            className="w-full h-full object-cover"
+                                                        />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* History Preview */}
+                            {address.appointment?.contactHistory?.length > 0 && (
+                                <div className="mb-4 bg-slate-50 p-3 rounded-xl text-[11px] text-slate-600 space-y-2 border border-slate-100 shadow-inner">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{t('appointments.last_actions')}</p>
+                                    {address.appointment.contactHistory.slice(-5).map((entry, i) => (
+                                        <div key={i} className="flex gap-2">
+                                            <span className="text-blue-400 font-bold">•</span>
+                                            <span>{entry}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            <div className="flex flex-col gap-3 mt-4">
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => openContactModal(address)}
+                                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm font-semibold"
+                                    >
+                                        <Phone size={16} /> {t('appointments.contact')}
+                                    </button>
+                                    <button
+                                        onClick={() => openScheduleModal(address)}
+                                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg flex items-center justify-center gap-2 transition-colors text-sm font-semibold shadow-sm"
+                                    >
+                                        <Calendar size={16} /> {t('appointments.schedule')}
+                                    </button>
+                                </div>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => openDeriveModal(address, 'DERIVADA')}
+                                        className="flex-1 bg-orange-50 hover:bg-orange-100 text-orange-700 border border-orange-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
+                                        title={t('appointments.order_derivation')}
+                                    >
+                                        <Send size={14} /> {t('appointments.derive')}
+                                    </button>
+                                    <button
+                                        onClick={() => openDeriveModal(address, 'CERRADA')}
+                                        className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 py-1.5 rounded-lg flex items-center justify-center gap-2 transition-colors text-xs font-semibold"
+                                        title={t('appointments.order_closing')}
+                                    >
+                                        <CheckSquare size={14} /> {t('appointments.order_closed')}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                    {filteredRecite.length === 0 && (
+                        <div className="col-span-full text-center py-12 text-slate-400">
+                            {t('appointments.no_recitas_found')}
                         </div>
                     )}
                 </div>
