@@ -282,24 +282,28 @@ exports.submitActivation = async (req, res) => {
             }
         }
 
-        let spDynamicPrice = parseFloat(fin.pricePerSP || 75);
+        let spDynamicPrice = 0;
         const spItem = priceItems.find(item => {
             const name = (item.name || '').toLowerCase();
             return name === 'sp' || name.includes('sp');
         });
         if (spItem && spItem.priceToClient !== undefined) {
             spDynamicPrice = spItem.priceToClient;
+        } else if (priceItems.length === 0) {
+            spDynamicPrice = parseFloat(fin.pricePerSP || 75);
         }
         const totalSpPrice = spCount * spDynamicPrice;
 
         let taPriceTotal = 0;
-        let sduDynamicPrice = parseFloat(fin.pricePerTA || 25);
+        let sduDynamicPrice = 0;
         const sduItem = priceItems.find(item => {
             const name = (item.name || '').toLowerCase();
             return name === 'sdu' || name === 'ta' || name.includes('ta') || name.includes('sdu');
         });
         if (sduItem && sduItem.priceToClient !== undefined) {
             sduDynamicPrice = sduItem.priceToClient;
+        } else if (priceItems.length === 0) {
+            sduDynamicPrice = parseFloat(fin.pricePerTA || 25);
         }
         const finalTaCountCalculated = taInstalledBool ? (taCountInt > 0 ? taCountInt : 1) : 0;
         if (finalTaCountCalculated > 0) {
@@ -310,13 +314,15 @@ exports.submitActivation = async (req, res) => {
         }
 
         let mduPriceTotal = 0;
-        let mduDynamicPrice = parseFloat(fin.pricePerMDU || 50);
+        let mduDynamicPrice = 0;
         const mduItem = priceItems.find(item => {
             const name = (item.name || '').toLowerCase();
             return name === 'mdu' || name.includes('mdu');
         });
         if (mduItem && mduItem.priceToClient !== undefined) {
             mduDynamicPrice = mduItem.priceToClient;
+        } else if (priceItems.length === 0) {
+            mduDynamicPrice = parseFloat(fin.pricePerMDU || 50);
         }
         if (isMduBool) {
             mduPriceTotal = mduDynamicPrice;
