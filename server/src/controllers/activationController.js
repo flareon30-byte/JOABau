@@ -247,7 +247,11 @@ exports.submitActivation = async (req, res) => {
             fin = {};
         }
 
-        const isSaturday = req.body.isSaturday === 'true' || req.body.isSaturday === true || (new Date().getDay() === 6);
+        const finalDate = (address.activationInfo && !address.activationInfo.isDraft) 
+            ? new Date(address.activationInfo.createdAt) 
+            : new Date();
+
+        const isSaturday = req.body.isSaturday === 'true' || req.body.isSaturday === true || (finalDate.getDay() === 6);
 
         // Financials (Snapshot)
         let basePrice = parseFloat(fin.pricePerUnit || 60);
