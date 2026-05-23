@@ -115,7 +115,7 @@ exports.exportActivationPhotos = async (req, res) => {
 };
 
 exports.getBillingData = async (req, res) => {
-    const { projectId, startDate, endDate, nvt, type, clientCompanyId } = req.query;
+    const { projectId, startDate, endDate, nvt, type, clientCompanyId, address } = req.query;
     const isDemo = req.isDemo === true; // Filter by user demo status
 
     const dateFilter = {};
@@ -150,7 +150,14 @@ exports.getBillingData = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     },
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 }
             },
             include: { address: { include: { project: true } } },
@@ -166,7 +173,8 @@ exports.getBillingData = async (req, res) => {
                     isDemo: isDemo,
                     ...(clientCompanyId ? { clientCompanyId } : {})
                 }, // Filter by Demo
-                ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
+                ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {}),
+                ...(address ? { address: { contains: address, mode: 'insensitive' } } : {})
             },
             include: { project: true },
             orderBy: { createdAt: 'desc' }
@@ -183,7 +191,14 @@ exports.getBillingData = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 },
                 basePrice: { gt: 0 },
                 ...(type ? { 
@@ -212,7 +227,14 @@ exports.getBillingData = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 }
             },
             include: { address: { include: { project: true } } },
@@ -231,7 +253,14 @@ exports.getBillingData = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     },
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 }
             },
             include: {
@@ -252,7 +281,14 @@ exports.getBillingData = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     },
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 }
             },
             include: { 
@@ -422,7 +458,7 @@ exports.getBillingData = async (req, res) => {
 };
 
 exports.exportBillingExcel = async (req, res) => {
-    const { projectId, startDate, endDate, nvt, type, clientCompanyId } = req.query;
+    const { projectId, startDate, endDate, nvt, type, clientCompanyId, address } = req.query;
     const isDemo = req.isDemo === true; // Filter by user demo status
 
     const dateFilter = {};
@@ -457,7 +493,14 @@ exports.exportBillingExcel = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     },
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 }
             },
             include: { address: { include: { project: true } } }
@@ -471,7 +514,8 @@ exports.exportBillingExcel = async (req, res) => {
                     isDemo: isDemo,
                     ...(clientCompanyId ? { clientCompanyId } : {})
                 }, // Filter by Demo
-                ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {})
+                ...(nvt ? { nvtName: { contains: nvt, mode: 'insensitive' } } : {}),
+                ...(address ? { address: { contains: address, mode: 'insensitive' } } : {})
             },
             include: { project: true }
         });
@@ -486,7 +530,14 @@ exports.exportBillingExcel = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 },
                 basePrice: { gt: 0 },
                 ...(type ? { 
@@ -510,7 +561,14 @@ exports.exportBillingExcel = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 }
             },
             include: { address: { include: { project: true } } }
@@ -527,7 +585,14 @@ exports.exportBillingExcel = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 }
             },
             include: {
@@ -546,7 +611,14 @@ exports.exportBillingExcel = async (req, res) => {
                         isDemo: isDemo,
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     },
-                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {})
+                    ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 }
             },
             include: { address: { include: { project: true } } }

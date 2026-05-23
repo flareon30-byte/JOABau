@@ -43,7 +43,8 @@ const BillingPage = () => {
         startDate: firstDay,
         endDate: lastDay,
         nvt: '',
-        type: ''
+        type: '',
+        address: ''
     });
 
     const resetFilters = () => {
@@ -54,7 +55,8 @@ const BillingPage = () => {
             startDate: firstDay,
             endDate: lastDay,
             nvt: '',
-            type: ''
+            type: '',
+            address: ''
         });
     };
 
@@ -132,6 +134,7 @@ const BillingPage = () => {
             if (filters.endDate) params.append('endDate', filters.endDate);
             if (filters.nvt) params.append('nvt', filters.nvt);
             if (filters.type) params.append('type', filters.type);
+            if (filters.address) params.append('address', filters.address);
 
             const res = await api.get(`/api/billing/data?${params.toString()}`);
             setBillingData(res.data);
@@ -164,6 +167,7 @@ const BillingPage = () => {
             if (filters.endDate) params.append('endDate', filters.endDate);
             if (filters.nvt) params.append('nvt', filters.nvt);
             if (filters.type) params.append('type', filters.type);
+            if (filters.address) params.append('address', filters.address);
 
             const response = await api.get(`/api/billing/export?${params.toString()}`, {
                 responseType: 'blob'
@@ -771,9 +775,8 @@ const BillingPage = () => {
                 </div>
             )}
 
-            {/* Existing Filters section starts here... (Line 585 in original) */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                     <div className="flex flex-col gap-1">
                         <label className="text-xs font-bold text-slate-500 uppercase">{t('billing.label_project')}</label>
                         <div className="relative">
@@ -844,6 +847,20 @@ const BillingPage = () => {
                                 className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
                                 value={filters.nvt}
                                 onChange={(e) => setFilters({ ...filters, nvt: e.target.value })}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">{t('billing.label_address')}</label>
+                        <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input
+                                type="text"
+                                placeholder={t('billing.placeholder_address')}
+                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50"
+                                value={filters.address}
+                                onChange={(e) => setFilters({ ...filters, address: e.target.value })}
                             />
                         </div>
                     </div>
