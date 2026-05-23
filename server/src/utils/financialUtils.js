@@ -52,7 +52,10 @@ function calculateGroupFinancials(
         totalRevenue += lineRevenue;
         if (!act.isSaturday) revenueMf += lineRevenue;
         else {
-            saturdayPay += (50 * weight); // Extra pay for Saturday
+            const extraSaturdayRate = (financialConfig && financialConfig.extraSaturday !== undefined && financialConfig.extraSaturday !== null)
+                ? parseFloat(financialConfig.extraSaturday)
+                : 50.0;
+            saturdayPay += (extraSaturdayRate * weight); // Extra pay for Saturday
             counts.saturday += weight;
         }
 

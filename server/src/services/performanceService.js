@@ -48,15 +48,6 @@ async function getUnifiedUserStats(userId, isDemo = false, customStartDate = nul
             date: { gte: start, lte: end }
         }
     });
-    let myDietasPayOnly = 0;
-    let mySaturdayExtraPay = 0;
-    userDietasLogs.forEach(d => {
-        let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
-        myDietasPayOnly += base;
-        if (d.isSaturday) {
-            mySaturdayExtraPay += Math.max(0, (d.amount || base) - base);
-        }
-    });
 
     const overheadToCover = await getGlobalSupportDeficit(isDemo, start, end);
 
@@ -74,6 +65,20 @@ async function getUnifiedUserStats(userId, isDemo = false, customStartDate = nul
         financialConfig = systemSettings.financials[groupKey];
     }
     financialConfig = financialConfig || {};
+
+    let myDietasPayOnly = 0;
+    let mySaturdayExtraPay = 0;
+    const currentExtraSaturday = (financialConfig && financialConfig.extraSaturday !== undefined && financialConfig.extraSaturday !== null)
+        ? parseFloat(financialConfig.extraSaturday)
+        : 40.0;
+
+    userDietasLogs.forEach(d => {
+        let base = d.type === 'HOTEL' ? 28 : (d.type === 'CASA' ? 14 : 0);
+        myDietasPayOnly += base;
+        if (d.isSaturday) {
+            mySaturdayExtraPay += currentExtraSaturday;
+        }
+    });
 
     const stats = calculateGroupFinancials(
         activations,

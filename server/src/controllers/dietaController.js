@@ -100,6 +100,35 @@ exports.getTodayDieta = async (req, res) => {
                 }
             }
         });
+
+        if (entry) {
+            // Fetch current settings to dynamically resolve Saturday extra pay
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                include: { 
+                    team: { include: { activeClientCompany: true } },
+                    activeClientCompany: true
+                }
+            });
+            let currentExtraSaturday = 40.0;
+            if (user) {
+                let groupKey = user.role === 'BLOWER' ? 'blowers' : (user.role === 'BACK_OFFICE' ? 'backOffice' : 'installers');
+                const teamSettings = user.team?.activeClientCompany?.settings;
+                const userSettings = user.activeClientCompany?.settings;
+                const config = teamSettings?.[groupKey] || userSettings?.[groupKey];
+                if (config && config.extraSaturday !== undefined && config.extraSaturday !== null) {
+                    currentExtraSaturday = parseFloat(config.extraSaturday);
+                }
+            }
+
+            const base = entry.type === 'HOTEL' ? 28.0 : (entry.type === 'CASA' ? 14.0 : 0.0);
+            if (entry.isSaturday) {
+                entry.amount = base + currentExtraSaturday;
+            } else {
+                entry.amount = base;
+            }
+        }
+
         res.json(entry);
     } catch (error) {
         console.error('Error fetching today dieta:', error);
@@ -176,17 +205,52 @@ exports.getUserDietas = async (req, res) => {
     }
 
     try {
-        const logs = await prisma.dietaLog.findMany({
-            where: {
-                userId,
-                date: {
-                    gte: startDate ? new Date(startDate) : undefined,
-                    lte: endDate ? new Date(endDate) : undefined
+        const [logs, user] = await Promise.all([
+            prisma.dietaLog.findMany({
+                where: {
+                    userId,
+                    date: {
+                        gte: startDate ? new Date(startDate) : undefined,
+                        lte: endDate ? new Date(endDate) : undefined
+                    }
+                },
+                orderBy: { date: 'asc' }
+            }),
+            prisma.user.findUnique({
+                where: { id: userId },
+                include: { 
+                    team: { include: { activeClientCompany: true } },
+                    activeClientCompany: true
                 }
-            },
-            orderBy: { date: 'asc' }
+            })
+        ]);
+
+        let currentExtraSaturday = 40.0;
+        if (user) {
+            let groupKey = user.role === 'BLOWER' ? 'blowers' : (user.role === 'BACK_OFFICE' ? 'backOffice' : 'installers');
+            const teamSettings = user.team?.activeClientCompany?.settings;
+            const userSettings = user.activeClientCompany?.settings;
+            const config = teamSettings?.[groupKey] || userSettings?.[groupKey];
+            if (config && config.extraSaturday !== undefined && config.extraSaturday !== null) {
+                currentExtraSaturday = parseFloat(config.extraSaturday);
+            }
+        }
+
+        const mappedLogs = logs.map(d => {
+            const base = d.type === 'HOTEL' ? 28.0 : (d.type === 'CASA' ? 14.0 : 0.0);
+            if (d.isSaturday) {
+                return {
+                    ...d,
+                    amount: base + currentExtraSaturday
+                };
+            }
+            return {
+                ...d,
+                amount: base
+            };
         });
-        res.json(logs);
+
+        res.json(mappedLogs);
     } catch (error) {
         console.error('Error fetching user dietas:', error);
         res.status(500).json({ message: 'Error al obtener historial de dietas' });
