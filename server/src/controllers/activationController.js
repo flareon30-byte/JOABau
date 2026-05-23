@@ -282,12 +282,22 @@ exports.submitActivation = async (req, res) => {
             }
         }
 
-        const pricePerSP = parseFloat(fin.pricePerSP || 75);
-        const totalSpPrice = spCount * pricePerSP;
+        let spDynamicPrice = parseFloat(fin.pricePerSP || 75);
+        const spItem = priceItems.find(item => {
+            const name = (item.name || '').toLowerCase();
+            return name === 'sp' || name.includes('sp');
+        });
+        if (spItem && spItem.priceToClient !== undefined) {
+            spDynamicPrice = spItem.priceToClient;
+        }
+        const totalSpPrice = spCount * spDynamicPrice;
 
         let taPriceTotal = 0;
         let sduDynamicPrice = parseFloat(fin.pricePerTA || 25);
-        const sduItem = priceItems.find(item => item.name.trim().toUpperCase() === 'SDU');
+        const sduItem = priceItems.find(item => {
+            const name = (item.name || '').toLowerCase();
+            return name === 'sdu' || name === 'ta' || name.includes('ta') || name.includes('sdu');
+        });
         if (sduItem && sduItem.priceToClient !== undefined) {
             sduDynamicPrice = sduItem.priceToClient;
         }
@@ -301,7 +311,10 @@ exports.submitActivation = async (req, res) => {
 
         let mduPriceTotal = 0;
         let mduDynamicPrice = parseFloat(fin.pricePerMDU || 50);
-        const mduItem = priceItems.find(item => item.name.trim().toUpperCase() === 'MDU');
+        const mduItem = priceItems.find(item => {
+            const name = (item.name || '').toLowerCase();
+            return name === 'mdu' || name.includes('mdu');
+        });
         if (mduItem && mduItem.priceToClient !== undefined) {
             mduDynamicPrice = mduItem.priceToClient;
         }

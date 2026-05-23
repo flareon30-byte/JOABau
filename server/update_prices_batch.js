@@ -77,13 +77,23 @@ async function updatePrices() {
             }
 
             // B. SP Price
-            const pricePerSP = parseFloat(defaultInstallers.pricePerSP || 75);
-            const totalSpPrice = (act.spInstalled || 0) * pricePerSP;
+            let spDynamicPrice = parseFloat(defaultInstallers.pricePerSP || 75);
+            const spItem = priceItems.find(item => {
+                const name = (item.name || '').toLowerCase();
+                return name === 'sp' || name.includes('sp');
+            });
+            if (spItem && spItem.priceToClient !== undefined) {
+                spDynamicPrice = spItem.priceToClient;
+            }
+            const totalSpPrice = (act.spInstalled || 0) * spDynamicPrice;
 
             // C. TA Price
             let taPriceTotal = 0;
             let sduDynamicPrice = parseFloat(defaultInstallers.pricePerTA || 25);
-            const sduItem = priceItems.find(item => item.name.trim().toUpperCase() === 'SDU');
+            const sduItem = priceItems.find(item => {
+                const name = (item.name || '').toLowerCase();
+                return name === 'sdu' || name === 'ta' || name.includes('ta') || name.includes('sdu');
+            });
             if (sduItem && sduItem.priceToClient !== undefined) {
                 sduDynamicPrice = sduItem.priceToClient;
             }
@@ -97,7 +107,10 @@ async function updatePrices() {
             // D. MDU Price
             let mduPriceTotal = 0;
             let mduDynamicPrice = parseFloat(defaultInstallers.pricePerMDU || 50);
-            const mduItem = priceItems.find(item => item.name.trim().toUpperCase() === 'MDU');
+            const mduItem = priceItems.find(item => {
+                const name = (item.name || '').toLowerCase();
+                return name === 'mdu' || name.includes('mdu');
+            });
             if (mduItem && mduItem.priceToClient !== undefined) {
                 mduDynamicPrice = mduItem.priceToClient;
             }
