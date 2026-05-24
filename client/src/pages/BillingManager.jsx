@@ -161,6 +161,9 @@ const BillingPage = () => {
     const handleExport = async () => {
         try {
             const params = new URLSearchParams();
+            if (selectedIds && selectedIds.length > 0) {
+                params.append('ids', selectedIds.join(','));
+            }
             if (filters.projectId) params.append('projectId', filters.projectId);
             if (filters.clientCompanyId) params.append('clientCompanyId', filters.clientCompanyId);
             if (filters.startDate) params.append('startDate', filters.startDate);

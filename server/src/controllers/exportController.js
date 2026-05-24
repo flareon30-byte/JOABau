@@ -458,7 +458,7 @@ exports.getBillingData = async (req, res) => {
 };
 
 exports.exportBillingExcel = async (req, res) => {
-    const { projectId, startDate, endDate, nvt, type, clientCompanyId, address } = req.query;
+    const { projectId, startDate, endDate, nvt, type, clientCompanyId, address, ids } = req.query;
     const isDemo = req.isDemo === true; // Filter by user demo status
 
     const dateFilter = {};
@@ -469,6 +469,8 @@ exports.exportBillingExcel = async (req, res) => {
     const projectFilter = {};
     if (projectId) projectFilter.id = projectId;
     if (clientCompanyId) projectFilter.clientCompanyId = clientCompanyId;
+
+    const idList = ids ? ids.split(',') : null;
 
     try {
         // Pre-fetch all clients with their priceItems for performance
@@ -484,7 +486,7 @@ exports.exportBillingExcel = async (req, res) => {
         };
 
         const soplado = await prisma.sopladoInfo.findMany({
-            where: {
+            where: idList ? { id: { in: idList } } : {
                 meters: { gt: 0 }, // Billable only
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
@@ -507,7 +509,7 @@ exports.exportBillingExcel = async (req, res) => {
         });
 
         const fusion = await prisma.fusionWork.findMany({
-            where: {
+            where: idList ? { id: { in: idList } } : {
                 createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
                 project: {
@@ -521,7 +523,7 @@ exports.exportBillingExcel = async (req, res) => {
         });
 
         const activation = await prisma.activationInfo.findMany({
-            where: {
+            where: idList ? { id: { in: idList } } : {
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
@@ -551,7 +553,7 @@ exports.exportBillingExcel = async (req, res) => {
         });
 
         const protocol = await prisma.appointment.findMany({
-            where: {
+            where: idList ? { id: { in: idList } } : {
                 type: 'PROTOCOL',
                 status: 'COMPLETADO',
                 createdAt: hasDate ? dateFilter : undefined,
@@ -575,7 +577,7 @@ exports.exportBillingExcel = async (req, res) => {
         });
 
         const repair = await prisma.appointment.findMany({
-            where: {
+            where: idList ? { id: { in: idList } } : {
                 type: 'REPAIR_BILLABLE',
                 status: 'COMPLETADO',
                 createdAt: hasDate ? dateFilter : undefined,
@@ -602,7 +604,7 @@ exports.exportBillingExcel = async (req, res) => {
         });
 
         const simpleInstallation = await prisma.simpleInstallation.findMany({
-            where: {
+            where: idList ? { id: { in: idList } } : {
                 priceCharged: { gt: 0 },
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
