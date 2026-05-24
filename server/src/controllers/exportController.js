@@ -130,6 +130,26 @@ exports.getBillingData = async (req, res) => {
     if (clientCompanyId) projectFilter.clientCompanyId = clientCompanyId;
 
     try {
+        let typeOrClauses = [];
+        if (type) {
+            typeOrClauses.push({ customActivationName: { contains: type, mode: 'insensitive' } });
+            
+            // Map Spanish display name filters to DB enum values
+            if (type === 'Multi' || type.toLowerCase() === 'multi') {
+                typeOrClauses.push({ activationType: 'BR_MULTI' });
+            } else if (type === 'Dos familias' || type.toLowerCase().includes('famili') || type === 'BP_2_FAM') {
+                typeOrClauses.push({ activationType: 'BP_2_FAM' });
+            } else if (type === 'Unifamiliar' || type.toLowerCase().includes('unifam') || type === 'BP') {
+                typeOrClauses.push({ activationType: 'BP' });
+            } else if (type === 'SDU') {
+                typeOrClauses.push({ activationType: 'SDU' });
+            } else if (type === 'MDU') {
+                typeOrClauses.push({ activationType: 'MDU' });
+            } else if (['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'].includes(type)) {
+                typeOrClauses.push({ activationType: type });
+            }
+        }
+
         const results = {
             soplado: [],
             fusion: [],
@@ -140,7 +160,7 @@ exports.getBillingData = async (req, res) => {
         };
 
         // 1. SOPLADO (Filter out 0m records)
-        results.soplado = await prisma.sopladoInfo.findMany({
+        results.soplado = type ? [] : await prisma.sopladoInfo.findMany({
             where: {
                 meters: { gt: 0 }, // Only billable soplados
                 createdAt: hasDate ? dateFilter : undefined,
@@ -165,7 +185,7 @@ exports.getBillingData = async (req, res) => {
         });
 
         // 2. FUSION
-        results.fusion = await prisma.fusionWork.findMany({
+        results.fusion = type ? [] : await prisma.fusionWork.findMany({
             where: {
                 createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
@@ -201,12 +221,7 @@ exports.getBillingData = async (req, res) => {
                     } : {})
                 },
                 basePrice: { gt: 0 },
-                ...(type ? { 
-                    OR: [
-                        ...(['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'].includes(type) ? [{ activationType: type }] : []),
-                        { customActivationName: { contains: type, mode: 'insensitive' } }
-                    ]
-                } : {})
+                ...(type ? { OR: typeOrClauses } : {})
             },
             include: { 
                 address: { include: { project: true } },
@@ -216,7 +231,7 @@ exports.getBillingData = async (req, res) => {
         });
 
         // 4. PROTOCOL
-        results.protocol = await prisma.appointment.findMany({
+        results.protocol = type ? [] : await prisma.appointment.findMany({
             where: {
                 type: 'PROTOCOL',
                 status: 'COMPLETADO',
@@ -242,7 +257,7 @@ exports.getBillingData = async (req, res) => {
         });
 
         // 5. REPAIRS (Billable Only)
-        results.repair = await prisma.appointment.findMany({
+        results.repair = type ? [] : await prisma.appointment.findMany({
             where: {
                 type: 'REPAIR_BILLABLE',
                 status: 'COMPLETADO',
@@ -271,7 +286,7 @@ exports.getBillingData = async (req, res) => {
         });
 
         // 6. SIMPLE INSTALLATIONS (Universal Catalog)
-        results.simpleInstallation = await prisma.simpleInstallation.findMany({
+        results.simpleInstallation = type ? [] : await prisma.simpleInstallation.findMany({
             where: {
                 priceCharged: { gt: 0 }, // 🟢 HIDE 0€ GK/REPAIRS
                 createdAt: hasDate ? dateFilter : undefined,
@@ -345,17 +360,34 @@ exports.getBillingData = async (req, res) => {
             else results.totals.weekdayGross += lineGross;
 
             // Accurate Counts and Summary
-            const type = act.activationType || 'Sin Tipo';
-            if (type === 'BP_2_FAM') {
+            const actType = act.activationType;
+            const customName = act.customActivationName;
+            
+            if (customName === 'Dos familias' || actType === 'BP_2_FAM') {
                 results.totals.itemsSummary['Dos familias']++;
-            } else if (type === 'MDU') {
+            } else if (customName === 'MDU' || actType === 'MDU') {
                 results.totals.itemsSummary['MDU']++;
-            } else if (type === 'BR_MULTI') {
+            } else if (customName === 'Multi' || actType === 'BR_MULTI') {
                 results.totals.itemsSummary['Multi']++;
-            } else if (type === 'SDU') {
+            } else if (customName === 'SDU' || actType === 'SDU') {
                 results.totals.itemsSummary['SDU']++;
-            } else if (type === 'BP') {
+            } else if (customName === 'Unifamiliar' || (actType === 'BP' && !customName)) {
                 results.totals.itemsSummary['Unifamiliar']++;
+            } else {
+                const lowerCustom = (customName || '').toLowerCase();
+                if (lowerCustom.includes('multi')) {
+                    results.totals.itemsSummary['Multi']++;
+                } else if (lowerCustom.includes('dos') || lowerCustom.includes('familia')) {
+                    results.totals.itemsSummary['Dos familias']++;
+                } else if (lowerCustom.includes('unifamiliar')) {
+                    results.totals.itemsSummary['Unifamiliar']++;
+                } else if (lowerCustom.includes('sdu')) {
+                    results.totals.itemsSummary['SDU']++;
+                } else if (lowerCustom.includes('mdu')) {
+                    results.totals.itemsSummary['MDU']++;
+                } else {
+                    results.totals.itemsSummary['Unifamiliar']++;
+                }
             }
             
             if (type === 'BP' || type === 'BP_2_FAM') results.totals.bp++;
@@ -479,6 +511,26 @@ exports.exportBillingExcel = async (req, res) => {
     const idList = ids ? ids.split(',') : null;
 
     try {
+        let typeOrClauses = [];
+        if (type) {
+            typeOrClauses.push({ customActivationName: { contains: type, mode: 'insensitive' } });
+            
+            // Map Spanish display name filters to DB enum values
+            if (type === 'Multi' || type.toLowerCase() === 'multi') {
+                typeOrClauses.push({ activationType: 'BR_MULTI' });
+            } else if (type === 'Dos familias' || type.toLowerCase().includes('famili') || type === 'BP_2_FAM') {
+                typeOrClauses.push({ activationType: 'BP_2_FAM' });
+            } else if (type === 'Unifamiliar' || type.toLowerCase().includes('unifam') || type === 'BP') {
+                typeOrClauses.push({ activationType: 'BP' });
+            } else if (type === 'SDU') {
+                typeOrClauses.push({ activationType: 'SDU' });
+            } else if (type === 'MDU') {
+                typeOrClauses.push({ activationType: 'MDU' });
+            } else if (['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'].includes(type)) {
+                typeOrClauses.push({ activationType: type });
+            }
+        }
+
         // Pre-fetch all clients with their priceItems for performance
         const allClients = await prisma.clientCompany.findMany({
             include: { priceItems: true }
@@ -491,7 +543,7 @@ exports.exportBillingExcel = async (req, res) => {
             return clientsMap[cid];
         };
 
-        const soplado = await prisma.sopladoInfo.findMany({
+        const soplado = (type && !idList) ? [] : await prisma.sopladoInfo.findMany({
             where: idList ? { id: { in: idList } } : {
                 meters: { gt: 0 }, // Billable only
                 createdAt: hasDate ? dateFilter : undefined,
@@ -514,7 +566,7 @@ exports.exportBillingExcel = async (req, res) => {
             include: { address: { include: { project: true } } }
         });
 
-        const fusion = await prisma.fusionWork.findMany({
+        const fusion = (type && !idList) ? [] : await prisma.fusionWork.findMany({
             where: idList ? { id: { in: idList } } : {
                 createdAt: hasDate ? dateFilter : undefined,
                 projectId: projectId || undefined,
@@ -548,17 +600,12 @@ exports.exportBillingExcel = async (req, res) => {
                     } : {})
                 },
                 basePrice: { gt: 0 },
-                ...(type ? { 
-                    OR: [
-                        ...(['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'].includes(type) ? [{ activationType: type }] : []),
-                        { customActivationName: { contains: type, mode: 'insensitive' } }
-                    ]
-                } : {})
+                ...(type ? { OR: typeOrClauses } : {})
             },
             include: { address: { include: { project: true } } }
         });
 
-        const protocol = await prisma.appointment.findMany({
+        const protocol = (type && !idList) ? [] : await prisma.appointment.findMany({
             where: idList ? { id: { in: idList } } : {
                 type: 'PROTOCOL',
                 status: 'COMPLETADO',
@@ -582,7 +629,7 @@ exports.exportBillingExcel = async (req, res) => {
             include: { address: { include: { project: true } } }
         });
 
-        const repair = await prisma.appointment.findMany({
+        const repair = (type && !idList) ? [] : await prisma.appointment.findMany({
             where: idList ? { id: { in: idList } } : {
                 type: 'REPAIR_BILLABLE',
                 status: 'COMPLETADO',
@@ -609,7 +656,7 @@ exports.exportBillingExcel = async (req, res) => {
             }
         });
 
-        const simpleInstallation = await prisma.simpleInstallation.findMany({
+        const simpleInstallation = (type && !idList) ? [] : await prisma.simpleInstallation.findMany({
             where: idList ? { id: { in: idList } } : {
                 priceCharged: { gt: 0 },
                 createdAt: hasDate ? dateFilter : undefined,
