@@ -27,7 +27,7 @@ const ActivationPageV2 = () => {
     const [formData, setFormData] = useState({
         activationType: 'BP',
         familiesCount: 1,
-        apPorts: '2',
+        apPorts: '1',
         hasMoreClients: false,
         taInstalled: false,
         taCount: '',
@@ -89,11 +89,25 @@ const ActivationPageV2 = () => {
                 if (found.address.activationInfo) {
                     const info = found.address.activationInfo;
                     console.log('Pre-filling with info:', info);
+                    const type = info.customActivationName || info.activationType || 'BP';
+                    let families = info.familiesCount || 1;
+                    let ports = info.apPorts ? String(info.apPorts) : '2';
+
+                    if (!info.familiesCount || !info.apPorts) {
+                        if (type === 'BP' || type === 'Unifamiliar') {
+                            if (!info.familiesCount) families = 1;
+                            if (!info.apPorts) ports = '1';
+                        } else if (type === 'BP_2_FAM' || type === 'Dos familias') {
+                            if (!info.familiesCount) families = 2;
+                            if (!info.apPorts) ports = '2';
+                        }
+                    }
+
                     setFormData(prev => ({
                         ...prev,
-                        activationType: info.customActivationName || info.activationType || 'BP',
-                        familiesCount: info.familiesCount || 1,
-                        apPorts: info.apPorts ? String(info.apPorts) : '2',
+                        activationType: type,
+                        familiesCount: families,
+                        apPorts: ports,
                         hasMoreClients: info.hasMoreClients || false,
                         spInstalled: info.spInstalled || '',
                         taInstalled: info.taInstalled || false,
@@ -143,7 +157,22 @@ const ActivationPageV2 = () => {
                     const info = found.address.activationInfo;
                     if (!info || (!info.activationType && !info.customActivationName)) {
                         if (finalActivationItems.length > 0) {
-                            setFormData(prev => ({ ...prev, activationType: finalActivationItems[0].name }));
+                            const defaultType = finalActivationItems[0].name;
+                            let defaultFam = 1;
+                            let defaultPorts = '2';
+                            if (defaultType === 'Unifamiliar' || defaultType === 'BP') {
+                                defaultFam = 1;
+                                defaultPorts = '1';
+                            } else if (defaultType === 'Dos familias' || defaultType === 'BP_2_FAM') {
+                                defaultFam = 2;
+                                defaultPorts = '2';
+                            }
+                            setFormData(prev => ({
+                                ...prev,
+                                activationType: defaultType,
+                                familiesCount: defaultFam,
+                                apPorts: defaultPorts
+                            }));
                         }
                     }
 
@@ -329,6 +358,15 @@ const ActivationPageV2 = () => {
             // Logic: if TA is unchecked, clear the count
             if (name === 'taInstalled' && !checked) {
                 newData.taCount = '';
+            }
+            if (name === 'activationType') {
+                if (value === 'Unifamiliar' || value === 'BP') {
+                    newData.familiesCount = 1;
+                    newData.apPorts = '1';
+                } else if (value === 'Dos familias' || value === 'BP_2_FAM') {
+                    newData.familiesCount = 2;
+                    newData.apPorts = '2';
+                }
             }
             return newData;
         });
@@ -885,17 +923,19 @@ const ActivationPageV2 = () => {
 
                     {!['SDU', 'MDU'].includes(formData.activationType) && (
                         <>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-600 mb-1">{t('activations.families_count')}</label>
-                                <input
-                                    type="number"
-                                    name="familiesCount"
-                                    value={formData.familiesCount}
-                                    onChange={handleInputChange}
-                                    min="1"
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
-                                />
-                            </div>
+                            {!['Unifamiliar', 'BP'].includes(formData.activationType) && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-600 mb-1">{t('activations.families_count')}</label>
+                                    <input
+                                        type="number"
+                                        name="familiesCount"
+                                        value={formData.familiesCount}
+                                        onChange={handleInputChange}
+                                        min="1"
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
+                                    />
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block text-sm font-medium text-slate-600 mb-1">{t('activations.ap_ports')}</label>

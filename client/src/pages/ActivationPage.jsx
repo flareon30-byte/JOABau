@@ -151,10 +151,24 @@ const ActivationPage = () => {
         if (selectedAppointment) {
             if (selectedAppointment.address.activationInfo) {
                 const info = selectedAppointment.address.activationInfo;
+                const type = info.activationType || 'BP';
+                let families = info.familiesCount || 1;
+                let ports = info.apPorts || 1;
+
+                if (!info.familiesCount || !info.apPorts) {
+                    if (type === 'BP' || type === 'Unifamiliar') {
+                        if (!info.familiesCount) families = 1;
+                        if (!info.apPorts) ports = 1;
+                    } else if (type === 'BP_2_FAM' || type === 'Dos familias') {
+                        if (!info.familiesCount) families = 2;
+                        if (!info.apPorts) ports = 2;
+                    }
+                }
+
                 setFormData({
-                    activationType: info.activationType || 'BP',
-                    familiesCount: info.familiesCount || 1,
-                    apPorts: info.apPorts || 1,
+                    activationType: type,
+                    familiesCount: families,
+                    apPorts: ports,
                     hasMoreClients: info.hasMoreClients || false,
                     spInstalled: info.spInstalled || 0,
                     taInstalled: info.taInstalled || false,
@@ -224,7 +238,22 @@ const ActivationPage = () => {
                     const info = selectedAppointment.address.activationInfo;
                     if (!info || (!info.activationType && !info.customActivationName)) {
                         if (finalActivationItems.length > 0) {
-                            setFormData(prev => ({ ...prev, activationType: finalActivationItems[0].name }));
+                            const defaultType = finalActivationItems[0].name;
+                            let defaultFam = 1;
+                            let defaultPorts = 1;
+                            if (defaultType === 'Unifamiliar' || defaultType === 'BP') {
+                                defaultFam = 1;
+                                defaultPorts = 1;
+                            } else if (defaultType === 'Dos familias' || defaultType === 'BP_2_FAM') {
+                                defaultFam = 2;
+                                defaultPorts = 2;
+                            }
+                            setFormData(prev => ({
+                                ...prev,
+                                activationType: defaultType,
+                                familiesCount: defaultFam,
+                                apPorts: defaultPorts
+                            }));
                         }
                     } else if (info && info.customActivationName) {
                         setFormData(prev => ({ ...prev, activationType: info.customActivationName }));
@@ -716,7 +745,18 @@ const ActivationPage = () => {
                         <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.activation_type')}</label>
                         <select
                             value={formData.activationType}
-                            onChange={(e) => setFormData({ ...formData, activationType: e.target.value })}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                let updated = { ...formData, activationType: val };
+                                if (val === 'Unifamiliar' || val === 'BP') {
+                                    updated.familiesCount = 1;
+                                    updated.apPorts = 1;
+                                } else if (val === 'Dos familias' || val === 'BP_2_FAM') {
+                                    updated.familiesCount = 2;
+                                    updated.apPorts = 2;
+                                }
+                                setFormData(updated);
+                            }}
                             className="w-full border border-slate-300 rounded-lg p-3 focus:ring-2 focus:ring-green-500 outline-none font-bold text-slate-700"
                         >
                             {priceItems.length > 0 ? (
@@ -733,17 +773,19 @@ const ActivationPage = () => {
 
                     {!['SDU', 'MDU'].includes(formData.activationType) && (
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.families_count')}</label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    value={formData.familiesCount}
-                                    onChange={(e) => setFormData({ ...formData, familiesCount: e.target.value })}
-                                    className="w-full border border-slate-300 rounded-lg p-3 outline-none"
-                                />
-                            </div>
-                            <div>
+                            {!['Unifamiliar', 'BP'].includes(formData.activationType) && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.families_count')}</label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        value={formData.familiesCount}
+                                        onChange={(e) => setFormData({ ...formData, familiesCount: e.target.value })}
+                                        className="w-full border border-slate-300 rounded-lg p-3 outline-none"
+                                    />
+                                </div>
+                            )}
+                            <div className={['Unifamiliar', 'BP'].includes(formData.activationType) ? "col-span-2" : ""}>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.ap_ports')}</label>
                                 <input
                                     type="number"
