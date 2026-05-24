@@ -44,4 +44,8 @@ router.post('/toggle-status/:addressId', sopladoController.toggleSopladoStatus);
 // Bulk Update
 router.post('/bulk-update', sopladoController.bulkUpdateSopladoStatus);
 
+// NVT Locations Management
+router.get('/nvt-locations/:projectId', sopladoController.getNvtLocations);
+router.post('/nvt-locations/:projectId', sopladoController.saveNvtLocation);
+
 module.exports = router;

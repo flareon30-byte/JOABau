@@ -118,6 +118,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
     const { t } = useTranslation();
     const [leafletLoaded, setLeafletLoaded] = useState(false);
     const [addresses, setAddresses] = useState([]);
+    const [nvtLocations, setNvtLocations] = useState([]);
     const [loading, setLoading] = useState(true);
     const [progress, setProgress] = useState(0);
     const [progressLabel, setProgressLabel] = useState('');
@@ -165,12 +166,14 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
             setLoading(true);
             setProgress(0);
             try {
-                const [projRes, mapRes] = await Promise.all([
+                const [projRes, mapRes, nvtRes] = await Promise.all([
                     api.get('/api/projects'),
-                    api.get(`/api/projects/${projectId}/map-data`)
+                    api.get(`/api/projects/${projectId}/map-data`),
+                    api.get(`/api/soplado/nvt-locations/${projectId}`)
                 ]);
                 setProject(projRes.data.find(p => p.id === projectId));
                 setAddresses(mapRes.data);
+                setNvtLocations(nvtRes.data.filter(n => n.street && n.street.trim() !== ''));
             } catch (e) {
                 console.error('Error fetching map data:', e);
             } finally {
@@ -250,6 +253,18 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 setProgress(Math.round((done / addresses.length) * 100));
                 setProgressLabel(`Geolocalizando ${done}/${addresses.length} clientes…`);
                 if (i + BATCH < addresses.length) await new Promise(r => setTimeout(r, DELAY));
+            }
+
+            const nvtCoordsList = new Array(nvtLocations.length).fill(null);
+            for (let i = 0; i < nvtLocations.length; i += BATCH) {
+                if (cancelledRef.current) return;
+                const batch = nvtLocations.slice(i, i + BATCH);
+                const results = await Promise.all(
+                    batch.map(n => geocodeFull(n.street, n.number, n.city, cache))
+                );
+                results.forEach((c, j) => { nvtCoordsList[i + j] = c; });
+                saveCache(cache);
+                if (i + BATCH < nvtLocations.length) await new Promise(r => setTimeout(r, DELAY));
             }
 
             if (cancelledRef.current) return;
@@ -332,13 +347,41 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 markersGroupRef.current.addLayer(marker);
             });
 
+            // ---- place NVT markers ----
+            nvtLocations.forEach((nvt, i) => {
+                if (cancelledRef.current) return;
+                const coords = nvtCoordsList[i];
+                if (!coords) return;
+
+                const nvtIcon = L.divIcon({
+                    html: `<div style="width:16px;height:16px;border-radius:4px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900" class="bg-indigo-700">N</div>`,
+                    className: '',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                });
+
+                const nvtMarker = L.marker([coords.lat, coords.lng], { icon: nvtIcon });
+                nvtMarker.bindPopup(`
+                    <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
+                        <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4f46e5;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">📦 Caja NVT</div>
+                        <div style="line-height:1.7;font-size:11px">
+                            <b>NVT:</b> <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">${nvt.nvtName}</code><br>
+                            <b>Dirección:</b> ${nvt.street} ${nvt.number || ''}<br>
+                            <b>Ciudad:</b> ${nvt.city || '—'}
+                        </div>
+                    </div>
+                `, { maxWidth: 240 });
+
+                markersGroupRef.current.addLayer(nvtMarker);
+            });
+
             if (markersGroupRef.current.getLayers().length > 0) {
                 mapInstanceRef.current.fitBounds(markersGroupRef.current.getBounds(), { padding: [40, 40] });
             }
         };
 
         buildMap();
-    }, [leafletLoaded, addresses]);
+    }, [leafletLoaded, addresses, nvtLocations]);
 
     const handleClose = () => {
         cancelledRef.current = true;
@@ -412,13 +455,14 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                         </div>
                         <div className="space-y-2 text-xs">
                             {[
+                                { cls: 'bg-indigo-700', label: 'Caja NVT', square: true },
                                 { cls: 'bg-slate-400', label: 'No soplado' },
                                 { cls: 'bg-rose-500', label: 'Soplado sin cita', pulse: true },
                                 { cls: 'bg-amber-400', label: 'Citada — pasa el ratón para ver la fecha', amber: true },
                                 { cls: 'bg-emerald-500', label: 'Terminada' },
-                            ].map(({ cls, label, pulse, amber }) => (
+                            ].map(({ cls, label, pulse, amber, square }) => (
                                 <div key={label} className="flex items-start gap-2.5">
-                                    <span className={`w-3.5 h-3.5 mt-0.5 rounded-full border border-white shadow-sm shrink-0 ${cls} ${pulse ? 'animate-pulse' : ''}`} />
+                                    <span className={`w-3.5 h-3.5 mt-0.5 border border-white shadow-sm shrink-0 ${cls} ${square ? 'rounded-md' : 'rounded-full'} ${pulse ? 'animate-pulse' : ''}`} />
                                     <span className={`font-semibold ${amber ? 'text-amber-700' : 'text-slate-600'}`}>{label}</span>
                                 </div>
                             ))}

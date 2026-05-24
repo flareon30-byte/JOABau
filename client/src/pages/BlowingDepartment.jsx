@@ -11,6 +11,170 @@ const BlowingDepartment = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL');
     const [selectedAddress, setSelectedAddress] = useState(null);
+    const [isNvtModalOpen, setIsNvtModalOpen] = useState(false);
+
+    const ManageNvtModal = () => {
+        const [nvts, setNvts] = useState([]);
+        const [loading, setLoading] = useState(true);
+        const [editingNvt, setEditingNvt] = useState(null);
+        const [editForm, setEditForm] = useState({ street: '', number: '', city: '' });
+        const [saving, setSaving] = useState(false);
+
+        useEffect(() => {
+            if (isNvtModalOpen && selectedProject) {
+                fetchNvts();
+            }
+        }, [isNvtModalOpen]);
+
+        const fetchNvts = async () => {
+            setLoading(true);
+            try {
+                const res = await api.get(`/api/soplado/nvt-locations/${selectedProject.id}`);
+                setNvts(res.data);
+            } catch (err) {
+                console.error(err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        const handleEditClick = (nvt) => {
+            setEditingNvt(nvt.nvtName);
+            setEditForm({
+                street: nvt.street || '',
+                number: nvt.number || '',
+                city: nvt.city || ''
+            });
+        };
+
+        const handleSave = async (e, nvtName) => {
+            e.preventDefault();
+            setSaving(true);
+            try {
+                await api.post(`/api/soplado/nvt-locations/${selectedProject.id}`, {
+                    nvtName,
+                    ...editForm
+                });
+                setEditingNvt(null);
+                fetchNvts();
+            } catch (err) {
+                console.error(err);
+                alert('Error al guardar la dirección del NVT');
+            } finally {
+                setSaving(false);
+            }
+        };
+
+        if (!isNvtModalOpen) return null;
+
+        return (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4" onClick={() => setIsNvtModalOpen(false)}>
+                <div className="bg-white rounded-3xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-slate-100 overflow-hidden relative" onClick={e => e.stopPropagation()}>
+                    {/* Header */}
+                    <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                        <div>
+                            <h3 className="font-extrabold text-slate-800 text-lg">Direcciones NVT</h3>
+                            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{selectedProject.name}</p>
+                        </div>
+                        <button onClick={() => setIsNvtModalOpen(false)} className="bg-slate-200 hover:bg-slate-300 text-slate-600 p-2 rounded-full transition-colors">
+                            <ArrowLeft size={20} className="rotate-180" />
+                        </button>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+                        {loading ? (
+                            <div className="p-8 text-center text-slate-500">Cargando cajas NVT...</div>
+                        ) : nvts.length === 0 ? (
+                            <div className="p-8 text-center text-slate-500">No se encontraron NVT en este proyecto.</div>
+                        ) : (
+                            <div className="divide-y divide-slate-100">
+                                {nvts.map(nvt => (
+                                    <div key={nvt.nvtName} className="py-4 first:pt-0 last:pb-0 flex flex-col gap-3">
+                                        <div className="flex justify-between items-start gap-4">
+                                            <div>
+                                                <span className="bg-indigo-100 text-indigo-700 px-2.5 py-1 rounded-lg text-xs font-bold font-mono">
+                                                    {nvt.nvtName}
+                                                </span>
+                                                {!editingNvt || editingNvt !== nvt.nvtName ? (
+                                                    <p className="text-sm text-slate-600 mt-2">
+                                                        {nvt.street ? (
+                                                            `${nvt.street} ${nvt.number || ''} ${nvt.city ? `, ${nvt.city}` : ''}`
+                                                        ) : (
+                                                            <span className="italic text-slate-400">Sin dirección asignada</span>
+                                                        )}
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                            {(!editingNvt || editingNvt !== nvt.nvtName) && (
+                                                <button
+                                                    onClick={() => handleEditClick(nvt)}
+                                                    className="text-blue-600 hover:text-blue-800 text-sm font-semibold hover:underline"
+                                                >
+                                                    {nvt.street ? 'Editar Dirección' : 'Asignar Dirección'}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {editingNvt === nvt.nvtName && (
+                                            <form onSubmit={(e) => handleSave(e, nvt.nvtName)} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-4">
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                    <div className="sm:col-span-2">
+                                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Calle</label>
+                                                        <input
+                                                            type="text"
+                                                            value={editForm.street}
+                                                            onChange={e => setEditForm({ ...editForm, street: e.target.value })}
+                                                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Número</label>
+                                                        <input
+                                                            type="text"
+                                                            value={editForm.number}
+                                                            onChange={e => setEditForm({ ...editForm, number: e.target.value })}
+                                                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Ciudad</label>
+                                                    <input
+                                                        type="text"
+                                                        value={editForm.city}
+                                                        onChange={e => setEditForm({ ...editForm, city: e.target.value })}
+                                                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                    />
+                                                </div>
+                                                <div className="flex justify-end gap-2 pt-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setEditingNvt(null)}
+                                                        className="px-4 py-2 border border-slate-200 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-100 transition-colors"
+                                                    >
+                                                        Cancelar
+                                                    </button>
+                                                    <button
+                                                        type="submit"
+                                                        disabled={saving}
+                                                        className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors"
+                                                    >
+                                                        {saving ? 'Guardando...' : 'Guardar'}
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     // Form State
     const [status, setStatus] = useState('OK'); // OK or FALLIDO
@@ -175,11 +339,19 @@ const BlowingDepartment = () => {
     if (!selectedAddress) {
         return (
             <div className="space-y-6 pb-24">
-                <div className="flex items-center gap-4">
-                    <button onClick={() => setSelectedProject(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
-                        <ArrowLeft size={24} className="text-slate-600" />
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <button onClick={() => setSelectedProject(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                            <ArrowLeft size={24} className="text-slate-600" />
+                        </button>
+                        <h2 className="text-2xl font-bold text-slate-800">{selectedProject.name}</h2>
+                    </div>
+                    <button
+                        onClick={() => setIsNvtModalOpen(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all text-sm"
+                    >
+                        📍 Direcciones NVT
                     </button>
-                    <h2 className="text-2xl font-bold text-slate-800">{selectedProject.name}</h2>
                 </div>
 
                 <div className="relative">
@@ -284,6 +456,8 @@ const BlowingDepartment = () => {
                         </button>
                     </div>
                 )}
+
+                <ManageNvtModal />
             </div>
         );
     }

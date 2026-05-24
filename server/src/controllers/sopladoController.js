@@ -358,3 +358,84 @@ exports.bulkUpdateSopladoStatus = async (req, res) => {
         res.status(500).json({ message: 'Error updating statuses' });
     }
 };
+
+// Get NVT locations for a project (merging with distinct NVTs in address list)
+exports.getNvtLocations = async (req, res) => {
+    const { projectId } = req.params;
+
+    try {
+        const addresses = await prisma.address.findMany({
+            where: { projectId },
+            select: { nvt: true },
+            distinct: ['nvt']
+        });
+
+        const nvtSet = new Set(
+            addresses
+                .map(a => a.nvt)
+                .filter(n => n && n.trim() !== '')
+        );
+
+        const locations = await prisma.nvtLocation.findMany({
+            where: { projectId }
+        });
+
+        locations.forEach(loc => {
+            if (loc.nvtName) nvtSet.add(loc.nvtName);
+        });
+
+        const result = Array.from(nvtSet).map(name => {
+            const loc = locations.find(l => l.nvtName === name);
+            return {
+                nvtName: name,
+                street: loc ? loc.street : '',
+                number: loc ? loc.number : '',
+                city: loc ? loc.city : '',
+                id: loc ? loc.id : null
+            };
+        }).sort((a, b) => a.nvtName.localeCompare(b.nvtName, undefined, { numeric: true, sensitivity: 'base' }));
+
+        res.json(result);
+    } catch (error) {
+        console.error('Error getting NVT locations:', error);
+        res.status(500).json({ message: 'Error fetching NVT locations' });
+    }
+};
+
+// Save NVT location
+exports.saveNvtLocation = async (req, res) => {
+    const { projectId } = req.params;
+    const { nvtName, street, number, city } = req.body;
+
+    if (!nvtName || !street) {
+        return res.status(400).json({ message: 'NVT name and Street are required' });
+    }
+
+    try {
+        const nvtLoc = await prisma.nvtLocation.upsert({
+            where: {
+                projectId_nvtName: {
+                    projectId,
+                    nvtName
+                }
+            },
+            update: {
+                street,
+                number: number || null,
+                city: city || null
+            },
+            create: {
+                projectId,
+                nvtName,
+                street,
+                number: number || null,
+                city: city || null
+            }
+        });
+
+        res.json(nvtLoc);
+    } catch (error) {
+        console.error('Error saving NVT location:', error);
+        res.status(500).json({ message: 'Error saving NVT location' });
+    }
+};

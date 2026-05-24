@@ -120,6 +120,7 @@ const ProjectMapPage = () => {
     const [selectedProjectId, setSelectedProjectId] = useState('');
     const [leafletLoaded, setLeafletLoaded] = useState(false);
     const [addresses, setAddresses] = useState([]);
+    const [nvtLocations, setNvtLocations] = useState([]);
     const [loadingData, setLoadingData] = useState(false);
     const [loadingMap, setLoadingMap] = useState(false);
     const [progress, setProgress] = useState(0);
@@ -205,13 +206,18 @@ const ProjectMapPage = () => {
         if (!selectedProjectId) return;
         setLoadingData(true);
         setAddresses([]);
+        setNvtLocations([]);
         try {
-            const res = await api.get(`/api/projects/${selectedProjectId}/map-data`);
-            setAddresses(res.data);
+            const [addressesRes, nvtRes] = await Promise.all([
+                api.get(`/api/projects/${selectedProjectId}/map-data`),
+                api.get(`/api/soplado/nvt-locations/${selectedProjectId}`)
+            ]);
+            setAddresses(addressesRes.data);
+            setNvtLocations(nvtRes.data.filter(n => n.street && n.street.trim() !== ''));
 
             // Compute stats
             let notBlown = 0, blown = 0, scheduled = 0, completed = 0;
-            res.data.forEach(addr => {
+            addressesRes.data.forEach(addr => {
                 const done =
                     addr.appointment?.status === 'COMPLETADO' ||
                     (addr.activationInfo && !addr.activationInfo.isDraft) ||
@@ -341,6 +347,20 @@ const ProjectMapPage = () => {
                 }
             }
 
+            const nvtCoordsList = new Array(nvtLocations.length).fill(null);
+            for (let i = 0; i < nvtLocations.length; i += BATCH) {
+                if (cancelledRef.current) return;
+                const batch = nvtLocations.slice(i, i + BATCH);
+                const results = await Promise.all(
+                    batch.map(n => geocodeFull(n.street, n.number, n.city, cache))
+                );
+                results.forEach((c, j) => { nvtCoordsList[i + j] = c; });
+                saveCache(cache);
+                if (i + BATCH < nvtLocations.length) {
+                    await new Promise(r => setTimeout(r, DELAY));
+                }
+            }
+
             if (cancelledRef.current) return;
             setLoadingMap(false);
 
@@ -447,6 +467,34 @@ const ProjectMapPage = () => {
                 markersGroupRef.current.addLayer(marker);
             });
 
+            // ---- place NVT markers ----
+            nvtLocations.forEach((nvt, i) => {
+                if (cancelledRef.current) return;
+                const coords = nvtCoordsList[i];
+                if (!coords) return;
+
+                const nvtIcon = L.divIcon({
+                    html: `<div style="width:16px;height:16px;border-radius:4px;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:9px;font-weight:900" class="bg-indigo-700">N</div>`,
+                    className: '',
+                    iconSize: [16, 16],
+                    iconAnchor: [8, 8]
+                });
+
+                const nvtMarker = L.marker([coords.lat, coords.lng], { icon: nvtIcon });
+                nvtMarker.bindPopup(`
+                    <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
+                        <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4f46e5;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">📦 Caja NVT</div>
+                        <div style="line-height:1.7;font-size:11px">
+                            <b>NVT:</b> <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">${nvt.nvtName}</code><br>
+                            <b>Dirección:</b> ${nvt.street} ${nvt.number || ''}<br>
+                            <b>Ciudad:</b> ${nvt.city || '—'}
+                        </div>
+                    </div>
+                `, { maxWidth: 240 });
+
+                markersGroupRef.current.addLayer(nvtMarker);
+            });
+
             if (markersGroupRef.current.getLayers().length > 0) {
                 mapInstanceRef.current.fitBounds(markersGroupRef.current.getBounds(), { padding: [40, 40] });
             }
@@ -457,7 +505,7 @@ const ProjectMapPage = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, addresses, userLocation]);
+    }, [leafletLoaded, addresses, userLocation, nvtLocations]);
 
     return (
         <div className="flex flex-col gap-6 h-[calc(100vh-140px)] w-full">
@@ -541,13 +589,14 @@ const ProjectMapPage = () => {
                         {/* Custom Legend with counters */}
                         <div className="space-y-4">
                             {[
+                                { color: 'bg-indigo-700', label: 'Caja NVT', count: nvtLocations.length, desc: 'Ubicación física de la caja NVT', square: true },
                                 { color: 'bg-slate-400', label: 'No soplado', count: stats.notBlown, desc: 'Puntos sin soplado realizado' },
                                 { color: 'bg-rose-500', label: 'Soplado sin cita', count: stats.blown, desc: 'Soplado OK, sin cita agendada', pulse: true },
                                 { color: 'bg-amber-400', label: 'Citada', count: stats.scheduled, desc: 'Pasa el ratón sobre los puntos amarillos' },
                                 { color: 'bg-emerald-500', label: 'Terminada', count: stats.completed, desc: 'Instalaciones finalizadas' },
-                            ].map(({ color, label, count, desc, pulse }) => (
+                            ].map(({ color, label, count, desc, pulse, square }) => (
                                 <div key={label} className="bg-slate-50/50 hover:bg-slate-50 rounded-xl p-3 border border-slate-100/60 transition-all flex items-start gap-3">
-                                    <span className={`w-4 h-4 mt-0.5 rounded-full border-2 border-white shadow shrink-0 ${color} ${pulse ? 'animate-pulse' : ''}`} />
+                                    <span className={`w-4 h-4 mt-0.5 border-2 border-white shadow shrink-0 ${color} ${square ? 'rounded-md' : 'rounded-full'} ${pulse ? 'animate-pulse' : ''}`} />
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center gap-2">
                                             <span className="font-bold text-slate-700 text-sm">{label}</span>
