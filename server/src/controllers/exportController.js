@@ -311,7 +311,14 @@ exports.getBillingData = async (req, res) => {
             sp: 0, 
             mdu: 0, 
             gk: 0, 
-            itemsSummary: {} 
+            itemsSummary: {
+                "Dos familias": 0,
+                "Horas muffa": 0,
+                "MDU": 0,
+                "Multi": 0,
+                "SDU": 0,
+                "Unifamiliar": 0
+            } 
         };
 
         // Pre-fetch all clients with their priceItems for performance
@@ -339,7 +346,17 @@ exports.getBillingData = async (req, res) => {
 
             // Accurate Counts and Summary
             const type = act.activationType || 'Sin Tipo';
-            results.totals.itemsSummary[type] = (results.totals.itemsSummary[type] || 0) + 1;
+            if (type === 'BP_2_FAM') {
+                results.totals.itemsSummary['Dos familias']++;
+            } else if (type === 'MDU') {
+                results.totals.itemsSummary['MDU']++;
+            } else if (type === 'BR_MULTI') {
+                results.totals.itemsSummary['Multi']++;
+            } else if (type === 'SDU') {
+                results.totals.itemsSummary['SDU']++;
+            } else if (type === 'BP') {
+                results.totals.itemsSummary['Unifamiliar']++;
+            }
             
             if (type === 'BP' || type === 'BP_2_FAM') results.totals.bp++;
             
@@ -347,19 +364,16 @@ exports.getBillingData = async (req, res) => {
             const taCount = act.taCount > 0 ? act.taCount : (act.taInstalled ? 1 : 0);
             if (taCount > 0) {
                 results.totals.ta += taCount;
-                results.totals.itemsSummary['Equipos (TA)'] = (results.totals.itemsSummary['Equipos (TA)'] || 0) + taCount;
             }
 
             // Count SP units
             if (act.spInstalled > 0) {
                 results.totals.sp += act.spInstalled;
-                results.totals.itemsSummary['Splits (SP)'] = (results.totals.itemsSummary['Splits (SP)'] || 0) + act.spInstalled;
             }
 
             // Count MDU units strictly from technician marking
             if (act.mduInstalled) {
                 results.totals.mdu++;
-                results.totals.itemsSummary['Equipos (MDU)'] = (results.totals.itemsSummary['Equipos (MDU)'] || 0) + 1;
             }
         });
 
@@ -374,8 +388,6 @@ exports.getBillingData = async (req, res) => {
             results.totals.euros += sopladoPrice;
             if (s.isSaturday) results.totals.saturdayGross += sopladoPrice;
             else results.totals.weekdayGross += sopladoPrice;
-
-            results.totals.itemsSummary['Soplado (Trabajo)'] = (results.totals.itemsSummary['Soplado (Trabajo)'] || 0) + 1;
         });
 
         // --- Part C: Dynamic Installations (SimpleInstallation) ---
@@ -385,13 +397,9 @@ exports.getBillingData = async (req, res) => {
                 inst.items.forEach(item => { 
                     const itemTotal = (item.priceAtTime * item.quantity);
                     instGross += itemTotal;
-                    
-                    const itemName = item.priceItem?.name || 'Item G&K';
-                    results.totals.itemsSummary[itemName] = (results.totals.itemsSummary[itemName] || 0) + item.quantity;
                 });
             } else {
                 instGross = (inst.priceCharged || 0);
-                results.totals.itemsSummary['G&K (Legacy)'] = (results.totals.itemsSummary['G&K (Legacy)'] || 0) + 1;
             }
 
             results.totals.euros += instGross;
@@ -410,7 +418,6 @@ exports.getBillingData = async (req, res) => {
             if (protocolPrice > 0) {
                 results.totals.euros += protocolPrice;
                 results.totals.weekdayGross += protocolPrice; // Protocols are usually weekdays
-                results.totals.itemsSummary['Protocolos'] = (results.totals.itemsSummary['Protocolos'] || 0) + 1;
             }
         });
 
@@ -428,7 +435,7 @@ exports.getBillingData = async (req, res) => {
                 }
                 const hourPrice = matchingItem ? matchingItem.priceToClient : 60.00;
                 lineGross = (f.hours || 0) * hourPrice;
-                results.totals.itemsSummary['Muffas (Horas)'] = (results.totals.itemsSummary['Muffas (Horas)'] || 0) + (f.hours || 0);
+                results.totals.itemsSummary['Horas muffa'] = parseFloat(((results.totals.itemsSummary['Horas muffa'] || 0) + (f.hours || 0)).toFixed(2));
             } else {
                 let matchingItem = null;
                 if (client && client.priceItems) {
@@ -439,7 +446,6 @@ exports.getBillingData = async (req, res) => {
                 }
                 const unitPrice = matchingItem ? matchingItem.priceToClient : 3.00;
                 lineGross = (f.fusionCount || 0) * unitPrice;
-                results.totals.itemsSummary['Fusiones (NVT)'] = (results.totals.itemsSummary['Fusiones (NVT)'] || 0) + (f.fusionCount || 0);
             }
 
             f.totalEuros = lineGross;
