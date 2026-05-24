@@ -317,25 +317,6 @@ exports.getBillingData = async (req, res) => {
         console.log(`[BILLING] Found: ${results.activation.length} activations, ${results.simpleInstallation.length} installations after 0€ filter.`);
 
         // 7. Calculate Totals (Enhanced for Global or Single Client)
-        results.totals = { 
-            euros: 0, 
-            weekdayGross: 0,
-            saturdayGross: 0,
-            bp: 0, 
-            ta: 0, 
-            sp: 0, 
-            mdu: 0, 
-            gk: 0, 
-            itemsSummary: {
-                "Dos familias": 0,
-                "Horas muffa": 0,
-                "MDU": 0,
-                "Multi": 0,
-                "SDU": 0,
-                "Unifamiliar": 0
-            } 
-        };
-
         // Pre-fetch all clients with their priceItems for performance
         const allClients = await prisma.clientCompany.findMany({
             include: { priceItems: true }
@@ -352,6 +333,42 @@ exports.getBillingData = async (req, res) => {
             return (act.basePrice || 0) + (act.spPrice || 0) + (act.taPrice || 0) + (act.mduPrice || 0) + (act.repairPrice || 0);
         };
 
+        // Initialize itemsSummary dynamically based on the clientCompanyId filter
+        const dynamicItems = new Set();
+        dynamicItems.add("Horas muffa");
+
+        const targetClients = clientCompanyId 
+            ? allClients.filter(c => c.id === clientCompanyId) 
+            : allClients;
+            
+        targetClients.forEach(c => {
+            if (c.priceItems) {
+                c.priceItems
+                    .filter(item => item.department === 'ACTIVATION')
+                    .forEach(item => dynamicItems.add(item.name));
+            }
+        });
+
+        // Ensure standard fallbacks are in itemsSummary in case they are not in price items but activations exist
+        const standardFallbacks = ["Dos familias", "MDU", "Multi", "SDU", "Unifamiliar"];
+        standardFallbacks.forEach(f => dynamicItems.add(f));
+
+        results.totals = { 
+            euros: 0, 
+            weekdayGross: 0,
+            saturdayGross: 0,
+            bp: 0, 
+            ta: 0, 
+            sp: 0, 
+            mdu: 0, 
+            gk: 0, 
+            itemsSummary: {} 
+        };
+        
+        Array.from(dynamicItems).sort().forEach(name => {
+            results.totals.itemsSummary[name] = 0;
+        });
+
         // --- Part A: Activations (Snapshots - Works globally) ---
         results.activation.forEach(act => {
             const lineGross = calculateWorkGross(act);
@@ -359,38 +376,48 @@ exports.getBillingData = async (req, res) => {
             if (act.isSaturday) results.totals.saturdayGross += lineGross;
             else results.totals.weekdayGross += lineGross;
 
-            // Accurate Counts and Summary
+            // Determine the display name dynamically
             const actType = act.activationType;
             const customName = act.customActivationName;
+            const client = getClientForWork(act);
             
-            if (customName === 'Dos familias' || actType === 'BP_2_FAM') {
-                results.totals.itemsSummary['Dos familias']++;
-            } else if (customName === 'MDU' || actType === 'MDU') {
-                results.totals.itemsSummary['MDU']++;
-            } else if (customName === 'Multi' || actType === 'BR_MULTI') {
-                results.totals.itemsSummary['Multi']++;
-            } else if (customName === 'SDU' || actType === 'SDU') {
-                results.totals.itemsSummary['SDU']++;
-            } else if (customName === 'Unifamiliar' || (actType === 'BP' && !customName)) {
-                results.totals.itemsSummary['Unifamiliar']++;
-            } else {
-                const lowerCustom = (customName || '').toLowerCase();
-                if (lowerCustom.includes('multi')) {
-                    results.totals.itemsSummary['Multi']++;
-                } else if (lowerCustom.includes('dos') || lowerCustom.includes('familia')) {
-                    results.totals.itemsSummary['Dos familias']++;
-                } else if (lowerCustom.includes('unifamiliar')) {
-                    results.totals.itemsSummary['Unifamiliar']++;
-                } else if (lowerCustom.includes('sdu')) {
-                    results.totals.itemsSummary['SDU']++;
-                } else if (lowerCustom.includes('mdu')) {
-                    results.totals.itemsSummary['MDU']++;
+            let displayName = customName || actType;
+            
+            if (client && client.priceItems) {
+                const match = client.priceItems.find(item => 
+                    item.department === 'ACTIVATION' && 
+                    (item.name === customName || item.name === actType)
+                );
+                if (match) {
+                    displayName = match.name;
                 } else {
-                    results.totals.itemsSummary['Unifamiliar']++;
+                    const matchFallback = client.priceItems.find(item => {
+                        if (item.department !== 'ACTIVATION') return false;
+                        const lowerName = (item.name || '').toLowerCase();
+                        if (actType === 'BP_2_FAM' && (lowerName.includes('bp') || lowerName.includes('dos') || lowerName.includes('familia'))) return true;
+                        if (actType === 'BP' && (lowerName.includes('bp') || lowerName.includes('unifamiliar') || lowerName.includes('caja'))) return true;
+                        if (actType === 'SDU' && (lowerName.includes('sdu') || lowerName.includes('ta'))) return true;
+                        if (actType === 'MDU' && lowerName.includes('mdu')) return true;
+                        if (actType === 'BR_MULTI' && (lowerName.includes('br') || lowerName.includes('multi'))) return true;
+                        return false;
+                    });
+                    if (matchFallback) {
+                        displayName = matchFallback.name;
+                    }
                 }
             }
+
+            // Standard fallback display names mapping if no price items matched
+            if (displayName === 'BP_2_FAM') displayName = 'Dos familias';
+            else if (displayName === 'BR_MULTI') displayName = 'Multi';
+            else if (displayName === 'BP') displayName = 'Unifamiliar';
+
+            if (results.totals.itemsSummary[displayName] === undefined) {
+                results.totals.itemsSummary[displayName] = 0;
+            }
+            results.totals.itemsSummary[displayName]++;
             
-            if (type === 'BP' || type === 'BP_2_FAM') results.totals.bp++;
+            if (actType === 'BP' || actType === 'BP_2_FAM') results.totals.bp++;
             
             // Count TA units strictly from technician marking
             const taCount = act.taCount > 0 ? act.taCount : (act.taInstalled ? 1 : 0);

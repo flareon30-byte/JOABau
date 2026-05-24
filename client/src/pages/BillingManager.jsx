@@ -62,6 +62,28 @@ const BillingPage = () => {
 
     const [clients, setClients] = useState([]);
 
+    const getDynamicActivationTypes = () => {
+        let items = [];
+        if (filters.clientCompanyId) {
+            const client = clients.find(c => c.id === filters.clientCompanyId);
+            if (client && client.priceItems) {
+                items = client.priceItems
+                    .filter(item => item.department === 'ACTIVATION')
+                    .map(item => item.name);
+            }
+        } else {
+            const allItems = clients.flatMap(c => c.priceItems || [])
+                .filter(item => item.department === 'ACTIVATION')
+                .map(item => item.name);
+            items = [...new Set(allItems)];
+        }
+        const fallbacks = ['SDU', 'MDU', 'Dos familias', 'Unifamiliar', 'Multi'];
+        fallbacks.forEach(f => {
+            if (!items.includes(f)) items.push(f);
+        });
+        return items;
+    };
+
     // 3. Data State
     const [billingData, setBillingData] = useState({
         soplado: [],
@@ -880,11 +902,9 @@ const BillingPage = () => {
                                     onChange={(e) => setFilters({ ...filters, type: e.target.value })}
                                 >
                                     <option value="">{t('billing.all_types')}</option>
-                                    {['SDU', 'MDU', 'Dos familias', 'Unifamiliar', 'Multi'].map(type => (
-                                        <option key={type} value={type}>{type}</option>
+                                    {getDynamicActivationTypes().map(type => (
+                                         <option key={type} value={type}>{type}</option>
                                     ))}
-
-
                                 </select>
                             </div>
                         </div>
