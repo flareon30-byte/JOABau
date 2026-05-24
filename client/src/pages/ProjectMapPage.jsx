@@ -247,7 +247,7 @@ const ProjectMapPage = () => {
         if (done) return { color: 'green',  label: 'Terminada',     cls: 'bg-emerald-500' };
         if (addr.appointment?.status === 'CITADO') return { color: 'yellow', label: 'Citada', cls: 'bg-amber-400' };
         if (addr.sopladoStatus === 'OK') return { color: 'red', label: 'Soplado sin cita', cls: 'bg-rose-500 animate-pulse' };
-        return { color: 'gray', label: 'No soplado', cls: 'bg-slate-400' };
+        return { color: 'gray', label: t('map.status_not_blown') || 'No iluminado', cls: 'bg-slate-400' };
     };
 
     // Render Leaflet map
@@ -590,7 +590,7 @@ const ProjectMapPage = () => {
                         <div className="space-y-4">
                             {[
                                 { color: 'bg-indigo-700', label: 'Caja NVT', count: nvtLocations.length, desc: 'Ubicación física de la caja NVT', square: true },
-                                { color: 'bg-slate-400', label: 'No soplado', count: stats.notBlown, desc: 'Puntos sin soplado realizado' },
+                                { color: 'bg-slate-400', label: t('map.status_not_blown') || 'No iluminado', count: stats.notBlown, desc: 'Puntos sin soplado realizado' },
                                 { color: 'bg-rose-500', label: 'Soplado sin cita', count: stats.blown, desc: 'Soplado OK, sin cita agendada', pulse: true },
                                 { color: 'bg-amber-400', label: 'Citada', count: stats.scheduled, desc: 'Pasa el ratón sobre los puntos amarillos' },
                                 { color: 'bg-emerald-500', label: 'Terminada', count: stats.completed, desc: 'Instalaciones finalizadas' },

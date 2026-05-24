@@ -191,7 +191,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
         if (done) return { color: 'green',  label: t('map.status_completed') || 'Terminada',     cls: 'bg-emerald-500' };
         if (addr.appointment?.status === 'CITADO') return { color: 'yellow', label: t('map.status_scheduled') || 'Citada', cls: 'bg-amber-400' };
         if (addr.sopladoStatus === 'OK') return { color: 'red', label: t('map.status_blown') || 'Soplado sin cita', cls: 'bg-rose-500 animate-pulse' };
-        return { color: 'gray', label: t('map.status_not_blown') || 'No soplado', cls: 'bg-slate-400' };
+        return { color: 'gray', label: t('map.status_not_blown') || 'No iluminado', cls: 'bg-slate-400' };
     };
 
     // Build map once data + leaflet are ready
@@ -456,7 +456,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                         <div className="space-y-2 text-xs">
                             {[
                                 { cls: 'bg-indigo-700', label: 'Caja NVT', square: true },
-                                { cls: 'bg-slate-400', label: 'No soplado' },
+                                { cls: 'bg-slate-400', label: t('map.status_not_blown') || 'No iluminado' },
                                 { cls: 'bg-rose-500', label: 'Soplado sin cita', pulse: true },
                                 { cls: 'bg-amber-400', label: 'Citada — pasa el ratón para ver la fecha', amber: true },
                                 { cls: 'bg-emerald-500', label: 'Terminada' },

@@ -1144,7 +1144,7 @@ const resources = {
         status_completed: "Terminada",
         status_scheduled: "Citada",
         status_blown: "Soplado sin cita",
-        status_not_blown: "No soplado"
+        status_not_blown: "No iluminado"
       },
       invoicing: {
         title: "Gestión Económica",
