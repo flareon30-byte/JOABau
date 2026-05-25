@@ -62,13 +62,34 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
 
-    // Open main app
+    const notifData = event.notification.data || {};
+    const redirectUrl = notifData.url || '/';
+
+    // Open/focus main app and navigate
     event.waitUntil(
         clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
             if (clientList.length > 0) {
-                return clientList[0].focus();
+                const client = clientList[0];
+                client.focus();
+                
+                // Try client-side navigation using navigate (if supported)
+                if ('navigate' in client) {
+                    try {
+                        return client.navigate(redirectUrl);
+                    } catch (e) {
+                        console.error('Failed to navigate client window:', e);
+                    }
+                }
+                
+                // Fallback: Send a message to the open tab to let React Router navigate
+                client.postMessage({
+                    type: 'NAVIGATE',
+                    url: redirectUrl
+                });
+                return;
             }
-            return clients.openWindow('/');
+            // If no window is open, open a new one directly at the target URL
+            return clients.openWindow(redirectUrl);
         })
     );
 });

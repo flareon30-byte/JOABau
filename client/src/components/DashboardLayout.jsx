@@ -13,18 +13,27 @@ import { usePushNotifications } from '../hooks/usePushNotifications';
 
 import useBranding from '../hooks/useBranding';
 
-const Toast = ({ message, onClose }) => {
+const Toast = ({ message, onClose, onClick }) => {
     const { t } = useTranslation();
     return (
-        <div className="fixed top-24 right-4 z-[100] bg-white border-l-4 border-joa-blue shadow-2xl p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-right w-80">
-            <div className="bg-blue-100 p-2 rounded-full text-blue-600">
+        <div 
+            onClick={onClick}
+            className="fixed top-24 right-4 z-[100] bg-white border-l-4 border-joa-blue shadow-2xl p-4 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-right w-80 cursor-pointer hover:bg-slate-50 transition-colors"
+        >
+            <div className="bg-blue-100 p-2 rounded-full text-blue-600 shrink-0">
                 <Bell size={20} />
             </div>
             <div className="flex-1">
                 <h4 className="font-bold text-slate-800 text-sm">{t('dashboard.new_notification')}</h4>
                 <p className="text-xs text-slate-600 mt-1 line-clamp-3">{message}</p>
             </div>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1">
+            <button 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                }} 
+                className="text-slate-400 hover:text-slate-600 p-1 shrink-0"
+            >
                 <X size={16} />
             </button>
         </div>
@@ -117,6 +126,25 @@ const DashboardLayout = () => {
         return () => clearInterval(interval);
     }, []);
 
+    useEffect(() => {
+        const handleServiceWorkerMessage = (event) => {
+            if (event.data && event.data.type === 'NAVIGATE' && event.data.url) {
+                console.log('[SW-MSG] Navigating to:', event.data.url);
+                navigate(event.data.url);
+            }
+        };
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
+        }
+
+        return () => {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.removeEventListener('message', handleServiceWorkerMessage);
+            }
+        };
+    }, [navigate]);
+
     const markAsRead = async (id) => {
         try {
             await api.put(`/api/notifications/${id}/read`);
@@ -140,12 +168,37 @@ const DashboardLayout = () => {
     const handleNotificationClick = (n) => {
         markAsRead(n.id);
         setShowNotifications(false);
-        if (n.type === 'RECITE_REQUEST' || n.type === 'REPAIR_ASSIGNED') {
+        if (n.type === 'RECITE_REQUEST' || n.type === 'REPAIR_ASSIGNED' || n.type === 'ORDER_STATUS_CHANGED') {
             if (n.address && n.address.street) {
                 navigate(`/dashboard/appointments?search=${encodeURIComponent(n.address.street)}`);
             } else {
                 navigate('/dashboard/appointments');
             }
+        } else if (n.type === 'ACTIVATION_COMPLETED') {
+            if (n.addressId) {
+                navigate(`/dashboard/activations?editAddressId=${n.addressId}`);
+            } else {
+                navigate('/dashboard/activations');
+            }
+        } else if (n.type === 'REPAIR_COMPLETED') {
+            if (n.address && n.address.street) {
+                navigate(`/dashboard/issues?activeTab=manage&status=completed&query=${encodeURIComponent(n.address.street)}`);
+            } else {
+                navigate('/dashboard/issues?activeTab=manage&status=completed');
+            }
+        } else if (n.type === 'VEHICLE_LOG_ADDED') {
+            const match = n.message.match(/vehículo\s+([a-zA-Z0-9\-]+)/i);
+            if (match) {
+                navigate(`/dashboard/vehicles?search=${encodeURIComponent(match[1])}`);
+            } else {
+                navigate('/dashboard/vehicles');
+            }
+        } else if (n.type === 'VACATION_REQUEST' || n.type === 'VACATION_APPROVED') {
+            navigate('/dashboard/vacations-admin');
+        } else if (n.type === 'VACATION_UPDATE') {
+            navigate('/dashboard/vacations');
+        } else if (n.type === 'DIETA_LOGGED') {
+            navigate('/dashboard/payroll');
         }
     };
 
@@ -530,6 +583,10 @@ const DashboardLayout = () => {
                 <Toast
                     message={toast.message}
                     onClose={() => setToast(null)}
+                    onClick={() => {
+                        handleNotificationClick(toast.data);
+                        setToast(null);
+                    }}
                 />
             )}
         </div>

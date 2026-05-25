@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import api from '../api/axios';
 import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCircle, Clock, MapPin, User, Calendar, Network, X, Grid, List, ChevronRight, Filter, Edit, Trash2 } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
@@ -6,8 +7,27 @@ import { useTranslation } from 'react-i18next';
 
 const IssuesPage = () => {
     const { t } = useTranslation();
+    const location = useLocation();
     // ... existing state
     const [activeTab, setActiveTab] = useState('search');
+
+    // Parse query params to handle deep-linking from notifications
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get('activeTab');
+        const status = params.get('status');
+        const q = params.get('query');
+        
+        if (tab) {
+            setActiveTab(tab);
+        }
+        if (status) {
+            setRepairsFilter(status.toUpperCase());
+        }
+        if (q) {
+            setSearchParams(prev => ({ ...prev, query: q }));
+        }
+    }, [location.search]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [successMessage, setSuccessMessage] = useState('');

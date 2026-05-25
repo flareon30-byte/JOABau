@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Truck, Plus, Trash2, Edit3, AlertCircle, Fuel, Gauge, TrendingUp, Search, X } from 'lucide-react';
 import api from '../api/axios';
 import { useTranslation } from 'react-i18next';
@@ -92,6 +93,15 @@ const VehicleManagement = () => {
     useEffect(() => {
         fetchVehicles();
     }, []);
+
+    // Handle deep link search query from notifications
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const search = params.get('search');
+        if (search) {
+            setSearchTerm(search);
+        }
+    }, [location.search]);
 
     const handleOpenModal = (vehicle = null) => {
         if (vehicle) {

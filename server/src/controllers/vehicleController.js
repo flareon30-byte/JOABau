@@ -110,7 +110,8 @@ exports.addVehicleLog = async (req, res) => {
 
             sendPushToRole('SUPER_ADMIN', {
                 title: '⛽ Nuevo Gasto de Vehículo',
-                body: notificationMsg
+                body: notificationMsg,
+                data: { url: `/dashboard/vehicles?search=${encodeURIComponent(vehicle.plate)}` }
             }).catch(e => console.error('Push error:', e.message));
         } catch (notifErr) {
             console.error('Non-critical vehicle notification error:', notifErr.message);

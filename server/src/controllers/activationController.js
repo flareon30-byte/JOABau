@@ -466,7 +466,10 @@ exports.submitActivation = async (req, res) => {
                 sendPushToRole('SUPER_ADMIN', {
                     title: '⚡ ¡Suministro Finalizado!',
                     body: notificationMsg,
-                    data: { addressId: addressId }
+                    data: { 
+                        addressId: addressId,
+                        url: `/dashboard/activations?editAddressId=${addressId}`
+                    }
                 }).catch(e => console.error('Push error:', e.message));
             }
         } catch (notifErr) {

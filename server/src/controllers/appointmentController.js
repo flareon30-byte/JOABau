@@ -202,10 +202,21 @@ exports.scheduleAppointment = async (req, res) => {
             try {
                 // Fetch full address for the message
                 const addr = await prisma.address.findUnique({ where: { id: addressId } });
+                const team = await prisma.team.findUnique({ where: { id: teamId } });
+                let targetUrl = '/dashboard';
+                if (team) {
+                    if (team.department === 'ACTIVATION') {
+                        targetUrl = `/dashboard/activations?editAddressId=${addr.id}`;
+                    } else if (team.department === 'BLOWING') {
+                        targetUrl = '/dashboard/blowing';
+                    } else if (team.department === 'PROTOCOLS') {
+                        targetUrl = '/dashboard/protocols';
+                    }
+                }
                 sendPushToTeam(teamId, {
                     title: '📋 Nueva Orden de Trabajo',
                     body: `Asignado: ${addr.street} ${addr.number || ''} para ${new Date(date).toLocaleDateString()}.`,
-                    data: { addressId: addr.id, type: 'ASSIGNMENT' }
+                    data: { addressId: addr.id, type: 'ASSIGNMENT', url: targetUrl }
                 }).catch(e => console.error('Push signal error:', e.message));
             } catch (pError) {
                 console.error('Failed to prepare push payload:', pError);
@@ -539,10 +550,14 @@ exports.reciteAppointment = async (req, res) => {
         });
 
         // 🟢 SEND PUSH NOTIFICATIONS
+        const addr = await prisma.address.findUnique({ where: { id: updatedAppointment.addressId } });
         const pushPayload = {
             title: '🚩 Solicitud de Recita/Derivación',
-            body: `${authorName} solicita recitar en ${updatedAppointment.addressId}. Motivo: ${reason}`,
-            data: { addressId: updatedAppointment.addressId }
+            body: `${authorName} solicita recitar en ${addr ? addr.street : ''} ${addr ? addr.number : ''}. Motivo: ${reason}`,
+            data: { 
+                addressId: updatedAppointment.addressId,
+                url: `/dashboard/appointments?search=${encodeURIComponent(addr ? addr.street : '')}`
+            }
         };
 
         sendPushToRole('BACK_OFFICE', pushPayload).catch(e => console.error("Push error BO:", e.message));
@@ -656,7 +671,10 @@ exports.updateOrderStatus = async (req, res) => {
             sendPushToRole('SUPER_ADMIN', {
                 title: `📋 Orden ${status}`,
                 body: notificationMsg,
-                data: { addressId: id }
+                data: { 
+                    addressId: id,
+                    url: `/dashboard/appointments?search=${encodeURIComponent(address.street)}`
+                }
             }).catch(e => console.error('Push error:', e.message));
         } catch (notifErr) {
             console.error('Non-critical status notification error:', notifErr.message);
@@ -798,7 +816,10 @@ exports.requestAppointment = async (req, res) => {
         sendPushToRole('BACK_OFFICE', {
             title: '📋 Solicitud de Cita por Equipo',
             body: notificationMsg,
-            data: { addressId: address.id }
+            data: { 
+                addressId: address.id,
+                url: `/dashboard/appointments?search=${encodeURIComponent(address.street)}`
+            }
         }).catch(e => console.error("Push notify error:", e.message));
 
         res.json({ success: true, message: 'Solicitud enviada correctamente al equipo de Back Office.', appointment });

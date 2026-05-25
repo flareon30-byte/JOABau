@@ -1,4 +1,5 @@
 const prisma = require('../prisma');
+const { sendPushToRole } = require('../utils/notificationUtils');
 
 // 1. Search for Address History
 exports.searchAddressHistory = async (req, res) => {
@@ -347,6 +348,18 @@ exports.submitRepair = async (req, res) => {
                     createdById: userId
                 }
             });
+
+            // Send Push Notifications
+            const pushPayload = {
+                title: '🛠️ Reparación Finalizada',
+                body: `Reparación completada en ${address.street} ${address.number} - Desc: ${description}`,
+                data: {
+                    addressId,
+                    url: `/dashboard/issues?activeTab=manage&status=completed&query=${encodeURIComponent(address.street)}`
+                }
+            };
+            sendPushToRole('SUPER_ADMIN', pushPayload).catch(e => console.error('Push error SA:', e.message));
+            sendPushToRole('BACK_OFFICE', pushPayload).catch(e => console.error('Push error BO:', e.message));
 
             return repair;
         });
