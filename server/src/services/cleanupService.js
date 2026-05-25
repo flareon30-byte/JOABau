@@ -130,16 +130,21 @@ const notifyUpcomingCleanup = async (thresholdDays = 120) => {
 };
 
 const initCleanupJob = () => {
-    console.log('[CLEANUP] Initializing monthly cleanup schedule (Notification on 25th, Action on 1st)...');
-    
-    // Notificación preventiva: Día 25 de cada mes a las 09:00
-    cron.schedule('0 9 25 * *', () => {
-        notifyUpcomingCleanup();
-    });
+    console.log('[CLEANUP] Automated monthly cleanup is DISABLED (by user request). No schedules initialized.');
 
-    // Acción de limpieza: Día 1 de cada mes a las 04:00 AM
-    cron.schedule('0 4 1 * *', () => {
-        runCleanup();
+    // Remove any legacy warning alerts from database to avoid confusing the user
+    prisma.notification.deleteMany({
+        where: {
+            message: {
+                contains: 'AVISO: Limpieza'
+            }
+        }
+    }).then((deleted) => {
+        if (deleted && deleted.count > 0) {
+            console.log(`[CLEANUP] Deleted ${deleted.count} legacy cleanup warning notifications.`);
+        }
+    }).catch((err) => {
+        console.error('[CLEANUP] Failed to remove legacy cleanup notifications:', err.message);
     });
 };
 
