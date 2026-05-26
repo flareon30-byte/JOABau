@@ -2,3 +2,6 @@
 *.zip
 __temp_backup/
 Backup_Seguridad_ABRIL_06/
+scratch/
+server/scratch/
+debug_result.txt
