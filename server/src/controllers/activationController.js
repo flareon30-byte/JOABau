@@ -140,7 +140,9 @@ exports.submitActivation = async (req, res) => {
         pdfPath,
         mduInstalled,
         isRepair,
-        homeId
+        homeId,
+        isActivated,
+        notActivatedReason
     } = req.body;
 
     // Con upload.any(), req.files es un array plano en lugar de un objeto con claves
@@ -366,6 +368,9 @@ exports.submitActivation = async (req, res) => {
             points += pointsConfig['MDU'];
         }
 
+        const isActivatedBool = isActivated === 'true' || isActivated === true || isActivated === undefined;
+        const notActivatedReasonStr = notActivatedReason || '';
+
         const result = await prisma.$transaction(async (tx) => {
             if (klsId) {
                 await tx.address.update({
@@ -428,21 +433,50 @@ exports.submitActivation = async (req, res) => {
                 }
             });
 
-            // Use updateMany to safely update if exists, or do nothing if not, preventing 500 errors
-            await tx.appointment.updateMany({
-                where: { addressId },
-                data: { status: 'COMPLETADO' }
-            });
+            if (isActivatedBool) {
+                // Use updateMany to safely update if exists, or do nothing if not, preventing 500 errors
+                await tx.appointment.updateMany({
+                    where: { addressId },
+                    data: { status: 'COMPLETADO' }
+                });
 
-            await tx.address.update({
-                where: { id: addressId },
-                data: { orderStatus: 'Installiert' }
-            });
+                await tx.address.update({
+                    where: { id: addressId },
+                    data: { orderStatus: 'Installiert' }
+                });
+            } else {
+                // Mark as RECITAR
+                await tx.appointment.updateMany({
+                    where: { addressId },
+                    data: { status: 'RECITAR' }
+                });
+
+                await tx.address.update({
+                    where: { id: addressId },
+                    data: { orderStatus: 'geplant' } // Return to planned/pending state
+                });
+
+                // Get the appointment to create a comment under it
+                const appObj = await tx.appointment.findUnique({
+                    where: { addressId }
+                });
+
+                if (appObj) {
+                    await tx.comment.create({
+                        data: {
+                            appointmentId: appObj.id,
+                            content: `[NO ACTIVADO - REQUIERE NUEVA CITA] Motivo: ${notActivatedReasonStr || 'No especificado'}`,
+                            authorName: user?.username || 'Técnico',
+                            photos: allPhotos
+                        }
+                    });
+                }
+            }
 
             return activation;
         });
 
-        // --- NEW NOTIFICATION FOR SUPER ADMIN (WRAPPED IN TRY-CATCH TO PREVENT 500s) ---
+        // --- NOTIFICATION LOGIC (WRAPPED IN TRY-CATCH TO PREVENT 500s) ---
         try {
             const [notifAddress, notifUser] = await Promise.all([
                 prisma.address.findUnique({ where: { id: addressId }, include: { project: true } }),
@@ -451,26 +485,50 @@ exports.submitActivation = async (req, res) => {
 
             if (notifAddress && notifUser) {
                 const projectName = notifAddress.project?.name || 'Proyecto Desconocido';
-                const notificationMsg = `⚡ ¡Activación Exitosa! ${notifUser.username} ha terminado en ${notifAddress.street} ${notifAddress.number} (${projectName}). Tipo: ${activationType}`;
                 
-                await prisma.notification.create({
-                    data: {
-                        type: 'ACTIVATION_COMPLETED',
-                        message: notificationMsg,
-                        addressId: addressId,
-                        createdById: req.userId,
-                        targetRole: 'SUPER_ADMIN'
-                    }
-                });
+                if (isActivatedBool) {
+                    const notificationMsg = `⚡ ¡Activación Exitosa! ${notifUser.username} ha terminado en ${notifAddress.street} ${notifAddress.number} (${projectName}). Tipo: ${activationType}`;
+                    
+                    await prisma.notification.create({
+                        data: {
+                            type: 'ACTIVATION_COMPLETED',
+                            message: notificationMsg,
+                            addressId: addressId,
+                            createdById: req.userId,
+                            targetRole: 'SUPER_ADMIN'
+                        }
+                    });
 
-                sendPushToRole('SUPER_ADMIN', {
-                    title: '⚡ ¡Suministro Finalizado!',
-                    body: notificationMsg,
-                    data: { 
-                        addressId: addressId,
-                        url: `/dashboard/activations?editAddressId=${addressId}`
-                    }
-                }).catch(e => console.error('Push error:', e.message));
+                    sendPushToRole('SUPER_ADMIN', {
+                        title: '⚡ ¡Suministro Finalizado!',
+                        body: notificationMsg,
+                        data: { 
+                            addressId: addressId,
+                            url: `/dashboard/activations?editAddressId=${addressId}`
+                        }
+                    }).catch(e => console.error('Push error:', e.message));
+                } else {
+                    const notificationMsg = `🚩 [NO ACTIVADO] ${notifUser.username} indica que en ${notifAddress.street} ${notifAddress.number} (${projectName}) no quedó activada. Requiere nueva cita. Motivo: ${notActivatedReasonStr || 'No especificado'}`;
+                    
+                    await prisma.notification.create({
+                        data: {
+                            type: 'RECITE_REQUEST',
+                            message: notificationMsg,
+                            addressId: addressId,
+                            createdById: req.userId,
+                            targetRole: 'BACK_OFFICE'
+                        }
+                    });
+
+                    sendPushToRole('BACK_OFFICE', {
+                        title: '🚩 Nueva cita requerida',
+                        body: notificationMsg,
+                        data: { 
+                            addressId: addressId,
+                            url: `/dashboard/appointments?view=recita`
+                        }
+                    }).catch(e => console.error('Push error:', e.message));
+                }
             }
         } catch (notifErr) {
             console.error('Non-critical notification error:', notifErr.message);

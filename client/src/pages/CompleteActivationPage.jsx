@@ -40,6 +40,8 @@ const CompleteActivationPage = () => {
 
     const [photos, setPhotos] = useState([]);
     const fileInputRef = useRef(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [notActivatedReason, setNotActivatedReason] = useState('');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
 
     useEffect(() => {
@@ -338,8 +340,12 @@ const CompleteActivationPage = () => {
         }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleFormSubmitClick = (e) => {
+        if (e) e.preventDefault();
+        setIsConfirmModalOpen(true);
+    };
+
+    const handleSubmit = async (isActivatedVal, reasonVal = '') => {
         if (!appointment) return;
 
         setSubmitting(true);
@@ -355,6 +361,8 @@ const CompleteActivationPage = () => {
         data.append('homeIds', JSON.stringify([formData.homeId])); // Sending as array
         data.append('klsId', formData.klsId);
         data.append('description', formData.description);
+        data.append('isActivated', isActivatedVal);
+        data.append('notActivatedReason', reasonVal);
 
         if (pdfPath) {
             data.append('pdfPath', pdfPath);
@@ -383,6 +391,7 @@ const CompleteActivationPage = () => {
             alert('Error al guardar la activación. Inténtalo de nuevo.');
         } finally {
             setSubmitting(false);
+            setIsConfirmModalOpen(false);
         }
     };
 
@@ -405,7 +414,7 @@ const CompleteActivationPage = () => {
                 </div>
             </div>
 
-            <form onSubmit={handleSubmit} className="p-4 space-y-6 max-w-lg mx-auto">
+            <form onSubmit={handleFormSubmitClick} className="p-4 space-y-6 max-w-lg mx-auto">
                 {/* Orientation Comment Alert */}
                 {appointment?.orientationComment && (
                     <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 flex gap-3 shadow-sm">
@@ -694,7 +703,7 @@ const CompleteActivationPage = () => {
                 {/* Submit Button */}
                 <button
                     type="submit"
-                    disabled={submitting || !pdfPath}
+                    disabled={submitting}
                     className="w-full py-4 bg-joa-blue text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {submitting ? (
@@ -707,11 +716,86 @@ const CompleteActivationPage = () => {
                     )}
                 </button>
                 {!pdfPath && (
-                    <p className="text-center text-xs text-red-400 mt-2">
-                        Debes firmar y generar el PDF antes de finalizar.
+                    <p className="text-center text-xs text-slate-500 mt-2">
+                        Si el cliente quedó activado, debes firmar y generar el PDF.
                     </p>
                 )}
             </form >
+
+            {/* Confirmation Modal */}
+            {isConfirmModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/75 flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl border border-slate-100 transform scale-100 transition-all">
+                        <div className="text-center mb-6">
+                            <div className="mx-auto w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-3">
+                                <PenTool size={24} />
+                            </div>
+                            <h3 className="text-xl font-extrabold text-slate-800">
+                                Confirmar Finalización
+                            </h3>
+                            <p className="text-sm text-slate-500 mt-1">
+                                ¿Se ha quedado activado y funcionando el cliente?
+                            </p>
+                        </div>
+
+                        <div className="space-y-4 mb-6">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!pdfPath) {
+                                        alert('Para guardar como activado, es obligatorio firmar y generar el documento PDF.');
+                                        return;
+                                    }
+                                    handleSubmit(true);
+                                }}
+                                className={`w-full py-4 rounded-2xl font-bold flex items-center justify-center gap-2 border-2 transition-all ${
+                                    pdfPath
+                                        ? 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 shadow-lg shadow-emerald-100 active:scale-98'
+                                        : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                                }`}
+                            >
+                                <span>✅ Sí, quedó activado</span>
+                            </button>
+
+                            <div className="border-t border-slate-100 my-2"></div>
+
+                            <div className="space-y-2">
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
+                                    Motivo por el que no se activó:
+                                </label>
+                                <input
+                                    type="text"
+                                    placeholder="Ej: Fibra rota, CTO sin potencia..."
+                                    value={notActivatedReason}
+                                    onChange={(e) => setNotActivatedReason(e.target.value)}
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 text-sm font-medium"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!notActivatedReason.trim()) {
+                                            alert('Por favor, indica brevemente el motivo por el cual no quedó activada la orden.');
+                                            return;
+                                        }
+                                        handleSubmit(false, notActivatedReason);
+                                    }}
+                                    className="w-full py-4 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-amber-100 active:scale-98"
+                                >
+                                    <span>❌ No, requiere nueva cita</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={() => setIsConfirmModalOpen(false)}
+                            className="w-full py-2.5 text-slate-500 text-sm font-bold hover:bg-slate-50 rounded-xl transition-all"
+                        >
+                            Cancelar / Volver a editar
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Signature Modal */}
             {isSigning !== 'NONE' && (
