@@ -143,3 +143,29 @@ exports.deleteTeam = async (req, res) => {
         res.status(500).json({ message: 'Error deleting team' });
     }
 };
+
+exports.getLiveLocations = (req, res) => {
+    try {
+        const liveLocations = require('../utils/liveLocations');
+        const locations = [];
+        const FOUR_HOURS = 4 * 60 * 60 * 1000;
+        const now = Date.now();
+
+        for (const [teamId, loc] of liveLocations.entries()) {
+            // Only include locations updated in the last 4 hours to avoid stale data
+            if (now - new Date(loc.updatedAt).getTime() < FOUR_HOURS) {
+                locations.push({
+                    teamId,
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    username: loc.username,
+                    updatedAt: loc.updatedAt
+                });
+            }
+        }
+        res.json(locations);
+    } catch (error) {
+        console.error('Error fetching live locations:', error);
+        res.status(500).json({ message: 'Error fetching live locations' });
+    }
+};

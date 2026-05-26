@@ -126,6 +126,62 @@ const DashboardLayout = () => {
         return () => clearInterval(interval);
     }, []);
 
+    // Start live GPS location reporting for technicians
+    useEffect(() => {
+        const isTechnician = ['BLOWER', 'ACTIVATOR', 'PROTOCOL_MANAGER'].includes(user.role);
+        if (!isTechnician) return;
+
+        let watchId = null;
+        let lastReported = 0;
+        const REPORT_INTERVAL = 30000; // Report at most once every 30 seconds
+
+        const reportLocation = async (coords) => {
+            const now = Date.now();
+            if (now - lastReported < REPORT_INTERVAL) return;
+            lastReported = now;
+
+            try {
+                await api.post('/api/users/live-location', {
+                    latitude: coords.latitude,
+                    longitude: coords.longitude
+                });
+            } catch (err) {
+                console.error("Error reporting live location:", err);
+            }
+        };
+
+        if (navigator.geolocation) {
+            // Using watchPosition to update location dynamically
+            watchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    reportLocation(position.coords);
+                },
+                (err) => {
+                    console.warn("watchPosition failed or was denied:", err);
+                },
+                { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }
+            );
+
+            // Also check periodically in case watchPosition doesn't fire (background mode)
+            const intervalId = setInterval(() => {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        reportLocation(position.coords);
+                    },
+                    (err) => {
+                        console.warn("getCurrentPosition failed in background interval:", err);
+                    },
+                    { enableHighAccuracy: true, timeout: 15000 }
+                );
+            }, 60000);
+
+            return () => {
+                if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+                clearInterval(intervalId);
+            };
+        }
+    }, [user.role]);
+
     useEffect(() => {
         const handleServiceWorkerMessage = (event) => {
             if (event.data && event.data.type === 'NAVIGATE' && event.data.url) {

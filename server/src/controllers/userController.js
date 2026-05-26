@@ -110,3 +110,36 @@ exports.updateActiveClient = async (req, res) => {
         res.status(500).json({ message: 'Error updating active client' });
     }
 };
+
+exports.updateLiveLocation = async (req, res) => {
+    try {
+        const { latitude, longitude } = req.body;
+        if (latitude === undefined || longitude === undefined) {
+            return res.status(400).json({ message: 'Latitude and longitude are required' });
+        }
+
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            select: { teamId: true, username: true }
+        });
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        if (user.teamId) {
+            const liveLocations = require('../utils/liveLocations');
+            liveLocations.set(user.teamId, {
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude),
+                username: user.username,
+                updatedAt: new Date()
+            });
+        }
+
+        res.json({ message: 'Location updated successfully' });
+    } catch (error) {
+        console.error('Error updating live location:', error);
+        res.status(500).json({ message: 'Error updating live location' });
+    }
+};

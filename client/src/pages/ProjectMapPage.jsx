@@ -394,36 +394,7 @@ const ProjectMapPage = () => {
                 }
             });
 
-            if (teams.length > 0) {
-                const initialLocs = {};
-                teams.forEach((team) => {
-                    // Find all addresses in this project assigned to this team
-                    const teamAddresses = addresses.filter(addr => addr.appointment?.assignedTeamId === team.id);
-                    // Map to geocoded coordinates
-                    const coords = teamAddresses
-                        .map(addr => addrCoordsMap[addr.id])
-                        .filter(Boolean);
 
-                    if (coords.length === 0) {
-                        // Team is not working in this project, do not show them
-                        return;
-                    }
-
-                    // Start at the first coordinate
-                    const startCoord = coords[0];
-                    
-                    initialLocs[team.id] = {
-                        id: team.id,
-                        name: team.name,
-                        lat: startCoord.lat,
-                        lng: startCoord.lng,
-                        route: coords,
-                        targetIdx: coords.length > 1 ? 1 : 0,
-                        isStatic: coords.length === 1
-                    };
-                });
-                setTeamLocations(initialLocs);
-            }
 
             // ---- place user location marker if available ----
             if (userLocation) {
@@ -568,58 +539,38 @@ const ProjectMapPage = () => {
         };
     }, [leafletLoaded, addresses, userLocation, nvtLocations, teams]);
 
-    // Team movement simulation loop
+    // Poll real team locations
     useEffect(() => {
-        if (Object.keys(teamLocations).length === 0) return;
+        if (teams.length === 0) return;
 
-        const interval = setInterval(() => {
-            setTeamLocations(prev => {
-                const updated = {};
-                Object.entries(prev).forEach(([id, loc]) => {
-                    if (loc.isStatic) {
-                        // For static teams (1 appointment), add a tiny jitter to simulate local movement around the house
-                        const base = loc.route[0];
-                        const jitterLat = (Math.random() - 0.5) * 0.00015;
-                        const jitterLng = (Math.random() - 0.5) * 0.00015;
-                        updated[id] = {
-                            ...loc,
-                            lat: base.lat + jitterLat,
-                            lng: base.lng + jitterLng
+        const fetchLiveLocations = async () => {
+            try {
+                const res = await api.get('/api/teams/live-locations');
+                const locations = res.data;
+                const newLocs = {};
+                locations.forEach(loc => {
+                    const matchingTeam = teams.find(t => t.id === loc.teamId);
+                    if (matchingTeam) {
+                        newLocs[loc.teamId] = {
+                            id: loc.teamId,
+                            name: matchingTeam.name,
+                            lat: loc.latitude,
+                            lng: loc.longitude,
+                            username: loc.username,
+                            updatedAt: loc.updatedAt
                         };
-                    } else {
-                        // For traveling teams, move towards the current target coordinate
-                        const target = loc.route[loc.targetIdx];
-                        const dLat = target.lat - loc.lat;
-                        const dLng = target.lng - loc.lng;
-                        const dist = Math.sqrt(dLat * dLat + dLng * dLng);
-
-                        const speed = 0.00015; // speed per step (approx 15m)
-
-                        if (dist < 0.00025) {
-                            // Close enough to target, switch target to next coordinate
-                            const nextIdx = (loc.targetIdx + 1) % loc.route.length;
-                            updated[id] = {
-                                ...loc,
-                                targetIdx: nextIdx
-                            };
-                        } else {
-                            // Move step towards target
-                            const stepLat = (dLat / dist) * speed;
-                            const stepLng = (dLng / dist) * speed;
-                            updated[id] = {
-                                ...loc,
-                                lat: loc.lat + stepLat,
-                                lng: loc.lng + stepLng
-                            };
-                        }
                     }
                 });
-                return updated;
-            });
-        }, 3000);
+                setTeamLocations(newLocs);
+            } catch (err) {
+                console.error("Error fetching live locations:", err);
+            }
+        };
 
+        fetchLiveLocations();
+        const interval = setInterval(fetchLiveLocations, 15000);
         return () => clearInterval(interval);
-    }, [teamLocations]);
+    }, [teams]);
 
     // Render / update team markers in Leaflet
     useEffect(() => {
@@ -659,14 +610,16 @@ const ProjectMapPage = () => {
                 });
 
                 const marker = L.marker([lat, lng], { icon: teamIcon });
+                const timeStr = teamLoc.updatedAt ? new Date(teamLoc.updatedAt).toLocaleTimeString() : '—';
+                const reporter = teamLoc.username ? teamLoc.username : '—';
                 marker.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
                         <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4f46e5;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">🚚 Ubicación del Equipo</div>
                         <div style="line-height:1.7;font-size:11px">
                             <b>Equipo:</b> ${name}<br>
-                            <b>Latitud:</b> ${lat.toFixed(6)}<br>
-                            <b>Longitud:</b> ${lng.toFixed(6)}<br>
-                            <span class="text-xs text-indigo-500 font-bold">● En movimiento (Tiempo Real)</span>
+                            <b>Técnico:</b> ${reporter}<br>
+                            <b>Actualizado:</b> ${timeStr}<br>
+                            <b>Coordenadas:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}
                         </div>
                     </div>
                 `, { maxWidth: 240 });
@@ -760,7 +713,7 @@ const ProjectMapPage = () => {
                         <div className="space-y-4">
                             {[
                                 { color: 'bg-indigo-700', label: 'Caja NVT', count: nvtLocations.length, desc: 'Ubicación física de la caja NVT', square: true },
-                                { color: 'bg-indigo-600', label: 'Equipos (Activos)', count: Object.keys(teamLocations).length, desc: 'Técnicos simulados en tiempo real', isTeam: true },
+                                { color: 'bg-indigo-600', label: 'Equipos (Activos)', count: Object.keys(teamLocations).length, desc: 'Ubicación GPS real de técnicos', isTeam: true },
                                 { color: 'bg-slate-400', label: t('map.status_not_blown') || 'No iluminado', count: stats.notBlown, desc: 'Puntos sin soplado realizado' },
                                 { color: 'bg-rose-500', label: 'Soplado sin cita', count: stats.blown, desc: 'Soplado OK, sin cita agendada', pulse: true },
                                 { color: 'bg-amber-400', label: 'Citada', count: stats.scheduled, desc: 'Pasa el ratón sobre los puntos amarillos' },

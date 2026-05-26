@@ -9,6 +9,9 @@ router.use(verifyToken);
 // Allow any logged-in user to change their active client
 router.put('/active-client', userController.updateActiveClient);
 
+// Allow any logged-in user to report their live GPS location
+router.post('/live-location', userController.updateLiveLocation);
+
 // Only Admin and Super Admin can manage users
 router.use(checkRole(['ADMIN', 'SUPER_ADMIN']));
 
