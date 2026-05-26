@@ -385,33 +385,41 @@ const ProjectMapPage = () => {
             const validCoords = coordsList.filter(Boolean);
             geocodedCoordsRef.current = validCoords;
 
+            // Initialize team locations based on their assigned appointments in this project
+            const addrCoordsMap = {};
+            addresses.forEach((addr, idx) => {
+                const coord = coordsList[idx];
+                if (coord) {
+                    addrCoordsMap[addr.id] = coord;
+                }
+            });
+
             if (teams.length > 0) {
                 const initialLocs = {};
-                teams.forEach((team, idx) => {
-                    let baseCoord = null;
-                    if (validCoords.length > 0) {
-                        baseCoord = validCoords[idx % validCoords.length];
-                    } else {
-                        baseCoord = center;
+                teams.forEach((team) => {
+                    // Find all addresses in this project assigned to this team
+                    const teamAddresses = addresses.filter(addr => addr.appointment?.assignedTeamId === team.id);
+                    // Map to geocoded coordinates
+                    const coords = teamAddresses
+                        .map(addr => addrCoordsMap[addr.id])
+                        .filter(Boolean);
+
+                    if (coords.length === 0) {
+                        // Team is not working in this project, do not show them
+                        return;
                     }
 
-                    const jitterLat = (Math.random() - 0.5) * 0.0015;
-                    const jitterLng = (Math.random() - 0.5) * 0.002;
-
-                    const angle = Math.random() * 2 * Math.PI;
-                    const speed = 0.0001 + Math.random() * 0.0001;
-                    const dLat = speed * Math.sin(angle);
-                    const dLng = speed * Math.cos(angle);
-
+                    // Start at the first coordinate
+                    const startCoord = coords[0];
+                    
                     initialLocs[team.id] = {
                         id: team.id,
                         name: team.name,
-                        lat: baseCoord.lat + jitterLat,
-                        lng: baseCoord.lng + jitterLng,
-                        dLat,
-                        dLng,
-                        baseLat: baseCoord.lat,
-                        baseLng: baseCoord.lng
+                        lat: startCoord.lat,
+                        lng: startCoord.lng,
+                        route: coords,
+                        targetIdx: coords.length > 1 ? 1 : 0,
+                        isStatic: coords.length === 1
                     };
                 });
                 setTeamLocations(initialLocs);
@@ -568,40 +576,43 @@ const ProjectMapPage = () => {
             setTeamLocations(prev => {
                 const updated = {};
                 Object.entries(prev).forEach(([id, loc]) => {
-                    let newLat = loc.lat + loc.dLat;
-                    let newLng = loc.lng + loc.dLng;
+                    if (loc.isStatic) {
+                        // For static teams (1 appointment), add a tiny jitter to simulate local movement around the house
+                        const base = loc.route[0];
+                        const jitterLat = (Math.random() - 0.5) * 0.00015;
+                        const jitterLng = (Math.random() - 0.5) * 0.00015;
+                        updated[id] = {
+                            ...loc,
+                            lat: base.lat + jitterLat,
+                            lng: base.lng + jitterLng
+                        };
+                    } else {
+                        // For traveling teams, move towards the current target coordinate
+                        const target = loc.route[loc.targetIdx];
+                        const dLat = target.lat - loc.lat;
+                        const dLng = target.lng - loc.lng;
+                        const dist = Math.sqrt(dLat * dLat + dLng * dLng);
 
-                    const distLat = newLat - loc.baseLat;
-                    const distLng = newLng - loc.baseLng;
+                        const speed = 0.00015; // speed per step (approx 15m)
 
-                    let dLat = loc.dLat;
-                    let dLng = loc.dLng;
-
-                    const maxOffsetLat = 0.005;
-                    const maxOffsetLng = 0.007;
-
-                    if (Math.abs(distLat) > maxOffsetLat) {
-                        dLat = -dLat;
-                        newLat = loc.baseLat + Math.sign(distLat) * maxOffsetLat;
+                        if (dist < 0.00025) {
+                            // Close enough to target, switch target to next coordinate
+                            const nextIdx = (loc.targetIdx + 1) % loc.route.length;
+                            updated[id] = {
+                                ...loc,
+                                targetIdx: nextIdx
+                            };
+                        } else {
+                            // Move step towards target
+                            const stepLat = (dLat / dist) * speed;
+                            const stepLng = (dLng / dist) * speed;
+                            updated[id] = {
+                                ...loc,
+                                lat: loc.lat + stepLat,
+                                lng: loc.lng + stepLng
+                            };
+                        }
                     }
-                    if (Math.abs(distLng) > maxOffsetLng) {
-                        dLng = -dLng;
-                        newLng = loc.baseLng + Math.sign(distLng) * maxOffsetLng;
-                    }
-
-                    const steerAngle = (Math.random() - 0.5) * 0.5;
-                    const cosS = Math.cos(steerAngle);
-                    const sinS = Math.sin(steerAngle);
-                    const nextDLat = dLat * cosS - dLng * sinS;
-                    const nextDLng = dLat * sinS + dLng * cosS;
-
-                    updated[id] = {
-                        ...loc,
-                        lat: newLat,
-                        lng: newLng,
-                        dLat: nextDLat,
-                        dLng: nextDLng
-                    };
                 });
                 return updated;
             });
@@ -749,7 +760,7 @@ const ProjectMapPage = () => {
                         <div className="space-y-4">
                             {[
                                 { color: 'bg-indigo-700', label: 'Caja NVT', count: nvtLocations.length, desc: 'Ubicación física de la caja NVT', square: true },
-                                { color: 'bg-indigo-600', label: 'Equipos (Activos)', count: teams.length, desc: 'Técnicos simulados en tiempo real', isTeam: true },
+                                { color: 'bg-indigo-600', label: 'Equipos (Activos)', count: Object.keys(teamLocations).length, desc: 'Técnicos simulados en tiempo real', isTeam: true },
                                 { color: 'bg-slate-400', label: t('map.status_not_blown') || 'No iluminado', count: stats.notBlown, desc: 'Puntos sin soplado realizado' },
                                 { color: 'bg-rose-500', label: 'Soplado sin cita', count: stats.blown, desc: 'Soplado OK, sin cita agendada', pulse: true },
                                 { color: 'bg-amber-400', label: 'Citada', count: stats.scheduled, desc: 'Pasa el ratón sobre los puntos amarillos' },
