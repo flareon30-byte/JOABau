@@ -323,6 +323,85 @@ exports.importProject = async (req, res) => {
             }
         }
 
+        // --- POST-PROCESSING: Propagate Soplado Status to Sibling Addresses ---
+        // 1. Fetch all addresses with a completed/failed soplado status in the project
+        const blownAddresses = await prisma.address.findMany({
+            where: {
+                projectId: project.id,
+                sopladoStatus: { in: ['OK', 'FALLIDO'] }
+            },
+            include: {
+                sopladoInfo: true
+            }
+        });
+
+        // 2. Group them by building key (street + number)
+        const buildingSopladoMap = new Map();
+        for (const addr of blownAddresses) {
+            if (!addr.street) continue;
+            const key = `${addr.street.trim().toLowerCase()}|${(addr.number || '').trim().toLowerCase()}`;
+            const existingMatch = buildingSopladoMap.get(key);
+            // We prefer OK over FALLIDO, and we need sopladoInfo to copy from
+            if (addr.sopladoInfo) {
+                if (!existingMatch || (existingMatch.sopladoStatus === 'FALLIDO' && addr.sopladoStatus === 'OK')) {
+                    buildingSopladoMap.set(key, {
+                        sopladoStatus: addr.sopladoStatus,
+                        sopladoInfo: addr.sopladoInfo
+                    });
+                }
+            }
+        }
+
+        // 3. Fetch all addresses in the project to check for propagation
+        const allAddresses = await prisma.address.findMany({
+            where: { projectId: project.id },
+            include: { sopladoInfo: true }
+        });
+
+        // 4. Update sibling addresses that don't match the building's soplado status/info
+        for (const addr of allAddresses) {
+            if (!addr.street) continue;
+            const key = `${addr.street.trim().toLowerCase()}|${(addr.number || '').trim().toLowerCase()}`;
+            const info = buildingSopladoMap.get(key);
+            
+            if (info) {
+                // If status doesn't match, or if it doesn't have sopladoInfo, we propagate
+                const statusMismatch = addr.sopladoStatus !== info.sopladoStatus;
+                const infoMissing = !addr.sopladoInfo;
+                
+                if (statusMismatch || infoMissing) {
+                    // Update address status
+                    await prisma.address.update({
+                        where: { id: addr.id },
+                        data: { sopladoStatus: info.sopladoStatus }
+                    });
+
+                    // Prepare SopladoInfo details to copy
+                    const sopladoInfoData = {
+                        meters: info.sopladoInfo.meters,
+                        tk: info.sopladoInfo.tk,
+                        tubeColor: info.sopladoInfo.tubeColor,
+                        teamId: info.sopladoInfo.teamId,
+                        isSaturday: info.sopladoInfo.isSaturday,
+                        failureReason: info.sopladoInfo.failureReason,
+                        photos: info.sopladoInfo.photos,
+                        saturdayPay: info.sopladoInfo.saturdayPay,
+                        performerIds: info.sopladoInfo.performerIds
+                    };
+
+                    // Upsert SopladoInfo for this address
+                    await prisma.sopladoInfo.upsert({
+                        where: { addressId: addr.id },
+                        update: sopladoInfoData,
+                        create: {
+                            addressId: addr.id,
+                            ...sopladoInfoData
+                        }
+                    });
+                }
+            }
+        }
+
         res.json({ 
             message: `Importación finalizada (${isProtocol ? 'Protocolo' : 'Estándar'}).\n` +
                      `- Filas válidas detectadas en Excel: ${excelRowCount}\n` +
