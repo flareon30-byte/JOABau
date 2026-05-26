@@ -126,6 +126,8 @@ const ProjectMapPage = () => {
     const [progress, setProgress] = useState(0);
     const [progressLabel, setProgressLabel] = useState('');
     const [userLocation, setUserLocation] = useState(null);
+    const [teams, setTeams] = useState([]);
+    const [teamLocations, setTeamLocations] = useState({});
 
     // Retrieve logged-in user profile & role
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -135,6 +137,9 @@ const ProjectMapPage = () => {
     const mapInstanceRef = useRef(null);
     const markersGroupRef = useRef(null);
     const cancelledRef = useRef(false);
+    const teamMarkersRef = useRef({});
+    const teamLayerGroupRef = useRef(null);
+    const geocodedCoordsRef = useRef([]);
 
     // Dynamic stats
     const [stats, setStats] = useState({ notBlown: 0, blown: 0, scheduled: 0, completed: 0 });
@@ -207,13 +212,21 @@ const ProjectMapPage = () => {
         setLoadingData(true);
         setAddresses([]);
         setNvtLocations([]);
+        setTeams([]);
+        setTeamLocations({});
+        teamMarkersRef.current = {};
         try {
-            const [addressesRes, nvtRes] = await Promise.all([
+            const [addressesRes, nvtRes, teamsRes] = await Promise.all([
                 api.get(`/api/projects/${selectedProjectId}/map-data`),
-                api.get(`/api/soplado/nvt-locations/${selectedProjectId}`)
+                api.get(`/api/soplado/nvt-locations/${selectedProjectId}`),
+                api.get('/api/teams').catch(err => {
+                    console.error("Error fetching teams:", err);
+                    return { data: [] };
+                })
             ]);
             setAddresses(addressesRes.data);
             setNvtLocations(nvtRes.data.filter(n => n.street && n.street.trim() !== ''));
+            setTeams(teamsRes.data);
 
             // Compute stats
             let notBlown = 0, blown = 0, scheduled = 0, completed = 0;
@@ -288,6 +301,7 @@ const ProjectMapPage = () => {
                     attribution: '&copy; OpenStreetMap'
                 }).addTo(mapInstanceRef.current);
                 markersGroupRef.current = L.featureGroup().addTo(mapInstanceRef.current);
+                teamLayerGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
 
                 // --- POPUP OPEN LISTENER FOR AJAX REQUEST BUTTONS ---
                 mapInstanceRef.current.on('popupopen', (e) => {
@@ -321,6 +335,10 @@ const ProjectMapPage = () => {
             } else {
                 mapInstanceRef.current.setView([center.lat, center.lng], 14);
                 markersGroupRef.current.clearLayers();
+                if (teamLayerGroupRef.current) {
+                    teamLayerGroupRef.current.clearLayers();
+                }
+                teamMarkersRef.current = {};
             }
 
             // ---- geocode each address in parallel-safe batches ----
@@ -363,6 +381,41 @@ const ProjectMapPage = () => {
 
             if (cancelledRef.current) return;
             setLoadingMap(false);
+
+            const validCoords = coordsList.filter(Boolean);
+            geocodedCoordsRef.current = validCoords;
+
+            if (teams.length > 0) {
+                const initialLocs = {};
+                teams.forEach((team, idx) => {
+                    let baseCoord = null;
+                    if (validCoords.length > 0) {
+                        baseCoord = validCoords[idx % validCoords.length];
+                    } else {
+                        baseCoord = center;
+                    }
+
+                    const jitterLat = (Math.random() - 0.5) * 0.0015;
+                    const jitterLng = (Math.random() - 0.5) * 0.002;
+
+                    const angle = Math.random() * 2 * Math.PI;
+                    const speed = 0.0001 + Math.random() * 0.0001;
+                    const dLat = speed * Math.sin(angle);
+                    const dLng = speed * Math.cos(angle);
+
+                    initialLocs[team.id] = {
+                        id: team.id,
+                        name: team.name,
+                        lat: baseCoord.lat + jitterLat,
+                        lng: baseCoord.lng + jitterLng,
+                        dLat,
+                        dLng,
+                        baseLat: baseCoord.lat,
+                        baseLng: baseCoord.lng
+                    };
+                });
+                setTeamLocations(initialLocs);
+            }
 
             // ---- place user location marker if available ----
             if (userLocation) {
@@ -505,7 +558,113 @@ const ProjectMapPage = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, addresses, userLocation, nvtLocations]);
+    }, [leafletLoaded, addresses, userLocation, nvtLocations, teams]);
+
+    // Team movement simulation loop
+    useEffect(() => {
+        if (Object.keys(teamLocations).length === 0) return;
+
+        const interval = setInterval(() => {
+            setTeamLocations(prev => {
+                const updated = {};
+                Object.entries(prev).forEach(([id, loc]) => {
+                    let newLat = loc.lat + loc.dLat;
+                    let newLng = loc.lng + loc.dLng;
+
+                    const distLat = newLat - loc.baseLat;
+                    const distLng = newLng - loc.baseLng;
+
+                    let dLat = loc.dLat;
+                    let dLng = loc.dLng;
+
+                    const maxOffsetLat = 0.005;
+                    const maxOffsetLng = 0.007;
+
+                    if (Math.abs(distLat) > maxOffsetLat) {
+                        dLat = -dLat;
+                        newLat = loc.baseLat + Math.sign(distLat) * maxOffsetLat;
+                    }
+                    if (Math.abs(distLng) > maxOffsetLng) {
+                        dLng = -dLng;
+                        newLng = loc.baseLng + Math.sign(distLng) * maxOffsetLng;
+                    }
+
+                    const steerAngle = (Math.random() - 0.5) * 0.5;
+                    const cosS = Math.cos(steerAngle);
+                    const sinS = Math.sin(steerAngle);
+                    const nextDLat = dLat * cosS - dLng * sinS;
+                    const nextDLng = dLat * sinS + dLng * cosS;
+
+                    updated[id] = {
+                        ...loc,
+                        lat: newLat,
+                        lng: newLng,
+                        dLat: nextDLat,
+                        dLng: nextDLng
+                    };
+                });
+                return updated;
+            });
+        }, 3000);
+
+        return () => clearInterval(interval);
+    }, [teamLocations]);
+
+    // Render / update team markers in Leaflet
+    useEffect(() => {
+        if (!leafletLoaded || !mapInstanceRef.current || !teamLayerGroupRef.current) return;
+        const L = window.L;
+
+        const activeIds = new Set(Object.keys(teamLocations));
+
+        Object.keys(teamMarkersRef.current).forEach(id => {
+            if (!activeIds.has(id)) {
+                teamLayerGroupRef.current.removeLayer(teamMarkersRef.current[id]);
+                delete teamMarkersRef.current[id];
+            }
+        });
+
+        Object.entries(teamLocations).forEach(([id, teamLoc]) => {
+            const { name, lat, lng } = teamLoc;
+            const existingMarker = teamMarkersRef.current[id];
+
+            if (existingMarker) {
+                existingMarker.setLatLng([lat, lng]);
+            } else {
+                const teamIcon = L.divIcon({
+                    html: `
+                        <div class="flex flex-col items-center" style="width: 80px;">
+                            <div class="bg-indigo-600 text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded shadow-md whitespace-nowrap mb-1 border border-indigo-500 max-w-[80px] truncate">
+                                🚚 ${name}
+                            </div>
+                            <div class="w-8 h-8 rounded-full bg-white border-2 border-indigo-600 shadow-lg flex items-center justify-center text-indigo-600 hover:scale-110 transition-transform duration-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><polyline points="14 8 20 8 22 10 22 17 19 17"/><circle cx="7.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                            </div>
+                        </div>
+                    `,
+                    className: '',
+                    iconSize: [80, 50],
+                    iconAnchor: [40, 50]
+                });
+
+                const marker = L.marker([lat, lng], { icon: teamIcon });
+                marker.bindPopup(`
+                    <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
+                        <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4f46e5;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">🚚 Ubicación del Equipo</div>
+                        <div style="line-height:1.7;font-size:11px">
+                            <b>Equipo:</b> ${name}<br>
+                            <b>Latitud:</b> ${lat.toFixed(6)}<br>
+                            <b>Longitud:</b> ${lng.toFixed(6)}<br>
+                            <span class="text-xs text-indigo-500 font-bold">● En movimiento (Tiempo Real)</span>
+                        </div>
+                    </div>
+                `, { maxWidth: 240 });
+
+                teamLayerGroupRef.current.addLayer(marker);
+                teamMarkersRef.current[id] = marker;
+            }
+        });
+    }, [leafletLoaded, teamLocations]);
 
     return (
         <div className="flex flex-col gap-6 h-[calc(100vh-140px)] w-full">
@@ -590,13 +749,20 @@ const ProjectMapPage = () => {
                         <div className="space-y-4">
                             {[
                                 { color: 'bg-indigo-700', label: 'Caja NVT', count: nvtLocations.length, desc: 'Ubicación física de la caja NVT', square: true },
+                                { color: 'bg-indigo-600', label: 'Equipos (Activos)', count: teams.length, desc: 'Técnicos simulados en tiempo real', isTeam: true },
                                 { color: 'bg-slate-400', label: t('map.status_not_blown') || 'No iluminado', count: stats.notBlown, desc: 'Puntos sin soplado realizado' },
                                 { color: 'bg-rose-500', label: 'Soplado sin cita', count: stats.blown, desc: 'Soplado OK, sin cita agendada', pulse: true },
                                 { color: 'bg-amber-400', label: 'Citada', count: stats.scheduled, desc: 'Pasa el ratón sobre los puntos amarillos' },
                                 { color: 'bg-emerald-500', label: 'Terminada', count: stats.completed, desc: 'Instalaciones finalizadas' },
-                            ].map(({ color, label, count, desc, pulse, square }) => (
+                            ].map(({ color, label, count, desc, pulse, square, isTeam }) => (
                                 <div key={label} className="bg-slate-50/50 hover:bg-slate-50 rounded-xl p-3 border border-slate-100/60 transition-all flex items-start gap-3">
-                                    <span className={`w-4 h-4 mt-0.5 border-2 border-white shadow shrink-0 ${color} ${square ? 'rounded-md' : 'rounded-full'} ${pulse ? 'animate-pulse' : ''}`} />
+                                    {isTeam ? (
+                                        <span className="w-5 h-5 flex items-center justify-center bg-indigo-50 border-2 border-indigo-600 rounded-full text-indigo-600 shadow shrink-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><polyline points="14 8 20 8 22 10 22 17 19 17"/><circle cx="7.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                                        </span>
+                                    ) : (
+                                        <span className={`w-4 h-4 mt-0.5 border-2 border-white shadow shrink-0 ${color} ${square ? 'rounded-md' : 'rounded-full'} ${pulse ? 'animate-pulse' : ''}`} />
+                                    )}
                                     <div className="flex-1 min-w-0">
                                         <div className="flex justify-between items-center gap-2">
                                             <span className="font-bold text-slate-700 text-sm">{label}</span>

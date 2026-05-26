@@ -5,7 +5,7 @@ const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 
 router.use(verifyToken);
 // Allow Back Office to VIEW teams to assign appointments
-router.get('/', checkRole(['ADMIN', 'SUPER_ADMIN', 'BACK_OFFICE']), teamController.getAllTeams);
+router.get('/', teamController.getAllTeams);
 
 // Only Admins can MANAGE teams
 router.post('/', checkRole(['ADMIN', 'SUPER_ADMIN']), teamController.createTeam);
