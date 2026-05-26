@@ -11,6 +11,7 @@ router.get('/', teamController.getAllTeams);
 router.get('/live-locations', teamController.getLiveLocations);
 
 // Only Admins can MANAGE teams
+router.post('/simulate-location', checkRole(['ADMIN', 'SUPER_ADMIN']), teamController.simulateLocation);
 router.post('/', checkRole(['ADMIN', 'SUPER_ADMIN']), teamController.createTeam);
 router.put('/:id', checkRole(['ADMIN', 'SUPER_ADMIN']), teamController.updateTeam);
 router.delete('/:id', checkRole(['ADMIN', 'SUPER_ADMIN']), teamController.deleteTeam);

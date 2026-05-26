@@ -753,6 +753,64 @@ const ProjectMapPage = () => {
                             </span>
                         </div>
                     </div>
+
+                    {/* Simulator panel for Admins */}
+                    {['SUPER_ADMIN', 'ADMIN'].includes(user.role) && (
+                        <div className="border-t border-slate-100 pt-4 mt-2">
+                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wide mb-2 flex items-center gap-1">
+                                <span className="inline-block w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                                Simulación GPS (Pruebas)
+                            </h4>
+                            <div className="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                {teams.map(team => (
+                                    <button
+                                        key={team.id}
+                                        onClick={async () => {
+                                            let lat = 49.8358;
+                                            let lng = 8.0163;
+                                            if (mapInstanceRef.current) {
+                                                const center = mapInstanceRef.current.getCenter();
+                                                lat = center.lat;
+                                                lng = center.lng;
+                                            }
+                                            const jitterLat = (Math.random() - 0.5) * 0.006;
+                                            const jitterLng = (Math.random() - 0.5) * 0.006;
+                                            const simulatedLat = lat + jitterLat;
+                                            const simulatedLng = lng + jitterLng;
+                                            
+                                            try {
+                                                await api.post('/api/teams/simulate-location', {
+                                                    teamId: team.id,
+                                                    latitude: simulatedLat,
+                                                    longitude: simulatedLng,
+                                                    username: 'Simulado'
+                                                });
+                                                
+                                                // Update local state instantly so the truck appears on the map immediately!
+                                                setTeamLocations(prev => ({
+                                                    ...prev,
+                                                    [team.id]: {
+                                                        id: team.id,
+                                                        name: team.name,
+                                                        lat: simulatedLat,
+                                                        lng: simulatedLng,
+                                                        username: 'Simulado',
+                                                        updatedAt: new Date().toISOString()
+                                                    }
+                                                }));
+                                            } catch (err) {
+                                                console.error("Error simulating location:", err);
+                                            }
+                                        }}
+                                        className="w-full text-left text-[11px] bg-slate-50 hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 px-3 py-2 rounded-xl border border-slate-200/60 transition-all flex items-center justify-between font-bold"
+                                    >
+                                        <span>🚚 {team.name}</span>
+                                        <span className="text-[9px] text-indigo-500 font-extrabold uppercase bg-white border border-indigo-100 px-1 rounded">Simular</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
