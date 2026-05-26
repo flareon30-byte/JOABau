@@ -152,9 +152,8 @@ exports.getLiveLocations = (req, res) => {
         const now = Date.now();
 
         for (const [teamId, loc] of liveLocations.entries()) {
-            const isDemo = loc.username === 'Sistema (Demo)' || loc.username === 'Simulado';
-            // Include locations updated in the last 4 hours or system demo/simulated ones
-            if (isDemo || (now - new Date(loc.updatedAt).getTime() < FOUR_HOURS)) {
+            // Only include locations updated in the last 4 hours
+            if (now - new Date(loc.updatedAt).getTime() < FOUR_HOURS) {
                 locations.push({
                     teamId,
                     latitude: loc.latitude,
@@ -169,36 +168,5 @@ exports.getLiveLocations = (req, res) => {
     } catch (error) {
         console.error('Error fetching live locations:', error);
         res.status(500).json({ message: 'Error fetching live locations' });
-    }
-};
-
-exports.simulateLocation = async (req, res) => {
-    const { teamId, latitude, longitude, username } = req.body;
-    if (!teamId || latitude === undefined || longitude === undefined) {
-        return res.status(400).json({ message: 'teamId, latitude, and longitude are required' });
-    }
-
-    try {
-        const team = await prisma.team.findUnique({
-            where: { id: teamId }
-        });
-
-        if (!team) {
-            return res.status(404).json({ message: 'Team not found' });
-        }
-
-        const liveLocations = require('../utils/liveLocations');
-        liveLocations.set(teamId, {
-            latitude: parseFloat(latitude),
-            longitude: parseFloat(longitude),
-            username: username || 'Simulado',
-            updatedAt: new Date(),
-            isTeam: true
-        });
-
-        res.json({ message: 'Simulated location updated successfully' });
-    } catch (error) {
-        console.error('Error simulating location:', error);
-        res.status(500).json({ message: 'Error simulating location' });
     }
 };
