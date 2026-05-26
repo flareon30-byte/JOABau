@@ -539,7 +539,7 @@ const ProjectMapPage = () => {
         };
     }, [leafletLoaded, addresses, userLocation, nvtLocations, teams]);
 
-    // Poll real team locations
+    // Poll real team and technician locations
     useEffect(() => {
         if (teams.length === 0) return;
 
@@ -549,15 +549,30 @@ const ProjectMapPage = () => {
                 const locations = res.data;
                 const newLocs = {};
                 locations.forEach(loc => {
-                    const matchingTeam = teams.find(t => t.id === loc.teamId);
-                    if (matchingTeam) {
+                    const isTeam = loc.isTeam !== false; // Default to true if undefined
+                    if (isTeam) {
+                        const matchingTeam = teams.find(t => t.id === loc.teamId);
+                        if (matchingTeam) {
+                            newLocs[loc.teamId] = {
+                                id: loc.teamId,
+                                name: matchingTeam.name,
+                                lat: loc.latitude,
+                                lng: loc.longitude,
+                                username: loc.username,
+                                updatedAt: loc.updatedAt,
+                                isTeam: true
+                            };
+                        }
+                    } else {
+                        // Individual technician
                         newLocs[loc.teamId] = {
-                            id: loc.teamId,
-                            name: matchingTeam.name,
+                            id: loc.teamId, // Actually the user ID
+                            name: loc.username,
                             lat: loc.latitude,
                             lng: loc.longitude,
                             username: loc.username,
-                            updatedAt: loc.updatedAt
+                            updatedAt: loc.updatedAt,
+                            isTeam: false
                         };
                     }
                 });
@@ -587,14 +602,13 @@ const ProjectMapPage = () => {
         });
 
         Object.entries(teamLocations).forEach(([id, teamLoc]) => {
-            const { name, lat, lng } = teamLoc;
+            const { name, lat, lng, isTeam } = teamLoc;
             const existingMarker = teamMarkersRef.current[id];
 
             if (existingMarker) {
                 existingMarker.setLatLng([lat, lng]);
             } else {
-                const teamIcon = L.divIcon({
-                    html: `
+                const iconHtml = isTeam ? `
                         <div class="flex flex-col items-center" style="width: 80px;">
                             <div class="bg-indigo-600 text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded shadow-md whitespace-nowrap mb-1 border border-indigo-500 max-w-[80px] truncate">
                                 🚚 ${name}
@@ -603,20 +617,36 @@ const ProjectMapPage = () => {
                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><polyline points="14 8 20 8 22 10 22 17 19 17"/><circle cx="7.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                             </div>
                         </div>
-                    `,
+                ` : `
+                        <div class="flex flex-col items-center" style="width: 80px;">
+                            <div class="bg-emerald-600 text-white font-extrabold text-[9px] px-1.5 py-0.5 rounded shadow-md whitespace-nowrap mb-1 border border-emerald-500 max-w-[80px] truncate">
+                                👤 ${name}
+                            </div>
+                            <div class="w-8 h-8 rounded-full bg-white border-2 border-emerald-600 shadow-lg flex items-center justify-center text-emerald-600 hover:scale-110 transition-transform duration-200">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                            </div>
+                        </div>
+                `;
+
+                const customIcon = L.divIcon({
+                    html: iconHtml,
                     className: '',
                     iconSize: [80, 50],
                     iconAnchor: [40, 50]
                 });
 
-                const marker = L.marker([lat, lng], { icon: teamIcon });
+                const marker = L.marker([lat, lng], { icon: customIcon });
                 const timeStr = teamLoc.updatedAt ? new Date(teamLoc.updatedAt).toLocaleTimeString() : '—';
                 const reporter = teamLoc.username ? teamLoc.username : '—';
+                
+                const titleText = isTeam ? '🚚 Ubicación del Equipo' : '👤 Técnico Individual';
+                const labelText = isTeam ? '<b>Equipo:</b>' : '<b>Nombre:</b>';
+
                 marker.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
-                        <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4f46e5;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">🚚 Ubicación del Equipo</div>
+                        <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:${isTeam ? '#4f46e5' : '#059669'};border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">${titleText}</div>
                         <div style="line-height:1.7;font-size:11px">
-                            <b>Equipo:</b> ${name}<br>
+                            ${labelText} ${name}<br>
                             <b>Técnico:</b> ${reporter}<br>
                             <b>Actualizado:</b> ${timeStr}<br>
                             <b>Coordenadas:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}

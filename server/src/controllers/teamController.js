@@ -160,7 +160,8 @@ exports.getLiveLocations = (req, res) => {
                     latitude: loc.latitude,
                     longitude: loc.longitude,
                     username: loc.username,
-                    updatedAt: loc.updatedAt
+                    updatedAt: loc.updatedAt,
+                    isTeam: loc.isTeam === undefined ? true : loc.isTeam
                 });
             }
         }
@@ -191,7 +192,8 @@ exports.simulateLocation = async (req, res) => {
             latitude: parseFloat(latitude),
             longitude: parseFloat(longitude),
             username: username || 'Simulado',
-            updatedAt: new Date()
+            updatedAt: new Date(),
+            isTeam: true
         });
 
         res.json({ message: 'Simulated location updated successfully' });

@@ -120,20 +120,30 @@ exports.updateLiveLocation = async (req, res) => {
 
         const user = await prisma.user.findUnique({
             where: { id: req.userId },
-            select: { teamId: true, username: true }
+            select: { id: true, teamId: true, username: true }
         });
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
+        const liveLocations = require('../utils/liveLocations');
         if (user.teamId) {
-            const liveLocations = require('../utils/liveLocations');
             liveLocations.set(user.teamId, {
                 latitude: parseFloat(latitude),
                 longitude: parseFloat(longitude),
                 username: user.username,
-                updatedAt: new Date()
+                updatedAt: new Date(),
+                isTeam: true
+            });
+        } else {
+            // Save under user.id if not in a team, so we can display them individually
+            liveLocations.set(user.id, {
+                latitude: parseFloat(latitude),
+                longitude: parseFloat(longitude),
+                username: user.username,
+                updatedAt: new Date(),
+                isTeam: false
             });
         }
 

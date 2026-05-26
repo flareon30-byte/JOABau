@@ -43,10 +43,12 @@ const Toast = ({ message, onClose, onClick }) => {
 const DashboardLayout = () => {
     const { t, i18n } = useTranslation();
     const { branding } = useBranding();
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const [userProfile, setUserProfile] = useState(() => JSON.parse(localStorage.getItem('user') || '{}'));
+    const user = userProfile;
     usePushNotifications(user.id);
 
     const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+    const [gpsWarning, setGpsWarning] = useState(null);
     const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
     const [openGroups, setOpenGroups] = useState({
         production: true,
@@ -109,6 +111,7 @@ const DashboardLayout = () => {
         try {
             const res = await api.get('/api/auth/me');
             localStorage.setItem('user', JSON.stringify(res.data));
+            setUserProfile(res.data);
             // Log for debug
             console.log('[AUTH] User profile synced:', res.data.activeClientCompany?.name);
         } catch (error) {
@@ -154,10 +157,16 @@ const DashboardLayout = () => {
             // Using watchPosition to update location dynamically
             watchId = navigator.geolocation.watchPosition(
                 (position) => {
+                    setGpsWarning(null); // Clear any warning on success
                     reportLocation(position.coords);
                 },
                 (err) => {
                     console.warn("watchPosition failed or was denied:", err);
+                    if (err.code === 1) { // PERMISSION_DENIED
+                        setGpsWarning("Permiso de GPS denegado. Por favor, activa la ubicación en tu navegador para que puedas aparecer en el mapa.");
+                    } else if (err.code === 2) { // POSITION_UNAVAILABLE
+                        setGpsWarning("Ubicación GPS no disponible en este dispositivo.");
+                    }
                 },
                 { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }
             );
@@ -166,6 +175,7 @@ const DashboardLayout = () => {
             const intervalId = setInterval(() => {
                 navigator.geolocation.getCurrentPosition(
                     (position) => {
+                        setGpsWarning(null); // Clear warning on success
                         reportLocation(position.coords);
                     },
                     (err) => {
@@ -179,6 +189,8 @@ const DashboardLayout = () => {
                 if (watchId !== null) navigator.geolocation.clearWatch(watchId);
                 clearInterval(intervalId);
             };
+        } else {
+            setGpsWarning("Tu navegador no soporta geolocalización GPS.");
         }
     }, [user.role]);
 
@@ -628,6 +640,23 @@ const DashboardLayout = () => {
                 </div>
 
                 <div className="p-4 md:p-8">
+                    {/* GPS permission warning banner */}
+                    {gpsWarning && (
+                        <div className="mb-6 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-xl shadow-sm flex items-start gap-3 animate-in fade-in duration-300">
+                            <div className="bg-amber-100 p-2.5 rounded-full text-amber-600 shrink-0">
+                                <AlertTriangle size={20} />
+                            </div>
+                            <div className="flex-1">
+                                <h4 className="font-bold text-amber-800 text-sm">GPS Desactivado / Permiso Denegado</h4>
+                                <p className="text-xs text-amber-600 mt-0.5 leading-relaxed">
+                                    Para que puedas aparecer en el mapa de distribución de la empresa, es necesario que permitas el acceso a la ubicación en tu navegador. Por favor, comprueba los permisos del sitio y activa el GPS de tu dispositivo.
+                                </p>
+                            </div>
+                            <button onClick={() => setGpsWarning(null)} className="text-amber-400 hover:text-amber-600 p-1 shrink-0">
+                                <X size={16} />
+                            </button>
+                        </div>
+                    )}
                     <Outlet />
                 </div>
             </main>
