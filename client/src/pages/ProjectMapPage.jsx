@@ -278,17 +278,35 @@ const ProjectMapPage = () => {
             let center = { lat: 49.8358, lng: 8.0163 };
             if (cityName) {
                 setProgressLabel(`Localizando ${cityName}…`);
-                try {
-                    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(cityName)}&limit=1`;
-                    const res = await fetch(url);
-                    if (res.ok) {
-                        const d = await res.json();
-                        if (d?.features?.length) {
-                            const [lng, lat] = d.features[0].geometry.coordinates;
-                            center = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                let cityResolved = false;
+                if (GOOGLE_KEY) {
+                    try {
+                        const address = [cityName, 'Germany'].filter(Boolean).join(', ');
+                        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_KEY}&region=de&language=de`;
+                        const res = await fetch(url);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.status === 'OK' && data.results?.length > 0) {
+                                const loc = data.results[0].geometry.location;
+                                center = { lat: loc.lat, lng: loc.lng };
+                                cityResolved = true;
+                            }
                         }
-                    }
-                } catch {}
+                    } catch {}
+                }
+                if (!cityResolved) {
+                    try {
+                        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(cityName)}&limit=1`;
+                        const res = await fetch(url);
+                        if (res.ok) {
+                            const d = await res.json();
+                            if (d?.features?.length) {
+                                const [lng, lat] = d.features[0].geometry.coordinates;
+                                center = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                            }
+                        }
+                    } catch {}
+                }
             }
             if (cancelledRef.current) return;
 
@@ -384,6 +402,20 @@ const ProjectMapPage = () => {
 
             const validCoords = coordsList.filter(Boolean);
             geocodedCoordsRef.current = validCoords;
+
+            // Calculate refined center based on all successfully geocoded address & NVT coordinates
+            const nvtValidCoords = nvtCoordsList.filter(Boolean);
+            const allGeocodedCoords = [...validCoords, ...nvtValidCoords];
+            if (allGeocodedCoords.length > 0) {
+                const lats = allGeocodedCoords.map(c => c.lat);
+                const lngs = allGeocodedCoords.map(c => c.lng);
+                const getMedian = (arr) => {
+                    const sorted = [...arr].sort((a, b) => a - b);
+                    const mid = Math.floor(sorted.length / 2);
+                    return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+                };
+                center = { lat: getMedian(lats), lng: getMedian(lngs) };
+            }
 
             // Initialize team locations based on their assigned appointments in this project
             const addrCoordsMap = {};
