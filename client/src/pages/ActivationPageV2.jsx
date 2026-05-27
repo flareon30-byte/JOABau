@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIcon, Share, Hash, RefreshCw, CheckCircle } from 'lucide-react';
+import { Camera, Save, ArrowLeft, Trash2, X, FileText, PenTool, Image as ImageIcon, Share, Hash, RefreshCw, CheckCircle, AlertCircle } from 'lucide-react';
 import SignaturePad from 'signature_pad';
 import piexif from 'piexifjs';
 import { savePendingActivation, saveActivationDraft, getActivationDraft, deleteActivationDraft } from '../utils/offlineStorage';
