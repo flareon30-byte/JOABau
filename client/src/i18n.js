@@ -42,6 +42,11 @@ const resources = {
         project_map: "Mapa del Proyecto",
         accommodation: "Alojamiento"
       },
+      accommodations: {
+        title: "Alojamientos / Alquileres",
+        subtitle: "Supervisión y control de viviendas de técnicos de campo",
+        add: "Añadir Alojamiento"
+      },
       home: {
         hello: "¡Hola",
         welcome_admin: "Bienvenido al panel central de comando de",
@@ -1229,6 +1234,11 @@ const resources = {
         new_notification: "Neue Benachrichtigung",
         project_map: "Projektkarte",
         accommodation: "Unterkunft"
+      },
+      accommodations: {
+        title: "Unterkünfte / Mietungen",
+        subtitle: "Überwachung und Kontrolle von Wohnungen für Außendiensttechniker",
+        add: "Unterkunft hinzufügen"
       },
       home: {
         hello: "Hallo",
