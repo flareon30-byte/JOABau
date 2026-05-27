@@ -410,7 +410,7 @@ const ActivationPageV2 = () => {
                 ctx.drawImage(img, 0, 0, width, height);
 
                 // Watermark logic
-                const applyWatermark = (logoImg = null) => {
+                 const applyWatermark = (logoImg = null) => {
                     const fontSize = Math.max(18, Math.floor(height * 0.022));
                     const padding = fontSize * 1.5;
                     
@@ -426,7 +426,8 @@ const ActivationPageV2 = () => {
                         const logoWidth = width * 0.18;
                         const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
                         ctx.shadowBlur = 0; ctx.shadowOffsetX = 0; ctx.shadowOffsetY = 0;
-                        ctx.drawImage(logoImg, padding, padding, logoWidth, logoHeight);
+                        const logoX = (width - logoWidth) / 2;
+                        ctx.drawImage(logoImg, logoX, padding, logoWidth, logoHeight);
                         techYOffset = padding + logoHeight + (fontSize * 0.5);
                     }
 
@@ -437,8 +438,9 @@ const ActivationPageV2 = () => {
                     ctx.fillStyle = 'white';
                     ctx.font = `bold ${fontSize}px Arial`;
                     ctx.textBaseline = 'top';
+                    ctx.textAlign = 'center';
                     const techName = user.username?.split('@')[0] || 'Técnico';
-                    ctx.fillText(techName.toUpperCase(), padding, techYOffset);
+                    ctx.fillText(techName.toUpperCase(), width / 2, techYOffset);
 
 
                     ctx.restore();

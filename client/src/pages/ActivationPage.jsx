@@ -354,25 +354,31 @@ const ActivationPage = () => {
 
                     let techYOffset = padding;
 
-                    // 1. Draw Company Logo (Top-Left)
+                    // 1. Draw Company Logo (Top-Center)
                     if (logoImg) {
                         const logoWidth = width * 0.18; // 18% of image width
                         const logoHeight = (logoImg.height / logoImg.width) * logoWidth;
                         ctx.shadowBlur = 0; // No shadow for logo
                         ctx.shadowOffsetX = 0;
                         ctx.shadowOffsetY = 0;
-                        ctx.drawImage(logoImg, padding, padding, logoWidth, logoHeight);
+                        const logoX = (width - logoWidth) / 2;
+                        ctx.drawImage(logoImg, logoX, padding, logoWidth, logoHeight);
                         techYOffset = padding + logoHeight + (fontSize * 0.5);
                     }
 
-                    // 2. Draw Tech Name (Below Logo or Top-Left)
+                    // 2. Draw Tech Name (Below Logo, Centered)
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = 6;
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
                     ctx.fillStyle = 'white';
                     ctx.font = `bold ${fontSize}px Arial`;
                     ctx.textBaseline = 'top';
+                    ctx.textAlign = 'center';
                     
                     const userObj = JSON.parse(localStorage.getItem('user') || '{}');
                     const techName = userObj.username?.split('@')[0] || 'Técnico';
-                    ctx.fillText(techName.toUpperCase(), padding, techYOffset);
+                    ctx.fillText(techName.toUpperCase(), width / 2, techYOffset);
 
                     ctx.restore();
                     finishProcessing(canvas.toDataURL('image/jpeg', 0.85));
