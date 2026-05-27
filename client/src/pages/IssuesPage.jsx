@@ -55,6 +55,7 @@ const IssuesPage = () => {
         clientName: '',
         teamId: '',
         date: new Date().toISOString().split('T')[0], // Default today
+        time: '09:00', // Default time
         description: ''
     });
 
@@ -225,6 +226,7 @@ const IssuesPage = () => {
             clientName: address.clientName || '',
             teamId: '',
             date: new Date().toISOString().split('T')[0],
+            time: '09:00',
             description: ''
         });
         setClaimModalOpen(true);
@@ -236,21 +238,23 @@ const IssuesPage = () => {
 
     const handleCreateClaim = async (e) => {
         e.preventDefault();
-        if (!claimData.teamId || !claimData.date) {
+        if (!claimData.teamId || !claimData.date || !claimData.time) {
             alert(t('issues.error_create_manual')); // Reused generic error
             return;
         }
 
         setLoading(true);
         try {
+            const combinedDateTime = `${claimData.date}T${claimData.time}`;
             await api.post('/api/issues/create-existing', {
                 addressId: selectedAddress.id,
-                ...claimData
+                clientName: claimData.clientName,
+                teamId: claimData.teamId,
+                date: combinedDateTime,
+                description: claimData.description
             });
             setSuccessMessage(t('issues.success_claim'));
             setClaimModalOpen(false);
-            // Refresh search results to show new appointment?
-            // Simplified: just trigger search again if simple enough, or hack state
             handleSearch(e); // Re-run search to update view
         } catch (err) {
             console.error(err);
@@ -272,15 +276,17 @@ const IssuesPage = () => {
 
     const handleDateSelect = (day, hour) => {
         const selectedDate = new Date(day);
-        // If hour is provided, we can use it, but the input is date-only (YYYY-MM-DD).
-        // Since the requirement is just "Fecha Cita" (Date), we extract the YYYY-MM-DD part.
-        // Adjust for timezone to ensure we get the correct clicking date
         const offset = selectedDate.getTimezoneOffset();
         const adjustedDate = new Date(selectedDate.getTime() - (offset * 60 * 1000));
 
+        const formattedTime = hour !== undefined && hour !== null
+            ? `${String(hour).padStart(2, '0')}:00`
+            : claimData.time || '09:00';
+
         setClaimData({
             ...claimData,
-            date: adjustedDate.toISOString().split('T')[0]
+            date: adjustedDate.toISOString().split('T')[0],
+            time: formattedTime
         });
         setIsCalendarOpen(false);
     };
@@ -313,10 +319,18 @@ const IssuesPage = () => {
     };
 
     const openEditModal = (item) => {
+        let defaultTime = '09:00';
+        if (item.assignedDate) {
+            const parts = item.assignedDate.split('T');
+            if (parts.length > 1) {
+                defaultTime = parts[1].substring(0, 5);
+            }
+        }
         setEditingRepair({
             id: item.id,
             teamId: item.assignedTeamId || '',
             date: item.assignedDate ? item.assignedDate.split('T')[0] : '',
+            time: defaultTime,
             description: item.comments && item.comments.length > 0 ? item.comments[0].content.replace('RECLAMACIÓN/AVERÍA: ', '').replace('ACTUALIZACIÓN AVERÍA: ', '') : ''
         });
         setEditModalOpen(true);
@@ -326,9 +340,13 @@ const IssuesPage = () => {
         e.preventDefault();
         setLoading(true);
         try {
+            const combinedDateTime = editingRepair.time
+                ? `${editingRepair.date}T${editingRepair.time}`
+                : editingRepair.date;
+
             await api.put(`/api/issues/repair/${editingRepair.id}`, {
                 teamId: editingRepair.teamId,
-                date: editingRepair.date,
+                date: combinedDateTime,
                 description: editingRepair.description
             });
             setSuccessMessage(t('issues.success_update'));
@@ -881,14 +899,14 @@ const IssuesPage = () => {
                                     <p className="text-xs text-slate-400 mt-1">{t('issues.leave_empty')}</p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.assign_team')} *</label>
                                         <select
                                             name="teamId"
                                             value={claimData.teamId}
                                             onChange={handleClaimDataChange}
-                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue text-sm"
                                             required
                                         >
                                             <option value="">{t('issues.select')}</option>
@@ -899,24 +917,35 @@ const IssuesPage = () => {
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.appointment_date')} *</label>
-                                        <div className="flex gap-2">
+                                        <div className="flex gap-1.5">
                                             <input
                                                 type="date"
                                                 name="date"
                                                 value={claimData.date}
                                                 onChange={handleClaimDataChange}
-                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                                className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue text-sm min-w-0"
                                                 required
                                             />
                                             <button
                                                 type="button"
                                                 onClick={openCalendar}
-                                                className="bg-blue-50 text-blue-600 hover:bg-blue-100 p-3 rounded-lg border border-blue-200 transition-colors"
+                                                className="bg-blue-50 text-blue-600 hover:bg-blue-100 p-3 rounded-lg border border-blue-200 transition-colors flex-shrink-0"
                                                 title="Ver disponibilidad"
                                             >
-                                                <Calendar size={20} />
+                                                <Calendar size={18} />
                                             </button>
                                         </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Hora de la cita *</label>
+                                        <input
+                                            type="time"
+                                            name="time"
+                                            value={claimData.time}
+                                            onChange={handleClaimDataChange}
+                                            className="w-full p-3 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue text-sm"
+                                            required
+                                        />
                                     </div>
                                 </div>
 
@@ -994,22 +1023,34 @@ const IssuesPage = () => {
                             </button>
                         </div>
                         <form onSubmit={handleUpdateRepair} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.appointment_date')}</label>
-                                <input
-                                    type="date"
-                                    value={editingRepair.date || ''}
-                                    onChange={(e) => setEditingRepair({ ...editingRepair, date: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
-                                    required
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.appointment_date')} *</label>
+                                    <input
+                                        type="date"
+                                        value={editingRepair.date || ''}
+                                        onChange={(e) => setEditingRepair({ ...editingRepair, date: e.target.value })}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue text-sm"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Hora de la cita *</label>
+                                    <input
+                                        type="time"
+                                        value={editingRepair.time || '09:00'}
+                                        onChange={(e) => setEditingRepair({ ...editingRepair, time: e.target.value })}
+                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue text-sm"
+                                        required
+                                    />
+                                </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.assign_team')}</label>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.assign_team')} *</label>
                                 <select
                                     value={editingRepair.teamId || ''}
                                     onChange={(e) => setEditingRepair({ ...editingRepair, teamId: e.target.value })}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue text-sm"
                                     required
                                 >
                                     <option value="">{t('issues.unassigned')}</option>

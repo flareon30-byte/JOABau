@@ -249,12 +249,12 @@ exports.createFromExisting = async (req, res) => {
         // Notify Team Members Specifically
         const teamWithMembers = await prisma.team.findUnique({
             where: { id: teamId },
-            include: { users: true }
+            include: { members: true }
         });
 
-        if (teamWithMembers && teamWithMembers.users.length > 0) {
+        if (teamWithMembers && teamWithMembers.members.length > 0) {
             // Create notification for each member
-            const notifications = teamWithMembers.users.map(user => ({
+            const notifications = teamWithMembers.members.map(user => ({
                 type: 'REPAIR_ASSIGNED',
                 message: `URGENTE RECLAMACIÓN: ${address.street} ${address.number}\n${description}`,
                 createdById: userId,
