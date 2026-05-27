@@ -26,6 +26,7 @@ const payrollRoutes = require('./src/routes/payrollRoutes');
 const settingsRoutes = require('./src/routes/settingsRoutes');
 const { initBackupJob } = require('./src/services/backupService');
 const { initCleanupJob } = require('./src/services/cleanupService');
+const { initAccommodationAlertJob } = require('./src/services/accommodationAlertService');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -58,6 +59,7 @@ app.use('/api/activations', activationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', require('./src/routes/notificationRoutes'));
 app.use('/api/settings', settingsRoutes);
+app.use('/api/accommodations', require('./src/routes/accommodationRoutes'));
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/billing', require('./src/routes/billingRoutes'));
 app.use('/api/tools', require('./src/routes/toolRoutes'));
@@ -90,4 +92,5 @@ app.listen(PORT, async () => {
     
     initBackupJob(); // Start automated backups (Sundays 03:00)
     initCleanupJob(); // Start automated cleanup (1st of each month 04:00)
+    initAccommodationAlertJob(); // Start monthly rental renewal alert (20th of each month 09:00)
 });

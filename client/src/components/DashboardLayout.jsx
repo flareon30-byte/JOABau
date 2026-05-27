@@ -6,7 +6,7 @@ import {
     LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, 
     Folder, Zap, ChevronRight, ChevronDown, Settings, Lock, ClipboardList, 
     Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase, Truck, 
-    FileText, Building2, Globe, Map
+    FileText, Building2, Globe, Map, Home
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -267,6 +267,8 @@ const DashboardLayout = () => {
             navigate('/dashboard/vacations');
         } else if (n.type === 'DIETA_LOGGED') {
             navigate('/dashboard/payroll');
+        } else if (n.type === 'RENTAL_RENEWAL') {
+            navigate('/dashboard/accommodations');
         }
     };
 
@@ -328,6 +330,7 @@ const DashboardLayout = () => {
                 { icon: Users, label: t('dashboard.users'), path: '/dashboard/users', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Users, label: t('dashboard.teams'), path: '/dashboard/teams', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Sun, label: t('dashboard.vacations_admin'), path: '/dashboard/vacations-admin', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] },
+                { icon: Home, label: t('dashboard.accommodation') || 'Alojamiento', path: '/dashboard/accommodations', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] },
             ]
         },
         {

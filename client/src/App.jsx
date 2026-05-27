@@ -29,6 +29,7 @@ import VehicleLogForm from './pages/VehicleLogForm';
 import InvoicingPage from './pages/InvoicingPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
 import ProjectMapPage from './pages/ProjectMapPage';
+import AccommodationsPage from './pages/AccommodationsPage';
 
 function App() {
   return (
@@ -53,6 +54,7 @@ function App() {
           <Route path="material-orders" element={<MaterialOrdersPage />} />
           <Route path="vacations" element={<VacationPage />} />
           <Route path="vacations-admin" element={<AdminVacationPage />} />
+          <Route path="accommodations" element={<AccommodationsPage />} />
           <Route path="issues" element={<IssuesPage />} />
           <Route path="debug" element={<BillingDebug />} />
           <Route path="settings" element={<SettingsPage />} />

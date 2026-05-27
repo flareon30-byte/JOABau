@@ -39,7 +39,8 @@ const resources = {
         date: "Fecha",
         management: "Gestión integral de",
         new_notification: "Nueva Notificación",
-        project_map: "Mapa del Proyecto"
+        project_map: "Mapa del Proyecto",
+        accommodation: "Alojamiento"
       },
       home: {
         hello: "¡Hola",
@@ -1226,7 +1227,8 @@ const resources = {
         date: "Datum",
         management: "Integrierte Verwaltung von",
         new_notification: "Neue Benachrichtigung",
-        project_map: "Projektkarte"
+        project_map: "Projektkarte",
+        accommodation: "Unterkunft"
       },
       home: {
         hello: "Hallo",
