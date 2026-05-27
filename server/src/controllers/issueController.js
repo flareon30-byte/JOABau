@@ -141,34 +141,19 @@ exports.createManualIssue = async (req, res) => {
                 include: { users: true }
             });
 
-            if (teamWithMembers && teamWithMembers.users.length > 0) {
-                const notifications = teamWithMembers.users.map(user => ({
+            let targetRole = 'ACTIVATOR';
+            if (teamWithMembers && teamWithMembers.department === 'BLOWING') targetRole = 'BLOWER';
+            if (teamWithMembers && teamWithMembers.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
+
+            await prisma.notification.create({
+                data: {
                     type: 'REPAIR_ASSIGNED',
                     message: `Nueva avería asignada: ${street} ${number} - ${description || 'Sin detalles'}`,
                     createdById: userId,
                     addressId: address.id,
-                    userId: user.id
-                }));
-
-                await prisma.notification.createMany({
-                    data: notifications
-                });
-            } else {
-                // Fallback if no users in team
-                let targetRole = 'ACTIVATOR';
-                if (teamWithMembers && teamWithMembers.department === 'BLOWING') targetRole = 'BLOWER';
-                if (teamWithMembers && teamWithMembers.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
-
-                await prisma.notification.create({
-                    data: {
-                        type: 'REPAIR_ASSIGNED',
-                        message: `Nueva avería asignada: ${street} ${number} - ${description || 'Sin detalles'} (Sin usuarios)`,
-                        createdById: userId,
-                        addressId: address.id,
-                        targetRole: targetRole
-                    }
-                });
-            }
+                    targetRole: targetRole
+                }
+            });
         }
 
         res.json({ message: 'Avería creada correctamente', address, appointment });
@@ -252,35 +237,19 @@ exports.createFromExisting = async (req, res) => {
             include: { members: true }
         });
 
-        if (teamWithMembers && teamWithMembers.members.length > 0) {
-            // Create notification for each member
-            const notifications = teamWithMembers.members.map(user => ({
+        let targetRole = 'ACTIVATOR';
+        if (teamWithMembers && teamWithMembers.department === 'BLOWING') targetRole = 'BLOWER';
+        if (teamWithMembers && teamWithMembers.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
+
+        await prisma.notification.create({
+            data: {
                 type: 'REPAIR_ASSIGNED',
-                message: `URGENTE RECLAMACIÓN: ${address.street} ${address.number}\n${description}`,
+                message: `URGENTE RECLAMACIÓN: ${address.street} ${address.number} - ${description}`,
                 createdById: userId,
                 addressId: addressId,
-                userId: user.id // Specific user
-            }));
-
-            await prisma.notification.createMany({
-                data: notifications
-            });
-        } else {
-            // Fallback to Role if no members found (unlikely but safe)
-            let targetRole = 'ACTIVATOR';
-            if (teamWithMembers && teamWithMembers.department === 'BLOWING') targetRole = 'BLOWER';
-            if (teamWithMembers && teamWithMembers.department === 'PROTOCOLS') targetRole = 'PROTOCOL_MANAGER';
-
-            await prisma.notification.create({
-                data: {
-                    type: 'REPAIR_ASSIGNED',
-                    message: `URGENTE RECLAMACIÓN: ${address.street} ${address.number} - ${description} (Sin usuarios en equipo)`,
-                    createdById: userId,
-                    addressId: addressId,
-                    targetRole: targetRole
-                }
-            });
-        }
+                targetRole: targetRole
+            }
+        });
 
         res.json({ message: 'Reclamación creada y asignada exitosamente.', appointment });
 
