@@ -295,7 +295,7 @@ const ProjectMapPage = () => {
             // ---- init Leaflet ----
             if (!mapInstanceRef.current) {
                 mapInstanceRef.current = L.map(mapRef.current, { zoomControl: false })
-                    .setView([center.lat, center.lng], 14);
+                    .setView([center.lat, center.lng], 16);
                 L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; OpenStreetMap'
@@ -333,7 +333,7 @@ const ProjectMapPage = () => {
                     }
                 });
             } else {
-                mapInstanceRef.current.setView([center.lat, center.lng], 14);
+                mapInstanceRef.current.setView([center.lat, center.lng], 16);
                 markersGroupRef.current.clearLayers();
                 if (teamLayerGroupRef.current) {
                     teamLayerGroupRef.current.clearLayers();
@@ -527,8 +527,27 @@ const ProjectMapPage = () => {
                 markersGroupRef.current.addLayer(nvtMarker);
             });
 
-            if (markersGroupRef.current.getLayers().length > 0) {
-                mapInstanceRef.current.fitBounds(markersGroupRef.current.getBounds(), { padding: [40, 40] });
+            // Filter layers to fit bounds only on markers close to the city center, ignoring geocoding outliers
+            const validBoundsCoords = [];
+            if (markersGroupRef.current) {
+                markersGroupRef.current.eachLayer((layer) => {
+                    if (layer.getLatLng) {
+                        const latLng = layer.getLatLng();
+                        const distLat = Math.abs(latLng.lat - center.lat);
+                        const distLng = Math.abs(latLng.lng - center.lng);
+                        // 0.08 degrees is approx 8-9 km, safe range for German rural projects
+                        if (distLat < 0.08 && distLng < 0.08) {
+                            validBoundsCoords.push(latLng);
+                        }
+                    }
+                });
+            }
+
+            if (validBoundsCoords.length > 0) {
+                const projectBounds = L.latLngBounds(validBoundsCoords);
+                mapInstanceRef.current.fitBounds(projectBounds, { padding: [40, 40], maxZoom: 16 });
+            } else {
+                mapInstanceRef.current.setView([center.lat, center.lng], 16);
             }
         };
 
@@ -586,6 +605,17 @@ const ProjectMapPage = () => {
         const interval = setInterval(fetchLiveLocations, 15000);
         return () => clearInterval(interval);
     }, [teams]);
+
+    const handleCenterOnTeam = (teamId) => {
+        const loc = teamLocations[teamId];
+        if (loc && mapInstanceRef.current) {
+            mapInstanceRef.current.setView([loc.lat, loc.lng], 17);
+            const marker = teamMarkersRef.current[teamId];
+            if (marker) {
+                marker.openPopup();
+            }
+        }
+    };
 
     // Render / update team markers in Leaflet
     useEffect(() => {
@@ -678,13 +708,37 @@ const ProjectMapPage = () => {
                     </div>
                 </div>
 
-                {/* Dropdown Project Selector */}
+                {/* Selectores */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                    {/* Centrar en equipo selector */}
+                    <div className="relative min-w-[220px]">
+                        <select
+                            onChange={e => {
+                                const val = e.target.value;
+                                if (val) {
+                                    handleCenterOnTeam(val);
+                                    e.target.value = '';
+                                }
+                            }}
+                            defaultValue=""
+                            className="w-full appearance-none bg-indigo-50/60 border border-indigo-100 rounded-xl px-4 py-2 text-indigo-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition cursor-pointer text-xs"
+                        >
+                            <option value="">🚚 Centrar en Equipo / Técnico</option>
+                            {Object.entries(teamLocations).map(([id, teamLoc]) => (
+                                <option key={id} value={id}>
+                                    {teamLoc.isTeam ? `🚚 ${teamLoc.name}` : `👤 ${teamLoc.name}`}
+                                </option>
+                            ))}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none" />
+                    </div>
+
+                    {/* Dropdown Project Selector */}
                     <div className="relative min-w-[240px]">
                         <select
                             value={selectedProjectId}
                             onChange={e => setSelectedProjectId(e.target.value)}
-                            className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 pr-10 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition cursor-pointer"
+                            className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-800 font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition cursor-pointer text-xs"
                         >
                             {projects.map(p => (
                                 <option key={p.id} value={p.id}>
@@ -692,7 +746,7 @@ const ProjectMapPage = () => {
                                 </option>
                             ))}
                         </select>
-                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                        <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                     </div>
                 </div>
             </div>
