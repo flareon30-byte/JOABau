@@ -45,6 +45,7 @@ const IssuesPage = () => {
         clientName: '',
         teamId: '',
         date: new Date().toISOString().split('T')[0],
+        time: '09:00',
         description: ''
     });
 
@@ -193,7 +194,16 @@ const IssuesPage = () => {
         setSuccessMessage('');
 
         try {
-            await api.post('/api/issues/create', manualIssue);
+            const combinedDateTime = manualIssue.time
+                ? `${manualIssue.date}T${manualIssue.time}`
+                : manualIssue.date;
+
+            const payload = {
+                ...manualIssue,
+                date: combinedDateTime
+            };
+
+            await api.post('/api/issues/create', payload);
             setSuccessMessage(t('issues.success_create_manual'));
             setManualIssue({ ...manualIssue, city: '', street: '', number: '', clientName: '', description: '' });
             setActiveTab('search');
@@ -605,14 +615,24 @@ const IssuesPage = () => {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">{t('issues.appointment_date')}</label>
-                                    <input
-                                        type="date"
-                                        name="date"
-                                        value={manualIssue.date}
-                                        onChange={handleManualChange}
-                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
-                                        required
-                                    />
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="date"
+                                            name="date"
+                                            value={manualIssue.date}
+                                            onChange={handleManualChange}
+                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                            required
+                                        />
+                                        <input
+                                            type="time"
+                                            name="time"
+                                            value={manualIssue.time}
+                                            onChange={handleManualChange}
+                                            className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-joa-blue"
+                                            required
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>

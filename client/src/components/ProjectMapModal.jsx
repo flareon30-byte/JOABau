@@ -123,11 +123,13 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
     const [progress, setProgress] = useState(0);
     const [progressLabel, setProgressLabel] = useState('');
     const [project, setProject] = useState(null);
+    const [projectTeams, setProjectTeams] = useState([]);
 
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const markersGroupRef = useRef(null);
     const cancelledRef = useRef(false);
+    const teamMarkersRef = useRef({});
 
     // Load Leaflet dynamically
     useEffect(() => {
@@ -174,6 +176,15 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 setProject(projRes.data.find(p => p.id === projectId));
                 setAddresses(mapRes.data);
                 setNvtLocations(nvtRes.data.filter(n => n.street && n.street.trim() !== ''));
+
+                const teamsMap = new Map();
+                mapRes.data.forEach(addr => {
+                    const team = addr.appointment?.assignedTeam;
+                    if (team && !teamsMap.has(team.id)) {
+                        teamsMap.set(team.id, team);
+                    }
+                });
+                setProjectTeams(Array.from(teamsMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
             } catch (e) {
                 console.error('Error fetching map data:', e);
             } finally {
@@ -233,6 +244,8 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 mapInstanceRef.current.setView([center.lat, center.lng], 14);
                 markersGroupRef.current.clearLayers();
             }
+
+            teamMarkersRef.current = {};
 
             // ---- geocode each address in batches ----
             const BATCH = 10;         // parallel requests per batch
@@ -345,6 +358,12 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                 `, { maxWidth: 240 });
 
                 markersGroupRef.current.addLayer(marker);
+
+                const teamId = addr.appointment?.assignedTeam?.id;
+                if (teamId) {
+                    if (!teamMarkersRef.current[teamId]) teamMarkersRef.current[teamId] = [];
+                    teamMarkersRef.current[teamId].push(marker);
+                }
             });
 
             // ---- place NVT markers ----
@@ -376,7 +395,21 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
             });
 
             if (markersGroupRef.current.getLayers().length > 0) {
-                mapInstanceRef.current.fitBounds(markersGroupRef.current.getBounds(), { padding: [40, 40] });
+                const bounds = markersGroupRef.current.getBounds();
+                const L = window.L;
+                
+                // Filter markers roughly in Germany/Europe (to ignore outliers that zoom out the map to the whole globe)
+                const validLayers = markersGroupRef.current.getLayers().filter(m => {
+                    const latlng = m.getLatLng();
+                    return latlng.lat > 45 && latlng.lat < 56 && latlng.lng > 5 && latlng.lng < 16;
+                });
+
+                if (validLayers.length > 0) {
+                    const group = L.featureGroup(validLayers);
+                    mapInstanceRef.current.fitBounds(group.getBounds(), { padding: [40, 40], maxZoom: 16 });
+                } else {
+                    mapInstanceRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+                }
             }
         };
 
@@ -387,6 +420,14 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
         cancelledRef.current = true;
         if (mapInstanceRef.current) { mapInstanceRef.current.remove(); mapInstanceRef.current = null; }
         onClose();
+    };
+
+    const handleJumpToTeam = (teamId) => {
+        const markers = teamMarkersRef.current[teamId];
+        if (markers && markers.length > 0 && mapInstanceRef.current) {
+            const group = window.L.featureGroup(markers);
+            mapInstanceRef.current.fitBounds(group.getBounds(), { padding: [50, 50], maxZoom: 17 });
+        }
     };
 
     if (!isOpen) return null;
@@ -468,6 +509,30 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
                             ))}
                         </div>
                     </div>
+
+                    {/* Team Selector Overlay */}
+                    {projectTeams.length > 0 && (
+                        <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-md p-4 rounded-2xl shadow-xl border border-slate-100 z-[999] max-w-[240px] max-h-[70vh] overflow-y-auto font-sans">
+                            <div className="flex items-center gap-1.5 font-extrabold text-xs text-slate-700 uppercase tracking-wider pb-1.5 border-b border-slate-100 mb-2.5">
+                                <User size={14} className="text-slate-500" />
+                                <span>Equipos en Proyecto</span>
+                            </div>
+                            <div className="space-y-1">
+                                {projectTeams.map(team => (
+                                    <button 
+                                        key={team.id}
+                                        onClick={() => handleJumpToTeam(team.id)}
+                                        className="w-full text-left text-xs font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-colors flex justify-between items-center group"
+                                    >
+                                        <span className="truncate pr-2">{team.name}</span>
+                                        <span className="bg-slate-100 text-slate-500 group-hover:bg-indigo-100 group-hover:text-indigo-600 px-2 py-0.5 rounded-full text-[10px] transition-colors">
+                                            {teamMarkersRef.current[team.id]?.length || 0}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
