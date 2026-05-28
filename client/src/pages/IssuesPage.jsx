@@ -489,8 +489,8 @@ const IssuesPage = () => {
                                                 {t('issues.blown')}: <span className="font-medium">{result.sopladoStatus || t('issues.pending')}</span>
                                             </div>
                                             <div className="flex items-center gap-2 text-sm text-slate-600">
-                                                <CheckCircle className={result.activationInfo ? "text-green-500" : "text-slate-400"} size={16} />
-                                                {t('issues.activation')}: <span className="font-medium">{result.activationInfo ? t('issues.completed') : t('issues.pending')}</span>
+                                                <CheckCircle className={result.activationInfo && result.appointment?.status !== 'RECITAR' ? "text-green-500" : (result.activationInfo ? "text-red-500" : "text-slate-400")} size={16} />
+                                                {t('issues.activation')}: <span className="font-medium">{result.activationInfo && result.appointment?.status !== 'RECITAR' ? t('issues.completed') : (result.activationInfo ? 'Fallida' : t('issues.pending'))}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -510,7 +510,7 @@ const IssuesPage = () => {
                                 {/* Expanded History (Optional or Inline) */}
                                 {(result.repairs?.length > 0 || result.appointment || result.activationInfo) && (
                                     <div className="mt-6 pt-4 border-t border-slate-50 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {result.activationInfo && (
+                                        {result.activationInfo && result.appointment?.status !== 'RECITAR' && (
                                             <div className="bg-green-50/50 p-3 rounded-lg border border-green-100 text-sm">
                                                 <div className="font-bold text-green-800 flex items-center gap-2 mb-1">
                                                     <CheckCircle size={14} /> {t('issues.activation_success')}
@@ -519,6 +519,20 @@ const IssuesPage = () => {
                                                     {t('issues.date')}: {new Date(result.activationInfo.createdAt).toLocaleDateString('es-ES')}
                                                 </p>
                                                 <p className="text-green-600 text-xs text-ellipsis overflow-hidden">
+                                                    Técnico: {result.activationInfo.assignedTeam?.name || 'Técnico'}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {result.activationInfo && result.appointment?.status === 'RECITAR' && (
+                                            <div className="bg-red-50/50 p-3 rounded-lg border border-red-100 text-sm">
+                                                <div className="font-bold text-red-800 flex items-center gap-2 mb-1">
+                                                    <AlertTriangle size={14} /> Pendiente de activar (Requiere recitar)
+                                                </div>
+                                                <p className="text-red-700">
+                                                    {t('issues.date')}: {new Date(result.activationInfo.createdAt).toLocaleDateString('es-ES')}
+                                                </p>
+                                                <p className="text-red-600 text-xs text-ellipsis overflow-hidden">
                                                     Técnico: {result.activationInfo.assignedTeam?.name || 'Técnico'}
                                                 </p>
                                             </div>

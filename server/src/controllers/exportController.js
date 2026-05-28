@@ -218,7 +218,10 @@ exports.getBillingData = async (req, res) => {
                             { city: { contains: address, mode: 'insensitive' } },
                             { number: { contains: address, mode: 'insensitive' } }
                         ]
-                    } : {})
+                    } : {}),
+                    appointment: {
+                        status: 'COMPLETADO'
+                    }
                 },
                 basePrice: { gt: 0 },
                 ...(type ? { OR: typeOrClauses } : {})
