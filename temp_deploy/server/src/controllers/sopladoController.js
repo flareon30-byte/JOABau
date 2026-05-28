@@ -1,0 +1,441 @@
+const prisma = require('../prisma');
+const { processImages } = require('../utils/imageProcessor');
+
+// Get addresses for a specific project
+exports.getProjectAddresses = async (req, res) => {
+    const { projectId } = req.params;
+    const { search } = req.query;
+
+    try {
+        const where = {
+            projectId,
+            // Filter out completed or cancelled orders
+            // User rule: Only show if NOT Installiert AND NOT Abgebrochen
+            orderStatus: {
+                notIn: ['Installiert', 'Abgebrochen']
+            }
+        };
+
+        if (search) {
+            where.OR = [
+                { nvt: { contains: search, mode: 'insensitive' } },
+                { street: { contains: search, mode: 'insensitive' } }
+            ];
+        }
+
+        const rawAddresses = await prisma.address.findMany({
+            where,
+            include: {
+                sopladoInfo: true
+            },
+            take: 200 // Increase take to ensure we get enough distinct items
+        });
+
+        // Manual deduplication if Prisma distinct fails or behaves unexpectedly
+        const seen = new Set();
+        const addresses = rawAddresses.filter(addr => {
+            const s = addr.street ? addr.street.trim().toLowerCase() : '';
+            const n = addr.number ? addr.number.trim().toLowerCase() : '';
+            const key = `${s}|${n}`;
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        }).sort((a, b) => a.street.localeCompare(b.street));
+
+        console.log(`Soplado: Raw fetched ${rawAddresses.length} -> Deduplicated to ${addresses.length}`);
+
+        // Trim to final page size if needed, though client-side pagination is likely better
+        // addresses.length = Math.min(addresses.length, 50);
+
+        res.json(addresses);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error fetching addresses' });
+    }
+};
+
+// Submit Soplado Report (OK or Failed)
+exports.submitSopladoReport = async (req, res) => {
+    const { addressId } = req.params;
+    const { status, meters, tk, tubeColor, failureReason } = req.body;
+    const files = req.files; // Array of files from multer
+
+    if (files && files.length > 0) {
+        let techName = 'Técnico JOA';
+        if (req.userId) {
+            const techUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { username: true } });
+            if (techUser) techName = techUser.username;
+        }
+        await processImages(files, techName);
+    }
+
+    try {
+        const photoPaths = files ? files.map(f => f.path) : [];
+        const isSaturday = new Date().getDay() === 6;
+        let teamId = null;
+        let saturdayPay = 0;
+
+        if (req.userId) {
+            const user = await prisma.user.findUnique({ 
+                where: { id: req.userId },
+                include: { team: { include: { members: true, activeClientCompany: { include: { priceItems: true } } } } }
+            });
+            teamId = user?.teamId || null;
+
+            if (isSaturday && user.team?.activeClientCompany?.priceItems) {
+                const sopladoItem = user.team.activeClientCompany.priceItems.find(item => item.department === 'BLOWING' || item.name.toLowerCase().includes('soplado'));
+                if (sopladoItem) {
+                    saturdayPay = sopladoItem.saturdayPay;
+                }
+            }
+        }
+
+        // 1. Get the target address details to identify the physical location
+        const targetAddress = await prisma.address.findUnique({
+            where: { id: addressId },
+            include: { sopladoInfo: true, appointment: { include: { assignedTeam: { include: { members: true } } } } }
+        });
+
+        if (!targetAddress) {
+            return res.status(404).json({ message: 'Address not found' });
+        }
+
+        // 2. Find ALL addresses at this exact physical location (same project, street, number)
+        const relatedAddresses = await prisma.address.findMany({
+            where: {
+                projectId: targetAddress.projectId,
+                street: { equals: targetAddress.street, mode: 'insensitive' },
+                number: { equals: targetAddress.number, mode: 'insensitive' }
+            },
+            include: { sopladoInfo: true, appointment: { include: { assignedTeam: { include: { members: true } } } } }
+        });
+        const relatedIds = relatedAddresses.map(a => a.id);
+
+        // Transaction to ensure consistency
+        const result = await prisma.$transaction(async (tx) => {
+            console.log(`Updating status to ${status} for ${relatedIds.length} addresses:`, relatedIds);
+
+            // 3. Update Address Status for ALL related addresses
+            await tx.address.updateMany({
+                where: { id: { in: relatedIds } },
+                data: { sopladoStatus: status }
+            });
+
+            const currentUser = await tx.user.findUnique({ 
+                where: { id: req.userId },
+                include: { team: { include: { members: true } } }
+            });
+
+            // 4. Create or Update SopladoInfo for ALL related addresses
+            const upsertPromises = relatedAddresses.map(addr => {
+                let resIDs = addr.sopladoInfo?.performerIds;
+                
+                // If no performers yet, use assigned team or current user's team
+                if (!resIDs || resIDs.length === 0) {
+                    resIDs = addr.appointment?.assignedTeam?.members.map(m => m.id) || currentUser?.team?.members.map(m => m.id) || [req.userId];
+                }
+
+                const sopladoInfoData = {
+                    meters: parseFloat(meters) || 0,
+                    tk: tk || '',
+                    tubeColor: tubeColor || '',
+                    failureReason: status === 'FALLIDO' ? failureReason : null,
+                    photos: photoPaths,
+                    teamId: teamId,
+                    isSaturday: isSaturday,
+                    saturdayPay: saturdayPay,
+                    performerIds: resIDs
+                };
+
+                return tx.sopladoInfo.upsert({
+                    where: { addressId: addr.id },
+                    update: sopladoInfoData,
+                    create: {
+                        addressId: addr.id,
+                        ...sopladoInfoData
+                    }
+                });
+            });
+
+            await Promise.all(upsertPromises);
+
+            console.log('Soplado Info upserted successfully.');
+
+            return { message: 'Report updated for all clients at location', updatedCount: relatedIds.length };
+        });
+
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error submitting report' });
+    }
+};
+
+// Toggle Status (Quick Action)
+exports.toggleSopladoStatus = async (req, res) => {
+    const { addressId } = req.params;
+    const { status } = req.body; // 'OK', 'PENDIENTE', 'FALLIDO'
+
+    try {
+        const targetAddress = await prisma.address.findUnique({
+            where: { id: addressId }
+        });
+
+        if (!targetAddress) {
+            return res.status(404).json({ message: 'Address not found' });
+        }
+
+        const isSaturday = new Date().getDay() === 6;
+        let teamId = null;
+        let saturdayPay = 0;
+        let performerIds = [req.userId];
+
+        if (req.userId) {
+            const user = await prisma.user.findUnique({ 
+                where: { id: req.userId },
+                include: { team: { include: { members: true, activeClientCompany: { include: { priceItems: true } } } } }
+            });
+            teamId = user?.teamId || null;
+            if (user?.team?.members) {
+                performerIds = user.team.members.map(m => m.id);
+            }
+
+            if (isSaturday && user.team?.activeClientCompany?.priceItems) {
+                const sopladoItem = user.team.activeClientCompany.priceItems.find(item => item.department === 'BLOWING' || item.name.toLowerCase().includes('soplado'));
+                if (sopladoItem) {
+                    saturdayPay = sopladoItem.saturdayPay;
+                }
+            }
+        }
+
+        // Apply to ALL addresses at this location (same street/number logic)
+        const relatedAddresses = await prisma.address.findMany({
+            where: {
+                projectId: targetAddress.projectId,
+                street: { equals: targetAddress.street, mode: 'insensitive' },
+                number: { equals: targetAddress.number, mode: 'insensitive' }
+            },
+            select: { id: true }
+        });
+        const relatedIds = relatedAddresses.map(a => a.id);
+
+        console.log(`Toggling status to ${status} for ${relatedIds.length} addresses. IDs: ${relatedIds.join(', ')}`);
+
+        await prisma.$transaction(async (prisma) => {
+            // 1. Update Status for Address
+            // If status is PENDIENTE, we clear it (or set to PENDIENTE explicit enum)
+            // Enum is OK, FALLIDO, PENDIENTE.
+            const newStatus = status === 'PENDIENTE' ? 'PENDIENTE' : status;
+
+            await prisma.address.updateMany({
+                where: { id: { in: relatedIds } },
+                data: { sopladoStatus: newStatus }
+            });
+
+            // 2. Manage SopladoInfo
+            if (status === 'OK' || status === 'FALLIDO') {
+                // Upsert with dummy data
+                const dummyData = {
+                    meters: 0,
+                    tk: 'N/A',
+                    tubeColor: 'N/A',
+                    failureReason: null,
+                    photos: [],
+                    teamId: teamId,
+                    isSaturday: isSaturday,
+                    saturdayPay: saturdayPay,
+                    performerIds: performerIds
+                };
+
+                // We promise.all the upserts
+                const upsertPromises = relatedIds.map(id =>
+                    prisma.sopladoInfo.upsert({
+                        where: { addressId: id },
+                        update: dummyData, // Overwrite with dummy if quick toggle is used
+                        create: {
+                            addressId: id,
+                            ...dummyData
+                        }
+                    })
+                );
+                await Promise.all(upsertPromises);
+
+            } else if (status === 'PENDIENTE') {
+                // Remove Info to revert state cleanly
+                await prisma.sopladoInfo.deleteMany({
+                    where: { addressId: { in: relatedIds } }
+                });
+            }
+        });
+
+        res.json({ message: 'Status updated successfully', status, count: relatedIds.length });
+
+    } catch (error) {
+        console.error('Error toggling soplado status:', error);
+        res.status(500).json({ message: 'Error updating status' });
+    }
+};
+
+// Bulk Update Status
+exports.bulkUpdateSopladoStatus = async (req, res) => {
+    const { addressIds, status } = req.body; // status: 'OK', 'PENDIENTE', 'FALLIDO'
+
+    if (!addressIds || !Array.isArray(addressIds) || addressIds.length === 0) {
+        return res.status(400).json({ message: 'No addresses provided' });
+    }
+
+    try {
+        await prisma.$transaction(async (prisma) => {
+            let dataPerformerIds = [req.userId];
+            for (const id of addressIds) {
+                // 1. Find address to get location info
+                const target = await prisma.address.findUnique({ where: { id } });
+                if (!target) continue;
+
+                const isSaturday = new Date().getDay() === 6;
+                let teamId = null;
+                if (req.userId) {
+                    const user = await prisma.user.findUnique({ 
+                        where: { id: req.userId },
+                        include: { team: { include: { members: true } } }
+                    });
+                    teamId = user?.teamId || null;
+                    const performerIds = user?.team?.members.map(m => m.id) || [req.userId];
+                    dataPerformerIds = performerIds;
+                }
+
+                // 2. Find all related (same project, street, number) to ensure consistent update for location
+                const related = await prisma.address.findMany({
+                    where: {
+                        projectId: target.projectId,
+                        street: { equals: target.street, mode: 'insensitive' },
+                        number: { equals: target.number, mode: 'insensitive' }
+                    },
+                    select: { id: true }
+                });
+                const idsToUpdate = related.map(r => r.id);
+
+                // 3. Update Address Status
+                const newStatus = status === 'PENDIENTE' ? 'PENDIENTE' : status;
+                await prisma.address.updateMany({
+                    where: { id: { in: idsToUpdate } },
+                    data: { sopladoStatus: newStatus }
+                });
+
+                // 4. Update/Delete Info
+                if (status === 'OK' || status === 'FALLIDO') {
+                    const dummyData = {
+                        meters: 0,
+                        tk: 'N/A',
+                        tubeColor: 'N/A',
+                        failureReason: null,
+                        photos: [],
+                        teamId: teamId,
+                        isSaturday: isSaturday,
+                        performerIds: dataPerformerIds || [req.userId]
+                    };
+
+                    // Upsert individually
+                    for (const rid of idsToUpdate) {
+                        await prisma.sopladoInfo.upsert({
+                            where: { addressId: rid },
+                            update: dummyData,
+                            create: { addressId: rid, ...dummyData }
+                        });
+                    }
+                } else if (status === 'PENDIENTE') {
+                    await prisma.sopladoInfo.deleteMany({
+                        where: { addressId: { in: idsToUpdate } }
+                    });
+                }
+            }
+        });
+
+        res.json({ message: 'Bulk update successful', count: addressIds.length });
+
+    } catch (error) {
+        console.error('Error in bulk update:', error);
+        res.status(500).json({ message: 'Error updating statuses' });
+    }
+};
+
+// Get NVT locations for a project (merging with distinct NVTs in address list)
+exports.getNvtLocations = async (req, res) => {
+    const { projectId } = req.params;
+
+    try {
+        const addresses = await prisma.address.findMany({
+            where: { projectId },
+            select: { nvt: true },
+            distinct: ['nvt']
+        });
+
+        const nvtSet = new Set(
+            addresses
+                .map(a => a.nvt)
+                .filter(n => n && n.trim() !== '')
+        );
+
+        const locations = await prisma.nvtLocation.findMany({
+            where: { projectId }
+        });
+
+        locations.forEach(loc => {
+            if (loc.nvtName) nvtSet.add(loc.nvtName);
+        });
+
+        const result = Array.from(nvtSet).map(name => {
+            const loc = locations.find(l => l.nvtName === name);
+            return {
+                nvtName: name,
+                street: loc ? loc.street : '',
+                number: loc ? loc.number : '',
+                city: loc ? loc.city : '',
+                id: loc ? loc.id : null
+            };
+        }).sort((a, b) => a.nvtName.localeCompare(b.nvtName, undefined, { numeric: true, sensitivity: 'base' }));
+
+        res.json(result);
+    } catch (error) {
+        console.error('Error getting NVT locations:', error);
+        res.status(500).json({ message: 'Error fetching NVT locations' });
+    }
+};
+
+// Save NVT location
+exports.saveNvtLocation = async (req, res) => {
+    const { projectId } = req.params;
+    const { nvtName, street, number, city } = req.body;
+
+    if (!nvtName || !street) {
+        return res.status(400).json({ message: 'NVT name and Street are required' });
+    }
+
+    try {
+        const nvtLoc = await prisma.nvtLocation.upsert({
+            where: {
+                projectId_nvtName: {
+                    projectId,
+                    nvtName
+                }
+            },
+            update: {
+                street,
+                number: number || null,
+                city: city || null
+            },
+            create: {
+                projectId,
+                nvtName,
+                street,
+                number: number || null,
+                city: city || null
+            }
+        });
+
+        res.json(nvtLoc);
+    } catch (error) {
+        console.error('Error saving NVT location:', error);
+        res.status(500).json({ message: 'Error saving NVT location' });
+    }
+};

@@ -5,8 +5,6 @@ import { Search, Plus, FileText, Image, History, AlertTriangle, CheckCircle, XCi
 import CalendarView from '../components/CalendarView';
 import { useTranslation } from 'react-i18next';
 
-const BASE_URL = import.meta.env.PROD ? window.location.origin : 'http://localhost:3000';
-
 const IssuesPage = () => {
     const { t } = useTranslation();
     const location = useLocation();
@@ -864,13 +862,13 @@ const IssuesPage = () => {
                                         {selectedRepair.photos.map((photo, i) => (
                                             <a
                                                 key={i}
-                                                href={`${BASE_URL}/${photo}`}
+                                                href={`http://localhost:3000/${photo}`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="block aspect-square rounded-lg overflow-hidden border border-slate-200 hover:border-blue-500 transition-colors relative group"
                                             >
                                                 <img
-                                                    src={`${BASE_URL}/${photo}`}
+                                                    src={`http://localhost:3000/${photo}`}
                                                     alt={`Evidencia ${i + 1}`}
                                                     className="w-full h-full object-cover transition-transform group-hover:scale-110"
                                                 />

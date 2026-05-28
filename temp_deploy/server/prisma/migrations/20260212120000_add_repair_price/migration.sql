@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "SystemSettings" ADD COLUMN "repairPrice" DOUBLE PRECISION NOT NULL DEFAULT 45.0;

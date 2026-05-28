@@ -1,0 +1,610 @@
+import React, { useState, useEffect } from 'react';
+import api from '../api/axios';
+import { Calendar, Filter, Download, Eye, X, Image as ImageIcon, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+
+const getFileUrl = (path) => {
+    if (!path) return '';
+    let cleanPath = path.split('?')[0].replace(/\\/g, '/');
+    if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+
+    let baseUrl = api.defaults.baseURL || '';
+    if (baseUrl === '/') baseUrl = '';
+    if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+    
+    const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+    return `${baseUrl}${encodedPath}`;
+};
+
+const ActivationsHistoryPage = () => {
+    const { t } = useTranslation();
+    const [activations, setActivations] = useState([]);
+    const [teams, setTeams] = useState([]);
+    const [projects, setProjects] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    // Filters
+    const [filters, setFilters] = useState({
+        startDate: '',
+        endDate: '',
+        teamId: '',
+        projectId: ''
+    });
+
+    // Modal
+    const [selectedActivation, setSelectedActivation] = useState(null);
+    const [zoomPhoto, setZoomPhoto] = useState(null);
+
+    useEffect(() => {
+        fetchData();
+        fetchOptions();
+    }, []);
+
+    useEffect(() => {
+        fetchData();
+    }, [filters]);
+
+    const fetchOptions = async () => {
+        try {
+            const [teamsRes, projectsRes] = await Promise.all([
+                api.get('/api/teams'),
+                api.get('/api/projects')
+            ]);
+            setTeams(teamsRes.data);
+            setProjects(projectsRes.data);
+        } catch (error) {
+            console.error('Error fetching options:', error);
+        }
+    };
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (filters.startDate) params.append('startDate', filters.startDate);
+            if (filters.endDate) params.append('endDate', filters.endDate);
+            if (filters.teamId) params.append('teamId', filters.teamId);
+            if (filters.projectId) params.append('projectId', filters.projectId);
+
+            const res = await api.get(`/api/activations/all?${params.toString()}`);
+            setActivations(res.data);
+        } catch (error) {
+            console.error('Error fetching activations:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleFilterChange = (e) => {
+        setFilters({ ...filters, [e.target.name]: e.target.value });
+    };
+
+    const exportToCSV = () => {
+        if (activations.length === 0) return;
+
+        const headers = [
+            t('activations.date') || 'Fecha', 
+            t('activations.address') || 'Dirección', 
+            t('activations.project') || 'Proyecto', 
+            t('activations.team') || 'Equipo', 
+            t('vehicles.tech') || 'Técnico', 
+            t('activations.type_label') || 'Tipo', 
+            t('activations.details') || 'Detalles', 
+            t('activations.home_ids_label') || 'Home IDs', 
+            t('activations.comments') || 'Comentarios', 
+            t('activations.points') || 'Puntos'
+        ];
+        const rows = activations.map(act => [
+            new Date(act.createdAt).toLocaleDateString('es-ES'),
+            `${act.address.street} ${act.address.number}`,
+            act.address.project.name,
+            act.address.appointment?.assignedTeam?.name || 'N/A',
+            act.address.appointment?.assignedTeam?.members?.map(m => m.username).join(', ') || 'N/A',
+            act.activationType,
+            `AP:${act.apPorts} TA:${act.taInstalled ? act.taCount : 0} SP:${act.spInstalled}`,
+            act.homeIds.join(', '),
+            act.description || '',
+            act.points
+        ]);
+
+        const csvContent = "data:text/csv;charset=utf-8,"
+            + headers.join(",") + "\n"
+            + rows.map(e => e.join(",")).join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "activaciones_export.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportFiltersForm, setExportFiltersForm] = useState({
+        startDate: '',
+        endDate: '',
+        projectId: ''
+    });
+
+    const openExportModal = () => {
+        // Pre-fill with current filters if available
+        setExportFiltersForm({
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            projectId: filters.projectId
+        });
+        setIsExportModalOpen(true);
+    };
+
+    const handleExportPhotos = () => {
+        const params = new URLSearchParams();
+        if (exportFiltersForm.startDate) params.append('startDate', exportFiltersForm.startDate);
+        if (exportFiltersForm.endDate) params.append('endDate', exportFiltersForm.endDate);
+        if (exportFiltersForm.projectId) params.append('projectId', exportFiltersForm.projectId);
+
+        // Trigger download via anchor click instead of window.open (fixes PWA blank screen)
+        let baseUrl = api.defaults.baseURL || '';
+        if (baseUrl === '/') baseUrl = '';
+        if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+        const url = `${baseUrl}/api/activations/export-photos?${params.toString()}`;
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setIsExportModalOpen(false);
+    };
+
+    const [isRepairModalOpen, setIsRepairModalOpen] = useState(false);
+    const [repairForm, setRepairForm] = useState({
+        type: 'WARRANTY', // WARRANTY, BILLABLE
+        date: new Date().toISOString().split('T')[0],
+        teamId: '',
+        reason: ''
+    });
+
+    const openRepairModal = (act) => {
+        setSelectedActivation(act);
+        setRepairForm({
+            type: 'WARRANTY',
+            date: new Date().toISOString().split('T')[0],
+            teamId: act.address.appointment?.assignedTeamId || '',
+            reason: ''
+        });
+        setIsRepairModalOpen(true);
+    };
+
+    const handleRepairSubmit = async () => {
+        if (!repairForm.teamId || !repairForm.date) {
+            alert(t('activations.select_team_date') || 'Por favor selecciona equipo y fecha');
+            return;
+        }
+
+        try {
+            await api.post(`/api/appointments/repair/${selectedActivation.addressId}`, repairForm);
+            alert(t('activations.repair_success') || 'Cita de reparación creada correctamente');
+            setIsRepairModalOpen(false);
+            fetchData();
+        } catch (error) {
+            console.error(error);
+            alert(t('activations.repair_error') || 'Error al crear reparación');
+        }
+    };
+
+    const RepairModal = () => {
+        if (!isRepairModalOpen || !selectedActivation) return null;
+
+        const originalTeamName = selectedActivation.address.appointment?.assignedTeam?.name || t('activations.unassigned') || 'Desconocido';
+        const originalDate = new Date(selectedActivation.createdAt).toLocaleDateString('es-ES');
+
+        return (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4">
+                <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl relative">
+                    <button onClick={() => setIsRepairModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                        <X size={24} />
+                    </button>
+
+                    <h3 className="text-xl font-bold text-red-600 mb-1 flex items-center gap-2">
+                        <AlertTriangle /> {t('activations.report_issue_repair') || 'Reportar Incidencia / Reparación'}
+                    </h3>
+                    <p className="text-sm text-slate-500 mb-6 border-b border-slate-100 pb-4">
+                        {selectedActivation.address.street} {selectedActivation.address.number}
+                    </p>
+
+                    <div className="bg-yellow-50 p-4 rounded-lg mb-6 border border-yellow-200 text-sm text-yellow-800">
+                        <p><strong>{t('activations.technical_info') || 'Instalación Original'}:</strong></p>
+                        <ul className="list-disc pl-5 mt-1">
+                            <li>{t('activations.assigned_team') || 'Realizada por'}: <strong>{originalTeamName}</strong></li>
+                            <li>{t('activations.date') || 'Fecha'}: {originalDate}</li>
+                        </ul>
+                    </div>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-bold text-slate-700 mb-2">{t('activations.report_issue_repair') || 'Tipo de Incidencia'}</label>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button
+                                    onClick={() => setRepairForm({ ...repairForm, type: 'WARRANTY' })}
+                                    className={`p-3 rounded-xl border text-center transition-all ${repairForm.type === 'WARRANTY' ? 'border-red-500 bg-red-50 text-red-700 ring-2 ring-red-200' : 'border-slate-200 hover:border-slate-300'}`}
+                                >
+                                    <div className="font-bold">{t('activations.complaint') || 'Reclamación'}</div>
+                                    <div className="text-xs opacity-75">(Garantía / Sin Cobro)</div>
+                                </button>
+                                <button
+                                    onClick={() => setRepairForm({ ...repairForm, type: 'BILLABLE' })}
+                                    className={`p-3 rounded-xl border text-center transition-all ${repairForm.type === 'BILLABLE' ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-200' : 'border-slate-200 hover:border-slate-300'}`}
+                                >
+                                    <div className="font-bold">{t('activations.external_breakdown') || 'Avería Externa'}</div>
+                                    <div className="text-xs opacity-75">(Facturable)</div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.assign_to_team') || 'Asignar a Equipo'}</label>
+                            <select
+                                value={repairForm.teamId}
+                                onChange={(e) => setRepairForm({ ...repairForm, teamId: e.target.value })}
+                                className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            >
+                                <option value="">{t('activations.select_team_date') || 'Selecciona un equipo'}</option>
+                                {teams.map(t => (
+                                    <option key={t.id} value={t.id}>
+                                        {t.name} {t.id === selectedActivation.address.appointment?.assignedTeamId ? '(Original)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.repair_date') || 'Fecha de Reparación'}</label>
+                            <input
+                                type="date"
+                                value={repairForm.date}
+                                onChange={(e) => setRepairForm({ ...repairForm, date: e.target.value })}
+                                className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.reason_description') || 'Motivo / Descripción'}</label>
+                            <textarea
+                                value={repairForm.reason}
+                                onChange={(e) => setRepairForm({ ...repairForm, reason: e.target.value })}
+                                className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                placeholder={t('activations.placeholder_observation') || "Describe el problema reportado..."}
+                                rows="2"
+                            />
+                        </div>
+
+                        <div className="pt-4 flex justify-end gap-3">
+                            <button
+                                onClick={() => setIsRepairModalOpen(false)}
+                                className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                            >
+                                {t('activations.cancel') || 'Cancelar'}
+                            </button>
+                            <button
+                                onClick={handleRepairSubmit}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-bold shadow-lg shadow-red-500/30 flex items-center gap-2"
+                            >
+                                <AlertTriangle size={18} />
+                                {t('activations.generate_repair_appointment') || 'Generar Cita de Reparación'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-slate-800">{t('activations.history_title') || 'Historial de Activaciones'}</h2>
+                <div className="flex gap-2">
+                    <button
+                        onClick={openExportModal}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                        <ImageIcon size={18} /> {t('activations.export_photos') || 'Exportar Fotos'}
+                    </button>
+                    <button
+                        onClick={exportToCSV}
+                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                    >
+                        <Download size={18} /> {t('activations.export_csv') || 'Exportar CSV'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Filters */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">{t('activations.from') || 'Desde'}</label>
+                    <input
+                        type="date"
+                        name="startDate"
+                        value={filters.startDate}
+                        onChange={handleFilterChange}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">{t('activations.to') || 'Hasta'}</label>
+                    <input
+                        type="date"
+                        name="endDate"
+                        value={filters.endDate}
+                        onChange={handleFilterChange}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">{t('activations.team') || 'Equipo'}</label>
+                    <select
+                        name="teamId"
+                        value={filters.teamId}
+                        onChange={handleFilterChange}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                        <option value="">{t('activations.all_projects') || 'Todos'}</option>
+                        {teams.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                </div>
+                <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-1">{t('activations.project') || 'Proyecto'}</label>
+                    <select
+                        name="projectId"
+                        value={filters.projectId}
+                        onChange={handleFilterChange}
+                        className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                        <option value="">{t('activations.all_projects') || 'Todos'}</option>
+                        {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                </div>
+                <div className="md:col-span-4 flex justify-end gap-2 mt-2 pt-2 border-t border-slate-50">
+                    <button
+                        onClick={() => {
+                            const today = new Date().toISOString().split('T')[0];
+                            setFilters({ ...filters, startDate: today, endDate: today });
+                        }}
+                        className="bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 border border-blue-200 transition-all active:scale-95"
+                    >
+                        <Calendar size={14} /> {t('activations.view_today_production') || 'Ver Producción de Hoy'}
+                    </button>
+                    <button
+                        onClick={() => setFilters({ startDate: '', endDate: '', teamId: '', projectId: '' })}
+                        className="bg-slate-50 text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 border border-slate-200 transition-all active:scale-95"
+                    >
+                        <X size={14} /> {t('activations.clear_filters') || 'Limpiar Filtros'}
+                    </button>
+                </div>
+            </div>
+
+            {/* Table */}
+            <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-slate-600">
+                        <thead className="bg-slate-50 text-slate-800 font-bold border-b border-slate-200">
+                            <tr>
+                                <th className="p-4">{t('activations.date') || 'Fecha'}</th>
+                                <th className="p-4">{t('activations.address') || 'Dirección'}</th>
+                                <th className="p-4">{t('activations.team') || 'Equipo'}</th>
+                                <th className="p-4">{t('activations.details') || 'Detalles'}</th>
+                                <th className="p-4">{t('activations.comments') || 'Comentarios'}</th>
+                                <th className="p-4">{t('activations.points') || 'Puntos'}</th>
+                                <th className="p-4 text-right">{t('activations.actions') || 'Acciones'}</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {loading ? (
+                                <tr><td colSpan="7" className="p-8 text-center">{t('settings.loading')}</td></tr>
+                             ) : activations.length === 0 ? (
+                                <tr><td colSpan="7" className="p-8 text-center text-slate-400">{t('activations.no_activations_found') || 'No se encontraron activaciones.'}</td></tr>
+                            ) : (
+                                activations.map(act => (
+                                    <tr key={act.id} className="hover:bg-slate-50">
+                                        <td className="p-4 whitespace-nowrap">
+                                            {new Date(act.createdAt).toLocaleDateString('es-ES')}
+                                            <div className="text-xs text-slate-400">{new Date(act.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="font-bold text-slate-800">{act.address.street} {act.address.number}</div>
+                                            <div className="text-xs">{act.address.project.name}</div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="font-medium text-slate-800">{act.address.appointment?.assignedTeam?.name || 'N/A'}</div>
+                                            <div className="text-xs text-slate-400 truncate max-w-[150px]">
+                                                {act.address.appointment?.assignedTeam?.members?.map(m => m.username.split('@')[0]).join(', ')}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-xs space-y-1">
+                                            <div><span className="font-bold">AP:</span> {act.apPorts} | <span className="font-bold">SP:</span> {act.spInstalled}</div>
+                                            <div><span className="font-bold">TA:</span> {act.taInstalled ? `Sí (${act.taCount})` : 'No'} {act.mduInstalled ? ' + MDU' : ''}</div>
+                                            <div className="text-[10px] text-blue-600 font-bold truncate max-w-[120px]">ID: {act.homeIds.join(', ')}</div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="text-xs text-slate-500 italic max-w-[150px] truncate" title={act.description}>
+                                                {act.description || '-'}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 font-bold text-joa-blue">{act.points}</td>
+                                        <td className="p-4 text-right">
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => openRepairModal(act)}
+                                                    className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                                                    title={t('activations.report_issue_repair') || "Reportar Incidencia / Reparación"}
+                                                >
+                                                    <AlertTriangle size={18} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setSelectedActivation(act)}
+                                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-blue-600 transition-colors"
+                                                    title={t('activations.view_details_photos') || "Ver Detalles y Fotos"}
+                                                >
+                                                    <Eye size={18} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Details Modal */}
+            {selectedActivation && !isRepairModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+                        <button onClick={() => setSelectedActivation(null)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                            <X size={24} />
+                        </button>
+
+                        <h3 className="text-xl font-bold text-slate-800 mb-1">{t('activations.activation_details') || 'Detalles de Activación'}</h3>
+                        <p className="text-slate-500 text-sm mb-6">
+                            {selectedActivation.address.street} {selectedActivation.address.number} - {new Date(selectedActivation.createdAt).toLocaleString()}
+                        </p>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <h4 className="font-bold text-slate-700 mb-2">{t('activations.technical_info') || 'Información Técnica'}</h4>
+                                <ul className="space-y-2 text-sm text-slate-600">
+                                    <li><span className="font-medium">{t('activations.type_label') || 'Tipo'}:</span> {selectedActivation.activationType}</li>
+                                    <li><span className="font-medium">{t('activations.ap_ports_label') || 'Puertos AP'}:</span> {selectedActivation.apPorts}</li>
+                                    <li><span className="font-medium">{t('activations.ta_installed_label') || 'TA Instalada'}:</span> {selectedActivation.taInstalled ? `${t('yes') || 'Sí'} (${selectedActivation.taCount})` : (t('no') || 'No')}</li>
+                                    <li><span className="font-medium">{t('activations.sp_installed_label') || 'SP Instalados'}:</span> {selectedActivation.spInstalled}</li>
+                                    <li><span className="font-medium">{t('activations.home_ids_label') || 'Home IDs'}:</span> {selectedActivation.homeIds.join(', ')}</li>
+                                </ul>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <h4 className="font-bold text-slate-700 mb-2">{t('activations.description_label') || 'Descripción'}</h4>
+                                <p className="text-sm text-slate-600 whitespace-pre-wrap">
+                                    {selectedActivation.description || (t('activations.no_description') || 'Sin descripción.')}
+                                </p>
+                            </div>
+                        </div>
+
+                        <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <ImageIcon size={20} /> {t('activations.attached_photos') || 'Fotos Adjuntas'}
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {selectedActivation.photos && selectedActivation.photos.length > 0 ? (
+                                selectedActivation.photos.map((photo, i) => {
+                                    const fullUrl = getFileUrl(photo);
+                                    
+                                    return (
+                                        <div key={i} className="aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-100 group relative">
+                                            <img
+                                                src={fullUrl}
+                                                alt={`Foto ${i + 1}`}
+                                                className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                                                onClick={() => setZoomPhoto(fullUrl)}
+                                            />
+                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity flex items-center justify-center">
+                                                <Eye className="text-white" />
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <p className="text-slate-400 text-sm col-span-full">{t('activations.no_photos_attached') || 'No hay fotos adjuntas.'}</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Photo Lightbox (Zoom) */}
+            {zoomPhoto && (
+                <div 
+                    className="fixed inset-0 bg-slate-900/98 z-[9999] flex flex-col items-center justify-center p-2 md:p-10"
+                >
+                    <button 
+                        onClick={() => setZoomPhoto(null)}
+                        className="absolute top-6 right-6 text-white bg-white/20 p-3 rounded-full hover:bg-white/40 active:scale-95 transition-all z-[10000]"
+                    >
+                        <X size={28} />
+                    </button>
+                    <img 
+                        src={zoomPhoto.startsWith('blob:') ? zoomPhoto : `${zoomPhoto}${zoomPhoto.includes('?') ? '&' : '?'}cb=${Date.now()}`} 
+                        alt="Zoom" 
+                        className="max-w-full max-h-full object-contain rounded-lg shadow-2xl zoom-in"
+                    />
+                </div>
+            )}
+
+            <RepairModal />
+
+            {/* Export Photos Modal */}
+            {isExportModalOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+                    <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+                        <button onClick={() => setIsExportModalOpen(false)} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                            <X size={24} />
+                        </button>
+                        <h3 className="text-xl font-bold text-slate-800 mb-4">{t('activations.export_activations_photos') || 'Exportar Fotos de Activaciones'}</h3>
+                        <p className="text-sm text-slate-500 mb-6">
+                            {t('activations.select_filters_zip') || 'Selecciona los filtros para generar un archivo ZIP con las fotos organizadas por carpetas (Dirección - Cliente).'}
+                        </p>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.project') || 'Proyecto'}</label>
+                                <select
+                                    value={exportFiltersForm.projectId}
+                                    onChange={(e) => setExportFiltersForm({ ...exportFiltersForm, projectId: e.target.value })}
+                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                >
+                                    <option value="">{t('activations.all_projects') || 'Todos los Proyectos'}</option>
+                                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.from') || 'Desde'}</label>
+                                    <input
+                                        type="date"
+                                        value={exportFiltersForm.startDate}
+                                        onChange={(e) => setExportFiltersForm({ ...exportFiltersForm, startDate: e.target.value })}
+                                        className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('activations.to') || 'Hasta'}</label>
+                                    <input
+                                        type="date"
+                                        value={exportFiltersForm.endDate}
+                                        onChange={(e) => setExportFiltersForm({ ...exportFiltersForm, endDate: e.target.value })}
+                                        className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                    />
+                                </div>
+                            </div>
+                            <div className="pt-4 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setIsExportModalOpen(false)}
+                                    className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg"
+                                >
+                                    {t('activations.cancel') || 'Cancelar'}
+                                </button>
+                                <button
+                                    onClick={handleExportPhotos}
+                                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                                >
+                                    {t('activations.download_zip') || 'Descargar ZIP'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default ActivationsHistoryPage;
