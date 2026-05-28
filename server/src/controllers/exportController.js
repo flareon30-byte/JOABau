@@ -267,7 +267,7 @@ exports.getBillingData = async (req, res) => {
         // 5. REPAIRS (Billable Only)
         results.repair = type ? [] : await prisma.appointment.findMany({
             where: {
-                type: 'REPAIR_BILLABLE',
+                type: { in: ['REPAIR', 'REPAIR_BILLABLE'] },
                 status: 'COMPLETADO',
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
@@ -674,7 +674,7 @@ exports.exportBillingExcel = async (req, res) => {
 
         const repair = (type && !idList) ? [] : await prisma.appointment.findMany({
             where: idList ? { id: { in: idList } } : {
-                type: 'REPAIR_BILLABLE',
+                type: { in: ['REPAIR', 'REPAIR_BILLABLE'] },
                 status: 'COMPLETADO',
                 createdAt: hasDate ? dateFilter : undefined,
                 address: {
