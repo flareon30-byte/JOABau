@@ -59,8 +59,8 @@ exports.deleteActivation = async (req, res) => {
                 where: { id: info.addressId },
                 data: { orderStatus: 'geplant' } // Revert to default
             }),
-            // 2. Reset Appointment Status
-            prisma.appointment.update({
+            // 2. Reset Appointment Status safely (use updateMany to avoid RecordNotFound if it doesn't exist)
+            prisma.appointment.updateMany({
                 where: { addressId: info.addressId },
                 data: { status: 'CITADO' } // Assuming it goes back to scheduled
             }),
@@ -94,11 +94,14 @@ exports.deleteProtocol = async (req, res) => {
 exports.deleteRepair = async (req, res) => {
     const { id } = req.params;
     try {
-        await prisma.simpleInstallation.delete({ where: { id } });
-        res.json({ message: 'Reparación eliminada.' });
+        await prisma.appointment.update({
+            where: { id },
+            data: { status: 'CITADO' }
+        });
+        res.json({ message: 'Reparación revertida a pendiente.' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error eliminando reparación' });
+        res.status(500).json({ message: 'Error revirtiendo reparación' });
     }
 };
 
