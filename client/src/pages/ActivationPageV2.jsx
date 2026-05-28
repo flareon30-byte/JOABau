@@ -207,6 +207,7 @@ const ActivationPageV2 = () => {
                     } catch (draftErr) {
                         console.error('Error loading draft:', draftErr);
                     }
+                    } // closes else if (info)
                 } catch (err) {
                     console.error('Error fetching items:', err);
                 }
