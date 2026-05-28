@@ -832,7 +832,7 @@ exports.syncDraft = async (req, res) => {
         // VALIDATE ENUM Values
         const validEnumValues = ['BP', 'BP_2_FAM', 'BR_MULTI', 'SDU', 'MDU'];
         const finalActivationType = validEnumValues.includes(activationType) ? activationType : 'BP';
-        const finalCustomName = !validEnumValues.includes(activationType) ? activationType : (description || '');
+        const finalCustomName = !validEnumValues.includes(activationType) ? activationType : null;
 
         const draft = await prisma.activationInfo.upsert({
 
