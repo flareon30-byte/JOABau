@@ -8,10 +8,20 @@ router.use(verifyToken);
 // Ensure only admins can access billing operations
 const allowBilling = checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']);
 
-// GET Data & Export (Moved from activationRoutes in theory, but I will duplicate/alias here for cleanliness)
-// The user might still be calling /api/activation/billing/data, I should update frontend to use this new route eventually,
 // but for now I'll just add the DELETE routes here and register this new file.
 // Ideally, migrated entirely. I will expose them here too.
+
+router.get('/seed-demo', async (req, res) => {
+    try {
+        const { exec } = require('child_process');
+        exec('node seed_demo.js', (err, stdout, stderr) => {
+            res.json({ err: err ? err.message : null, stdout, stderr });
+        });
+    } catch(e) {
+        res.json({ error: e.message });
+    }
+});
+
 router.get('/data', allowBilling, exportController.getBillingData);
 router.get('/debug', exportController.debugBilling);
 router.get('/export', allowBilling, exportController.exportBillingExcel);
