@@ -212,16 +212,20 @@ exports.getBillingData = async (req, res) => {
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
-                    ...(address ? {
-                        OR: [
-                            { street: { contains: address, mode: 'insensitive' } },
-                            { city: { contains: address, mode: 'insensitive' } },
-                            { number: { contains: address, mode: 'insensitive' } }
-                        ]
-                    } : {}),
-                    OR: [
-                        { appointment: null },
-                        { appointment: { status: { not: 'RECITAR' } } }
+                    AND: [
+                        address ? {
+                            OR: [
+                                { street: { contains: address, mode: 'insensitive' } },
+                                { city: { contains: address, mode: 'insensitive' } },
+                                { number: { contains: address, mode: 'insensitive' } }
+                            ]
+                        } : {},
+                        {
+                            OR: [
+                                { appointment: null },
+                                { appointment: { status: { not: 'RECITAR' } } }
+                            ]
+                        }
                     ]
                 },
                 basePrice: { gt: 0 },
@@ -622,16 +626,20 @@ exports.exportBillingExcel = async (req, res) => {
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
-                    ...(address ? {
-                        OR: [
-                            { street: { contains: address, mode: 'insensitive' } },
-                            { city: { contains: address, mode: 'insensitive' } },
-                            { number: { contains: address, mode: 'insensitive' } }
-                        ]
-                    } : {}),
-                    OR: [
-                        { appointment: null },
-                        { appointment: { status: { not: 'RECITAR' } } }
+                    AND: [
+                        address ? {
+                            OR: [
+                                { street: { contains: address, mode: 'insensitive' } },
+                                { city: { contains: address, mode: 'insensitive' } },
+                                { number: { contains: address, mode: 'insensitive' } }
+                            ]
+                        } : {},
+                        {
+                            OR: [
+                                { appointment: null },
+                                { appointment: { status: { not: 'RECITAR' } } }
+                            ]
+                        }
                     ]
                 },
                 basePrice: { gt: 0 },
