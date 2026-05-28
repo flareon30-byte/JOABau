@@ -161,25 +161,13 @@ const ActivationPageV2 = () => {
                     
                     const info = found.address.activationInfo;
                     if (!info || (!info.activationType && !info.customActivationName)) {
-                        if (finalActivationItems.length > 0) {
-                            const defaultType = finalActivationItems[0].name;
-                            let defaultFam = 1;
-                            let defaultPorts = '2';
-                            if (defaultType === 'Unifamiliar' || defaultType === 'BP') {
-                                defaultFam = 1;
-                                defaultPorts = '1';
-                            } else if (defaultType === 'Dos familias' || defaultType === 'BP_2_FAM') {
-                                defaultFam = 2;
-                                defaultPorts = '2';
-                            }
-                            setFormData(prev => ({
-                                ...prev,
-                                activationType: defaultType,
-                                familiesCount: defaultFam,
-                                apPorts: defaultPorts
-                            }));
-                        }
-                    }
+                        setFormData(prev => ({
+                            ...prev,
+                            activationType: '',
+                            familiesCount: 1,
+                            apPorts: '2'
+                        }));
+                    } else if (info) {
 
                     // --- LOAD DRAFT / MERGE ---
                     try {
@@ -742,6 +730,11 @@ const ActivationPageV2 = () => {
         if (e) e.preventDefault();
         if (!appointment) return;
 
+        if (!formData.activationType) {
+            alert("Por favor, selecciona un Tipo de Instalación en el desplegable.");
+            return;
+        }
+
         setSubmitting(true);
 
         const data = new FormData();
@@ -919,7 +912,9 @@ const ActivationPageV2 = () => {
                             value={formData.activationType}
                             onChange={handleInputChange}
                             className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-joa-blue"
+                            required
                         >
+                            <option value="" disabled hidden>Selecciona un tipo de instalación...</option>
                             {priceItems.length > 0 ? (
                                 priceItems.map(item => (
                                     <option key={item.id} value={item.name}>
@@ -927,7 +922,7 @@ const ActivationPageV2 = () => {
                                     </option>
                                 ))
                             ) : (
-                                <option value="">{t('activations.no_concepts')}</option>
+                                <option value="" disabled>{t('activations.no_concepts')}</option>
                             )}
                         </select>
                     </div>
