@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Truck, Fuel, Gauge, Camera, Save, CheckCircle, AlertTriangle, Loader, TrendingUp, Search, Image as ImageIcon, Trash2, Calendar } from 'lucide-react';
+import { Truck, Fuel, Gauge, Camera, Save, CheckCircle, AlertTriangle, Loader, TrendingUp, Search, Image as ImageIcon, Trash2, Calendar, ScanLine } from 'lucide-react';
 import api from '../api/axios';
 import { useTranslation } from 'react-i18next';
+import Tesseract from 'tesseract.js';
 
 const VehicleLogForm = () => {
     const { t } = useTranslation();
     const [vehicle, setVehicle] = useState(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [isOcrLoading, setIsOcrLoading] = useState(false);
     const [lastLog, setLastLog] = useState(null);
 
     const [type, setType] = useState('FUEL'); // FUEL, ODOMETER
@@ -87,6 +89,49 @@ const VehicleLogForm = () => {
         try {
             const processed = await Promise.all(files.map(file => processPhoto(file)));
             setPhotos(processed);
+
+            if (type === 'FUEL' && processed.length > 0) {
+                setIsOcrLoading(true);
+                try {
+                    const result = await Tesseract.recognize(processed[0], 'spa', {
+                        logger: m => console.log(m)
+                    });
+                    const text = result.data.text;
+                    console.log("OCR Extracted Text:", text);
+
+                    // Busca patrones como TOTAL, IMPORTE, SUMA, EUR, € seguido de número
+                    const regex = /(?:TOTAL|IMPORTE|SUMA|PAGADO|TARJETA|EFECTIVO|EUR|€)[\s:.-]*([0-9]+[.,][0-9]{2})/gi;
+                    let match;
+                    let bestAmount = null;
+                    while ((match = regex.exec(text)) !== null) {
+                        let val = parseFloat(match[1].replace(',', '.'));
+                        if (val > (bestAmount || 0)) bestAmount = val;
+                    }
+
+                    if (!bestAmount) {
+                        // Si no encuentra clave, busca el número más grande con 2 decimales (razonable para gasolina)
+                        const fallbackRegex = /([0-9]+[.,][0-9]{2})/g;
+                        let largest = 0;
+                        while ((match = fallbackRegex.exec(text)) !== null) {
+                            let val = parseFloat(match[1].replace(',', '.'));
+                            if (val > largest && val < 400) largest = val; 
+                        }
+                        if (largest > 0) bestAmount = largest;
+                    }
+
+                    if (bestAmount) {
+                        setAmount(bestAmount.toString());
+                        alert(`OCR: Se ha detectado un importe de ${bestAmount} €.\nPor favor, verifica que sea correcto.`);
+                    } else {
+                        alert("OCR: No se pudo detectar el importe automáticamente. Por favor, introdúzcalo manualmente.");
+                    }
+                } catch (ocrErr) {
+                    console.error("OCR Error:", ocrErr);
+                    alert("Error al procesar el ticket. Introdúcelo manualmente.");
+                } finally {
+                    setIsOcrLoading(false);
+                }
+            }
         } catch (err) {
             console.error("Photo Error:", err);
             alert(t('vehicles.alert_photo_process_failed'));
@@ -230,7 +275,10 @@ const VehicleLogForm = () => {
                     {type === 'FUEL' && (
                         <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6">
                             <div>
-                                <label className="block text-sm font-bold text-slate-500 mb-2 uppercase">{t('vehicles.total_amount')}</label>
+                                <label className="flex items-center gap-2 text-sm font-bold text-slate-500 mb-2 uppercase">
+                                    {t('vehicles.total_amount')}
+                                    {isOcrLoading && <span className="text-xs text-blue-500 flex items-center gap-1 animate-pulse normal-case"><ScanLine size={14}/> Analizando ticket...</span>}
+                                </label>
                                 <div className="relative">
                                     <input 
                                         type="number" 
