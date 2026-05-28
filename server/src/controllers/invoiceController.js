@@ -184,7 +184,7 @@ exports.getPendingWork = async (req, res) => {
         };
 
         // Buscar TODA la producción del cliente sin facturar
-        const [activations, soplados, fusions, installations] = await Promise.all([
+        const [activations, soplados, fusions, installations, repairs] = await Promise.all([
             prisma.activationInfo.findMany({
                 where: { 
                     invoiceId: null, 
@@ -215,6 +215,16 @@ exports.getPendingWork = async (req, res) => {
                     address: commonAddressFilter 
                 },
                 include: { address: { include: { appointment: true } }, items: { include: { priceItem: true } } }
+            }),
+            prisma.appointment.findMany({
+                where: {
+                    type: { in: ['REPAIR', 'REPAIR_BILLABLE'] },
+                    status: 'COMPLETADO',
+                    createdAt: { gte: start, lte: end },
+                    invoiceId: null,
+                    address: commonAddressFilter
+                },
+                include: { address: true, comments: true }
             })
         ]);
 
@@ -222,7 +232,13 @@ exports.getPendingWork = async (req, res) => {
         const finalActivations = activations.filter(a => !a.address?.appointment || a.address.appointment.status !== 'RECITAR');
         const finalInstallations = installations.filter(s => !s.address?.appointment || s.address.appointment.status !== 'RECITAR');
 
-        res.json({ activations: finalActivations, soplados, fusions, installations: finalInstallations });
+        res.json({ 
+            activations: finalActivations, 
+            soplados, 
+            fusions, 
+            installations: finalInstallations,
+            repairs
+        });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error cargando trabajos pendientes' });
