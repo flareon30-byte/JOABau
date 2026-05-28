@@ -13,6 +13,7 @@ const allowBilling = checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']);
 // but for now I'll just add the DELETE routes here and register this new file.
 // Ideally, migrated entirely. I will expose them here too.
 router.get('/data', allowBilling, exportController.getBillingData);
+router.get('/debug', exportController.debugBilling);
 router.get('/export', allowBilling, exportController.exportBillingExcel);
 router.get('/export-photos', allowBilling, exportController.exportActivationPhotos);
 

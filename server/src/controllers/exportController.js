@@ -118,6 +118,19 @@ exports.exportActivationPhotos = async (req, res) => {
     }
 };
 
+exports.debugBilling = async (req, res) => {
+    try {
+        const address = req.query.address || 'Ludwig-Jahn-Str. 5';
+        const addrs = await prisma.address.findMany({
+            where: { street: { contains: address, mode: 'insensitive' } },
+            include: { appointment: true, activationInfo: true, simpleInstallation: true }
+        });
+        res.json(addrs);
+    } catch (e) {
+        res.status(500).json(e);
+    }
+};
+
 exports.getBillingData = async (req, res) => {
     const { projectId, startDate, endDate, nvt, type, clientCompanyId, address } = req.query;
     const isDemo = req.isDemo === true; // Filter by user demo status
