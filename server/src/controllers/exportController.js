@@ -219,9 +219,10 @@ exports.getBillingData = async (req, res) => {
                             { number: { contains: address, mode: 'insensitive' } }
                         ]
                     } : {}),
-                    appointment: {
-                        status: 'COMPLETADO'
-                    }
+                    OR: [
+                        { appointment: null },
+                        { appointment: { status: { not: 'RECITAR' } } }
+                    ]
                 },
                 basePrice: { gt: 0 },
                 ...(type ? { OR: typeOrClauses } : {})
@@ -627,7 +628,11 @@ exports.exportBillingExcel = async (req, res) => {
                             { city: { contains: address, mode: 'insensitive' } },
                             { number: { contains: address, mode: 'insensitive' } }
                         ]
-                    } : {})
+                    } : {}),
+                    OR: [
+                        { appointment: null },
+                        { appointment: { status: { not: 'RECITAR' } } }
+                    ]
                 },
                 basePrice: { gt: 0 },
                 ...(type ? { OR: typeOrClauses } : {})

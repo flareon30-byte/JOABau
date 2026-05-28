@@ -180,7 +180,11 @@ exports.getPendingWork = async (req, res) => {
 
         const commonAddressFilter = { 
             project: { clientCompanyId: clientId },
-            orderStatus: { notIn: ['CERRADA', 'DERIVADA'] }
+            orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
+            OR: [
+                { appointment: null },
+                { appointment: { status: { not: 'RECITAR' } } }
+            ]
         };
 
         // Buscar TODA la producción del cliente sin facturar
