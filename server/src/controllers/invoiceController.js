@@ -261,6 +261,7 @@ exports.createInvoice = async (req, res) => {
         const soplados = await prisma.sopladoInfo.findMany({ where: { id: { in: itemIds.soplados || [] } }, include: { address: true } });
         const fusions = await prisma.fusionWork.findMany({ where: { id: { in: itemIds.fusions || [] } } });
         const installations = await prisma.simpleInstallation.findMany({ where: { id: { in: itemIds.installations || [] } }, include: { address: true, items: { include: { priceItem: true } } } });
+        const repairs = await prisma.appointment.findMany({ where: { id: { in: itemIds.repairs || [] } }, include: { address: true } });
 
         // 2. Calcular Subtotal y Detalle
         let subtotal = 0;
@@ -309,6 +310,14 @@ exports.createInvoice = async (req, res) => {
             subtotal += total;
         });
 
+        // Procesar Reparaciones
+        const repairBasePrice = client.priceItems.find(p => p.department === 'REPAIR')?.price || 20;
+        repairs.forEach(r => {
+            const fullAddress = `${r.address?.street} ${r.address?.number || ''}`.trim();
+            invoiceItems.push({ desc: `Reparación Independiente: ${fullAddress}`, qty: 1, price: repairBasePrice, total: repairBasePrice });
+            subtotal += repairBasePrice;
+        });
+
         const vatAmount = subtotal * (client.defaultVat / 100);
         const total = subtotal + vatAmount;
 
@@ -344,7 +353,8 @@ exports.createInvoice = async (req, res) => {
             prisma.activationInfo.updateMany({ where: { id: { in: itemIds.activations || [] } }, data: { invoiceId: invoice.id } }),
             prisma.sopladoInfo.updateMany({ where: { id: { in: itemIds.soplados || [] } }, data: { invoiceId: invoice.id } }),
             prisma.fusionWork.updateMany({ where: { id: { in: itemIds.fusions || [] } }, data: { invoiceId: invoice.id } }),
-            prisma.simpleInstallation.updateMany({ where: { id: { in: itemIds.installations || [] } }, data: { invoiceId: invoice.id } })
+            prisma.simpleInstallation.updateMany({ where: { id: { in: itemIds.installations || [] } }, data: { invoiceId: invoice.id } }),
+            prisma.appointment.updateMany({ where: { id: { in: itemIds.repairs || [] } }, data: { invoiceId: invoice.id } })
         ]);
 
         res.json({ success: true, invoice: { ...invoice, pdfPath } });
