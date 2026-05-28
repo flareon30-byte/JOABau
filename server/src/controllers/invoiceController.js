@@ -180,11 +180,7 @@ exports.getPendingWork = async (req, res) => {
 
         const commonAddressFilter = { 
             project: { clientCompanyId: clientId },
-            orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
-            OR: [
-                { appointment: null },
-                { appointment: { status: { not: 'RECITAR' } } }
-            ]
+            orderStatus: { notIn: ['CERRADA', 'DERIVADA'] }
         };
 
         // Buscar TODA la producción del cliente sin facturar
@@ -195,7 +191,7 @@ exports.getPendingWork = async (req, res) => {
                     createdAt: { gte: start, lte: end },
                     address: commonAddressFilter 
                 },
-                include: { address: true }
+                include: { address: { include: { appointment: true } } }
             }),
             prisma.sopladoInfo.findMany({
                 where: { 
@@ -218,11 +214,15 @@ exports.getPendingWork = async (req, res) => {
                     createdAt: { gte: start, lte: end },
                     address: commonAddressFilter 
                 },
-                include: { address: true, items: { include: { priceItem: true } } }
+                include: { address: { include: { appointment: true } }, items: { include: { priceItem: true } } }
             })
         ]);
 
-        res.json({ activations, soplados, fusions, installations });
+        // --- CLIENT SIDE FILTERING FOR 'RECITAR' ---
+        const finalActivations = activations.filter(a => !a.address?.appointment || a.address.appointment.status !== 'RECITAR');
+        const finalInstallations = installations.filter(s => !s.address?.appointment || s.address.appointment.status !== 'RECITAR');
+
+        res.json({ activations: finalActivations, soplados, fusions, installations: finalInstallations });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Error cargando trabajos pendientes' });

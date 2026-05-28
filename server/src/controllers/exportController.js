@@ -18,12 +18,12 @@ exports.exportActivationPhotos = async (req, res) => {
             // 1. Fetch from ActivationInfo
             activations = await prisma.activationInfo.findMany({
                 where: { id: { in: idList } },
-                include: { address: true }
+                include: { address: { include: { appointment: true } } }
             });
             // 2. Fetch from SimpleInstallation
             simpleInstallations = await prisma.simpleInstallation.findMany({
                 where: { id: { in: idList } },
-                include: { address: true }
+                include: { address: { include: { appointment: true } } }
             });
         } else {
             // Bulk filter (Same as before but only for ActivationInfo for now)
@@ -42,9 +42,13 @@ exports.exportActivationPhotos = async (req, res) => {
 
             activations = await prisma.activationInfo.findMany({
                 where: whereClause,
-                include: { address: true }
+                include: { address: { include: { appointment: true } } }
             });
         }
+
+        // --- CLIENT SIDE FILTERING FOR 'RECITAR' ---
+        activations = activations.filter(a => !a.address?.appointment || a.address.appointment.status !== 'RECITAR');
+        simpleInstallations = simpleInstallations.filter(s => !s.address?.appointment || s.address.appointment.status !== 'RECITAR');
 
         if (activations.length === 0 && simpleInstallations.length === 0) {
             return res.status(404).send('No se encontraron registros con documentación.');
@@ -212,27 +216,19 @@ exports.getBillingData = async (req, res) => {
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
-                    AND: [
-                        address ? {
-                            OR: [
-                                { street: { contains: address, mode: 'insensitive' } },
-                                { city: { contains: address, mode: 'insensitive' } },
-                                { number: { contains: address, mode: 'insensitive' } }
-                            ]
-                        } : {},
-                        {
-                            OR: [
-                                { appointment: null },
-                                { appointment: { status: { not: 'RECITAR' } } }
-                            ]
-                        }
-                    ]
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 },
                 basePrice: { gt: 0 },
                 ...(type ? { OR: typeOrClauses } : {})
             },
             include: { 
-                address: { include: { project: true } },
+                address: { include: { project: true, appointment: true } },
                 createdBy: true
             },
             orderBy: { createdAt: 'desc' }
@@ -315,12 +311,16 @@ exports.getBillingData = async (req, res) => {
                 }
             },
             include: { 
-                address: { include: { project: true } }, 
+                address: { include: { project: true, appointment: true } }, 
                 createdBy: true,
                 items: { include: { priceItem: true } }
             },
             orderBy: { createdAt: 'desc' }
         });
+
+        // --- CLIENT SIDE FILTERING FOR 'RECITAR' ---
+        results.activation = results.activation.filter(a => !a.address?.appointment || a.address.appointment.status !== 'RECITAR');
+        results.simpleInstallation = results.simpleInstallation.filter(s => !s.address?.appointment || s.address.appointment.status !== 'RECITAR');
 
         console.log(`[BILLING] Found: ${results.activation.length} activations, ${results.simpleInstallation.length} installations after 0€ filter.`);
 
@@ -626,26 +626,18 @@ exports.exportBillingExcel = async (req, res) => {
                         ...(clientCompanyId ? { clientCompanyId } : {})
                     }, // Filter by Demo
                     ...(nvt ? { nvt: { contains: nvt, mode: 'insensitive' } } : {}),
-                    AND: [
-                        address ? {
-                            OR: [
-                                { street: { contains: address, mode: 'insensitive' } },
-                                { city: { contains: address, mode: 'insensitive' } },
-                                { number: { contains: address, mode: 'insensitive' } }
-                            ]
-                        } : {},
-                        {
-                            OR: [
-                                { appointment: null },
-                                { appointment: { status: { not: 'RECITAR' } } }
-                            ]
-                        }
-                    ]
+                    ...(address ? {
+                        OR: [
+                            { street: { contains: address, mode: 'insensitive' } },
+                            { city: { contains: address, mode: 'insensitive' } },
+                            { number: { contains: address, mode: 'insensitive' } }
+                        ]
+                    } : {})
                 },
                 basePrice: { gt: 0 },
                 ...(type ? { OR: typeOrClauses } : {})
             },
-            include: { address: { include: { project: true } } }
+            include: { address: { include: { project: true, appointment: true } } }
         });
 
         const protocol = (type && !idList) ? [] : await prisma.appointment.findMany({
@@ -719,8 +711,12 @@ exports.exportBillingExcel = async (req, res) => {
                     } : {})
                 }
             },
-            include: { address: { include: { project: true } } }
+            include: { address: { include: { project: true, appointment: true } } }
         });
+
+        // --- CLIENT SIDE FILTERING FOR 'RECITAR' ---
+        let finalActivation = activation.filter(a => !a.address?.appointment || a.address.appointment.status !== 'RECITAR');
+        let finalInstallation = simpleInstallation.filter(s => !s.address?.appointment || s.address.appointment.status !== 'RECITAR');
 
         const wb = XLSX.utils.book_new();
 
@@ -779,7 +775,7 @@ exports.exportBillingExcel = async (req, res) => {
         XLSX.utils.book_append_sheet(wb, wsFusion, "Fusiones");
 
         // 3. Activacion Sheet
-        const actRows = activation.map(i => ({
+        const actRows = finalActivation.map(i => ({
             Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
             Proyecto: i.address?.project?.name || 'N/A',
             Direccion: `${i.address?.street || ''} ${i.address?.number || ''}`,
