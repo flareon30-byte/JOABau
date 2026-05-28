@@ -277,7 +277,7 @@ exports.getBillingData = async (req, res) => {
             where: {
                 type: { in: ['REPAIR', 'REPAIR_BILLABLE'] },
                 status: 'COMPLETADO',
-                createdAt: hasDate ? dateFilter : undefined,
+                updatedAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {
@@ -679,7 +679,7 @@ exports.exportBillingExcel = async (req, res) => {
             where: idList ? { id: { in: idList } } : {
                 type: { in: ['REPAIR', 'REPAIR_BILLABLE'] },
                 status: 'COMPLETADO',
-                createdAt: hasDate ? dateFilter : undefined,
+                updatedAt: hasDate ? dateFilter : undefined,
                 address: {
                     projectId: projectId || undefined,
                     project: {

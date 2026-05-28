@@ -220,7 +220,7 @@ exports.getPendingWork = async (req, res) => {
                 where: {
                     type: { in: ['REPAIR', 'REPAIR_BILLABLE'] },
                     status: 'COMPLETADO',
-                    createdAt: { gte: start, lte: end },
+                    updatedAt: { gte: start, lte: end },
                     invoiceId: null,
                     address: commonAddressFilter
                 },
