@@ -237,7 +237,6 @@ exports.getBillingData = async (req, res) => {
                         ]
                     } : {})
                 },
-                basePrice: { gt: 0 },
                 ...(type ? { OR: typeOrClauses } : {})
             },
             include: { 
@@ -647,7 +646,6 @@ exports.exportBillingExcel = async (req, res) => {
                         ]
                     } : {})
                 },
-                basePrice: { gt: 0 },
                 ...(type ? { OR: typeOrClauses } : {})
             },
             include: { address: { include: { project: true, appointment: true } } }
