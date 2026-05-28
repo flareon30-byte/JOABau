@@ -4,13 +4,6 @@ const billingController = require('../controllers/billingController');
 const exportController = require('../controllers/exportController'); // Re-use for GET/Export
 const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 
-router.use(verifyToken);
-// Ensure only admins can access billing operations
-const allowBilling = checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']);
-
-// but for now I'll just add the DELETE routes here and register this new file.
-// Ideally, migrated entirely. I will expose them here too.
-
 router.get('/seed-demo', async (req, res) => {
     try {
         const { exec } = require('child_process');
@@ -21,6 +14,9 @@ router.get('/seed-demo', async (req, res) => {
         res.json({ error: e.message });
     }
 });
+
+router.use(verifyToken);
+const allowBilling = checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']);
 
 router.get('/data', allowBilling, exportController.getBillingData);
 router.get('/debug', exportController.debugBilling);
