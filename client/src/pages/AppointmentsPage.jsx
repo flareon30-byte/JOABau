@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader, Save, Download, ChevronUp, ChevronDown, Sparkles, Brain } from 'lucide-react';
+import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader, Save, Download, ChevronUp, ChevronDown, Sparkles, Brain, XCircle } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 import { useTranslation } from 'react-i18next';
 
@@ -69,6 +69,7 @@ const AppointmentsPage = () => {
     const [isAiModalOpen, setIsAiModalOpen] = useState(false);
     const [isAiLoading, setIsAiLoading] = useState(false);
     const [aiResults, setAiResults] = useState(null);
+    const [selectedAiAddress, setSelectedAiAddress] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -306,6 +307,69 @@ const AppointmentsPage = () => {
         } finally {
             setIsAiLoading(false);
         }
+    };
+
+    const handleExportAiList = () => {
+        if (!aiResults) return;
+        
+        const headers = ["Dirección", "Proyecto", "Cliente", "Categoría IA", "Conclusión IA", "Comentarios Técnicos"];
+        const rows = [];
+        
+        const categories = [
+            { key: 'call_back', name: 'Para Rellamar Hoy' },
+            { key: 'work_finished', name: 'Trabajo Finalizado por Cliente' },
+            { key: 'needs_auskundung', name: 'Requiere Auskundung/Estudio' },
+            { key: 'others', name: 'Otros / Requieren Atención' }
+        ];
+        
+        categories.forEach(cat => {
+            const items = aiResults[cat.key] || [];
+            items.forEach(item => {
+                const id = typeof item === 'object' ? item.id : item;
+                const reason = typeof item === 'object' ? item.reason : '';
+                const addr = pendingAddresses.find(a => a.id === id);
+                if (!addr) return;
+                
+                const commentsText = addr.appointment?.comments
+                    ? addr.appointment.comments.map(c => `[${c.authorName}]: ${c.content}`).join(" | ")
+                    : '';
+                    
+                rows.push([
+                    `${addr.street} ${addr.number || ''}`,
+                    addr.project?.name || '',
+                    addr.clientName || '',
+                    cat.name,
+                    reason,
+                    commentsText
+                ]);
+            });
+        });
+        
+        // Build CSV with BOM and semicolons for Spanish Excel compatibility
+        const csvContent = [
+            headers.join(";"),
+            ...rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(";"))
+        ].join("\n");
+        
+        const blob = new Blob(["\uFEFF" + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Clasificacion_IA_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
+    const getAiReason = (addressId) => {
+        if (!aiResults) return '';
+        for (const cat of ['call_back', 'work_finished', 'needs_auskundung', 'others']) {
+            const found = aiResults[cat]?.find(item => (typeof item === 'object' ? item.id : item) === addressId);
+            if (found && typeof found === 'object') {
+                return found.reason;
+            }
+        }
+        return '';
     };
 
     const openContactModal = (address) => {
@@ -1805,9 +1869,20 @@ const AppointmentsPage = () => {
                                     <p className="text-sm text-purple-700 font-medium">Analizando y clasificando citas pendientes...</p>
                                 </div>
                             </div>
-                            <button onClick={() => setIsAiModalOpen(false)} className="p-2 hover:bg-purple-200 rounded-full transition-colors">
-                                <X size={20} className="text-purple-700" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {aiResults && !isAiLoading && (
+                                    <button
+                                        onClick={handleExportAiList}
+                                        className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm active:scale-95"
+                                    >
+                                        <Download size={18} />
+                                        <span>Exportar Listas</span>
+                                    </button>
+                                )}
+                                <button onClick={() => setIsAiModalOpen(false)} className="p-2 hover:bg-purple-200 rounded-full transition-colors">
+                                    <X size={20} className="text-purple-700" />
+                                </button>
+                            </div>
                         </div>
                         
                         <div className="p-6 overflow-y-auto bg-slate-50 flex-1">
@@ -1834,7 +1909,7 @@ const AppointmentsPage = () => {
                                                     ? [...addr.appointment.comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) 
                                                     : [];
                                                 return (
-                                                    <div key={id} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                                                    <div key={id} onClick={() => setSelectedAiAddress(addr)} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3 cursor-pointer hover:bg-slate-50/80">
                                                         <div className="flex justify-between items-start">
                                                             <div>
                                                                 <div className="flex items-center gap-2 flex-wrap">
@@ -1849,7 +1924,7 @@ const AppointmentsPage = () => {
                                                                     <p className="text-sm text-slate-500 font-medium">Cliente: {addr.clientName}</p>
                                                                 )}
                                                             </div>
-                                                            <button onClick={() => openContactModal(addr)} className="text-blue-600 p-2 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all" title="Llamar">
+                                                            <button onClick={(e) => { e.stopPropagation(); openContactModal(addr); }} className="text-blue-600 p-2 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all" title="Llamar">
                                                                 <Phone size={18} />
                                                             </button>
                                                         </div>
@@ -1901,7 +1976,7 @@ const AppointmentsPage = () => {
                                                     ? [...addr.appointment.comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) 
                                                     : [];
                                                 return (
-                                                    <div key={id} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                                                    <div key={id} onClick={() => setSelectedAiAddress(addr)} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3 cursor-pointer hover:bg-slate-50/80">
                                                         <div className="flex justify-between items-start">
                                                             <div>
                                                                 <div className="flex items-center gap-2 flex-wrap">
@@ -1916,7 +1991,7 @@ const AppointmentsPage = () => {
                                                                     <p className="text-sm text-slate-500 font-medium">Cliente: {addr.clientName}</p>
                                                                 )}
                                                             </div>
-                                                            <button onClick={() => openScheduleModal(addr)} className="text-green-600 p-2 bg-green-50 hover:bg-green-100 rounded-xl transition-all" title="Agendar">
+                                                            <button onClick={(e) => { e.stopPropagation(); openScheduleModal(addr); }} className="text-green-600 p-2 bg-green-50 hover:bg-green-100 rounded-xl transition-all" title="Agendar">
                                                                 <Calendar size={18} />
                                                             </button>
                                                         </div>
@@ -1968,7 +2043,7 @@ const AppointmentsPage = () => {
                                                     ? [...addr.appointment.comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) 
                                                     : [];
                                                 return (
-                                                    <div key={id} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                                                    <div key={id} onClick={() => setSelectedAiAddress(addr)} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3 cursor-pointer hover:bg-slate-50/80">
                                                         <div className="flex justify-between items-start">
                                                             <div>
                                                                 <div className="flex items-center gap-2 flex-wrap">
@@ -1983,7 +2058,7 @@ const AppointmentsPage = () => {
                                                                     <p className="text-sm text-slate-500 font-medium">Cliente: {addr.clientName}</p>
                                                                 )}
                                                             </div>
-                                                            <button onClick={() => openDeriveModal(addr, 'DERIVADA')} className="text-orange-600 p-2 bg-orange-50 hover:bg-orange-100 rounded-xl transition-all" title="Derivar a cliente">
+                                                            <button onClick={(e) => { e.stopPropagation(); openDeriveModal(addr, 'DERIVADA'); }} className="text-orange-600 p-2 bg-orange-50 hover:bg-orange-100 rounded-xl transition-all" title="Derivar a cliente">
                                                                 <Send size={18} />
                                                             </button>
                                                         </div>
@@ -2035,7 +2110,7 @@ const AppointmentsPage = () => {
                                                     ? [...addr.appointment.comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) 
                                                     : [];
                                                 return (
-                                                    <div key={id} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                                                    <div key={id} onClick={() => setSelectedAiAddress(addr)} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3 cursor-pointer hover:bg-slate-50/80">
                                                         <div className="flex justify-between items-start">
                                                             <div>
                                                                 <div className="flex items-center gap-2 flex-wrap">
@@ -2050,7 +2125,7 @@ const AppointmentsPage = () => {
                                                                     <p className="text-sm text-slate-500 font-medium">Cliente: {addr.clientName}</p>
                                                                 )}
                                                             </div>
-                                                            <button onClick={() => openHistoryModal(addr)} className="text-slate-600 p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all" title="Ver comentarios">
+                                                            <button onClick={(e) => { e.stopPropagation(); openHistoryModal(addr); }} className="text-slate-600 p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all" title="Ver comentarios">
                                                                 <List size={18} />
                                                             </button>
                                                         </div>
@@ -2089,6 +2164,124 @@ const AppointmentsPage = () => {
                                     
                                 </div>
                             ) : null}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* AI Selected Address Details Modal */}
+            {selectedAiAddress && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex justify-center items-center p-4 z-[70]">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col transform transition-all duration-300 scale-100">
+                        {/* Header */}
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                            <div>
+                                <span className="inline-block px-2 py-0.5 bg-purple-100 text-purple-800 text-[10px] font-bold rounded-full mb-1 uppercase tracking-wider">
+                                    Detalle del Cliente (Gestor IA)
+                                </span>
+                                <h3 className="text-xl font-black text-slate-800">
+                                    {selectedAiAddress.street} {selectedAiAddress.number}
+                                </h3>
+                                <p className="text-xs text-slate-500 font-medium mt-0.5">
+                                    {selectedAiAddress.project?.name} | NVT: {selectedAiAddress.nvt || 'N/A'} | Bauauftrag: {selectedAiAddress.bauauftragId || selectedAiAddress.klsId || 'N/A'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setSelectedAiAddress(null)}
+                                className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+                            >
+                                <X size={20} className="text-slate-500" />
+                            </button>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white">
+                            {/* Client Name */}
+                            {selectedAiAddress.clientName && (
+                                <div className="bg-blue-50/30 border border-blue-100/50 rounded-2xl p-4">
+                                    <h4 className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1">Nombre del Cliente</h4>
+                                    <p className="text-slate-800 font-bold text-base">{selectedAiAddress.clientName}</p>
+                                </div>
+                            )}
+
+                            {/* AI Conclusion */}
+                            {getAiReason(selectedAiAddress.id) && (
+                                <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 flex gap-3 items-start">
+                                    <Sparkles size={20} className="text-purple-600 mt-0.5 flex-shrink-0" />
+                                    <div>
+                                        <h4 className="text-xs font-bold text-purple-800 uppercase tracking-wider mb-1">Conclusión e Interpretación IA</h4>
+                                        <p className="text-sm text-purple-950 leading-relaxed font-medium">
+                                            {getAiReason(selectedAiAddress.id)}
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Comments History */}
+                            <div>
+                                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Historial de Comentarios</h4>
+                                {selectedAiAddress.appointment?.comments && selectedAiAddress.appointment.comments.length > 0 ? (
+                                    <div className="space-y-3">
+                                        {[...selectedAiAddress.appointment.comments]
+                                            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                                            .map((comment, index) => (
+                                                <div key={comment.id || index} className="text-sm bg-slate-50 p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                                    <div className="flex justify-between items-center text-xs text-slate-400 mb-2">
+                                                        <span className="font-bold text-slate-600">{comment.authorName}</span>
+                                                        <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                                                    </div>
+                                                    <p className="text-slate-700 leading-relaxed whitespace-pre-wrap font-medium">{comment.content}</p>
+                                                </div>
+                                            ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-slate-400 italic">No hay comentarios en esta orden.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="p-6 border-t border-slate-100 bg-slate-50 flex flex-wrap gap-3 justify-end items-center">
+                            <button
+                                onClick={() => {
+                                    setSelectedAiAddress(null);
+                                    openContactModal(selectedAiAddress);
+                                }}
+                                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm active:scale-95"
+                            >
+                                <Phone size={16} />
+                                Llamar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setSelectedAiAddress(null);
+                                    openScheduleModal(selectedAiAddress);
+                                }}
+                                className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm active:scale-95"
+                            >
+                                <Calendar size={16} />
+                                Agendar Cita
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setSelectedAiAddress(null);
+                                    openDeriveModal(selectedAiAddress, 'DERIVADA');
+                                }}
+                                className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm active:scale-95"
+                            >
+                                <Send size={16} />
+                                Derivar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setSelectedAiAddress(null);
+                                    openDeriveModal(selectedAiAddress, 'CERRADA');
+                                }}
+                                className="bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-sm font-bold shadow-sm active:scale-95"
+                            >
+                                <XCircle size={16} />
+                                Cerrar Orden
+                            </button>
                         </div>
                     </div>
                 </div>
