@@ -1820,95 +1820,268 @@ const AppointmentsPage = () => {
                             ) : aiResults ? (
                                 <div className="space-y-8">
                                     {/* Call Back Section */}
-                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                    <div className="bg-slate-50 p-6 rounded-2xl shadow-sm border border-slate-200">
                                         <h4 className="text-lg font-bold text-blue-700 flex items-center gap-2 mb-4">
                                             <Phone size={20} /> Para Rellamar Hoy <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">{aiResults.call_back?.length || 0}</span>
                                         </h4>
-                                        <div className="grid gap-3">
-                                            {aiResults.call_back?.map(id => {
+                                        <div className="grid gap-4">
+                                            {aiResults.call_back?.map(item => {
+                                                const id = typeof item === 'object' ? item.id : item;
+                                                const reason = typeof item === 'object' ? item.reason : '';
                                                 const addr = pendingAddresses.find(a => a.id === id);
-                                                return addr ? (
-                                                    <div key={id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50">
-                                                        <div>
-                                                            <p className="font-bold">{addr.street} {addr.number}</p>
-                                                            <p className="text-xs text-slate-500 truncate max-w-sm">{addr.appointment?.contactHistory?.[addr.appointment.contactHistory.length-1] || 'Ver historial'}</p>
+                                                if (!addr) return null;
+                                                const sortedComments = addr.appointment?.comments 
+                                                    ? [...addr.appointment.comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) 
+                                                    : [];
+                                                return (
+                                                    <div key={id} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-bold text-slate-800 text-base">{addr.street} {addr.number}</span>
+                                                                    {addr.project?.name && (
+                                                                        <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full uppercase">
+                                                                            {addr.project.name}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {addr.clientName && (
+                                                                    <p className="text-sm text-slate-500 font-medium">Cliente: {addr.clientName}</p>
+                                                                )}
+                                                            </div>
+                                                            <button onClick={() => openContactModal(addr)} className="text-blue-600 p-2 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all" title="Llamar">
+                                                                <Phone size={18} />
+                                                            </button>
                                                         </div>
-                                                        <button onClick={() => openContactModal(addr)} className="text-blue-600 p-2 hover:bg-blue-50 rounded-lg">
-                                                            <Phone size={16} />
-                                                        </button>
+                                                        
+                                                        {reason && (
+                                                            <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-3 flex gap-2 items-start">
+                                                                <Sparkles size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                                                                <p className="text-xs text-blue-900 leading-relaxed">
+                                                                    <strong className="font-semibold text-blue-800">Conclusión IA:</strong> {reason}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {sortedComments.length > 0 && (
+                                                            <div className="border-t border-slate-100 pt-3">
+                                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Historial de Comentarios:</p>
+                                                                <div className="max-h-[140px] overflow-y-auto space-y-2 pr-1">
+                                                                    {sortedComments.map((comment, index) => (
+                                                                        <div key={comment.id || index} className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                                                            <div className="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                                                                                <span className="font-semibold text-slate-600">{comment.authorName}</span>
+                                                                                <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                                                                            </div>
+                                                                            <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                ) : null;
+                                                );
                                             })}
                                             {(!aiResults.call_back || aiResults.call_back.length === 0) && <p className="text-sm text-slate-400">Ninguna cita en esta categoría.</p>}
                                         </div>
                                     </div>
 
                                     {/* Work Finished Section */}
-                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                    <div className="bg-slate-50 p-6 rounded-2xl shadow-sm border border-slate-200">
                                         <h4 className="text-lg font-bold text-green-700 flex items-center gap-2 mb-4">
                                             <CheckCircle size={20} /> Trabajo Finalizado por Cliente <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs">{aiResults.work_finished?.length || 0}</span>
                                         </h4>
-                                        <div className="grid gap-3">
-                                            {aiResults.work_finished?.map(id => {
+                                        <div className="grid gap-4">
+                                            {aiResults.work_finished?.map(item => {
+                                                const id = typeof item === 'object' ? item.id : item;
+                                                const reason = typeof item === 'object' ? item.reason : '';
                                                 const addr = pendingAddresses.find(a => a.id === id);
-                                                return addr ? (
-                                                    <div key={id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50">
-                                                        <div>
-                                                            <p className="font-bold">{addr.street} {addr.number}</p>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <button onClick={() => openScheduleModal(addr)} className="text-green-600 p-2 hover:bg-green-50 rounded-lg" title="Agendar">
-                                                                <Calendar size={16} />
+                                                if (!addr) return null;
+                                                const sortedComments = addr.appointment?.comments 
+                                                    ? [...addr.appointment.comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) 
+                                                    : [];
+                                                return (
+                                                    <div key={id} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-bold text-slate-800 text-base">{addr.street} {addr.number}</span>
+                                                                    {addr.project?.name && (
+                                                                        <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full uppercase">
+                                                                            {addr.project.name}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {addr.clientName && (
+                                                                    <p className="text-sm text-slate-500 font-medium">Cliente: {addr.clientName}</p>
+                                                                )}
+                                                            </div>
+                                                            <button onClick={() => openScheduleModal(addr)} className="text-green-600 p-2 bg-green-50 hover:bg-green-100 rounded-xl transition-all" title="Agendar">
+                                                                <Calendar size={18} />
                                                             </button>
                                                         </div>
+                                                        
+                                                        {reason && (
+                                                            <div className="bg-green-50/50 border border-green-100 rounded-xl p-3 flex gap-2 items-start">
+                                                                <Sparkles size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
+                                                                <p className="text-xs text-green-900 leading-relaxed">
+                                                                    <strong className="font-semibold text-green-800">Conclusión IA:</strong> {reason}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {sortedComments.length > 0 && (
+                                                            <div className="border-t border-slate-100 pt-3">
+                                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Historial de Comentarios:</p>
+                                                                <div className="max-h-[140px] overflow-y-auto space-y-2 pr-1">
+                                                                    {sortedComments.map((comment, index) => (
+                                                                        <div key={comment.id || index} className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                                                            <div className="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                                                                                <span className="font-semibold text-slate-600">{comment.authorName}</span>
+                                                                                <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                                                                            </div>
+                                                                            <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                ) : null;
+                                                );
                                             })}
                                             {(!aiResults.work_finished || aiResults.work_finished.length === 0) && <p className="text-sm text-slate-400">Ninguna cita en esta categoría.</p>}
                                         </div>
                                     </div>
 
                                     {/* Needs Auskundung Section */}
-                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                    <div className="bg-slate-50 p-6 rounded-2xl shadow-sm border border-slate-200">
                                         <h4 className="text-lg font-bold text-orange-700 flex items-center gap-2 mb-4">
                                             <Grid size={20} /> Requiere Auskundung/Estudio <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full text-xs">{aiResults.needs_auskundung?.length || 0}</span>
                                         </h4>
-                                        <div className="grid gap-3">
-                                            {aiResults.needs_auskundung?.map(id => {
+                                        <div className="grid gap-4">
+                                            {aiResults.needs_auskundung?.map(item => {
+                                                const id = typeof item === 'object' ? item.id : item;
+                                                const reason = typeof item === 'object' ? item.reason : '';
                                                 const addr = pendingAddresses.find(a => a.id === id);
-                                                return addr ? (
-                                                    <div key={id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50">
-                                                        <div>
-                                                            <p className="font-bold">{addr.street} {addr.number}</p>
+                                                if (!addr) return null;
+                                                const sortedComments = addr.appointment?.comments 
+                                                    ? [...addr.appointment.comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) 
+                                                    : [];
+                                                return (
+                                                    <div key={id} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-bold text-slate-800 text-base">{addr.street} {addr.number}</span>
+                                                                    {addr.project?.name && (
+                                                                        <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full uppercase">
+                                                                            {addr.project.name}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {addr.clientName && (
+                                                                    <p className="text-sm text-slate-500 font-medium">Cliente: {addr.clientName}</p>
+                                                                )}
+                                                            </div>
+                                                            <button onClick={() => openDeriveModal(addr, 'DERIVADA')} className="text-orange-600 p-2 bg-orange-50 hover:bg-orange-100 rounded-xl transition-all" title="Derivar a cliente">
+                                                                <Send size={18} />
+                                                            </button>
                                                         </div>
-                                                        <button onClick={() => openDeriveModal(addr, 'DERIVADA')} className="text-orange-600 p-2 hover:bg-orange-50 rounded-lg" title="Derivar a cliente">
-                                                            <Send size={16} />
-                                                        </button>
+                                                        
+                                                        {reason && (
+                                                            <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-3 flex gap-2 items-start">
+                                                                <Sparkles size={16} className="text-orange-600 mt-0.5 flex-shrink-0" />
+                                                                <p className="text-xs text-orange-900 leading-relaxed">
+                                                                    <strong className="font-semibold text-orange-800">Conclusión IA:</strong> {reason}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {sortedComments.length > 0 && (
+                                                            <div className="border-t border-slate-100 pt-3">
+                                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Historial de Comentarios:</p>
+                                                                <div className="max-h-[140px] overflow-y-auto space-y-2 pr-1">
+                                                                    {sortedComments.map((comment, index) => (
+                                                                        <div key={comment.id || index} className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                                                            <div className="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                                                                                <span className="font-semibold text-slate-600">{comment.authorName}</span>
+                                                                                <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                                                                            </div>
+                                                                            <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                ) : null;
+                                                );
                                             })}
                                             {(!aiResults.needs_auskundung || aiResults.needs_auskundung.length === 0) && <p className="text-sm text-slate-400">Ninguna cita en esta categoría.</p>}
                                         </div>
                                     </div>
 
                                     {/* Others Section */}
-                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                    <div className="bg-slate-50 p-6 rounded-2xl shadow-sm border border-slate-200">
                                         <h4 className="text-lg font-bold text-slate-700 flex items-center gap-2 mb-4">
                                             <FileText size={20} /> Otros / Requieren Atención <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded-full text-xs">{aiResults.others?.length || 0}</span>
                                         </h4>
-                                        <div className="grid gap-3">
-                                            {aiResults.others?.map(id => {
+                                        <div className="grid gap-4">
+                                            {aiResults.others?.map(item => {
+                                                const id = typeof item === 'object' ? item.id : item;
+                                                const reason = typeof item === 'object' ? item.reason : '';
                                                 const addr = pendingAddresses.find(a => a.id === id);
-                                                return addr ? (
-                                                    <div key={id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50">
-                                                        <div>
-                                                            <p className="font-bold">{addr.street} {addr.number}</p>
+                                                if (!addr) return null;
+                                                const sortedComments = addr.appointment?.comments 
+                                                    ? [...addr.appointment.comments].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) 
+                                                    : [];
+                                                return (
+                                                    <div key={id} className="p-4 border border-slate-200 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all flex flex-col gap-3">
+                                                        <div className="flex justify-between items-start">
+                                                            <div>
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <span className="font-bold text-slate-800 text-base">{addr.street} {addr.number}</span>
+                                                                    {addr.project?.name && (
+                                                                        <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded-full uppercase">
+                                                                            {addr.project.name}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {addr.clientName && (
+                                                                    <p className="text-sm text-slate-500 font-medium">Cliente: {addr.clientName}</p>
+                                                                )}
+                                                            </div>
+                                                            <button onClick={() => openHistoryModal(addr)} className="text-slate-600 p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all" title="Ver comentarios">
+                                                                <List size={18} />
+                                                            </button>
                                                         </div>
-                                                        <button onClick={() => openHistoryModal(addr)} className="text-slate-600 p-2 hover:bg-slate-50 rounded-lg" title="Ver comentarios">
-                                                            <List size={16} />
-                                                        </button>
+                                                        
+                                                        {reason && (
+                                                            <div className="bg-slate-100 border border-slate-200 rounded-xl p-3 flex gap-2 items-start">
+                                                                <Sparkles size={16} className="text-slate-600 mt-0.5 flex-shrink-0" />
+                                                                <p className="text-xs text-slate-800 leading-relaxed">
+                                                                    <strong className="font-semibold text-slate-700">Conclusión IA:</strong> {reason}
+                                                                </p>
+                                                            </div>
+                                                        )}
+
+                                                        {sortedComments.length > 0 && (
+                                                            <div className="border-t border-slate-100 pt-3">
+                                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Historial de Comentarios:</p>
+                                                                <div className="max-h-[140px] overflow-y-auto space-y-2 pr-1">
+                                                                    {sortedComments.map((comment, index) => (
+                                                                        <div key={comment.id || index} className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                                                            <div className="flex justify-between items-center text-[10px] text-slate-400 mb-1">
+                                                                                <span className="font-semibold text-slate-600">{comment.authorName}</span>
+                                                                                <span>{new Date(comment.createdAt).toLocaleString()}</span>
+                                                                            </div>
+                                                                            <p className="text-slate-700 leading-relaxed whitespace-pre-wrap">{comment.content}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                ) : null;
+                                                );
                                             })}
                                             {(!aiResults.others || aiResults.others.length === 0) && <p className="text-sm text-slate-400">Ninguna cita en esta categoría.</p>}
                                         </div>
