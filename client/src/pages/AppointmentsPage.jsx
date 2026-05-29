@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
-import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader, Save, Download, ChevronUp, ChevronDown } from 'lucide-react';
+import { Phone, Calendar, Clock, CheckCircle, MessageSquare, Users, Edit2, Grid, List, X, FileText, Send, CheckSquare, Pencil, Trash, Plus, Loader, Save, Download, ChevronUp, ChevronDown, Sparkles, Brain } from 'lucide-react';
 import CalendarView from '../components/CalendarView';
 import { useTranslation } from 'react-i18next';
 
@@ -64,6 +64,11 @@ const AppointmentsPage = () => {
     const [buildingClients, setBuildingClients] = useState([]);
     const [buildingAddressName, setBuildingAddressName] = useState('');
     const [isBuildingLoading, setIsBuildingLoading] = useState(false);
+
+    // AI Manager States
+    const [isAiModalOpen, setIsAiModalOpen] = useState(false);
+    const [isAiLoading, setIsAiLoading] = useState(false);
+    const [aiResults, setAiResults] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -284,6 +289,22 @@ const AppointmentsPage = () => {
             setIsBuildingModalOpen(false);
         } finally {
             setIsBuildingLoading(false);
+        }
+    };
+
+    const handleOpenAiManager = async () => {
+        setIsAiModalOpen(true);
+        setIsAiLoading(true);
+        setAiResults(null);
+        try {
+            const res = await api.get('/api/appointments/ai-manager');
+            setAiResults(res.data);
+        } catch (error) {
+            console.error('Error fetching AI suggestions:', error);
+            alert('Error al analizar con IA. Verifica la conexión o la API Key.');
+            setIsAiModalOpen(false);
+        } finally {
+            setIsAiLoading(false);
         }
     };
 
@@ -612,6 +633,17 @@ const AppointmentsPage = () => {
                         <span className="hidden md:inline">{t('appointments.export_project_report')}</span>
                         <span className="md:hidden">{t('appointments.export_project_report_mobile')}</span>
                     </button>
+
+                    {view === 'pending' && (
+                        <button
+                            onClick={handleOpenAiManager}
+                            className="px-4 py-2 rounded-lg flex items-center justify-center gap-2 text-sm font-bold shadow-sm transition-all whitespace-nowrap w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white active:scale-95"
+                            title="Clasificar pendientes con IA"
+                        >
+                            <Sparkles size={18} />
+                            Gestor IA ✨
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -1754,6 +1786,136 @@ const AppointmentsPage = () => {
                                     ))}
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* AI Manager Modal */}
+            {isAiModalOpen && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex justify-center items-center p-4 z-[60]">
+                    <div className="bg-white rounded-3xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-purple-50">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-purple-600 p-2 rounded-xl text-white">
+                                    <Brain size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-800">Gestor IA Gemini ✨</h3>
+                                    <p className="text-sm text-purple-700 font-medium">Analizando y clasificando citas pendientes...</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setIsAiModalOpen(false)} className="p-2 hover:bg-purple-200 rounded-full transition-colors">
+                                <X size={20} className="text-purple-700" />
+                            </button>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto bg-slate-50 flex-1">
+                            {isAiLoading ? (
+                                <div className="flex flex-col items-center justify-center py-20 text-purple-600 space-y-4">
+                                    <Sparkles className="animate-spin" size={48} />
+                                    <p className="font-bold text-lg">La IA está leyendo los comentarios...</p>
+                                    <p className="text-sm text-slate-500">Esto puede tardar unos segundos dependiendo del volumen.</p>
+                                </div>
+                            ) : aiResults ? (
+                                <div className="space-y-8">
+                                    {/* Call Back Section */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <h4 className="text-lg font-bold text-blue-700 flex items-center gap-2 mb-4">
+                                            <Phone size={20} /> Para Rellamar Hoy <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs">{aiResults.call_back?.length || 0}</span>
+                                        </h4>
+                                        <div className="grid gap-3">
+                                            {aiResults.call_back?.map(id => {
+                                                const addr = pendingAddresses.find(a => a.id === id);
+                                                return addr ? (
+                                                    <div key={id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50">
+                                                        <div>
+                                                            <p className="font-bold">{addr.street} {addr.number}</p>
+                                                            <p className="text-xs text-slate-500 truncate max-w-sm">{addr.appointment?.contactHistory?.[addr.appointment.contactHistory.length-1] || 'Ver historial'}</p>
+                                                        </div>
+                                                        <button onClick={() => openContactModal(addr)} className="text-blue-600 p-2 hover:bg-blue-50 rounded-lg">
+                                                            <Phone size={16} />
+                                                        </button>
+                                                    </div>
+                                                ) : null;
+                                            })}
+                                            {(!aiResults.call_back || aiResults.call_back.length === 0) && <p className="text-sm text-slate-400">Ninguna cita en esta categoría.</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* Work Finished Section */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <h4 className="text-lg font-bold text-green-700 flex items-center gap-2 mb-4">
+                                            <CheckCircle size={20} /> Trabajo Finalizado por Cliente <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-full text-xs">{aiResults.work_finished?.length || 0}</span>
+                                        </h4>
+                                        <div className="grid gap-3">
+                                            {aiResults.work_finished?.map(id => {
+                                                const addr = pendingAddresses.find(a => a.id === id);
+                                                return addr ? (
+                                                    <div key={id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50">
+                                                        <div>
+                                                            <p className="font-bold">{addr.street} {addr.number}</p>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => openScheduleModal(addr)} className="text-green-600 p-2 hover:bg-green-50 rounded-lg" title="Agendar">
+                                                                <Calendar size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : null;
+                                            })}
+                                            {(!aiResults.work_finished || aiResults.work_finished.length === 0) && <p className="text-sm text-slate-400">Ninguna cita en esta categoría.</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* Needs Auskundung Section */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <h4 className="text-lg font-bold text-orange-700 flex items-center gap-2 mb-4">
+                                            <Grid size={20} /> Requiere Auskundung/Estudio <span className="bg-orange-100 text-orange-800 px-2 py-0.5 rounded-full text-xs">{aiResults.needs_auskundung?.length || 0}</span>
+                                        </h4>
+                                        <div className="grid gap-3">
+                                            {aiResults.needs_auskundung?.map(id => {
+                                                const addr = pendingAddresses.find(a => a.id === id);
+                                                return addr ? (
+                                                    <div key={id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50">
+                                                        <div>
+                                                            <p className="font-bold">{addr.street} {addr.number}</p>
+                                                        </div>
+                                                        <button onClick={() => openDeriveModal(addr, 'DERIVADA')} className="text-orange-600 p-2 hover:bg-orange-50 rounded-lg" title="Derivar a cliente">
+                                                            <Send size={16} />
+                                                        </button>
+                                                    </div>
+                                                ) : null;
+                                            })}
+                                            {(!aiResults.needs_auskundung || aiResults.needs_auskundung.length === 0) && <p className="text-sm text-slate-400">Ninguna cita en esta categoría.</p>}
+                                        </div>
+                                    </div>
+
+                                    {/* Others Section */}
+                                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                                        <h4 className="text-lg font-bold text-slate-700 flex items-center gap-2 mb-4">
+                                            <FileText size={20} /> Otros / Requieren Atención <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded-full text-xs">{aiResults.others?.length || 0}</span>
+                                        </h4>
+                                        <div className="grid gap-3">
+                                            {aiResults.others?.map(id => {
+                                                const addr = pendingAddresses.find(a => a.id === id);
+                                                return addr ? (
+                                                    <div key={id} className="flex justify-between items-center p-3 border border-slate-100 rounded-xl hover:bg-slate-50">
+                                                        <div>
+                                                            <p className="font-bold">{addr.street} {addr.number}</p>
+                                                        </div>
+                                                        <button onClick={() => openHistoryModal(addr)} className="text-slate-600 p-2 hover:bg-slate-50 rounded-lg" title="Ver comentarios">
+                                                            <List size={16} />
+                                                        </button>
+                                                    </div>
+                                                ) : null;
+                                            })}
+                                            {(!aiResults.others || aiResults.others.length === 0) && <p className="text-sm text-slate-400">Ninguna cita en esta categoría.</p>}
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                            ) : null}
                         </div>
                     </div>
                 </div>

@@ -17,6 +17,7 @@ router.get('/scheduled', checkRole(allowedRoles), appointmentController.getSched
 router.get('/export', checkRole(allowedRoles), appointmentController.exportScheduledAppointments);
 router.get('/export-all', checkRole(allowedRoles), appointmentController.exportAllByProject);
 router.get('/escalated', checkRole(allowedRoles), appointmentController.getEscalatedAppointments);
+router.get('/ai-manager', checkRole(allowedRoles), appointmentController.getAiManagerSuggestions);
 router.get('/building', checkRole(allowedRoles), appointmentController.getBuildingClients);
 router.post('/log-contact/:addressId', checkRole(allowedRoles), appointmentController.logContactAttempt);
 router.post('/schedule/:addressId', checkRole(allowedRoles), appointmentController.scheduleAppointment);

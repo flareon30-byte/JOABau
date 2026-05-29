@@ -38,6 +38,44 @@ exports.getPendingAppointments = async (req, res) => {
     }
 };
 
+// Get AI Manager suggestions for pending appointments
+exports.getAiManagerSuggestions = async (req, res) => {
+    try {
+        const addresses = await prisma.address.findMany({
+            where: {
+                AND: [
+                    { clientName: { not: { startsWith: '***' } } },
+                    { sopladoStatus: 'OK' },
+                    { project: { isDemo: req.isDemo || false } },
+                    { orderStatus: { notIn: ['CERRADA', 'DERIVADA'] } },
+                    {
+                        OR: [
+                            { appointment: { is: null } },
+                            { appointment: { status: 'PENDIENTE' } },
+                            { appointment: { status: 'RECITAR' } }
+                        ]
+                    }
+                ]
+            },
+            include: {
+                appointment: {
+                    include: {
+                        comments: true
+                    }
+                }
+            }
+        });
+
+        const { analyzePendingAppointments } = require('../utils/aiManager');
+        const aiSuggestions = await analyzePendingAppointments(addresses);
+        
+        res.json(aiSuggestions);
+    } catch (error) {
+        console.error("Error in getAiManagerSuggestions:", error);
+        res.status(500).json({ message: 'Error analyzing appointments with AI', details: error.message });
+    }
+};
+
 // Get escalated/derived/closed addresses
 exports.getEscalatedAppointments = async (req, res) => {
     try {
