@@ -514,7 +514,8 @@ const ActivationPage = () => {
                 username: user.username,
                 userPhone: user.phone || '',
                 clientSignature: sigs.client,
-                techSignature: sigs.tech
+                techSignature: sigs.tech,
+                description: formData.description
             };
 
             const res = await api.post('/api/activations/generate-pdf', payload);

@@ -614,8 +614,8 @@ exports.getAllActivations = async (req, res) => {
 exports.generatePdf = async (req, res) => {
     console.log('--- STARTING PDF GENERATION ---');
     try {
-        const { addressId, clientName, street, number, city, klsId, clientSignature, techSignature } = req.body;
-        console.log('Request body:', { addressId, clientName, street, number, city, klsId, hasClientSig: !!clientSignature, hasTechSig: !!techSignature });
+        const { addressId, clientName, street, number, city, klsId, clientSignature, techSignature, description } = req.body;
+        console.log('Request body:', { addressId, clientName, street, number, city, klsId, hasClientSig: !!clientSignature, hasTechSig: !!techSignature, hasDescription: !!description });
 
         // Fetch User details (Phone, Username) safely from DB
         const user = await prisma.user.findUnique({
@@ -674,7 +674,22 @@ exports.generatePdf = async (req, res) => {
         fill('Text42', cityDate, 7); // Monteur Middle - Smaller font
         fill('Text43', cityDate, 7); // Eigentümer Middle - Smaller font
 
-        fill('Text1', ''); // Clear Abweichung
+        let translatedAbweichung = '';
+        if (description && description.trim() !== '') {
+            try {
+                const { translate } = await import('@vitalets/google-translate-api');
+                // The prompt "Translate to C1 Level German:" forces better contextual formatting in supported engines,
+                // but since it's standard Google Translate API we just translate direct.
+                const translationReq = await translate(description, { to: 'de' });
+                translatedAbweichung = translationReq.text;
+                console.log('[PDF GEN] Translated comment to German:', translatedAbweichung);
+            } catch(e) {
+                console.error('[PDF GEN] Translation failed:', e);
+                translatedAbweichung = description; // Fallback to original
+            }
+        }
+
+        fill('Text1', translatedAbweichung); // Abweichung
 
         // --- EMBED SIGNATURES (PIN SYSTEM) ---
         // Strategy: Use SIG_ fields as "Pins" for coordinates (X,Y), but force a fixed size (140x50)

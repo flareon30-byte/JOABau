@@ -709,7 +709,8 @@ const ActivationPageV2 = () => {
                 username: user.username,
                 userPhone: user.phone || '',
                 clientSignature: sigs.client,
-                techSignature: sigs.tech
+                techSignature: sigs.tech,
+                description: formData.description
             };
 
             setLoading(true);
