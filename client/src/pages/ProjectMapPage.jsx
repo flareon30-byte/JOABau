@@ -257,9 +257,9 @@ const ProjectMapPage = () => {
             addr.appointment?.status === 'COMPLETADO' ||
             (addr.activationInfo && !addr.activationInfo.isDraft) ||
             addr.simpleInstallation !== null;
-        if (done) return { color: 'green',  label: 'Terminada',     cls: 'bg-emerald-500' };
-        if (addr.appointment?.status === 'CITADO') return { color: 'yellow', label: 'Citada', cls: 'bg-amber-400' };
-        if (addr.sopladoStatus === 'OK') return { color: 'red', label: 'Soplado sin cita', cls: 'bg-rose-500 animate-pulse' };
+        if (done) return { color: 'green',  label: t('map.status_completed') || 'Terminada',     cls: 'bg-emerald-500' };
+        if (addr.appointment?.status === 'CITADO') return { color: 'yellow', label: t('map.status_scheduled') || 'Citada', cls: 'bg-amber-400' };
+        if (addr.sopladoStatus === 'OK') return { color: 'red', label: t('map.status_blown') || 'Soplado sin cita', cls: 'bg-rose-500 animate-pulse' };
         return { color: 'gray', label: t('map.status_not_blown') || 'No iluminado', cls: 'bg-slate-400' };
     };
 
@@ -329,11 +329,11 @@ const ProjectMapPage = () => {
                         const addrId = btn.id.replace('btn-request-', '');
                         btn.onclick = async () => {
                             btn.disabled = true;
-                            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Solicitando...`;
+                            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> ${t('map.requesting') || 'Solicitando...'}`;
                             try {
                                 await api.post(`/api/appointments/request-appointment/${addrId}`);
                                 btn.className = "mt-3 w-full bg-emerald-500 text-white font-bold py-2 px-3 rounded-lg text-xs text-center flex items-center justify-center gap-1.5 shadow-sm";
-                                btn.innerHTML = `✓ Cita Solicitada`;
+                                btn.innerHTML = `${t('map.request_success') || '✓ Cita Solicitada'}`;
                                 btn.onclick = null;
                                 
                                 // Auto reload backend data to refresh state
@@ -345,7 +345,7 @@ const ProjectMapPage = () => {
                                 const errMsg = err.response?.data?.message || 'Error al solicitar la orden.';
                                 alert(errMsg);
                                 btn.disabled = false;
-                                btn.innerHTML = `📋 Solicitar cita para mi equipo`;
+                                btn.innerHTML = `${t('map.request_appointment') || '📋 Solicitar cita para mi equipo'}`;
                             }
                         };
                     }
@@ -442,7 +442,7 @@ const ProjectMapPage = () => {
                     iconAnchor: [12, 12]
                 });
                 const userMarker = L.marker([userLocation.lat, userLocation.lng], { icon: userIcon });
-                userMarker.bindTooltip("Tu ubicación actual", { permanent: false, direction: 'top' });
+                userMarker.bindTooltip(t('map.user_location') || "Tu ubicación actual", { permanent: false, direction: 'top' });
                 markersGroupRef.current.addLayer(userMarker);
             }
 
@@ -510,19 +510,19 @@ const ProjectMapPage = () => {
                 if (status.color === 'red' && isTechnician) {
                     requestBtnHtml = `
                         <button id="btn-request-${addr.id}" style="margin-top:12px;width:100%;background:#4f46e5;color:#fff;font-weight:700;border:none;border-radius:8px;padding:8px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 1px 2px rgba(0,0,0,.05)">
-                            📋 Solicitar cita para mi equipo
+                            ${t('map.request_appointment') || '📋 Solicitar cita para mi equipo'}
                         </button>
                     `;
                 }
 
                 marker.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
-                        <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4338ca;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">🏠 Detalle del cliente</div>
+                        <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4338ca;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">${t('map.client_detail') || '🏠 Detalle del cliente'}</div>
                         <div style="line-height:1.7;font-size:11px">
-                            <b>Nombre:</b> ${addr.clientName || '—'}<br>
-                            <b>Dirección:</b> ${addr.street} ${addr.number || ''}<br>
-                            <b>Ciudad:</b> ${addr.city || '—'}<br>
-                            <b>NVT:</b> <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">${addr.nvt || '—'}</code>
+                            <b>${t('map.name_label') || 'Nombre:'}</b> ${addr.clientName || '—'}<br>
+                            <b>${t('map.address_label') || 'Dirección:'}</b> ${addr.street} ${addr.number || ''}<br>
+                            <b>${t('map.city_label') || 'Ciudad:'}</b> ${addr.city || '—'}<br>
+                            <b>${t('map.nvt_label') || 'NVT:'}</b> <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">${addr.nvt || '—'}</code>
                         </div>
                         ${requestBtnHtml}
                     </div>
@@ -547,11 +547,11 @@ const ProjectMapPage = () => {
                 const nvtMarker = L.marker([coords.lat, coords.lng], { icon: nvtIcon });
                 nvtMarker.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
-                        <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4f46e5;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">📦 Caja NVT</div>
+                        <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:#4f46e5;border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">📦 ${t('map.nvt_box') || 'Caja NVT'}</div>
                         <div style="line-height:1.7;font-size:11px">
-                            <b>NVT:</b> <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">${nvt.nvtName}</code><br>
-                            <b>Dirección:</b> ${nvt.street} ${nvt.number || ''}<br>
-                            <b>Ciudad:</b> ${nvt.city || '—'}
+                            <b>${t('map.nvt_label') || 'NVT:'}</b> <code style="background:#f1f5f9;padding:1px 4px;border-radius:3px">${nvt.nvtName}</code><br>
+                            <b>${t('map.address_label') || 'Dirección:'}</b> ${nvt.street} ${nvt.number || ''}<br>
+                            <b>${t('map.city_label') || 'Ciudad:'}</b> ${nvt.city || '—'}
                         </div>
                     </div>
                 `, { maxWidth: 240 });
@@ -701,17 +701,17 @@ const ProjectMapPage = () => {
                 const timeStr = teamLoc.updatedAt ? new Date(teamLoc.updatedAt).toLocaleTimeString() : '—';
                 const reporter = teamLoc.username ? teamLoc.username : '—';
                 
-                const titleText = isTeam ? '🚚 Ubicación del Equipo' : '👤 Técnico Individual';
-                const labelText = isTeam ? '<b>Equipo:</b>' : '<b>Nombre:</b>';
+                const titleText = isTeam ? (t('map.team_location_title') || '🚚 Ubicación del Equipo') : (t('map.tech_location_title') || '👤 Técnico Individual');
+                const labelText = isTeam ? (t('map.team_label_detail') || '<b>Equipo:</b>') : (t('map.tech_label_detail') || '<b>Nombre:</b>');
 
                 marker.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
                         <div style="font-weight:900;font-size:11px;text-transform:uppercase;color:${isTeam ? '#4f46e5' : '#059669'};border-bottom:1px solid #e2e8f0;padding-bottom:6px;margin-bottom:8px">${titleText}</div>
                         <div style="line-height:1.7;font-size:11px">
                             ${labelText} ${name}<br>
-                            <b>Técnico:</b> ${reporter}<br>
-                            <b>Actualizado:</b> ${timeStr}<br>
-                            <b>Coordenadas:</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}
+                            <b>${t('map.tech_field') || 'Técnico:'}</b> ${reporter}<br>
+                            <b>${t('map.updated_field') || 'Actualizado:'}</b> ${timeStr}<br>
+                            <b>${t('map.coordinates_field') || 'Coordenadas:'}</b> ${lat.toFixed(6)}, ${lng.toFixed(6)}
                         </div>
                     </div>
                 `, { maxWidth: 240 });
@@ -732,10 +732,10 @@ const ProjectMapPage = () => {
                     </div>
                     <div>
                         <h3 className="font-extrabold text-slate-800 text-lg">
-                            Mapa de Distribución
+                            {t('map.distribution_map') || 'Mapa de Distribución'}
                         </h3>
                         <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                            Visualización en tiempo real de los estados de red
+                            {t('map.realtime_visualization') || 'Visualización en tiempo real de los estados de red'}
                         </p>
                     </div>
                 </div>
@@ -755,7 +755,7 @@ const ProjectMapPage = () => {
                             defaultValue=""
                             className="w-full appearance-none bg-indigo-50/60 border border-indigo-100 rounded-xl px-4 py-2 text-indigo-900 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition cursor-pointer text-xs"
                         >
-                            <option value="">🚚 Centrar en Equipo / Técnico</option>
+                            <option value="">🚚 {t('map.center_on_team') || 'Centrar en Equipo / Técnico'}</option>
                             {Object.entries(teamLocations).map(([id, teamLoc]) => (
                                 <option key={id} value={id}>
                                     {teamLoc.isTeam ? `🚚 ${teamLoc.name}` : `👤 ${teamLoc.name}`}
@@ -822,18 +822,18 @@ const ProjectMapPage = () => {
                     <div>
                         <div className="flex items-center gap-1.5 font-extrabold text-xs text-slate-700 uppercase tracking-wider pb-3 border-b border-slate-100 mb-4">
                             <Info size={16} className="text-slate-500" />
-                            <span>Leyenda y Métricas</span>
+                            <span>{t('map.legend_metrics') || 'Leyenda y Métricas'}</span>
                         </div>
 
                         {/* Custom Legend with counters */}
                         <div className="space-y-4">
                             {[
-                                { color: 'bg-indigo-700', label: 'Caja NVT', count: nvtLocations.length, desc: 'Ubicación física de la caja NVT', square: true },
-                                { color: 'bg-indigo-600', label: 'Equipos (Activos)', count: Object.keys(teamLocations).length, desc: 'Ubicación GPS real de técnicos', isTeam: true },
-                                { color: 'bg-slate-400', label: t('map.status_not_blown') || 'No iluminado', count: stats.notBlown, desc: 'Puntos sin soplado realizado' },
-                                { color: 'bg-rose-500', label: 'Soplado sin cita', count: stats.blown, desc: 'Soplado OK, sin cita agendada', pulse: true },
-                                { color: 'bg-amber-400', label: 'Citada', count: stats.scheduled, desc: 'Pasa el ratón sobre los puntos amarillos' },
-                                { color: 'bg-emerald-500', label: 'Terminada', count: stats.completed, desc: 'Instalaciones finalizadas' },
+                                { color: 'bg-indigo-700', label: t('map.nvt_box') || 'Caja NVT', count: nvtLocations.length, desc: t('map.nvt_desc') || 'Ubicación física de la caja NVT', square: true },
+                                { color: 'bg-indigo-600', label: t('map.teams_active') || 'Equipos (Activos)', count: Object.keys(teamLocations).length, desc: t('map.teams_desc') || 'Ubicación GPS real de técnicos', isTeam: true },
+                                { color: 'bg-slate-400', label: t('map.status_not_blown') || 'No iluminado', count: stats.notBlown, desc: t('map.not_blown_desc') || 'Puntos sin soplado realizado' },
+                                { color: 'bg-rose-500', label: t('map.status_blown') || 'Soplado sin cita', count: stats.blown, desc: t('map.blown_desc') || 'Soplado OK, sin cita agendada', pulse: true },
+                                { color: 'bg-amber-400', label: t('map.status_scheduled') || 'Citada', count: stats.scheduled, desc: t('map.scheduled_desc') || 'Pasa el ratón sobre los puntos amarillos' },
+                                { color: 'bg-emerald-500', label: t('map.status_completed') || 'Terminada', count: stats.completed, desc: t('map.completed_desc') || 'Instalaciones finalizadas' },
                             ].map(({ color, label, count, desc, pulse, square, isTeam }) => (
                                 <div key={label} className="bg-slate-50/50 hover:bg-slate-50 rounded-xl p-3 border border-slate-100/60 transition-all flex items-start gap-3">
                                     {isTeam ? (
@@ -861,8 +861,8 @@ const ProjectMapPage = () => {
                     <div className="border-t border-slate-100 pt-4 mt-auto">
                         <div className="bg-indigo-50 border border-indigo-100/40 rounded-2xl p-4 flex justify-between items-center">
                             <div>
-                                <h4 className="text-xs font-bold text-indigo-700 uppercase tracking-wide">Total Clientes</h4>
-                                <p className="text-[11px] text-indigo-500 mt-0.5">En el proyecto seleccionado</p>
+                                <h4 className="text-xs font-bold text-indigo-700 uppercase tracking-wide">{t('map.total_clients') || 'Total Clientes'}</h4>
+                                <p className="text-[11px] text-indigo-500 mt-0.5">{t('map.selected_project') || 'En el proyecto seleccionado'}</p>
                             </div>
                             <span className="text-2xl font-black text-indigo-700">
                                 {addresses.length}
