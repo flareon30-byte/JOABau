@@ -119,12 +119,35 @@ const VehicleLogForm = () => {
                         if (largest > 0) bestAmount = largest;
                     }
 
+                    // Buscar fechas en formato DD/MM/YYYY, DD-MM-YYYY, etc.
+                    const dateRegex = /\b([0-3]?[0-9])[\/\-.]([0-1]?[0-9])[\/\-.](20[0-9]{2})\b/g;
+                    let dateMatch;
+                    let bestDate = null;
+                    while ((dateMatch = dateRegex.exec(text)) !== null) {
+                        const day = dateMatch[1].padStart(2, '0');
+                        const month = dateMatch[2].padStart(2, '0');
+                        const year = dateMatch[3];
+                        bestDate = `${year}-${month}-${day}`;
+                    }
+
+                    if (bestDate) {
+                        setDate(bestDate);
+                    }
+
+                    let alertMsg = "OCR: ";
                     if (bestAmount) {
                         setAmount(bestAmount.toString());
-                        alert(`OCR: Se ha detectado un importe de ${bestAmount} €.\nPor favor, verifica que sea correcto.`);
+                        alertMsg += `Se ha detectado un importe de ${bestAmount} €.`;
                     } else {
-                        alert("OCR: No se pudo detectar el importe automáticamente. Por favor, introdúzcalo manualmente.");
+                        alertMsg += `No se pudo detectar el importe automáticamente.`;
                     }
+
+                    if (bestDate) {
+                        alertMsg += `\nTambién se detectó la fecha: ${bestDate}.`;
+                    }
+
+                    alertMsg += "\nPor favor, verifica que los datos sean correctos.";
+                    alert(alertMsg);
                 } catch (ocrErr) {
                     console.error("OCR Error:", ocrErr);
                     alert("Error al procesar el ticket. Introdúcelo manualmente.");
