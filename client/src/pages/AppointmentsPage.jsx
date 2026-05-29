@@ -297,7 +297,7 @@ const AppointmentsPage = () => {
         setIsAiLoading(true);
         setAiResults(null);
         try {
-            const res = await api.get('/api/appointments/ai-manager');
+            const res = await api.get(`/api/appointments/ai-manager${projectFilter ? `?projectId=${projectFilter}` : ''}`);
             setAiResults(res.data);
         } catch (error) {
             console.error('Error fetching AI suggestions:', error);

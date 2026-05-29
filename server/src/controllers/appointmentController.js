@@ -41,22 +41,30 @@ exports.getPendingAppointments = async (req, res) => {
 // Get AI Manager suggestions for pending appointments
 exports.getAiManagerSuggestions = async (req, res) => {
     try {
+        const { projectId } = req.query;
+
+        const whereClause = {
+            AND: [
+                { clientName: { not: { startsWith: '***' } } },
+                { sopladoStatus: 'OK' },
+                { project: { isDemo: req.isDemo || false } },
+                { orderStatus: { notIn: ['CERRADA', 'DERIVADA'] } },
+                {
+                    OR: [
+                        { appointment: { is: null } },
+                        { appointment: { status: 'PENDIENTE' } },
+                        { appointment: { status: 'RECITAR' } }
+                    ]
+                }
+            ]
+        };
+
+        if (projectId) {
+            whereClause.AND.push({ projectId });
+        }
+
         const addresses = await prisma.address.findMany({
-            where: {
-                AND: [
-                    { clientName: { not: { startsWith: '***' } } },
-                    { sopladoStatus: 'OK' },
-                    { project: { isDemo: req.isDemo || false } },
-                    { orderStatus: { notIn: ['CERRADA', 'DERIVADA'] } },
-                    {
-                        OR: [
-                            { appointment: { is: null } },
-                            { appointment: { status: 'PENDIENTE' } },
-                            { appointment: { status: 'RECITAR' } }
-                        ]
-                    }
-                ]
-            },
+            where: whereClause,
             include: {
                 appointment: {
                     include: {
