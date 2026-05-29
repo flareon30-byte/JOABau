@@ -760,6 +760,12 @@ const ActivationPageV2 = () => {
         if (pdfPath) {
             data.append('pdfPath', pdfPath);
         }
+        if (signatures.client) {
+            data.append('clientSignature', signatures.client);
+        }
+        if (signatures.tech) {
+            data.append('techSignature', signatures.tech);
+        }
 
         // Separate existing photos from new photos
         const existingPaths = [];

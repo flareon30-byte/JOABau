@@ -564,6 +564,12 @@ const ActivationPage = () => {
         if (pdfPath) {
             data.append('pdfPath', pdfPath);
         }
+        if (signatures.client) {
+            data.append('clientSignature', signatures.client);
+        }
+        if (signatures.tech) {
+            data.append('techSignature', signatures.tech);
+        }
 
         try {
             await api.post(`/api/activations/report/${selectedAppointment.addressId}`, data, {

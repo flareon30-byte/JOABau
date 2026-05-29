@@ -142,7 +142,9 @@ exports.submitActivation = async (req, res) => {
         isRepair,
         homeId,
         isActivated,
-        notActivatedReason
+        notActivatedReason,
+        clientSignature,
+        techSignature
     } = req.body;
 
     // Con upload.any(), req.files es un array plano en lugar de un objeto con claves
@@ -234,6 +236,33 @@ exports.submitActivation = async (req, res) => {
             where: { id: req.userId },
             include: { team: { include: { members: true } } }
         });
+
+        // Regenerate PDF if signatures are provided (ensuring final comments are embedded)
+        if (clientSignature && techSignature) {
+            try {
+                console.log('[SubmitActivation] Regenerating PDF with final description and signatures...');
+                const activeUsername = user ? user.username : (req.body.username || '');
+                const activePhone = user ? user.phone : (req.body.userPhone || '');
+                
+                const newPdfPath = await generatePdfInternal({
+                    addressId,
+                    clientName: address.clientName,
+                    street: address.street,
+                    number: address.number,
+                    city: address.city,
+                    klsId: klsId || address.klsId,
+                    clientSignature,
+                    techSignature,
+                    description,
+                    activeUsername,
+                    activePhone
+                });
+                pdfPath = newPdfPath;
+                console.log('[SubmitActivation] PDF regenerated successfully:', pdfPath);
+            } catch (pdfErr) {
+                console.error('[SubmitActivation] Non-critical PDF regeneration error:', pdfErr.message);
+            }
+        }
 
         // Fetch Global System Settings (Fallback)
         const settings = await prisma.systemSettings.findFirst();
@@ -611,13 +640,155 @@ exports.getAllActivations = async (req, res) => {
     }
 };
 
+const generatePdfInternal = async ({
+    addressId,
+    clientName,
+    street,
+    number,
+    city,
+    klsId,
+    clientSignature,
+    techSignature,
+    description,
+    activeUsername,
+    activePhone
+}) => {
+    // Load PDF
+    const pdfTemplatePath = path.join(__dirname, '../../templates/dokumentation von GlasfaserPlus.pdf');
+    console.log('Looking for PDF template at:', pdfTemplatePath);
+
+    if (!fs.existsSync(pdfTemplatePath)) {
+        throw new Error(`Template PDF not found at: ${pdfTemplatePath}`);
+    }
+
+    console.log('PDF Template found. Reading file...');
+    const existingPdfBytes = fs.readFileSync(pdfTemplatePath);
+
+    const pdfDoc = await PDFDocument.load(existingPdfBytes);
+    const form = pdfDoc.getForm();
+
+    // Helper to safe fill
+    const fill = (name, val, fontSize) => {
+        try {
+            const field = form.getTextField(name);
+            field.setText(val ? String(val) : '');
+            if (fontSize) {
+                field.setFontSize(fontSize);
+            }
+        } catch (e) {
+            // Ignore
+        }
+    };
+
+    const pages = pdfDoc.getPages();
+    const firstPage = pages[0];
+    const today = new Date().toLocaleDateString('de-DE');
+    const cityDate = `${city || ''}, ${today}`;
+
+    // Map fields based on inspection
+    fill('Text7', clientName);
+    fill('Text9', `${street} ${number || ''}`);
+    fill('Text10', city);
+    fill('Text11', activeUsername);
+    fill('Text12', activePhone);
+    fill('Text14', klsId);
+
+    fill('Text42', cityDate, 7);
+    fill('Text43', cityDate, 7);
+
+    let translatedAbweichung = '';
+    if (description && description.trim() !== '') {
+        try {
+            const { translate } = await import('@vitalets/google-translate-api');
+            const translationReq = await translate(description, { to: 'de' });
+            translatedAbweichung = translationReq.text;
+            console.log('[PDF GEN] Translated comment to German:', translatedAbweichung);
+        } catch(e) {
+            console.error('[PDF GEN] Translation failed:', e);
+            translatedAbweichung = description; // Fallback to original
+        }
+    }
+
+    fill('Text1', translatedAbweichung);
+
+    const placeSignaturePin = async (sigBase64, fieldName) => {
+        if (!sigBase64) {
+            console.warn(`[PDF GEN] No signature data for ${fieldName}`);
+            return;
+        }
+
+        try {
+            let rect = { x: 0, y: 0 };
+            let found = false;
+
+            try {
+                const sigField = form.getTextField(fieldName);
+                const widgets = sigField.getWidgets();
+                if (widgets && widgets.length > 0) {
+                    const wRect = widgets[0].getRectangle();
+                    rect = { x: wRect.x, y: wRect.y };
+                    found = true;
+                }
+            } catch (e) {
+                // Ignore
+            }
+
+            if (!found) {
+                console.warn(`[PDF GEN] Pin field '${fieldName}' NOT FOUND. Using fallback coordinates.`);
+                if (fieldName === 'SIG_EIGENTUEMER') rect = { x: 330, y: 210 };
+                if (fieldName === 'SIG_MONTEUR') rect = { x: 40, y: 210 };
+            }
+
+            const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
+            const sigImage = await pdfDoc.embedPng(pngImageBytes);
+
+            let yOffset = 35;
+            let xOffset = 0;
+
+            if (fieldName === 'SIG_EIGENTUEMER') {
+                xOffset = -100;
+            }
+
+            firstPage.drawImage(sigImage, {
+                x: rect.x + xOffset,
+                y: rect.y + yOffset,
+                width: 140,
+                height: 50
+            });
+        } catch (err) {
+            console.error(`[PDF GEN] Error placing signature for ${fieldName}:`, err);
+        }
+    };
+
+    await placeSignaturePin(clientSignature, 'SIG_EIGENTUEMER');
+    await placeSignaturePin(techSignature, 'SIG_MONTEUR');
+
+    fill('Text46', cityDate, 7);
+    await placeSignaturePin(techSignature, 'Text46');
+
+    form.flatten();
+
+    const pdfBytes = await pdfDoc.save();
+    const cleanName = `${street} ${number || ''}`.replace(/[^a-zA-Z0-9äöüÄÖÜß \-]/g, '').trim();
+    const fileName = `${cleanName}.pdf`;
+    const outDir = path.join(__dirname, '../../uploads/pdfs');
+
+    if (!fs.existsSync(outDir)) {
+        fs.mkdirSync(outDir, { recursive: true });
+    }
+
+    const outPath = path.join(outDir, fileName);
+    fs.writeFileSync(outPath, pdfBytes);
+
+    return `uploads/pdfs/${fileName}`;
+};
+
 exports.generatePdf = async (req, res) => {
     console.log('--- STARTING PDF GENERATION ---');
     try {
         const { addressId, clientName, street, number, city, klsId, clientSignature, techSignature, description } = req.body;
         console.log('Request body:', { addressId, clientName, street, number, city, klsId, hasClientSig: !!clientSignature, hasTechSig: !!techSignature, hasDescription: !!description });
 
-        // Fetch User details (Phone, Username) safely from DB
         const user = await prisma.user.findUnique({
             where: { id: req.userId },
             select: { username: true, phone: true }
@@ -627,164 +798,22 @@ exports.generatePdf = async (req, res) => {
         const activeUsername = user ? user.username : (req.body.username || '');
         const activePhone = user ? user.phone : (req.body.userPhone || '');
 
-        // Load PDF
-        const pdfPath = path.join(__dirname, '../../templates/dokumentation von GlasfaserPlus.pdf');
-        console.log('Looking for PDF at:', pdfPath);
+        const publicPath = await generatePdfInternal({
+            addressId,
+            clientName,
+            street,
+            number,
+            city,
+            klsId,
+            clientSignature,
+            techSignature,
+            description,
+            activeUsername,
+            activePhone
+        });
 
-        if (!fs.existsSync(pdfPath)) {
-            console.error('CRITICAL: PDF Template NOT FOUND at', pdfPath);
-            // Attempt to list directory to debug
-            const dir = path.dirname(pdfPath);
-            console.log('Contents of directory ' + dir + ':', fs.readdirSync(dir));
-            return res.status(404).json({ message: 'Template PDF not found on server' });
-        }
-
-        console.log('PDF Template found. Reading file...');
-        const existingPdfBytes = fs.readFileSync(pdfPath);
-
-        const pdfDoc = await PDFDocument.load(existingPdfBytes);
-        const form = pdfDoc.getForm();
-
-        // Helper to safe fill
-        const fill = (name, val, fontSize) => {
-            try {
-                const field = form.getTextField(name);
-                field.setText(val ? String(val) : '');
-                if (fontSize) {
-                    field.setFontSize(fontSize);
-                }
-            } catch (e) {
-                // Field might be checkbox or not exist, ignore
-            }
-        };
-
-        const pages = pdfDoc.getPages();
-        const firstPage = pages[0];
-        const today = new Date().toLocaleDateString('de-DE');
-        const cityDate = `${city || ''}, ${today}`;
-
-        // Map fields based on inspection
-        fill('Text7', clientName);
-        fill('Text9', `${street} ${number || ''}`);
-        fill('Text10', city);
-        fill('Text11', activeUsername);
-        fill('Text12', activePhone); // Phone number
-        fill('Text14', klsId);
-
-        fill('Text42', cityDate, 7); // Monteur Middle - Smaller font
-        fill('Text43', cityDate, 7); // Eigentümer Middle - Smaller font
-
-        let translatedAbweichung = '';
-        if (description && description.trim() !== '') {
-            try {
-                const { translate } = await import('@vitalets/google-translate-api');
-                // The prompt "Translate to C1 Level German:" forces better contextual formatting in supported engines,
-                // but since it's standard Google Translate API we just translate direct.
-                const translationReq = await translate(description, { to: 'de' });
-                translatedAbweichung = translationReq.text;
-                console.log('[PDF GEN] Translated comment to German:', translatedAbweichung);
-            } catch(e) {
-                console.error('[PDF GEN] Translation failed:', e);
-                translatedAbweichung = description; // Fallback to original
-            }
-        }
-
-        fill('Text1', translatedAbweichung); // Abweichung
-
-        // --- EMBED SIGNATURES (PIN SYSTEM) ---
-        // Strategy: Use SIG_ fields as "Pins" for coordinates (X,Y), but force a fixed size (140x50)
-
-        const placeSignaturePin = async (sigBase64, fieldName) => {
-            if (!sigBase64) {
-                console.warn(`[PDF GEN] No signature data for ${fieldName}`);
-                return;
-            }
-
-            try {
-                // 1. Find the "Pin" field
-                let rect = { x: 0, y: 0 };
-                let found = false;
-
-                try {
-                    const sigField = form.getTextField(fieldName);
-                    const widgets = sigField.getWidgets();
-                    if (widgets && widgets.length > 0) {
-                        const wRect = widgets[0].getRectangle();
-                        rect = { x: wRect.x, y: wRect.y }; // Use the field's position
-                        found = true;
-                        console.log(`[PDF GEN] Found Pin '${fieldName}' at X=${rect.x}, Y=${rect.y}`);
-                    }
-                } catch (e) {
-                    // Field not found
-                }
-
-                // 2. Fallback if Pin not found (Safety net)
-                if (!found) {
-                    console.warn(`[PDF GEN] Pin field '${fieldName}' NOT FOUND. Using fallback coordinates.`);
-                    // Fallback to manual if user forgot to upload new PDF
-                    if (fieldName === 'SIG_EIGENTUEMER') rect = { x: 330, y: 210 };
-                    if (fieldName === 'SIG_MONTEUR') rect = { x: 40, y: 210 };
-                }
-
-                // 3. Embed and Draw (FIXED SIZE)
-                const pngImageBytes = Buffer.from(sigBase64.split(',')[1], 'base64');
-                const sigImage = await pdfDoc.embedPng(pngImageBytes);
-
-                // Draw at the Pin's X,Y with offsets to center in the red boxes
-                // PDF Coordinates: (0,0) is Bottom-Left. To move UP, we INCREASE Y.
-
-                let yOffset = 35;   // Lowered from 60 to 35
-                let xOffset = 0;
-
-                // Special correction for Client signature which appears too far right
-                if (fieldName === 'SIG_EIGENTUEMER') {
-                    xOffset = -100; // Shift LEFT
-                }
-
-                firstPage.drawImage(sigImage, {
-                    x: rect.x + xOffset,
-                    y: rect.y + yOffset,
-                    width: 140,     // Fixed width
-                    height: 50      // Fixed height
-                });
-                console.log(`[PDF GEN] Success ${fieldName}: Drawn at ${rect.x + xOffset}, ${rect.y + yOffset} (Offsets: X=${xOffset}, Y=${yOffset})`);
-
-            } catch (err) {
-                console.error(`[PDF GEN] Error placing signature for ${fieldName}:`, err);
-            }
-        };
-
-        await placeSignaturePin(clientSignature, 'SIG_EIGENTUEMER');
-        await placeSignaturePin(techSignature, 'SIG_MONTEUR');
-
-        // Added per user request: Tech signature at bottom (Text46)
-        fill('Text46', cityDate, 7);
-        await placeSignaturePin(techSignature, 'Text46');
-
-        form.flatten(); // Flatten form fields to make them uneditable
-
-        console.log('Fields filled and Signatures added. Saving PDF...');
-
-        // Save
-        const pdfBytes = await pdfDoc.save();
-
-        // Sanitize filename
-        const cleanName = `${street} ${number || ''}`.replace(/[^a-zA-Z0-9äöüÄÖÜß \-]/g, '').trim();
-        const fileName = `${cleanName}.pdf`;
-
-        const outDir = path.join(__dirname, '../../uploads/pdfs');
-
-        if (!fs.existsSync(outDir)) {
-            fs.mkdirSync(outDir, { recursive: true });
-        }
-
-        const outPath = path.join(outDir, fileName);
-        fs.writeFileSync(outPath, pdfBytes);
-
-        // Return public path (with timestamp for frontend display cache busting only)
-        const publicPath = `uploads/pdfs/${fileName}`;
         res.json({ success: true, path: `${publicPath}?t=${Date.now()}` });
-        console.log('--- END PDF GENERATION SUCCESS --- Saved to:', outPath);
+        console.log('--- END PDF GENERATION SUCCESS --- Saved to:', publicPath);
 
     } catch (error) {
         console.error('--- PDF GENERATION ERROR ---');

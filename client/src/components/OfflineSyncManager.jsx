@@ -45,7 +45,8 @@ const OfflineSyncManager = ({ onSyncComplete }) => {
                         klsId: item.formData.klsId,
                         username: user.username,
                         clientSignature: item.signatures.client,
-                        techSignature: item.signatures.tech
+                        techSignature: item.signatures.tech,
+                        description: item.formData.description
                     });
                     if (pdfRes.data.success) {
                         pdfPath = pdfRes.data.path;
