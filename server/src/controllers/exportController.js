@@ -785,20 +785,86 @@ exports.exportBillingExcel = async (req, res) => {
         const wsFusion = XLSX.utils.json_to_sheet(fusionRows);
         XLSX.utils.book_append_sheet(wb, wsFusion, "Fusiones");
 
+        // Pre-calculate dynamic items for columns
+        const dynamicItems = new Set();
+        const targetClients = clientCompanyId 
+            ? allClients.filter(c => c.id === clientCompanyId) 
+            : allClients;
+            
+        targetClients.forEach(c => {
+            if (c.priceItems) {
+                c.priceItems
+                    .filter(item => item.department === 'ACTIVATION')
+                    .forEach(item => dynamicItems.add(item.name));
+            }
+        });
+
+        const standardFallbacks = ["Dos familias", "MDU", "Multi", "SDU", "Unifamiliar"];
+        standardFallbacks.forEach(f => dynamicItems.add(f));
+        const dynamicItemsArray = Array.from(dynamicItems).sort();
+
         // 3. Activacion Sheet
-        const actRows = finalActivation.map(i => ({
-            Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
-            Proyecto: i.address?.project?.name || 'N/A',
-            Direccion: `${i.address?.street || ''} ${i.address?.number || ''}`,
-            NVT: i.address?.nvt || '',
-            Cliente: i.address?.clientName || 'N/A',
-            Tipo: i.activationType || 'ACTIVATION',
-            TA: (i.taInstalled || i.taCount > 0) ? (i.taCount || 1) : 0,
-            SP: i.spInstalled || 0,
-            MDU: i.mduInstalled ? 1 : 0,
-            Familiares: i.familiesCount || 0,
-            Fotos: i.photos?.length || 0
-        }));
+        const actRows = finalActivation.map(i => {
+            const client = getClientForWork(i);
+            const actType = i.activationType;
+            const customName = i.customActivationName;
+            
+            let displayName = customName || actType;
+            
+            if (client && client.priceItems) {
+                const match = client.priceItems.find(item => 
+                    item.department === 'ACTIVATION' && 
+                    (item.name === customName || item.name === actType)
+                );
+                if (match) {
+                    displayName = match.name;
+                } else {
+                    const matchFallback = client.priceItems.find(item => {
+                        if (item.department !== 'ACTIVATION') return false;
+                        const lowerName = (item.name || '').toLowerCase();
+                        if (actType === 'BP_2_FAM' && (lowerName.includes('bp') || lowerName.includes('dos') || lowerName.includes('familia'))) return true;
+                        if (actType === 'BP' && (lowerName.includes('bp') || lowerName.includes('unifamiliar') || lowerName.includes('caja'))) return true;
+                        if (actType === 'SDU' && (lowerName.includes('sdu') || lowerName.includes('ta'))) return true;
+                        if (actType === 'MDU' && lowerName.includes('mdu')) return true;
+                        if (actType === 'BR_MULTI' && (lowerName.includes('br') || lowerName.includes('multi'))) return true;
+                        return false;
+                    });
+                    if (matchFallback) {
+                        displayName = matchFallback.name;
+                    }
+                }
+            }
+
+            if (displayName === 'BP_2_FAM') displayName = 'Dos familias';
+            else if (displayName === 'BR_MULTI') displayName = 'Multi';
+            else if (displayName === 'BP') displayName = 'Unifamiliar';
+
+            const row = {
+                Fecha: (i.createdAt || new Date()).toISOString().split('T')[0],
+                Proyecto: i.address?.project?.name || 'N/A',
+                Direccion: `${i.address?.street || ''} ${i.address?.number || ''}`,
+                NVT: i.address?.nvt || '',
+                Cliente: i.address?.clientName || 'N/A',
+                Tipo: displayName,
+                TA: (i.taInstalled || i.taCount > 0) ? (i.taCount || 1) : 0,
+                SP: i.spInstalled || 0,
+                MDU: i.mduInstalled ? 1 : 0,
+                Familiares: i.familiesCount || 0,
+                Fotos: i.photos?.length || 0
+            };
+
+            dynamicItemsArray.forEach(item => {
+                if (item !== 'Horas muffa') {
+                    if (item === 'MDU') {
+                        row['MDU'] = Math.max(row['MDU'], displayName === 'MDU' ? 1 : 0);
+                    } else {
+                        row[item] = (displayName === item) ? 1 : 0;
+                    }
+                }
+            });
+
+            return row;
+        });
         const wsAct = XLSX.utils.json_to_sheet(actRows);
         XLSX.utils.book_append_sheet(wb, wsAct, "Activaciones");
 
