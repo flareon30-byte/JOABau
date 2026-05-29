@@ -290,7 +290,7 @@ const BillingPage = () => {
         switch (activeTab) {
             case 'soplado':
                 data = billingData.soplado;
-                columns = [t('billing.col_date'), t('billing.col_project'), t('billing.col_address'), t('billing.col_nvt'), t('billing.col_meters'), t('billing.col_tk'), t('billing.col_color'), t('billing.col_actions')];
+                columns = [t('billing.col_date'), t('billing.col_project'), t('billing.col_address'), t('billing.col_nvt'), t('billing.col_meters'), t('billing.col_tk'), t('billing.col_color'), t('billing.col_pdf'), t('billing.col_actions')];
                 emptyMsg = t('billing.no_blowing');
                 break;
             case 'fusion':
@@ -353,6 +353,22 @@ const BillingPage = () => {
                                         <td className="p-4">{row.meters}m</td>
                                         <td className="p-4">{row.tk || '-'}</td>
                                         <td className="p-4">{row.tubeColor || '-'}</td>
+                                        <td className="p-4">
+                                            {(() => {
+                                                if (!row.pdfPath) return <span className="text-slate-300">-</span>;
+                                                return (
+                                                    <a
+                                                        href={getFileUrl(row.pdfPath)}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-red-500 hover:text-red-700 flex items-center gap-1 font-bold"
+                                                        title="Ver PDF"
+                                                    >
+                                                        <FileText size={18} /> PDF
+                                                    </a>
+                                                );
+                                            })()}
+                                        </td>
                                     </>
                                 )}
                                 {activeTab === 'fusion' && (

@@ -183,7 +183,8 @@ const BlowingDepartment = () => {
         tk: '',
         tubeColor: '',
         failureReason: '',
-        photos: []
+        photos: [],
+        protocolPdf: null
     });
     const [submitting, setSubmitting] = useState(false);
     const [selectedIds, setSelectedIds] = useState([]);
@@ -229,6 +230,12 @@ const BlowingDepartment = () => {
         e.preventDefault();
         setSubmitting(true);
 
+        if (status === 'OK' && !formData.protocolPdf && !selectedAddress.sopladoInfo?.pdfPath) {
+            alert('Error: El protocolo en PDF es obligatorio para cerrar el soplado como OK.');
+            setSubmitting(false);
+            return;
+        }
+
         const data = new FormData();
         data.append('status', status);
         data.append('meters', formData.meters);
@@ -237,6 +244,10 @@ const BlowingDepartment = () => {
 
         if (status === 'FALLIDO') {
             data.append('failureReason', formData.failureReason);
+        }
+
+        if (formData.protocolPdf) {
+            data.append('protocolPdf', formData.protocolPdf);
         }
 
         formData.photos.forEach(file => {
@@ -249,7 +260,7 @@ const BlowingDepartment = () => {
             });
             alert(t('blowing.report_success'));
             setSelectedAddress(null);
-            setFormData({ meters: '', tk: '', tubeColor: '', failureReason: '', photos: [] });
+            setFormData({ meters: '', tk: '', tubeColor: '', failureReason: '', photos: [], protocolPdf: null });
             fetchAddresses(); // Refresh list
         } catch (error) {
             console.error('Error submitting report:', error);
@@ -544,6 +555,40 @@ const BlowingDepartment = () => {
                             />
                         </div>
                     )}
+
+                    {/* PDF Protocol Upload */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                            Protocolo de Soplado (PDF) {status === 'OK' && <span className="text-red-500 font-bold">* Obligatorio</span>}
+                        </label>
+                        <div className="border-2 border-dashed border-slate-300 bg-slate-50/50 rounded-xl flex flex-col items-center justify-center p-6 hover:bg-slate-100 transition-colors cursor-pointer relative">
+                            <input
+                                type="file"
+                                accept="application/pdf"
+                                onChange={(e) => {
+                                    const file = e.target.files[0];
+                                    setFormData(prev => ({ ...prev, protocolPdf: file }));
+                                }}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <Upload className="text-slate-500 mb-2" size={32} />
+                            {formData.protocolPdf ? (
+                                <div className="text-center">
+                                    <p className="text-xs font-bold text-slate-700">{formData.protocolPdf.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">({(formData.protocolPdf.size / 1024 / 1024).toFixed(2)} MB) - Clic para cambiar</p>
+                                </div>
+                            ) : selectedAddress?.sopladoInfo?.pdfPath ? (
+                                <div className="text-center">
+                                    <p className="text-xs font-bold text-green-700">✓ Protocolo ya subido</p>
+                                    <p className="text-[10px] text-slate-400 font-medium">Haga clic aquí para reemplazar el PDF existente</p>
+                                </div>
+                            ) : (
+                                <div className="text-xs text-slate-600 font-extrabold uppercase text-center leading-tight">
+                                    Seleccionar Protocolo en PDF
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-2">{t('blowing.photos_evidence')}</label>

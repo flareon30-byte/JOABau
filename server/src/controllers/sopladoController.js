@@ -58,19 +58,23 @@ exports.getProjectAddresses = async (req, res) => {
 exports.submitSopladoReport = async (req, res) => {
     const { addressId } = req.params;
     const { status, meters, tk, tubeColor, failureReason } = req.body;
-    const files = req.files; // Array of files from multer
+    const files = req.files || []; // Array of files from multer
 
-    if (files && files.length > 0) {
+    const pdfFile = files.find(f => f.fieldname === 'protocolPdf');
+    const photoFiles = files.filter(f => f.fieldname !== 'protocolPdf');
+
+    if (photoFiles.length > 0) {
         let techName = 'Técnico JOA';
         if (req.userId) {
             const techUser = await prisma.user.findUnique({ where: { id: req.userId }, select: { username: true } });
             if (techUser) techName = techUser.username;
         }
-        await processImages(files, techName);
+        await processImages(photoFiles, techName);
     }
 
     try {
-        const photoPaths = files ? files.map(f => f.path) : [];
+        const photoPaths = photoFiles.map(f => f.path);
+        const pdfPath = pdfFile ? pdfFile.path.replace(/\\/g, '/') : null;
         const isSaturday = new Date().getDay() === 6;
         let teamId = null;
         let saturdayPay = 0;
@@ -98,6 +102,13 @@ exports.submitSopladoReport = async (req, res) => {
 
         if (!targetAddress) {
             return res.status(404).json({ message: 'Address not found' });
+        }
+
+        const existingInfo = targetAddress.sopladoInfo;
+        const finalPdfPath = pdfPath || existingInfo?.pdfPath;
+
+        if (status === 'OK' && !finalPdfPath) {
+            return res.status(400).json({ message: 'Error: El protocolo en PDF es obligatorio para cerrar el soplado como OK.' });
         }
 
         // 2. Find ALL addresses at this exact physical location (same project, street, number)
@@ -140,7 +151,8 @@ exports.submitSopladoReport = async (req, res) => {
                     tk: tk || '',
                     tubeColor: tubeColor || '',
                     failureReason: status === 'FALLIDO' ? failureReason : null,
-                    photos: photoPaths,
+                    photos: photoPaths.length > 0 ? photoPaths : (addr.sopladoInfo?.photos || []),
+                    pdfPath: finalPdfPath,
                     teamId: teamId,
                     isSaturday: isSaturday,
                     saturdayPay: saturdayPay,

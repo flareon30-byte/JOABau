@@ -206,6 +206,8 @@ model SopladoInfo {
 
   saturdayPay Float @default(0.0) // Captured earnings for technician if isSaturday
 
+  pdfPath String?
+
   // Invoicing
   invoiceId String?
   invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
