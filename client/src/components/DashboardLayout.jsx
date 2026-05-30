@@ -269,6 +269,8 @@ const DashboardLayout = () => {
             navigate('/dashboard/payroll');
         } else if (n.type === 'RENTAL_RENEWAL') {
             navigate('/dashboard/accommodations');
+        } else if (n.type === 'MATERIAL_ORDER_CREATED' || n.type === 'MATERIAL_ORDER_UPDATE') {
+            navigate('/dashboard/material-orders');
         }
     };
 

@@ -1,4 +1,5 @@
 const prisma = require('../prisma');
+const { sendPushToUser, sendPushToRole } = require('../utils/notificationUtils');
 
 exports.createOrder = async (req, res) => {
     try {
@@ -28,6 +29,20 @@ exports.createOrder = async (req, res) => {
                 targetRole: 'SUPER_ADMIN'
             }
         });
+
+        // 🟢 SEND PUSH TO ADMINS
+        const pushMsg = `🛒 Nuevo pedido de material: ${newOrder.user.username} solicita "${materialDescription.substring(0, 30)}..." - Urgencia: ${timeRemaining}`;
+        sendPushToRole('SUPER_ADMIN', {
+            title: 'Nuevo Pedido de Material',
+            body: pushMsg,
+            data: { url: '/dashboard/material-orders' }
+        }).catch(e => console.error("Push error SUPER_ADMIN:", e.message));
+
+        sendPushToRole('ADMIN', {
+            title: 'Nuevo Pedido de Material',
+            body: pushMsg,
+            data: { url: '/dashboard/material-orders' }
+        }).catch(e => console.error("Push error ADMIN:", e.message));
 
         res.status(201).json(newOrder);
     } catch (error) {
@@ -69,6 +84,32 @@ exports.updateOrderStatus = async (req, res) => {
                 user: { select: { id: true, username: true, role: true } }
             }
         });
+
+        // Notify user about status change
+        let messageText = '';
+        if (status === 'EN_ALMACEN') {
+            messageText = `📦 Tu material solicitado ("${updatedOrder.materialDescription.substring(0, 30)}...") ya está en el almacén.`;
+        } else if (status === 'REALIZADO') {
+            messageText = `✅ Tu pedido de material ("${updatedOrder.materialDescription.substring(0, 30)}...") ha sido marcado como realizado.`;
+        } else {
+            messageText = `⏳ El estado de tu pedido de material ("${updatedOrder.materialDescription.substring(0, 30)}...") ha cambiado a PENDIENTE.`;
+        }
+
+        // Create Database Notification targeting the technician's role
+        await prisma.notification.create({
+            data: {
+                type: 'MATERIAL_ORDER_UPDATE',
+                message: messageText,
+                targetRole: updatedOrder.user.role
+            }
+        });
+
+        // 🟢 SEND PUSH TO SPECIFIC USER (TECHNICIAN)
+        sendPushToUser(updatedOrder.userId, {
+            title: '📦 Actualización de Pedido de Material',
+            body: messageText,
+            data: { url: '/dashboard/material-orders' }
+        }).catch(e => console.error("Push error User:", e.message));
 
         res.json(updatedOrder);
     } catch (error) {
