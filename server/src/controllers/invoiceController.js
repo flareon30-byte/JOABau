@@ -399,6 +399,7 @@ exports.deleteInvoice = async (req, res) => {
         await prisma.sopladoInfo.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
         await prisma.fusionWork.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
         await prisma.simpleInstallation.updateMany({ where: { id: { in: [] }, invoiceId: id }, data: { invoiceId: null } }); // Caso genérico
+        await prisma.appointment.updateMany({ where: { invoiceId: id }, data: { invoiceId: null } });
 
         // 2. Borrar la factura física (el registro en DB)
         await prisma.invoice.delete({ where: { id } });
