@@ -133,7 +133,8 @@ const generatePdfFile = (invoice, client, company) => {
         doc.text('Base Imponible:', totalsStart, totalsY + 15);
         doc.fillColor('#333333').text(money(invoice.subtotal), 475, totalsY + 15, { align: 'right', width: 70 });
 
-        doc.fillColor('#666666').text(`IVA (${client.defaultVat}%):`, totalsStart, totalsY + 30);
+        const vatRateLabel = company.country === 'SIN_IVA' ? '0' : client.defaultVat;
+        doc.fillColor('#666666').text(`IVA (${vatRateLabel}%):`, totalsStart, totalsY + 30);
         doc.fillColor('#333333').text(money(invoice.vatAmount), 475, totalsY + 30, { align: 'right', width: 70 });
 
         doc.rect(totalsStart - 10, totalsY + 50, 155, 35).fill('#0052cc');
@@ -142,7 +143,7 @@ const generatePdfFile = (invoice, client, company) => {
         doc.text(money(invoice.total), 465, totalsY + 62, { align: 'right', width: 70 });
 
         // Frase Legal Exención IVA (Solo si el IVA es 0 o muy cercano a 0)
-        if (invoice.vatAmount < 0.01 || client.defaultVat === 0) {
+        if (invoice.vatAmount < 0.01 || client.defaultVat === 0 || company.country === 'SIN_IVA') {
             doc.fillColor('#444444').fontSize(8).font('Helvetica');
             const exemptionText = "Operación exenta de IVA por aplicación de lo dispuesto en el artículo 25 de la Ley 37/1992 del IVA. Von der Mehrwertsteuer befreiter Betrieb gemäß Artikel 25 des Gesetzes 37/1992 über die Mehrwertsteuer des Königreichs Spanien";
             doc.text(exemptionText, 50, totalsY + 95, { align: 'left', width: 500 });
@@ -383,15 +384,15 @@ exports.createInvoice = async (req, res) => {
             subtotal += repairBasePrice;
         });
 
-        const vatAmount = subtotal * (client.defaultVat / 100);
+        const vatAmount = company.country === 'SIN_IVA' ? 0 : subtotal * (client.defaultVat / 100);
         const total = subtotal + vatAmount;
 
         // 3. Generar número de factura (ES-YYYY-XXX o DE-YYYY-XXX)
         const year = new Date().getFullYear();
+        const prefix = (company.country === 'SIN_IVA' ? 'ES' : (company.country || 'ES')).toUpperCase();
         const count = await prisma.invoice.count({
-            where: { number: { startsWith: `${company.country || 'ES'}-${year}` } }
+            where: { number: { startsWith: `${prefix}-${year}` } }
         });
-        const prefix = (company.country || 'ES').toUpperCase();
         const invoiceNumber = `${prefix}-${year}-${(count + 1).toString().padStart(3, '0')}`;
 
         // 4. Guardar Factura en DB

@@ -137,6 +137,7 @@ const CompanySettingsPage = () => {
                             >
                                 <option value="ES">{t('company.country_es')}</option>
                                 <option value="DE">{t('company.country_de')}</option>
+                                <option value="SIN_IVA">{t('company.country_sin_iva')}</option>
                             </select>
                             <p className="text-[10px] text-slate-500 mt-1 font-bold italic">{t('company.hint_country')}</p>
                         </div>
