@@ -310,8 +310,73 @@ exports.createInvoice = async (req, res) => {
             subtotal += total;
         });
 
+        // Procesar Fusiones (NVT y Muffas)
+        fusions.forEach(f => {
+            let lineGross = 0;
+            let itemDesc = '';
+            let qty = 1;
+            let price = 0;
+            if (f.type === 'MUFFA') {
+                let matchingItem = null;
+                if (client && client.priceItems) {
+                    matchingItem = client.priceItems.find(item => 
+                        (item.name || '').toLowerCase().includes('muffa')
+                    );
+                }
+                const hourPrice = matchingItem ? matchingItem.priceToClient : 60.00;
+                qty = f.hours || 0;
+                price = hourPrice;
+                lineGross = qty * price;
+                itemDesc = `Fusión Muffa: ${f.address || 'Sin dirección'} (${qty} h)`;
+            } else {
+                let matchingItem = null;
+                if (client && client.priceItems) {
+                    matchingItem = client.priceItems.find(item => {
+                        const name = (item.name || '').toLowerCase();
+                        return name.includes('fusion') || name.includes('fusión');
+                    });
+                }
+                const unitPrice = matchingItem ? matchingItem.priceToClient : 3.00;
+                qty = f.fusionCount || 0;
+                price = unitPrice;
+                lineGross = qty * price;
+                itemDesc = `Fusión NVT: NVT-${f.nvtName || 'N/A'} (${qty} fusiones)`;
+            }
+            
+            invoiceItems.push({ desc: itemDesc, qty, price, total: lineGross });
+            subtotal += lineGross;
+        });
+
+        // Procesar Instalaciones Simples (G&K)
+        installations.forEach(inst => {
+            let instGross = 0;
+            const fullAddress = `${inst.address?.street || ''} ${inst.address?.number || ''}`.trim();
+            
+            if (inst.items && inst.items.length > 0) {
+                inst.items.forEach(item => {
+                    const itemTotal = item.priceAtTime * item.quantity;
+                    invoiceItems.push({
+                        desc: `Instalación Item: ${item.priceItem?.name || 'Servicio'} (${fullAddress})`,
+                        qty: item.quantity,
+                        price: item.priceAtTime,
+                        total: itemTotal
+                    });
+                    instGross += itemTotal;
+                });
+            } else {
+                instGross = inst.priceCharged || 0;
+                invoiceItems.push({
+                    desc: `Instalación Simple (${fullAddress})`,
+                    qty: 1,
+                    price: instGross,
+                    total: instGross
+                });
+            }
+            subtotal += instGross;
+        });
+
         // Procesar Reparaciones
-        const repairBasePrice = client.priceItems.find(p => p.department === 'REPAIR')?.price || 20;
+        const repairBasePrice = client.priceItems.find(p => p.department === 'REPAIR')?.priceToClient || 20;
         repairs.forEach(r => {
             const fullAddress = `${r.address?.street} ${r.address?.number || ''}`.trim();
             invoiceItems.push({ desc: `Reparación Independiente: ${fullAddress}`, qty: 1, price: repairBasePrice, total: repairBasePrice });

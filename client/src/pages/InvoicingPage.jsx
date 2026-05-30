@@ -32,8 +32,39 @@ const InvoicingPage = () => {
         activations: [],
         soplados: [],
         fusions: [],
-        installations: []
+        installations: [],
+        repairs: []
     });
+
+    const getFusionPrice = (f) => {
+        const client = clients.find(c => c.id === selectedClient);
+        if (f.type === 'MUFFA') {
+            const matchingItem = client?.priceItems?.find(item => 
+                (item.name || '').toLowerCase().includes('muffa')
+            );
+            const hourPrice = matchingItem ? matchingItem.priceToClient : 60.00;
+            return (f.hours || 0) * hourPrice;
+        } else {
+            const matchingItem = client?.priceItems?.find(item => 
+                (item.name || '').toLowerCase().includes('fusion') || (item.name || '').toLowerCase().includes('fusión')
+            );
+            const unitPrice = matchingItem ? matchingItem.priceToClient : 3.00;
+            return (f.fusionCount || 0) * unitPrice;
+        }
+    };
+
+    const getInstallationPrice = (inst) => {
+        if (inst.items && inst.items.length > 0) {
+            return inst.items.reduce((sum, item) => sum + (item.priceAtTime * item.quantity), 0);
+        }
+        return inst.priceCharged || 0;
+    };
+
+    const getRepairPrice = () => {
+        const client = clients.find(c => c.id === selectedClient);
+        const priceItem = client?.priceItems?.find(p => p.department === 'REPAIR');
+        return priceItem ? (priceItem.priceToClient || priceItem.price || 20) : 20;
+    };
 
     const fetchData = async () => {
         try {
@@ -65,8 +96,14 @@ const InvoicingPage = () => {
             const filteredData = {
                 activations: (data.activations || []).filter(act => (act.basePrice || 250) > 0),
                 soplados: (data.soplados || []).filter(s => (s.meters * 0.4) > 0),
-                fusions: (data.fusions || []).filter(f => (f.priceToClient || 0) > 0),
-                installations: (data.installations || []).filter(i => (i.priceToClient || 0) > 0)
+                fusions: (data.fusions || []).filter(f => (f.fusionCount > 0 || f.hours > 0)),
+                installations: (data.installations || []).filter(i => {
+                    const price = i.items && i.items.length > 0
+                        ? i.items.reduce((sum, item) => sum + (item.priceAtTime * item.quantity), 0)
+                        : (i.priceCharged || 0);
+                    return price > 0;
+                }),
+                repairs: (data.repairs || []).filter(r => getRepairPrice() > 0)
             };
 
             setPendingWork(filteredData);
@@ -74,7 +111,8 @@ const InvoicingPage = () => {
                 activations: filteredData.activations.map(i => i.id),
                 soplados: filteredData.soplados.map(i => i.id),
                 fusions: filteredData.fusions.map(i => i.id),
-                installations: filteredData.installations.map(i => i.id)
+                installations: filteredData.installations.map(i => i.id),
+                repairs: filteredData.repairs.map(i => i.id)
             });
         } catch (error) {
             console.error('Error factura:', error);
@@ -262,7 +300,10 @@ const InvoicingPage = () => {
                                                 (pendingWork.activations.filter(i => selectedItems.activations.includes(i.id)).reduce((acc, a) => {
                                                     return acc + (a.basePrice || 0) + (a.taPrice || 0) + (a.spPrice || 0) + (a.mduPrice || 0) + (a.repairPrice || 0);
                                                 }, 0)) +
-                                                (pendingWork.soplados.filter(i => selectedItems.soplados.includes(i.id)).reduce((acc, s) => acc + (s.meters * 0.4), 0))
+                                                (pendingWork.soplados.filter(i => selectedItems.soplados.includes(i.id)).reduce((acc, s) => acc + (s.meters * 0.4), 0)) +
+                                                (pendingWork.fusions.filter(i => selectedItems.fusions.includes(i.id)).reduce((acc, f) => acc + getFusionPrice(f), 0)) +
+                                                (pendingWork.installations.filter(i => selectedItems.installations.includes(i.id)).reduce((acc, i) => acc + getInstallationPrice(i), 0)) +
+                                                (pendingWork.repairs.filter(i => selectedItems.repairs.includes(i.id)).reduce((acc, r) => acc + getRepairPrice(), 0))
                                             )}
                                         </p>
                                     </div>
@@ -316,11 +357,75 @@ const InvoicingPage = () => {
                                             <span className="font-black text-orange-600 text-sm">{money(s.meters * 0.4)}</span>
                                         </div>
                                     ))}
+                                    {pendingWork.fusions.map(f => (
+                                        <div key={f.id} className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 hover:bg-white border border-transparent hover:border-blue-100 transition-all">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedItems.fusions.includes(f.id)}
+                                                onChange={() => toggleItem('fusions', f.id)}
+                                                className="w-5 h-5 rounded border-slate-300"
+                                            />
+                                            <div className="flex-1">
+                                                <p className="font-bold text-slate-800 text-sm">
+                                                    {f.type === 'MUFFA' ? `Fusión Muffa: ${f.address || 'Sin dirección'}` : `Fusión NVT: NVT-${f.nvtName || 'N/A'}`}
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 uppercase font-black">
+                                                    {f.type === 'MUFFA' ? `${f.hours || 0} horas` : `${f.fusionCount || 0} fusiones`}
+                                                </p>
+                                            </div>
+                                            <span className="font-black text-indigo-600 text-sm">{money(getFusionPrice(f))}</span>
+                                        </div>
+                                    ))}
+                                    {pendingWork.installations.map(inst => (
+                                        <div key={inst.id} className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 hover:bg-white border border-transparent hover:border-blue-100 transition-all">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedItems.installations.includes(inst.id)}
+                                                onChange={() => toggleItem('installations', inst.id)}
+                                                className="w-5 h-5 rounded border-slate-300"
+                                            />
+                                            <div className="flex-1">
+                                                <p className="font-bold text-slate-800 text-sm">
+                                                    Instalación: {inst.address?.street} {inst.address?.number}
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 uppercase font-black">
+                                                    {inst.items?.map(item => `${item.quantity}x ${item.priceItem?.name || 'Item'}`).join(', ') || 'Instalación simple'}
+                                                </p>
+                                            </div>
+                                            <span className="font-black text-green-600 text-sm">{money(getInstallationPrice(inst))}</span>
+                                        </div>
+                                    ))}
+                                    {pendingWork.repairs.map(r => (
+                                        <div key={r.id} className="flex items-center gap-4 p-4 rounded-xl bg-slate-50 hover:bg-white border border-transparent hover:border-blue-100 transition-all">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={selectedItems.repairs.includes(r.id)}
+                                                onChange={() => toggleItem('repairs', r.id)}
+                                                className="w-5 h-5 rounded border-slate-300"
+                                            />
+                                            <div className="flex-1">
+                                                <p className="font-bold text-slate-800 text-sm">
+                                                    Reparación: {r.address?.street} {r.address?.number}
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 uppercase font-black">
+                                                    Avería completada
+                                                </p>
+                                            </div>
+                                            <span className="font-black text-red-600 text-sm">{money(getRepairPrice())}</span>
+                                        </div>
+                                    ))}
                                 </div>
 
                                 <button 
                                     onClick={handleGenerateInvoice}
-                                    disabled={generating || (selectedItems.activations.length === 0 && selectedItems.soplados.length === 0)}
+                                    disabled={
+                                        generating || 
+                                        (selectedItems.activations.length === 0 && 
+                                         selectedItems.soplados.length === 0 && 
+                                         selectedItems.fusions.length === 0 && 
+                                         selectedItems.installations.length === 0 &&
+                                         selectedItems.repairs.length === 0)
+                                    }
                                     className="w-full mt-6 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-sm tracking-widest hover:bg-blue-700 shadow-xl"
                                 >
                                     {generating ? <Loader className="animate-spin" /> : <FilePlus size={20} className="inline mr-2" />}
