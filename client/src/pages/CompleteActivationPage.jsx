@@ -7,6 +7,57 @@ import useBranding from '../hooks/useBranding';
 
 const BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:3000';
 
+const calculateBlur = (img) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Scale down to max 500px for performance
+    const scale = Math.min(500 / img.width, 500 / img.height);
+    const w = Math.floor(img.width * scale);
+    const h = Math.floor(img.height * scale);
+    
+    if (w < 3 || h < 3) return 1000; // Too small, ignore
+    
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(img, 0, 0, w, h);
+    
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const { width, height, data } = imageData;
+    const grayscale = new Float32Array(width * height);
+    for (let i = 0; i < data.length; i += 4) {
+        grayscale[i / 4] = data[i] * 0.299 + data[i + 1] * 0.587 + data[i + 2] * 0.114;
+    }
+
+    let sum = 0;
+    let count = 0;
+    const laplacianValues = new Float32Array((width - 2) * (height - 2));
+    let lapIndex = 0;
+
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            const idx = y * width + x;
+            const top = (y - 1) * width + x;
+            const bottom = (y + 1) * width + x;
+            const left = y * width + (x - 1);
+            const right = y * width + (x + 1);
+
+            const laplacian = grayscale[top] + grayscale[bottom] + grayscale[left] + grayscale[right] - 4 * grayscale[idx];
+            laplacianValues[lapIndex++] = laplacian;
+            
+            sum += laplacian;
+            count++;
+        }
+    }
+
+    const mean = sum / count;
+    let variance = 0;
+    for (let i = 0; i < count; i++) {
+        variance += Math.pow(laplacianValues[i] - mean, 2);
+    }
+    return variance / count;
+};
+
 const CompleteActivationPage = () => {
     const { branding } = useBranding();
     const { id } = useParams();
@@ -15,6 +66,10 @@ const CompleteActivationPage = () => {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [viewingPhotoIndex, setViewingPhotoIndex] = useState(null);
+
+    // Photo Wizard State
+    const [photoWizardStep, setPhotoWizardStep] = useState('IDLE');
+    const [circuitCompleted, setCircuitCompleted] = useState(false);
 
     // Form State
     const [formData, setFormData] = useState({
@@ -155,11 +210,19 @@ const CompleteActivationPage = () => {
     };
 
     const processPhoto = async (file) => {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
                 img.onload = () => {
+                    // Check for blur
+                    const variance = calculateBlur(img);
+                    console.log('Image variance:', variance);
+                    if (variance < 50) { // Threshold for blurry photo
+                        reject(new Error('BLURRY'));
+                        return;
+                    }
+
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
 
@@ -250,11 +313,44 @@ const CompleteActivationPage = () => {
     const handlePhotoSelect = async (e) => {
         if (e.target.files && e.target.files.length > 0) {
             const newPhotos = [];
+            let blurryDetected = false;
+            
             for (let i = 0; i < e.target.files.length; i++) {
-                const processed = await processPhoto(e.target.files[i]);
-                newPhotos.push(processed);
+                try {
+                    const processed = await processPhoto(e.target.files[i]);
+                    newPhotos.push(processed);
+                } catch (error) {
+                    if (error.message === 'BLURRY') {
+                        blurryDetected = true;
+                    }
+                }
             }
+            
+            if (blurryDetected) {
+                alert('⚠️ Una o más fotos parecen estar muy borrosas u oscuras. Por favor, asegúrate de enfocar bien y de tener buena iluminación e inténtalo de nuevo.');
+                // Reset input
+                if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                }
+                return; // Stop circuit advancement
+            }
+
             setPhotos(prev => [...prev, ...newPhotos]);
+
+            // Auto advance wizard
+            if (photoWizardStep === 'UPLOAD_Q1_YES' || photoWizardStep === 'UPLOAD_Q1_NO') {
+                setPhotoWizardStep('Q2');
+            } else if (photoWizardStep === 'UPLOAD_Q2_YES') {
+                setPhotoWizardStep('UPLOAD_Q3');
+            } else if (photoWizardStep === 'UPLOAD_Q3') {
+                setPhotoWizardStep('IDLE');
+                setCircuitCompleted(true);
+            }
+            
+            // Reset input so the same file can be selected again if needed
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
     };
 
@@ -681,11 +777,17 @@ const CompleteActivationPage = () => {
 
                         <button
                             type="button"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-joa-blue hover:text-joa-blue transition-colors bg-slate-50"
+                            onClick={() => {
+                                if (circuitCompleted) {
+                                    fileInputRef.current?.click();
+                                } else {
+                                    setPhotoWizardStep('Q1');
+                                }
+                            }}
+                            className="aspect-square rounded-xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center text-slate-400 hover:border-joa-blue hover:text-joa-blue transition-colors bg-slate-50 p-2 text-center"
                         >
                             <Camera size={24} className="mb-1" />
-                            <span className="text-xs font-medium">Añadir Foto</span>
+                            <span className="text-xs font-medium">{circuitCompleted ? 'Añadir Más Fotos' : 'Subir Fotos (Circuito)'}</span>
                         </button>
                     </div>
 
@@ -890,6 +992,90 @@ const CompleteActivationPage = () => {
                     </div>
                 )
             }
+
+            {/* Photo Wizard Modal */}
+            {photoWizardStep !== 'IDLE' && (
+                <div className="fixed inset-0 z-[60] bg-black/90 flex items-center justify-center p-4">
+                    <div className="bg-white w-full max-w-md rounded-3xl p-6 shadow-2xl relative text-center">
+                        <button onClick={() => setPhotoWizardStep('IDLE')} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
+                            <X size={24} />
+                        </button>
+                        
+                        <div className="mx-auto w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-4">
+                            <Camera size={32} />
+                        </div>
+
+                        {photoWizardStep === 'Q1' && (
+                            <>
+                                <h3 className="text-xl font-extrabold text-slate-800 mb-2">Paso 1: Filoform</h3>
+                                <p className="text-slate-600 mb-6 text-lg font-medium">¿Se ha Colocado Filoform?</p>
+                                <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPhotoWizardStep('UPLOAD_Q1_YES')}
+                                        className="flex-1 py-4 bg-joa-blue text-white font-bold rounded-2xl hover:bg-blue-700 transition shadow-lg shadow-blue-200"
+                                    >
+                                        Sí
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPhotoWizardStep('UPLOAD_Q1_NO')}
+                                        className="flex-1 py-4 bg-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-300 transition"
+                                    >
+                                        No
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {photoWizardStep === 'Q2' && (
+                            <>
+                                <h3 className="text-xl font-extrabold text-slate-800 mb-2">Paso 2: NVT</h3>
+                                <p className="text-slate-600 mb-6 text-lg font-medium">¿Hay fusión en el NVT?</p>
+                                <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPhotoWizardStep('UPLOAD_Q2_YES')}
+                                        className="flex-1 py-4 bg-joa-blue text-white font-bold rounded-2xl hover:bg-blue-700 transition shadow-lg shadow-blue-200"
+                                    >
+                                        Sí
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPhotoWizardStep('UPLOAD_Q3')}
+                                        className="flex-1 py-4 bg-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-300 transition"
+                                    >
+                                        No
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
+                        {(photoWizardStep.startsWith('UPLOAD_')) && (
+                            <>
+                                <h3 className="text-xl font-extrabold text-slate-800 mb-2">Capturar Foto</h3>
+                                <p className="text-slate-600 mb-6 font-medium text-lg">
+                                    {photoWizardStep === 'UPLOAD_Q1_YES' && 'Sube la foto del Filoform instalado.'}
+                                    {photoWizardStep === 'UPLOAD_Q1_NO' && 'Sube la foto del lugar por donde entró la acometida.'}
+                                    {photoWizardStep === 'UPLOAD_Q2_YES' && 'Sube la foto de la bandeja del cliente con etiqueta y la fusión.'}
+                                    {photoWizardStep === 'UPLOAD_Q3' && 'Sube la foto de AP o ONE Box Abierta y cerrada.'}
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="w-full py-4 bg-joa-blue text-white font-bold rounded-2xl hover:bg-blue-700 transition flex justify-center items-center gap-2 shadow-lg shadow-blue-200 mb-4"
+                                >
+                                    <Camera size={20} />
+                                    Hacer foto / Galería
+                                </button>
+                                {photoWizardStep === 'UPLOAD_Q3' && (
+                                    <p className="text-xs text-slate-400 mt-2">Ésta es la última foto requerida.</p>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div >
     );
 };
