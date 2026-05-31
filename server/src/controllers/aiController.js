@@ -15,7 +15,7 @@ exports.checkPhotoQuality = async (req, res) => {
         }
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
         // Remove the data:image/jpeg;base64, prefix if present
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
