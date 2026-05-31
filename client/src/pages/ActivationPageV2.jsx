@@ -649,10 +649,11 @@ const ActivationPageV2 = () => {
                 } else if (photoWizardStep === 'UPLOAD_Q2_YES') {
                     setPhotoWizardStep('UPLOAD_Q3');
                 } else if (photoWizardStep === 'UPLOAD_Q3') {
-                    const isOneFamily = parseInt(formData.familiesCount) === 1 || formData.activationType === 'BP' || formData.activationType === 'Unifamiliar';
+                    const isMultiFamily = formData.activationType === 'Multi' || formData.activationType === 'Dos familias' || formData.activationType === 'BP_2_FAM' || parseInt(formData.familiesCount) > 1;
+                    const isOneFamily = !isMultiFamily;
                     if (isOneFamily && formData.taInstalled) {
                         setPhotoWizardStep('UPLOAD_TA');
-                    } else if (!isOneFamily) {
+                    } else if (isMultiFamily) {
                         setPhotoWizardStep('UPLOAD_CANALETAS');
                     } else {
                         setPhotoWizardStep('Q4_ACTIVATED');
@@ -1683,7 +1684,7 @@ const ActivationPageV2 = () => {
                                     {photoWizardStep === 'UPLOAD_Q2_YES' && 'Sube la foto de la bandeja del cliente con etiqueta y la fusión.'}
                                     {photoWizardStep === 'UPLOAD_Q3' && 'AP o ONE Box Abierta y cerrada donde se vean correctamente las fusiones. En caso de MultiViviendas la ONE BOX debe de tener su numero de identificacion Visible en caso de AP debe de tener su codigho QR visible.'}
                                     {photoWizardStep === 'UPLOAD_TA' && 'Foto de la TA Abierta y Cerrada Donde sea Visible el Codigo QR.'}
-                                    {photoWizardStep === 'UPLOAD_CANALETAS' && 'Fotos del recorrido de las canaletas por todo el edificio.'}
+                                    {photoWizardStep === 'UPLOAD_CANALETAS' && 'Fotos del recorrido de las canaletas por todo el edificio y los SP.'}
                                     {photoWizardStep === 'UPLOAD_GPON' && 'Foto de potencia en GPON.'}
                                     {photoWizardStep === 'UPLOAD_ONT' && 'Foto de ONT sincronizada.'}
                                     {photoWizardStep === 'UPLOAD_TELEKOM' && 'Captura de la página de prueba de Telekom.'}
