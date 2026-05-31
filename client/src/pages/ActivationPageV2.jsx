@@ -458,35 +458,6 @@ const ActivationPageV2 = () => {
                 canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
 
-                // --- AI BLUR DETECTION ---
-                try {
-                    const aiCanvas = document.createElement('canvas');
-                    const aiCtx = aiCanvas.getContext('2d');
-                    const aiMax = 800;
-                    let aiW = width, aiH = height;
-                    if (aiW > aiMax || aiH > aiMax) {
-                        const ratio = Math.min(aiMax / aiW, aiMax / aiH);
-                        aiW = Math.floor(aiW * ratio);
-                        aiH = Math.floor(aiH * ratio);
-                    }
-                    aiCanvas.width = aiW;
-                    aiCanvas.height = aiH;
-                    aiCtx.drawImage(canvas, 0, 0, aiW, aiH);
-                    
-                    const aiDataUrl = aiCanvas.toDataURL('image/jpeg', 0.6);
-                    
-                    const response = await api.post('/api/ai/check-photo', { imageBase64: aiDataUrl });
-                    if (response.data && response.data.isBlurry) {
-                        clearTimeout(timeout);
-                        URL.revokeObjectURL(objectUrl);
-                        reject(new Error('BLURRY'));
-                        return;
-                    }
-                } catch (aiErr) {
-                    console.warn("AI Photo Check failed, allowing photo fallback:", aiErr);
-                }
-                // --- END AI ---
-
                 // Watermark logic
                  const applyWatermark = (logoImg = null) => {
                     const fontSize = Math.max(18, Math.floor(height * 0.022));
