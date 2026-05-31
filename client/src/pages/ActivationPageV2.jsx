@@ -433,17 +433,7 @@ const ActivationPageV2 = () => {
             const img = new Image();
             const objectUrl = URL.createObjectURL(file);
 
-            img.onload = () => {
-                // Check for blur
-                const variance = calculateBlur(img);
-                console.log('Image variance:', variance);
-                if (variance < 50) { // Threshold for blurry photo
-                    clearTimeout(timeout);
-                    URL.revokeObjectURL(objectUrl);
-                    reject(new Error('BLURRY'));
-                    return;
-                }
-
+            img.onload = async () => {
                 const canvas = document.createElement('canvas');
                 const ctx = canvas.getContext('2d');
 
@@ -467,6 +457,35 @@ const ActivationPageV2 = () => {
                 canvas.width = width;
                 canvas.height = height;
                 ctx.drawImage(img, 0, 0, width, height);
+
+                // --- AI BLUR DETECTION ---
+                try {
+                    const aiCanvas = document.createElement('canvas');
+                    const aiCtx = aiCanvas.getContext('2d');
+                    const aiMax = 800;
+                    let aiW = width, aiH = height;
+                    if (aiW > aiMax || aiH > aiMax) {
+                        const ratio = Math.min(aiMax / aiW, aiMax / aiH);
+                        aiW = Math.floor(aiW * ratio);
+                        aiH = Math.floor(aiH * ratio);
+                    }
+                    aiCanvas.width = aiW;
+                    aiCanvas.height = aiH;
+                    aiCtx.drawImage(canvas, 0, 0, aiW, aiH);
+                    
+                    const aiDataUrl = aiCanvas.toDataURL('image/jpeg', 0.6);
+                    
+                    const response = await api.post('/api/ai/check-photo', { imageBase64: aiDataUrl });
+                    if (response.data && response.data.isBlurry) {
+                        clearTimeout(timeout);
+                        URL.revokeObjectURL(objectUrl);
+                        reject(new Error('BLURRY'));
+                        return;
+                    }
+                } catch (aiErr) {
+                    console.warn("AI Photo Check failed, allowing photo fallback:", aiErr);
+                }
+                // --- END AI ---
 
                 // Watermark logic
                  const applyWatermark = (logoImg = null) => {

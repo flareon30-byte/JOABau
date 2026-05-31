@@ -72,6 +72,7 @@ app.use('/api/vehicles', require('./src/routes/vehicleRoutes'));
 app.use('/api/dietas', require('./src/routes/dietaRoutes'));
 app.use('/api/company', require('./src/routes/companyRoutes'));
 app.use('/api/invoices', require('./src/routes/invoiceRoutes'));
+app.use('/api/ai', require('./src/routes/aiRoutes'));
 
 
 // Serve static files from React app
