@@ -77,10 +77,10 @@ const ActivationPageV2 = () => {
     // Photo Wizard State
     const [photoWizardStep, setPhotoWizardStep] = useState('IDLE');
     const [circuitCompleted, setCircuitCompleted] = useState(false);
+    const [wizardActivatedResult, setWizardActivatedResult] = useState(null);
 
     // Confirmation Modal State
     const [showConfirmModal, setShowConfirmModal] = useState(false);
-    const [isActivatedResult, setIsActivatedResult] = useState(null);
     const [notActivatedReason, setNotActivatedReason] = useState('');
 
     // Form State
@@ -659,6 +659,23 @@ const ActivationPageV2 = () => {
                 } else if (photoWizardStep === 'UPLOAD_Q2_YES') {
                     setPhotoWizardStep('UPLOAD_Q3');
                 } else if (photoWizardStep === 'UPLOAD_Q3') {
+                    const isOneFamily = parseInt(formData.familiesCount) === 1 || formData.activationType === 'BP' || formData.activationType === 'Unifamiliar';
+                    if (isOneFamily && formData.taInstalled) {
+                        setPhotoWizardStep('UPLOAD_TA');
+                    } else if (!isOneFamily) {
+                        setPhotoWizardStep('UPLOAD_CANALETAS');
+                    } else {
+                        setPhotoWizardStep('Q4_ACTIVATED');
+                    }
+                } else if (photoWizardStep === 'UPLOAD_TA') {
+                    setPhotoWizardStep('Q4_ACTIVATED');
+                } else if (photoWizardStep === 'UPLOAD_CANALETAS') {
+                    setPhotoWizardStep('Q4_ACTIVATED');
+                } else if (photoWizardStep === 'UPLOAD_GPON') {
+                    setPhotoWizardStep('UPLOAD_ONT');
+                } else if (photoWizardStep === 'UPLOAD_ONT') {
+                    setPhotoWizardStep('UPLOAD_TELEKOM');
+                } else if (photoWizardStep === 'UPLOAD_TELEKOM') {
                     setPhotoWizardStep('IDLE');
                     setCircuitCompleted(true);
                 }
@@ -1405,15 +1422,17 @@ const ActivationPageV2 = () => {
                     <p className="text-xs text-slate-400 text-center">
                         {t('activations.touch_photo_info')}
                     </p>
-                    {/* Submit Button */}
                     <button
                         type="button"
-                        onClick={(e) => {
-                            e.preventDefault();
+                        onClick={() => {
+                            if (!circuitCompleted) {
+                                alert("Debes completar el circuito de fotos primero.");
+                                return;
+                            }
                             setShowConfirmModal(true);
                         }}
-                        disabled={submitting || (!pdfPath && navigator.onLine)}
-                        className="w-full py-4 bg-joa-blue text-white font-bold rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={submitting}
+                        className="w-full py-4 bg-joa-blue text-white font-black uppercase tracking-wider rounded-2xl shadow-xl shadow-blue-200 flex items-center justify-center gap-2 hover:bg-blue-700 transition-all disabled:opacity-50 mt-6"
                     >
                         {submitting ? (
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -1441,34 +1460,11 @@ const ActivationPageV2 = () => {
                             </div>
 
                             <div className="mb-6">
-                                <p className="font-bold text-slate-700 mb-3">¿El cliente ha quedado activado y con servicio?</p>
-                                
-                                {isActivatedResult === null && (
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <button 
-                                            type="button"
-                                            onClick={() => setIsActivatedResult(true)}
-                                            className="py-3 px-4 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
-                                        >
-                                            <CheckCircle size={18} /> Sí, Activado
-                                        </button>
-                                        <button 
-                                            type="button"
-                                            onClick={() => setIsActivatedResult(false)}
-                                            className="py-3 px-4 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
-                                        >
-                                            <X size={18} /> No se pudo
-                                        </button>
-                                    </div>
-                                )}
+                                <p className="font-bold text-slate-700 mb-3 text-lg">
+                                    {wizardActivatedResult === true ? 'Estado del Circuito: ✅ Activado y con servicio' : 'Estado del Circuito: ❌ No se pudo activar'}
+                                </p>
 
-                                {isActivatedResult === true && (
-                                    <div className="bg-green-50 p-4 rounded-xl border border-green-200">
-                                        <p className="text-green-700 font-bold text-center flex items-center justify-center gap-2"><CheckCircle size={18} /> Instalación completada</p>
-                                    </div>
-                                )}
-
-                                {isActivatedResult === false && (
+                                {wizardActivatedResult === false && (
                                     <div className="space-y-3 mt-4 animate-in fade-in zoom-in duration-300">
                                         <label className="text-sm font-bold text-slate-700">Motivo por el que no se pudo activar:</label>
                                         <textarea 
@@ -1487,19 +1483,18 @@ const ActivationPageV2 = () => {
                                     type="button"
                                     onClick={() => {
                                         setShowConfirmModal(false);
-                                        setIsActivatedResult(null);
                                         setNotActivatedReason('');
                                     }}
                                     className="flex-1 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
                                 >
                                     Volver
                                 </button>
-                                {(isActivatedResult === true || (isActivatedResult === false && notActivatedReason.trim())) && (
+                                {(wizardActivatedResult === true || (wizardActivatedResult === false && notActivatedReason.trim())) && (
                                     <button 
                                         type="button"
                                         onClick={(e) => {
                                             setShowConfirmModal(false);
-                                            handleSubmit(e, isActivatedResult, notActivatedReason);
+                                            handleSubmit(e, wizardActivatedResult, notActivatedReason);
                                         }}
                                         className="flex-1 py-3 bg-joa-blue text-white font-bold rounded-xl hover:bg-blue-700 transition-colors"
                                     >
@@ -1659,14 +1654,49 @@ const ActivationPageV2 = () => {
                             </>
                         )}
 
+                        {photoWizardStep === 'Q4_ACTIVATED' && (
+                            <>
+                                <h3 className="text-xl font-extrabold text-slate-800 mb-2">Paso 4: Activación</h3>
+                                <p className="text-slate-600 mb-6 text-lg font-medium">¿El cliente quedó activado?</p>
+                                <div className="flex gap-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setWizardActivatedResult(true);
+                                            setPhotoWizardStep('UPLOAD_GPON');
+                                        }}
+                                        className="flex-1 py-4 bg-joa-blue text-white font-bold rounded-2xl hover:bg-blue-700 transition shadow-lg shadow-blue-200"
+                                    >
+                                        Sí
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setWizardActivatedResult(false);
+                                            setPhotoWizardStep('IDLE');
+                                            setCircuitCompleted(true);
+                                        }}
+                                        className="flex-1 py-4 bg-slate-200 text-slate-700 font-bold rounded-2xl hover:bg-slate-300 transition"
+                                    >
+                                        No
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
                         {(photoWizardStep.startsWith('UPLOAD_')) && (
                             <>
                                 <h3 className="text-xl font-extrabold text-slate-800 mb-2">Capturar Foto</h3>
-                                <p className="text-slate-600 mb-6 font-medium text-lg">
+                                <p className="text-slate-600 mb-6 font-medium text-sm">
                                     {photoWizardStep === 'UPLOAD_Q1_YES' && 'Sube la foto del Filoform instalado.'}
                                     {photoWizardStep === 'UPLOAD_Q1_NO' && 'Sube la foto del lugar por donde entró la acometida.'}
                                     {photoWizardStep === 'UPLOAD_Q2_YES' && 'Sube la foto de la bandeja del cliente con etiqueta y la fusión.'}
-                                    {photoWizardStep === 'UPLOAD_Q3' && 'Sube la foto de AP o ONE Box Abierta y cerrada.'}
+                                    {photoWizardStep === 'UPLOAD_Q3' && 'AP o ONE Box Abierta y cerrada donde se vean correctamente las fusiones. En caso de MultiViviendas la ONE BOX debe de tener su numero de identificacion Visible en caso de AP debe de tener su codigho QR visible.'}
+                                    {photoWizardStep === 'UPLOAD_TA' && 'Foto de la TA Abierta y Cerrada Donde sea Visible el Codigo QR.'}
+                                    {photoWizardStep === 'UPLOAD_CANALETAS' && 'Fotos del recorrido de las canaletas por todo el edificio.'}
+                                    {photoWizardStep === 'UPLOAD_GPON' && 'Foto de potencia en GPON.'}
+                                    {photoWizardStep === 'UPLOAD_ONT' && 'Foto de ONT sincronizada.'}
+                                    {photoWizardStep === 'UPLOAD_TELEKOM' && 'Captura de la página de prueba de Telekom.'}
                                 </p>
                                 <div className="flex gap-4">
                                     <button
@@ -1686,9 +1716,6 @@ const ActivationPageV2 = () => {
                                         Galería
                                     </button>
                                 </div>
-                                {photoWizardStep === 'UPLOAD_Q3' && (
-                                    <p className="text-xs text-slate-400 mt-2">Ésta es la última foto requerida.</p>
-                                )}
                             </>
                         )}
                     </div>
