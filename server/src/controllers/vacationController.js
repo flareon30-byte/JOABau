@@ -253,7 +253,7 @@ exports.updateVacationStatus = async (req, res) => {
             data: {
                 type: 'VACATION_UPDATE',
                 message: updateMsg,
-                targetRole: request.user.role // This will show in their notification bell
+                targetUserId: request.user.id // This will show in their notification bell privately
             }
         });
 

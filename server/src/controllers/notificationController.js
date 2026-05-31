@@ -19,7 +19,10 @@ exports.getNotifications = async (req, res) => {
         // User request specifically mentions Back Office receiving usage.
 
         let whereClause = {
-            targetRole: user.role
+            OR: [
+                { targetRole: user.role },
+                { targetUserId: user.id }
+            ]
         };
 
         // Allow ADMIN/SUPER_ADMIN to see BACK_OFFICE notifications too?
@@ -27,7 +30,8 @@ exports.getNotifications = async (req, res) => {
             whereClause = {
                 OR: [
                     { targetRole: user.role },
-                    { targetRole: 'BACK_OFFICE' }
+                    { targetRole: 'BACK_OFFICE' },
+                    { targetUserId: user.id }
                 ]
             };
         }

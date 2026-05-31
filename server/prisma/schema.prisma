@@ -369,6 +369,7 @@ model Notification {
 
   createdById String?
   targetRole  Role?
+  targetUserId String?
 
   createdAt DateTime @default(now())
 }
