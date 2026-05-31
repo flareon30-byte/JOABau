@@ -160,6 +160,9 @@ const ActivationPageV2 = () => {
                         } else if (type === 'BP_2_FAM' || type === 'Dos familias') {
                             if (!info.familiesCount) families = 2;
                             if (!info.apPorts) ports = '2';
+                        } else if (type === 'Multi') {
+                            if (!info.familiesCount) families = 3;
+                            if (!info.apPorts) ports = '4';
                         }
                     }
 
@@ -415,6 +418,9 @@ const ActivationPageV2 = () => {
                 } else if (value === 'Dos familias' || value === 'BP_2_FAM') {
                     newData.familiesCount = 2;
                     newData.apPorts = '2';
+                } else if (value === 'Multi') {
+                    newData.familiesCount = 3;
+                    newData.apPorts = '4';
                 }
             }
             return newData;
