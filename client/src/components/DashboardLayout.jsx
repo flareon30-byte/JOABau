@@ -131,7 +131,7 @@ const DashboardLayout = () => {
 
     // Start live GPS location reporting for technicians
     useEffect(() => {
-        const isTechnician = ['BLOWER', 'ACTIVATOR', 'PROTOCOL_MANAGER'].includes(user.role);
+        const isTechnician = ['CIVIL_WORKER'].includes(user.role);
         if (!isTechnician) return;
 
         let watchId = null;
@@ -242,18 +242,6 @@ const DashboardLayout = () => {
             } else {
                 navigate('/dashboard/appointments');
             }
-        } else if (n.type === 'ACTIVATION_COMPLETED') {
-            if (n.addressId) {
-                navigate(`/dashboard/activations?editAddressId=${n.addressId}`);
-            } else {
-                navigate('/dashboard/activations');
-            }
-        } else if (n.type === 'REPAIR_COMPLETED') {
-            if (n.address && n.address.street) {
-                navigate(`/dashboard/issues?activeTab=manage&status=completed&query=${encodeURIComponent(n.address.street)}`);
-            } else {
-                navigate('/dashboard/issues?activeTab=manage&status=completed');
-            }
         } else if (n.type === 'VEHICLE_LOG_ADDED') {
             const match = n.message.match(/vehículo\s+([a-zA-Z0-9\-]+)/i);
             if (match) {
@@ -296,26 +284,20 @@ const DashboardLayout = () => {
             id: 'production',
             label: t('dashboard.production_mgmt'),
             icon: Briefcase,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'BLOWER', 'ACTIVATOR', 'PROTOCOL_MANAGER'],
+            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'],
             items: [
                 { icon: Folder, label: t('dashboard.projects'), path: '/dashboard/projects', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Network, label: t('dashboard.blowing'), path: '/dashboard/blowing', roles: ['BLOWER', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: Zap, label: t('dashboard.fusion'), path: '/dashboard/fusion', roles: ['BLOWER', 'ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: Calendar, label: t('dashboard.appointments'), path: '/dashboard/appointments', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: AlertTriangle, label: t('dashboard.issues'), path: '/dashboard/issues', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: CheckCircle, label: t('dashboard.activations'), path: '/dashboard/activations', roles: ['ACTIVATOR', 'SUPER_ADMIN', 'ADMIN'] },
-                { icon: ClipboardList, label: t('dashboard.protocols'), path: '/dashboard/protocols', roles: ['PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: Zap, label: t('dashboard.prod_control'), path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Map, label: t('dashboard.project_map') || 'Mapa de Proyecto', path: '/dashboard/project-map', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN', 'BLOWER', 'ACTIVATOR', 'PROTOCOL_MANAGER'] },
+                { icon: Map, label: t('dashboard.project_map') || 'Mapa de Proyecto', path: '/dashboard/project-map', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
             ]
         },
         {
             id: 'economy',
             label: t('dashboard.economy_area'),
             icon: TrendingUp,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'ACTIVATOR', 'BLOWER'],
+            roles: ['SUPER_ADMIN', 'ADMIN'],
             items: [
-                { icon: Wallet, label: t('dashboard.earnings'), path: '/dashboard/my-earnings', roles: ['ACTIVATOR', 'BLOWER'] },
                 { icon: FileText, label: t('dashboard.invoicing'), path: '/dashboard/invoicing', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Wallet, label: t('dashboard.payroll'), path: '/dashboard/payroll', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Truck, label: t('dashboard.fleet'), path: '/dashboard/vehicles', roles: ['SUPER_ADMIN', 'ADMIN'] },
@@ -341,7 +323,7 @@ const DashboardLayout = () => {
             icon: Package,
             items: [
                 { icon: Package, label: t('dashboard.material_orders'), path: '/dashboard/material-orders' },
-                { icon: Truck, label: t('dashboard.my_vehicle'), path: '/dashboard/my-vehicle', roles: ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'], showIfVehicle: true },
+                { icon: Truck, label: t('dashboard.my_vehicle'), path: '/dashboard/my-vehicle', roles: ['CIVIL_WORKER', 'SUPER_ADMIN', 'ADMIN'], showIfVehicle: true },
                 { icon: Umbrella, label: t('dashboard.my_vacations'), path: '/dashboard/vacations' },
             ]
         },

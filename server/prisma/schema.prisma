@@ -12,18 +12,11 @@ enum Role {
   SUPER_ADMIN
   ADMIN
   BACK_OFFICE
-  ACTIVATOR
-  BLOWER
-  PROTOCOL_MANAGER
   CIVIL_WORKER
 }
 
 enum Department {
-  ACTIVATION
-  BLOWING
   BACK_OFFICE
-  PROTOCOLS
-  FUSION
   CIVIL_WORKS
 }
 
@@ -42,8 +35,6 @@ model User {
 
   vacationRequests    VacationRequest[]
   materialOrders      MaterialOrder[]
-  simpleInstallations SimpleInstallation[]
-  activations         ActivationInfo[]
   dietaLogs           DietaLog[]           @relation("UserDietas")
 
   activeClientCompanyId String?
@@ -106,7 +97,6 @@ model Team {
   members      User[]
   appointments Appointment[]
   tools        Tool[]
-  soplados     SopladoInfo[] @relation("BlowingTeam")
   civilWorks   CivilWorkInfo[] @relation("CivilTeam")
 
   activeClientCompanyId String?
@@ -138,7 +128,6 @@ model Project {
   clientCompanyId String?
   clientCompany   ClientCompany? @relation(fields: [clientCompanyId], references: [id])
   addresses       Address[]
-  fusionWorks     FusionWork[]
   nvtLocations    NvtLocation[]
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
@@ -156,30 +145,13 @@ model Address {
   bauauftragId String?
   clientName String?
 
-  // Soplado
-  sopladoStatus SopladoStatus?
-  sopladoInfo   SopladoInfo?
-
-  // Fusion
-  fusionInfo FusionInfo?
-
   // Back Office / Citas
   appointment Appointment?
 
-  // Activacion
-  activationInfo ActivationInfo?
-
-  // G&K / Simple Workflow
-  simpleInstallation SimpleInstallation?
-
-  // New fields for Protocol and Status Logic
-  requiresProtocol Boolean @default(false)
-  protocolStatus   String  @default("NONE") // NONE, PENDING, SCHEDULED, COMPLETED, RECITED
   orderStatus      String? @default("geplant") // Column C from Excel
   apartmentCount   Int?    // Track apartments from Excel Customer Column (AA)
 
   notifications Notification[]
-  repairs       Repair[]
 
   // Obra Civil
   civilWorkStatus CivilWorkStatus? @default(PENDIENTE)
@@ -189,53 +161,7 @@ model Address {
   updatedAt DateTime @updatedAt
 }
 
-enum SopladoStatus {
-  OK
-  FALLIDO
-  PENDIENTE
-}
 
-model SopladoInfo {
-  id        String  @id @default(uuid())
-  addressId String  @unique
-  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  meters    Float
-  tk        String
-  tubeColor String
-
-  teamId String?
-  team   Team?   @relation("BlowingTeam", fields: [teamId], references: [id], onDelete: SetNull)
-
-  isSaturday Boolean @default(false)
-
-  // Si fallido
-  failureReason String?
-  photos        String[]
-
-  saturdayPay Float @default(0.0) // Captured earnings for technician if isSaturday
-
-  pdfPath String?
-
-  // Invoicing
-  invoiceId String?
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  performerIds String[] // IDs of technicians who performed the soplado
-}
-
-model FusionInfo {
-  id          String   @id @default(uuid())
-  addressId   String   @unique
-  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  description String
-  photos      String[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
 
 enum AppointmentStatus {
   PENDIENTE
@@ -263,7 +189,7 @@ model Appointment {
   scheduledById String?
   scheduledBy   User?   @relation("ScheduledBy", fields: [scheduledById], references: [id], onDelete: SetNull)
 
-  type         String  @default("ACTIVATION") // ACTIVATION, PROTOCOL
+  type         String  @default("CIVIL_WORK")
   reciteReason String?
 
   status   AppointmentStatus @default(PENDIENTE)
@@ -288,78 +214,14 @@ model Comment {
   createdAt     DateTime    @default(now())
 }
 
-enum ActivationType {
-  BP
-  BP_2_FAM
-  BR_MULTI
-  SDU
-  MDU
-}
 
-model ActivationInfo {
-  id        String  @id @default(uuid())
-  addressId String  @unique
-  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
-
-  activationType       ActivationType
-  customActivationName String?
-  familiesCount        Int
-  apPorts              Int
-  hasMoreClients       Boolean
-  spInstalled          Int            @default(0)
-  taInstalled          Boolean
-  taCount              Int            @default(0)
-  mduInstalled         Boolean        @default(false)
-  isRepair             Boolean        @default(false)
-
-  homeIds     String[]
-  description String?
-
-  photos  String[]
-  pdfPath String?
-
-  points Float // Legacy points
-
-  // New Financial Fields (Snapshot)
-  basePrice   Float @default(0.0)
-  spPrice     Float @default(0.0)
-  taPrice     Float @default(0.0)
-  mduPrice    Float @default(0.0)
-  repairPrice Float @default(0.0)
-
-  saturdayPay Float @default(0.0) // Captured earnings for technician if isSaturday
-
-  isSaturday Boolean @default(false)
-
-  // Invoicing
-  invoiceId String?
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-
-  isDraft      Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  performerIds String[] // IDs of technicians who performed the activation
-  createdById  String?
-  createdBy    User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
-}
 
 model SystemSettings {
   id                  String  @id @default(uuid())
   isDemo              Boolean @default(false)
   extraPointPrice     Float   @default(0.0)
   saturdayPointPrice  Float   @default(0.0)
-  repairPrice         Float   @default(45.0) // Precio por Avería (Facturable)
   monthlyTargetPoints Int     @default(100)
-
-  // Point Values
-  bpPoints      Float @default(10.0)
-  bp2FamPoints  Float @default(15.0)
-  brMultiPoints Float @default(20.0)
-  sduPoints     Float @default(25.0)
-  mduPoints     Float @default(30.0)
-  spPoints      Float @default(5.0)
-  taPoints      Float @default(0.5)
 
   financials Json? // Stores complex calculator config (salaries, cars, etc.)
 
@@ -382,42 +244,7 @@ model Notification {
   createdAt DateTime @default(now())
 }
 
-model FusionWork {
-  id        String  @id @default(uuid())
-  projectId String
-  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  nvtName   String? // The NVT identifier (e.g. "NVT-01"), optional for Muffas
 
-  type        String  @default("NVT") // "NVT" or "MUFFA"
-  address     String? // Address for Muffas
-  hours       Float?  // Hours spent on Muffas
-  fusionCount Int
-  isTray      Boolean @default(false) // "en bandejas"
-
-  photos      String[]
-  description String? // Optional comments
-
-  createdById String?
-
-  // Invoicing
-  invoiceId String?
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-}
-
-model Repair {
-  id          String   @id @default(uuid())
-  addressId   String
-  address     Address  @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  description String
-  photos      String[]
-
-  technicianId String? // ID of who performed the repair
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
 
 enum MaterialOrderStatus {
   PENDIENTE
@@ -483,10 +310,6 @@ model Invoice {
   items   Json // Exploded view of items at generation time
 
   // Traceability links
-  activations   ActivationInfo[]
-  installations SimpleInstallation[]
-  soplados      SopladoInfo[]
-  fusions       FusionWork[]
   repairs       Appointment[]
 
   createdAt DateTime @default(now())
@@ -520,65 +343,6 @@ model ClientPriceItem {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  installationEntries SimpleInstallationItem[]
-}
-
-model SimpleInstallation {
-  id        String  @id @default(uuid())
-  addressId String  @unique
-  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
-
-  customerFirstName String?
-  customerLastName  String?
-
-  olt              String?
-  pon              String?
-  splitterPort     String?
-  gponSerialNumber String?
-
-  isReadyForOperation Boolean? @default(true)
-
-  gpsLat Float?
-  gpsLng Float?
-  gpsAlt Float?
-
-  contactName String?
-  comments    String?
-  photos      String[]
-
-  // New: Categorized Photo Paths (Optional overrides for PDF generation)
-  photoHuep     String?
-  photoModem    String?
-  photoOtdr     String?
-  signaturePath String?
-  pdfPath       String?
-
-  // Financial tracking metadata based on Active Client settings at the time of creation
-  priceCharged Float @default(0.0)
-
-  items SimpleInstallationItem[] // New: Multiple items support
-
-  createdById String?
-  createdBy   User?   @relation(fields: [createdById], references: [id], onDelete: SetNull)
-
-  // Invoicing
-  invoiceId String?
-  invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model SimpleInstallationItem {
-  id                   String             @id @default(uuid())
-  simpleInstallationId String
-  simpleInstallation   SimpleInstallation @relation(fields: [simpleInstallationId], references: [id], onDelete: Cascade)
-  priceItemId          String
-  priceItem            ClientPriceItem    @relation(fields: [priceItemId], references: [id])
-  quantity             Int                @default(1)
-  priceAtTime          Float
-  bonusAtTime          Float
 }
 
 model Vehicle {
