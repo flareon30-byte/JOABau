@@ -29,7 +29,7 @@ registerRoute(navigationRoute);
  * Handle incoming Push Notifications
  */
 self.addEventListener('push', (event) => {
-    let data = { title: 'JOA Technologien', body: 'Nueva notificación' };
+    let data = { title: 'JOA Bau', body: 'Nueva notificación' };
     
     try {
         if (event.data) {

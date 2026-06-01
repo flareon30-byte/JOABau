@@ -63,7 +63,7 @@ const LoginPage = () => {
                                 Gestión <span className="text-transparent bg-clip-text bg-gradient-to-r from-joa-cyan to-joa-blue drop-shadow-sm">Avanzada</span>
                             </h2>
                             <p className="text-slate-400 text-sm leading-relaxed font-medium">
-                                Bienvenido a la plataforma central de operaciones de fibra óptica de {branding.name}.
+                                Bienvenido a la plataforma central de operaciones de obra civil de {branding.name}.
                             </p>
                         </div>
                     </div>
@@ -149,7 +149,7 @@ const LoginPage = () => {
 
             {/* Créditos flotantes */}
             <div className="absolute bottom-6 w-full text-center text-slate-500 text-[10px] tracking-widest uppercase font-bold z-10 opacity-60">
-                © {new Date().getFullYear()} JOA Technologien. Sistema Encriptado.
+                © {new Date().getFullYear()} JOA Bau. Sistema Encriptado.
             </div>
         </div>
     );

@@ -286,7 +286,7 @@ const DietaModal = ({ onLogged, onClose }) => {
                         Duermo en Casa (14€)
                     </button>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold font-sans">Joa Technologien System</p>
+                <p className="text-[10px] text-slate-400 mt-6 uppercase tracking-widest font-bold font-sans">Joa Bau System</p>
             </div>
         </div>
     );
@@ -757,7 +757,7 @@ const DashboardHome = () => {
                         <div>
                             <h2 className="text-4xl font-heading font-black mb-3">{t('home.hello')}, <span className="text-transparent bg-clip-text bg-gradient-to-r from-joa-cyan to-white">{user.username?.split('.')[0]}</span>! 👋</h2>
                             <p className="text-slate-300 text-lg font-medium max-w-xl mb-6">
-                                {t('home.welcome_admin')} JOA Technologien.
+                                {t('home.welcome_admin')} JOA Bau.
                             </p>
                         </div>
 

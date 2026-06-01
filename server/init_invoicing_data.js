@@ -10,7 +10,7 @@ async function main() {
     update: {},
     create: {
       id: 'default-joa-cfg',
-      name: 'JOA Technologien',
+      name: 'JOA Bau',
       taxId: 'B12345678', // Ejemplo a editar por el usuario
       address: 'Calle Ejemplo 123, Madrid, España',
       email: 'info@joatechnologien.de',

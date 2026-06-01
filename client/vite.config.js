@@ -12,9 +12,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'JOA Technologien',
+        name: 'JOA Bau',
         short_name: 'JOA',
-        description: 'Gestión Integral de Fibra Óptica',
+        description: 'Gestión Integral de Obra Civil',
         theme_color: '#0f172a',
         background_color: '#ffffff',
         display: 'standalone',

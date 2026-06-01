@@ -3,7 +3,7 @@ import api from '../api/axios';
 
 const useBranding = () => {
     const [branding, setBranding] = useState({
-        name: 'JOA Technologien',
+        name: 'JOA Bau',
         logoUrl: '/logo.png'
     });
     const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ const useBranding = () => {
                     const fullUrl = cleanPath.startsWith('http') ? cleanPath : `${baseUrl}${cleanPath}`;
                     
                     setBranding({
-                        name: res.data.name || 'JOA Technologien',
+                        name: res.data.name || 'JOA Bau',
                         logoUrl: `${fullUrl}${fullUrl.includes('?') ? '&' : '?'}v=${Date.now()}`
                     });
                 }

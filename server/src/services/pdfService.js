@@ -38,7 +38,7 @@ exports.generateInstallationReport = async (installation) => {
         const addHeader = (page) => {
             const { width, height } = page.getSize();
             // Company Name
-            page.drawText('JOA Technologien', { x: 50, y: height - 50, size: 18, font: fontBold });
+            page.drawText('JOA Bau', { x: 50, y: height - 50, size: 18, font: fontBold });
             // Logo
             if (logoImage) {
                 const maxWidth = 200; // Increased size for visibility

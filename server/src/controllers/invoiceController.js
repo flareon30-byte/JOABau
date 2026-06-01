@@ -47,7 +47,7 @@ const generatePdfFile = (invoice, client, company) => {
         // --- Helper: Footer con Paginación ---
         const generateFooter = (doc) => {
             doc.fontSize(8).fillColor('#aaaaaa').text(
-                'JOA Technologien - Innovación y Calidad en Telecomunicaciones',
+                'JOA Bau - Innovación y Calidad en Obra Civil',
                 50, 760, { align: 'center', width: 500 }
             );
         };

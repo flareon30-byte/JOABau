@@ -19,7 +19,7 @@ exports.getPublicSettings = async (req, res) => {
                 logoPath: true
             }
         });
-        res.json(settings || { name: 'JOA Technologien', logoPath: '/logo.png' });
+        res.json(settings || { name: 'JOA Bau', logoPath: '/logo.png' });
     } catch (error) {
         res.status(500).json({ message: 'Error cargando branding' });
     }
