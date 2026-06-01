@@ -18,7 +18,7 @@ jobs:
             set -e
             echo "0. Limpiando espacio en disco (Docker)..."
             docker system prune -f || true
-            cd /root/app
+            cd ~/app
             
             echo "1. Descargando codigo de Github..."
             git fetch origin master
