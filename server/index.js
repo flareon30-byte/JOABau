@@ -24,6 +24,7 @@ const activationRoutes = require('./src/routes/activationRoutes');
 const dashboardRoutes = require('./src/routes/dashboardRoutes');
 const payrollRoutes = require('./src/routes/payrollRoutes');
 const settingsRoutes = require('./src/routes/settingsRoutes');
+const civilWorkRoutes = require('./src/routes/civilWorkRoutes');
 const { initBackupJob } = require('./src/services/backupService');
 const { initCleanupJob } = require('./src/services/cleanupService');
 const { initAccommodationAlertJob } = require('./src/services/accommodationAlertService');
@@ -73,6 +74,7 @@ app.use('/api/dietas', require('./src/routes/dietaRoutes'));
 app.use('/api/company', require('./src/routes/companyRoutes'));
 app.use('/api/invoices', require('./src/routes/invoiceRoutes'));
 app.use('/api/ai', require('./src/routes/aiRoutes'));
+app.use('/api/civil-works', civilWorkRoutes);
 
 
 // Serve static files from React app

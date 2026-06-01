@@ -30,6 +30,8 @@ import InvoicingPage from './pages/InvoicingPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
 import ProjectMapPage from './pages/ProjectMapPage';
 import AccommodationsPage from './pages/AccommodationsPage';
+import CivilWorksMap from './pages/CivilWorksMap';
+import CivilWorkerDashboard from './pages/CivilWorkerDashboard';
 
 function App() {
   return (
@@ -64,6 +66,8 @@ function App() {
           <Route path="invoicing" element={<InvoicingPage />} />
           <Route path="company-settings" element={<CompanySettingsPage />} />
           <Route path="project-map" element={<ProjectMapPage />} />
+          <Route path="civil-works-map" element={<CivilWorksMap />} />
+          <Route path="civil-worker" element={<CivilWorkerDashboard />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>

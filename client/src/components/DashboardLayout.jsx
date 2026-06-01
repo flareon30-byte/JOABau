@@ -6,7 +6,7 @@ import {
     LayoutDashboard, Users, Network, Calendar, CheckCircle, LogOut, Menu, X, 
     Folder, Zap, ChevronRight, ChevronDown, Settings, Lock, ClipboardList, 
     Bell, DollarSign, Wallet, AlertTriangle, Umbrella, Sun, Package, Calculator, TrendingUp, Briefcase, Truck, 
-    FileText, Building2, Globe, Map, Home
+    FileText, Building2, Globe, Map, Home, HardHat
 } from 'lucide-react';
 import ChangePasswordModal from './ChangePasswordModal';
 import { usePushNotifications } from '../hooks/usePushNotifications';
@@ -343,6 +343,16 @@ const DashboardLayout = () => {
                 { icon: Package, label: t('dashboard.material_orders'), path: '/dashboard/material-orders' },
                 { icon: Truck, label: t('dashboard.my_vehicle'), path: '/dashboard/my-vehicle', roles: ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER', 'SUPER_ADMIN', 'ADMIN'], showIfVehicle: true },
                 { icon: Umbrella, label: t('dashboard.my_vacations'), path: '/dashboard/vacations' },
+            ]
+        },
+        {
+            id: 'civil',
+            label: 'Obra Civil',
+            icon: HardHat,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER'],
+            items: [
+                { icon: Map, label: 'Mapa Obra Civil', path: '/dashboard/civil-works-map', roles: ['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER'] },
+                { icon: Briefcase, label: 'Panel Operario', path: '/dashboard/civil-worker', roles: ['CIVIL_WORKER', 'SUPER_ADMIN', 'ADMIN'] },
             ]
         }
     ];

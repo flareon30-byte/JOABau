@@ -15,6 +15,7 @@ enum Role {
   ACTIVATOR
   BLOWER
   PROTOCOL_MANAGER
+  CIVIL_WORKER
 }
 
 enum Department {
@@ -23,6 +24,7 @@ enum Department {
   BACK_OFFICE
   PROTOCOLS
   FUSION
+  CIVIL_WORKS
 }
 
 model User {
@@ -53,6 +55,7 @@ model User {
   pushSubscriptions PushSubscription[]
   payrollLogs       PayrollLog[]
   accommodations    Accommodation[]      @relation("AccommodationResidents")
+  locationLogs      LocationLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -104,6 +107,7 @@ model Team {
   appointments Appointment[]
   tools        Tool[]
   soplados     SopladoInfo[] @relation("BlowingTeam")
+  civilWorks   CivilWorkInfo[] @relation("CivilTeam")
 
   activeClientCompanyId String?
   activeClientCompany   ClientCompany? @relation(fields: [activeClientCompanyId], references: [id])
@@ -176,6 +180,10 @@ model Address {
 
   notifications Notification[]
   repairs       Repair[]
+
+  // Obra Civil
+  civilWorkStatus CivilWorkStatus? @default(PENDIENTE)
+  civilWorkInfo   CivilWorkInfo?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -676,4 +684,45 @@ model Accommodation {
   residents User[]   @relation("AccommodationResidents")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum CivilWorkStatus {
+  PENDIENTE
+  EN_PROGRESO
+  TUBO_METIDO
+  CERRADO
+}
+
+model CivilWorkInfo {
+  id        String  @id @default(uuid())
+  addressId String  @unique
+  address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  
+  metersTrench Float   @default(0.0)
+  surfaceType  String? // TIERRA, ASFALTO, BALDOSA, etc.
+  photos       String[]
+  
+  teamId       String?
+  team         Team?   @relation("CivilTeam", fields: [teamId], references: [id], onDelete: SetNull)
+  
+  performerIds String[]
+  
+  startedAt    DateTime?
+  completedAt  DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LocationLog {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  gpsLat    Float
+  gpsLng    Float
+  action    String?  // CHECK_IN, UPDATE, FINISH
+  addressId String?
+  
+  timestamp DateTime @default(now())
 }
