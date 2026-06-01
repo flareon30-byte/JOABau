@@ -94,7 +94,7 @@ exports.importProject = async (req, res) => {
             return null;
         };
 
-        const addressesToProcess = data.map(row => {
+        let addressesToProcess = data.map(row => {
             const nvt = findCol(row, ['NVT', 'nvt', 'KVz', 'kvz', 'Verteiler', 'verteiler', 'Caja', 'caja']);
             const street = findCol(row, ['CALLE', 'calle', 'Street', 'street', 'DIRECCION', 'direccion', 'STRASSE', 'strasse', 'Address', 'address', 'Anschrift', 'anschrift', 'Str.', 'str.', 'Straße', 'straße', 'Lage', 'lage', 'Weg', 'weg']) || 'Sin calle';
             let number = findCol(row, ['NUMERO', 'numero', 'Number', 'number', 'Hausnummer', 'hausnummer', 'No', 'no', 'Nr', 'nr', 'Nr.', 'nr.']);
@@ -106,7 +106,7 @@ exports.importProject = async (req, res) => {
 
             const clientName = findCol(row, ['NOMBRE', 'nombre', 'Name', 'name', 'Cliente', 'cliente', 'Client', 'client', 'Kunde', 'kunde']);
             const city = findCol(row, ['CIUDAD', 'ciudad', 'City', 'city', 'Ort', 'ort', 'Stadt', 'stadt', 'Town', 'town', 'Poblacion', 'poblacion']);
-            const klsId = findCol(row, ['KLS', 'kls', 'KLS-ID', 'kls-id', 'KLS ID', 'kls id', 'KLS-Id', 'Kls-Id', 'P']);
+            const klsId = findCol(row, ['KLS', 'kls', 'KLS-ID', 'kls-id', 'KLS ID', 'kvz id', 'KLS-Id', 'Kls-Id', 'P']);
             const bauauftragId = findCol(row, ['Bauauftrag-ID', 'bauauftrag-id', 'Bauauftrag', 'bauauftrag', 'Bauauftrag ID', 'Bauauftrag Id']);
             const status = findCol(row, ['Status', 'status', 'Estado', 'estado']); // Column C logic
             const customerCol = findCol(row, ['Customer', 'customer']);
@@ -136,6 +136,17 @@ exports.importProject = async (req, res) => {
             const s = (addr.status || '').toLowerCase();
             // Solo importamos las que estén realmente pendientes
             return s.includes('installation') || s.includes('geplant');
+        });
+
+        // Group / Collate duplicate addresses by physical portal for Civil Works
+        const seenAddresses = new Set();
+        addressesToProcess = addressesToProcess.filter(addr => {
+            const key = `${addr.street.trim().toLowerCase()}|${(addr.number || '').trim().toLowerCase()}|${(addr.city || '').trim().toLowerCase()}`;
+            if (seenAddresses.has(key)) {
+                return false;
+            }
+            seenAddresses.add(key);
+            return true;
         });
 
         const excelRowCount = addressesToProcess.length;

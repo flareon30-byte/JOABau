@@ -314,6 +314,14 @@ const DashboardHome = () => {
     const isActivator = ['ACTIVATOR', 'BLOWER', 'PROTOCOL_MANAGER'].includes(user.role);
     const isAdmin = ['ADMIN', 'SUPER_ADMIN'].includes(user.role);
 
+    useEffect(() => {
+        if (user.role === 'CIVIL_WORKER') {
+            navigate('/dashboard/civil-worker');
+        } else if (user.role === 'SUBCONTRACTOR') {
+            navigate('/dashboard/subcontractor-log');
+        }
+    }, [user.role, navigate]);
+
     console.log("Rendering DashboardHome. showDietaPrompt:", showDietaPrompt);
 
     const fetchData = async () => {

@@ -271,11 +271,10 @@ const DashboardLayout = () => {
 
     const toggleGroup = (group) => {
         setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }));
-    };
-
-    const navGroups = [
+    }    const navGroups = [
         {
             id: 'main',
+            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER'],
             items: [
                 { icon: LayoutDashboard, label: t('dashboard.summary'), path: '/dashboard' },
             ]
@@ -321,20 +320,23 @@ const DashboardLayout = () => {
             id: 'services',
             label: t('dashboard.services_personnel'),
             icon: Package,
+            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER'],
             items: [
                 { icon: Package, label: t('dashboard.material_orders'), path: '/dashboard/material-orders' },
                 { icon: Truck, label: t('dashboard.my_vehicle'), path: '/dashboard/my-vehicle', roles: ['CIVIL_WORKER', 'SUPER_ADMIN', 'ADMIN'], showIfVehicle: true },
-                { icon: Umbrella, label: t('dashboard.my_vacations'), path: '/dashboard/vacations' },
+                { icon: Umbrella, label: t('dashboard.my_vacations'), path: '/dashboard/my-vacations' },
             ]
         },
         {
             id: 'civil',
             label: 'Obra Civil',
             icon: HardHat,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER'],
+            roles: ['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER', 'SUBCONTRACTOR'],
             items: [
-                { icon: Map, label: 'Mapa Obra Civil', path: '/dashboard/civil-works-map', roles: ['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER'] },
-                { icon: Briefcase, label: 'Panel Operario', path: '/dashboard/civil-worker', roles: ['CIVIL_WORKER', 'SUPER_ADMIN', 'ADMIN'] },
+                { icon: Map, label: 'Mapa Obra Civil', path: '/dashboard/civil-works-map', roles: ['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER', 'SUBCONTRACTOR'] },
+                { icon: ClipboardList, label: 'Reporte Diario', path: '/dashboard/subcontractor-log', roles: ['SUBCONTRACTOR', 'CIVIL_WORKER'] },
+                { icon: Users, label: 'Gestión Subcontratas', path: '/dashboard/subcontractors', roles: ['SUPER_ADMIN', 'ADMIN'] },
+                { icon: FileText, label: 'Partes Diarios', path: '/dashboard/daily-reports', roles: ['SUPER_ADMIN', 'ADMIN'] }
             ]
         }
     ];

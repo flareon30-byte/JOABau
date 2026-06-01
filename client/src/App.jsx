@@ -24,6 +24,9 @@ import ProjectMapPage from './pages/ProjectMapPage';
 import AccommodationsPage from './pages/AccommodationsPage';
 import CivilWorksMap from './pages/CivilWorksMap';
 import CivilWorkerDashboard from './pages/CivilWorkerDashboard';
+import SubcontractorManagement from './pages/SubcontractorManagement';
+import DailyReportsList from './pages/DailyReportsList';
+import SubcontractorDailyLog from './pages/SubcontractorDailyLog';
 
 function App() {
   return (
@@ -52,6 +55,9 @@ function App() {
           <Route path="project-map" element={<ProjectMapPage />} />
           <Route path="civil-works-map" element={<CivilWorksMap />} />
           <Route path="civil-worker" element={<CivilWorkerDashboard />} />
+          <Route path="subcontractors" element={<SubcontractorManagement />} />
+          <Route path="daily-reports" element={<DailyReportsList />} />
+          <Route path="subcontractor-log" element={<SubcontractorDailyLog />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>

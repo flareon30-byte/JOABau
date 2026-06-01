@@ -13,6 +13,7 @@ enum Role {
   ADMIN
   BACK_OFFICE
   CIVIL_WORKER
+  SUBCONTRACTOR
 }
 
 enum Department {
@@ -47,6 +48,9 @@ model User {
   payrollLogs       PayrollLog[]
   accommodations    Accommodation[]      @relation("AccommodationResidents")
   locationLogs      LocationLog[]
+
+  subcontractorId       String?
+  subcontractor         Subcontractor?       @relation(fields: [subcontractorId], references: [id], onDelete: SetNull)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -129,6 +133,10 @@ model Project {
   clientCompany   ClientCompany? @relation(fields: [clientCompanyId], references: [id])
   addresses       Address[]
   nvtLocations    NvtLocation[]
+
+  subcontractorId String?
+  subcontractor   Subcontractor? @relation(fields: [subcontractorId], references: [id], onDelete: SetNull)
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 }
@@ -154,8 +162,12 @@ model Address {
   notifications Notification[]
 
   // Obra Civil
-  civilWorkStatus CivilWorkStatus? @default(PENDIENTE)
+  civilWorkStatus CivilWorkStatus? @default(SIN_TUBO)
   civilWorkInfo   CivilWorkInfo?
+  gpsLat          Float?
+  gpsLng          Float?
+
+  civilDailyWorkLogs CivilDailyWorkLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -451,10 +463,9 @@ model Accommodation {
 }
 
 enum CivilWorkStatus {
-  PENDIENTE
-  EN_PROGRESO
-  TUBO_METIDO
-  CERRADO
+  SIN_TUBO
+  PLANIFICADO
+  HECHO
 }
 
 model CivilWorkInfo {
@@ -489,4 +500,65 @@ model LocationLog {
   addressId String?
   
   timestamp DateTime @default(now())
+}
+
+model Subcontractor {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  responsible String?  // Responsable de la subcontrata
+  phone       String?
+  email       String?
+  peopleCount Int      @default(0) // Personas que trabajarán
+  
+  projects    Project[] 
+  users       User[]    
+  
+  dailyReports CivilDailyReport[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model CivilDailyReport {
+  id              String               @id @default(uuid())
+  subcontractorId String
+  subcontractor   Subcontractor        @relation(fields: [subcontractorId], references: [id], onDelete: Cascade)
+  date            DateTime
+  peoplePresent   Int                  @default(0)
+  comments        String?
+  
+  workLogs        CivilDailyWorkLog[]
+  ductLogs        CivilDailyDuctLog[]
+  
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+}
+
+model CivilDailyWorkLog {
+  id        String          @id @default(uuid())
+  reportId  String
+  report    CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  addressId String
+  address   Address          @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  status    CivilWorkStatus
+  photos    String[]
+  comments  String?
+  ready     Boolean         @default(false)
+  createdAt DateTime        @default(now())
+}
+
+model CivilDailyDuctLog {
+  id          String           @id @default(uuid())
+  reportId    String
+  report      CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  photos      String[]
+  comments    String?
+  startLat    Float?
+  startLng    Float?
+  endLat      Float?
+  endLng      Float?
+  coordinates Json?            // Array of GPS coordinate objects {lat, lng, timestamp}
+  distance    Float?           // Calculated distance in meters
+  confirmed   Boolean          @default(false)
+  createdAt   DateTime         @default(now())
 }

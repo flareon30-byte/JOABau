@@ -66,6 +66,8 @@ app.use('/api/dietas', require('./src/routes/dietaRoutes'));
 app.use('/api/company', require('./src/routes/companyRoutes'));
 app.use('/api/invoices', require('./src/routes/invoiceRoutes'));
 app.use('/api/ai', require('./src/routes/aiRoutes'));
+app.use('/api/subcontractors', require('./src/routes/subcontractorRoutes'));
+app.use('/api/uploads', require('./src/routes/uploadRoutes'));
 app.use('/api/civil-works', civilWorkRoutes);
 
 
