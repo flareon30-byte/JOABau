@@ -40,6 +40,6 @@ jobs:
             
             echo "4. Actualizando Base de Datos (en segundo plano)..."
             # Intentamos la migración; si falla por RAM, la app sigue arriba
-            docker compose exec -T server npx prisma db push || echo "Aviso: La migración falló por memoria, pero la app está funcionando."
+            docker compose exec -T server npx prisma db push --accept-data-loss || echo "Aviso: La migración falló por memoria, pero la app está funcionando."
             
             echo "DESPLIEGUE FINALIZADO"
