@@ -157,28 +157,28 @@ const CivilWorksMap = () => {
                 const statusInfo = getStatusInfo(addr.civilWorkStatus);
 
                 const icon = L.divIcon({
-                    html: \`<div style="width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)" class="\${statusInfo.cls}"></div>\`,
+                    html: `<div style="width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)" class="${statusInfo.cls}"></div>`,
                     className: '', iconSize: [16, 16], iconAnchor: [8, 8]
                 });
 
                 const marker = L.marker([coords.lat, coords.lng], { icon });
-                marker.bindPopup(\`
+                marker.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
-                        <b>Dirección:</b> \${addr.street} \${addr.number || ''}<br>
-                        <b>Estado:</b> \${statusInfo.label}<br>
-                        <b>Metros Zanja:</b> \${addr.civilWorkInfo?.metersTrench || 0}m
+                        <b>Dirección:</b> ${addr.street} ${addr.number || ''}<br>
+                        <b>Estado:</b> ${statusInfo.label}<br>
+                        <b>Metros Zanja:</b> ${addr.civilWorkInfo?.metersTrench || 0}m
                     </div>
-                \`);
+                `);
                 markersGroupRef.current.addLayer(marker);
             });
 
             // Draw workers
             activeWorkers.forEach(workerLog => {
                 const icon = L.divIcon({
-                    html: \`<div class="flex flex-col items-center">
-                            <div class="bg-orange-600 text-white font-bold text-[10px] px-2 rounded shadow-md whitespace-nowrap mb-1">👷 \${workerLog.user.username}</div>
+                    html: `<div class="flex flex-col items-center">
+                            <div class="bg-orange-600 text-white font-bold text-[10px] px-2 rounded shadow-md whitespace-nowrap mb-1">👷 ${workerLog.user.username}</div>
                             <div class="w-8 h-8 rounded-full bg-white border-2 border-orange-600 flex items-center justify-center text-orange-600 shadow-lg">📍</div>
-                           </div>\`,
+                           </div>`,
                     className: '', iconSize: [60, 50], iconAnchor: [30, 50]
                 });
                 const workerMarker = L.marker([workerLog.gpsLat, workerLog.gpsLng], { icon });
