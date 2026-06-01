@@ -18,28 +18,28 @@ jobs:
             set -e
             echo "0. Limpiando espacio en disco (Docker)..."
             docker system prune -f || true
-            cd /opt/JOABau
+            cd /root/app
             
             echo "1. Descargando codigo de Github..."
             git fetch origin master
             git reset --hard origin/master
             
             echo "2. Reconstruyendo contenedores (Secuencial)..."
-            docker-compose build --parallel=false server
-            docker-compose build --parallel=false client
+            docker compose build --parallel=false server
+            docker compose build --parallel=false client
             
             echo "3. Deteniendo y limpiando contenedores previos..."
-            docker-compose down --remove-orphans || true
+            docker compose down --remove-orphans || true
             # Eliminamos forzosamente cualquier residuo para evitar errores de Conflict
             docker rm -f app-server-1 app-client-1 app-postgres-1 || true
             docker network prune -f || true
             
             echo "4. Encendiendo aplicación inmediatamente..."
             # Forzamos la recreación para asegurar que carguen los nuevos cambios
-            docker-compose up -d --force-recreate
+            docker compose up -d --force-recreate
             
             echo "4. Actualizando Base de Datos (en segundo plano)..."
             # Intentamos la migración; si falla por RAM, la app sigue arriba
-            docker-compose exec -T server npx prisma db push || echo "Aviso: La migración falló por memoria, pero la app está funcionando."
+            docker compose exec -T server npx prisma db push || echo "Aviso: La migración falló por memoria, pero la app está funcionando."
             
             echo "DESPLIEGUE FINALIZADO"
