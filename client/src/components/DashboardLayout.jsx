@@ -271,7 +271,9 @@ const DashboardLayout = () => {
 
     const toggleGroup = (group) => {
         setOpenGroups(prev => ({ ...prev, [group]: !prev[group] }));
-    }    const navGroups = [
+    };
+
+    const navGroups = [
         {
             id: 'main',
             roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER'],
