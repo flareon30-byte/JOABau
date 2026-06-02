@@ -14,6 +14,7 @@ jobs:
           host: 161.35.68.77
           username: ${{ secrets.DO_USERNAME }}
           key: ${{ secrets.DO_SSH_KEY }}
+          command_timeout: 20m
           script: |
             set -e
             echo "0. Limpiando espacio en disco (Docker)..."
