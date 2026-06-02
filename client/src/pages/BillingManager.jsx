@@ -3,7 +3,7 @@ import api from '../api/axios';
 import { 
     Search, FileText, Download, Filter, Calendar, 
     Clock, CheckCircle, Coins, Users, Image as ImageIcon,
-    AlertCircle, FileSpreadsheet, Eye, ChevronRight
+    AlertCircle, FileSpreadsheet, Eye, ChevronRight, Layers
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -496,7 +496,7 @@ const BillingPage = () => {
                                                         </span>
                                                     </td>
                                                     <td className="p-4 text-right font-mono font-bold text-slate-800">
-                                                        {displayPrice}€
+                                                        {displayPrice || 0}€
                                                     </td>
                                                     <td className="p-4 text-center">
                                                         {wl.reviewStatus === 'PENDIENTE_REVISION' ? (
@@ -573,7 +573,7 @@ const BillingPage = () => {
                                                         </span>
                                                     </td>
                                                     <td className="p-4 text-right font-mono font-bold text-slate-800">
-                                                        {parseFloat(displayPrice).toFixed(2)}€
+                                                        {parseFloat(displayPrice || 0).toFixed(2)}€
                                                     </td>
                                                     <td className="p-4 text-center">
                                                         {dl.reviewStatus === 'PENDIENTE_REVISION' ? (
