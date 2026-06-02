@@ -148,6 +148,9 @@ model Project {
   subcontractorId String?
   subcontractor   Subcontractor? @relation(fields: [subcontractorId], references: [id], onDelete: SetNull)
 
+  pricePerAcometida Float        @default(0.0)
+  pricePerMeter     Float        @default(0.0)
+
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 }
@@ -769,30 +772,34 @@ model CivilDailyReport {
 }
 
 model CivilDailyWorkLog {
-  id        String          @id @default(uuid())
-  reportId  String
-  report    CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  addressId String
-  address   Address          @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  status    CivilWorkStatus
-  photos    String[]
-  comments  String?
-  ready     Boolean         @default(false)
-  createdAt DateTime        @default(now())
+  id           String           @id @default(uuid())
+  reportId     String
+  report       CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  addressId    String
+  address      Address          @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  status       CivilWorkStatus
+  photos       String[]
+  comments     String?
+  ready        Boolean          @default(false)
+  reviewStatus String           @default("PENDIENTE_REVISION")
+  pricePaid    Float            @default(0.0)
+  createdAt    DateTime         @default(now())
 }
 
 model CivilDailyDuctLog {
-  id          String           @id @default(uuid())
-  reportId    String
-  report      CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  photos      String[]
-  comments    String?
-  startLat    Float?
-  startLng    Float?
-  endLat      Float?
-  endLng      Float?
-  coordinates Json?            // Array of GPS coordinate objects {lat, lng, timestamp}
-  distance    Float?           // Calculated distance in meters
-  confirmed   Boolean          @default(false)
-  createdAt   DateTime         @default(now())
+  id           String           @id @default(uuid())
+  reportId     String
+  report       CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  photos       String[]
+  comments     String?
+  startLat     Float?
+  startLng     Float?
+  endLat       Float?
+  endLng       Float?
+  coordinates  Json?            // Array of GPS coordinate objects {lat, lng, timestamp}
+  distance     Float?           // Calculated distance in meters
+  confirmed    Boolean          @default(false)
+  reviewStatus String           @default("PENDIENTE_REVISION")
+  pricePaid    Float            @default(0.0)
+  createdAt    DateTime         @default(now())
 }

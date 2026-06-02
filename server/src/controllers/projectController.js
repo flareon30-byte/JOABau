@@ -23,12 +23,14 @@ exports.getAllProjects = async (req, res) => {
 };
 
 exports.createProject = async (req, res) => {
-    const { name, clientCompanyId } = req.body;
+    const { name, clientCompanyId, pricePerAcometida, pricePerMeter } = req.body;
     try {
         const project = await prisma.project.create({
             data: {
                 name,
                 clientCompanyId: clientCompanyId || null,
+                pricePerAcometida: pricePerAcometida ? parseFloat(pricePerAcometida) : 0.0,
+                pricePerMeter: pricePerMeter ? parseFloat(pricePerMeter) : 0.0,
                 isDemo: req.isDemo || false
             }
         });
@@ -436,13 +438,15 @@ exports.importProject = async (req, res) => {
 
 exports.updateProject = async (req, res) => {
     const { id } = req.params;
-    const { name, clientCompanyId } = req.body;
+    const { name, clientCompanyId, pricePerAcometida, pricePerMeter } = req.body;
     try {
         const updated = await prisma.project.update({
             where: { id },
             data: {
                 name,
-                clientCompanyId: clientCompanyId || null
+                clientCompanyId: clientCompanyId || null,
+                pricePerAcometida: pricePerAcometida !== undefined ? parseFloat(pricePerAcometida) : undefined,
+                pricePerMeter: pricePerMeter !== undefined ? parseFloat(pricePerMeter) : undefined
             }
         });
         res.json(updated);

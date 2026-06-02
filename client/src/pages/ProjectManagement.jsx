@@ -8,7 +8,7 @@ const ProjectManagement = () => {
     const [projects, setProjects] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportMode, setIsImportMode] = useState(false);
-    const [formData, setFormData] = useState({ name: '', file: null });
+    const [formData, setFormData] = useState({ name: '', file: null, clientCompanyId: '', pricePerAcometida: '', pricePerMeter: '' });
     const [uploading, setUploading] = useState(false);
 
 
@@ -51,7 +51,9 @@ const ProjectManagement = () => {
                 // Update Project Properties
                 await api.put(`/api/projects/${editingProject.id}`, {
                     name: formData.name,
-                    clientCompanyId: formData.clientCompanyId
+                    clientCompanyId: formData.clientCompanyId,
+                    pricePerAcometida: formData.pricePerAcometida,
+                    pricePerMeter: formData.pricePerMeter
                 });
             } else if (isImportMode) {
                 const data = new FormData();
@@ -67,12 +69,14 @@ const ProjectManagement = () => {
             } else {
                 await api.post('/api/projects', { 
                     name: formData.name,
-                    clientCompanyId: formData.clientCompanyId
+                    clientCompanyId: formData.clientCompanyId,
+                    pricePerAcometida: formData.pricePerAcometida,
+                    pricePerMeter: formData.pricePerMeter
                 });
             }
             fetchProjects();
             setIsModalOpen(false);
-            setFormData({ name: '', file: null, clientCompanyId: '' });
+            setFormData({ name: '', file: null, clientCompanyId: '', pricePerAcometida: '', pricePerMeter: '' });
         } catch (error) {
             console.error('Error saving project:', error);
             alert(error.response?.data?.message || t('projects.error_save'));
@@ -109,7 +113,7 @@ const ProjectManagement = () => {
         setImportType(type);
         setIsUpdateMode(false);
         setIsPropertyMode(false);
-        setFormData({ name: '', file: null, clientCompanyId: '' });
+        setFormData({ name: '', file: null, clientCompanyId: '', pricePerAcometida: '', pricePerMeter: '' });
         setIsModalOpen(true);
     };
 
@@ -121,7 +125,9 @@ const ProjectManagement = () => {
         setFormData({ 
             name: project.name, 
             file: null, 
-            clientCompanyId: project.clientCompanyId || '' 
+            clientCompanyId: project.clientCompanyId || '',
+            pricePerAcometida: project.pricePerAcometida !== undefined ? project.pricePerAcometida : '',
+            pricePerMeter: project.pricePerMeter !== undefined ? project.pricePerMeter : ''
         });
         setIsModalOpen(true);
     };
@@ -130,7 +136,7 @@ const ProjectManagement = () => {
         setIsImportMode(true);
         setIsUpdateMode(true);
         setImportType('standard'); // Default to standard when updating via list item button
-        setFormData({ name: project.name, file: null });
+        setFormData({ name: project.name, file: null, clientCompanyId: '', pricePerAcometida: '', pricePerMeter: '' });
         setIsModalOpen(true);
     };
 
@@ -201,6 +207,10 @@ const ProjectManagement = () => {
                                 </span>
                             </div>
                             <span>{t('projects.created')}: {new Date(project.createdAt).toLocaleDateString(i18n.language)}</span>
+                            <div className="flex justify-between items-center text-xs text-slate-500 bg-slate-100 p-2 rounded-lg mt-1 font-mono">
+                                <span>Acometida: <strong>{project.pricePerAcometida || 0}€</strong></span>
+                                <span>Metro: <strong>{project.pricePerMeter || 0}€</strong></span>
+                            </div>
                         </div>
                     </div>
                 ))}
@@ -251,21 +261,50 @@ const ProjectManagement = () => {
                                 </div>
                             )}
 
-                            {/* Client Selection (For Create and Property Mode) */}
                             {(!isUpdateMode || isPropertyMode) && (
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1">{t('projects.client_company')}</label>
-                                    <select
-                                        value={formData.clientCompanyId}
-                                        onChange={(e) => setFormData({ ...formData, clientCompanyId: e.target.value })}
-                                        className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
-                                    >
-                                        <option value="">{t('projects.none_unassigned')}</option>
-                                        {clients.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                    <p className="text-[10px] text-slate-400 mt-1 italic">{t('projects.client_hint')}</p>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">{t('projects.client_company')}</label>
+                                        <select
+                                            value={formData.clientCompanyId}
+                                            onChange={(e) => setFormData({ ...formData, clientCompanyId: e.target.value })}
+                                            className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        >
+                                            <option value="">{t('projects.none_unassigned')}</option>
+                                            {clients.map(c => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                        <p className="text-[10px] text-slate-400 mt-1 italic">{t('projects.client_hint')}</p>
+                                    </div>
+                                    {!isImportMode && (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Precio Acometida (€)</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={formData.pricePerAcometida}
+                                                    onChange={(e) => setFormData({ ...formData, pricePerAcometida: e.target.value })}
+                                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                    placeholder="0.00"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-700 mb-1">Precio Metro Zanja (€)</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                    value={formData.pricePerMeter}
+                                                    onChange={(e) => setFormData({ ...formData, pricePerMeter: e.target.value })}
+                                                    className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                                    placeholder="0.00"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

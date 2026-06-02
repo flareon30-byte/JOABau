@@ -433,3 +433,39 @@ exports.bulkUpdateCivilWorkStatus = async (req, res) => {
     }
 };
 
+exports.reviewWorkLog = async (req, res) => {
+    const { id } = req.params;
+    const { status, pricePaid } = req.body;
+    try {
+        const log = await prisma.civilDailyWorkLog.update({
+            where: { id },
+            data: {
+                reviewStatus: status || 'REVISADO',
+                pricePaid: pricePaid !== undefined ? parseFloat(pricePaid) : undefined
+            }
+        });
+        res.json({ message: 'Acometida revisada correctamente', log });
+    } catch (error) {
+        console.error('Error reviewing work log:', error);
+        res.status(500).json({ message: 'Error interno al revisar el trabajo.' });
+    }
+};
+
+exports.reviewDuctLog = async (req, res) => {
+    const { id } = req.params;
+    const { status, pricePaid } = req.body;
+    try {
+        const log = await prisma.civilDailyDuctLog.update({
+            where: { id },
+            data: {
+                reviewStatus: status || 'REVISADO',
+                pricePaid: pricePaid !== undefined ? parseFloat(pricePaid) : undefined
+            }
+        });
+        res.json({ message: 'Ducto de calle revisado correctamente', log });
+    } catch (error) {
+        console.error('Error reviewing duct log:', error);
+        res.status(500).json({ message: 'Error interno al revisar el ducto.' });
+    }
+};
+

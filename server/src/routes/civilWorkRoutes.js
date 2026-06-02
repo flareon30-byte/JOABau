@@ -11,5 +11,7 @@ router.post('/daily-report', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'CI
 router.get('/daily-reports', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER', 'SUBCONTRACTOR']), civilWorkController.getDailyReports);
 router.post('/bulk-status', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.bulkUpdateCivilWorkStatus);
 router.post('/:id', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER', 'SUBCONTRACTOR']), civilWorkController.updateCivilWorkStatus);
+router.put('/work-log/:id/review', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.reviewWorkLog);
+router.put('/duct-log/:id/review', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.reviewDuctLog);
 
 module.exports = router;
