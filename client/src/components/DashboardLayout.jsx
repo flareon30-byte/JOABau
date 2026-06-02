@@ -290,7 +290,6 @@ const DashboardLayout = () => {
                 { icon: Folder, label: t('dashboard.projects'), path: '/dashboard/projects', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Calendar, label: t('dashboard.appointments'), path: '/dashboard/appointments', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: Zap, label: t('dashboard.prod_control'), path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: Map, label: t('dashboard.project_map') || 'Mapa de Proyecto', path: '/dashboard/project-map', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
             ]
         },
         {

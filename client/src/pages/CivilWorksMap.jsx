@@ -15,16 +15,24 @@ const saveCache = (cache) => {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
 };
 
-// Google Geocoder helper
-const geocodeFull = async (street, number, city, cache) => {
+// Multi-stage geocoding — Stage 1: Google Maps (most accurate)
+// Stage 2: Photon (house verification)
+// Stage 3: Nominatim structured
+// Stage 4: Photon street-only (fallback)
+const geocodeFull = async (street, number, city, countryCode, cache) => {
     const cacheKey = [street, number, city].filter(Boolean).join(' ').trim();
     if (!cacheKey) return null;
     if (cache[cacheKey]?.lat) return cache[cacheKey];
 
+    const country = countryCode === 'DE' ? 'Germany' : 'Spain';
+    const region = countryCode === 'DE' ? 'de' : 'es';
+    const lang = countryCode === 'DE' ? 'de' : 'es';
+
+    // Stage 1: Google Maps Geocoding API
     if (GOOGLE_KEY) {
         try {
-            const address = [street, number, city, 'Germany'].filter(Boolean).join(', ');
-            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_KEY}&region=de&language=de`;
+            const address = [street, number, city, country].filter(Boolean).join(', ');
+            const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_KEY}&region=${region}&language=${lang}`;
             const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
@@ -37,6 +45,70 @@ const geocodeFull = async (street, number, city, cache) => {
             }
         } catch {}
     }
+
+    // Stage 2: Photon
+    try {
+        const q = [street, number, city].filter(Boolean).join(', ').trim();
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=${lang}`;
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            if (data?.features?.length > 0) {
+                const feat = data.features[0];
+                const [lng, lat] = feat.geometry.coordinates;
+                const type = feat.properties?.type || '';
+                if (['house', 'building', 'amenity', 'tourism'].includes(type)) {
+                    const coords = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                    cache[cacheKey] = coords;
+                    return coords;
+                }
+            }
+        }
+    } catch {}
+
+    // Stage 3: Nominatim structured
+    if (number && street) {
+        try {
+            const params = new URLSearchParams({
+                format: 'json',
+                housenumber: number,
+                street: street,
+                city: city || '',
+                countrycodes: region,
+                limit: '1',
+            });
+            const url = `https://nominatim.openstreetmap.org/search?${params}`;
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json', 'Accept-Language': lang }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.length > 0) {
+                    const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                    cache[cacheKey] = coords;
+                    return coords;
+                }
+            }
+        } catch {}
+    }
+
+    // Stage 4: Photon street-only
+    const streetKey = [street, city].filter(Boolean).join(', ').trim();
+    if (cache[streetKey]?.lat) return cache[streetKey];
+    try {
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(streetKey)}&limit=1&lang=${lang}`;
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            if (data?.features?.length > 0) {
+                const [lng, lat] = data.features[0].geometry.coordinates;
+                const coords = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                cache[streetKey] = coords;
+                return coords;
+            }
+        }
+    } catch {}
+
     return null;
 };
 
@@ -70,6 +142,11 @@ const CivilWorksMap = () => {
     const [selectedAddressIds, setSelectedAddressIds] = useState([]);
     const [bulkUpdating, setBulkUpdating] = useState(false);
 
+    const [companyCountry, setCompanyCountry] = useState('ES');
+    const [progress, setProgress] = useState(0);
+    const [progressLabel, setProgressLabel] = useState('');
+    const cancelledRef = useRef(false);
+
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const markersGroupRef = useRef(null);
@@ -96,6 +173,21 @@ const CivilWorksMap = () => {
         } else {
             if (window.L) setLeafletLoaded(true);
         }
+    }, []);
+
+    // Fetch company settings for dynamic geolocalizer country code
+    useEffect(() => {
+        const fetchCompanyCountry = async () => {
+            try {
+                const res = await api.get('/api/company');
+                if (res.data?.country) {
+                    setCompanyCountry(res.data.country);
+                }
+            } catch (err) {
+                console.error("Error loading company country:", err);
+            }
+        };
+        fetchCompanyCountry();
     }, []);
 
     // Load filter options and map coordinates
@@ -173,10 +265,53 @@ const CivilWorksMap = () => {
         if (!leafletLoaded || !addresses.length || !mapRef.current || activeTab !== 'map') return;
 
         const L = window.L;
+        cancelledRef.current = false;
         setLoadingMap(true);
+        setProgress(0);
 
         const buildMap = async () => {
-            let center = { lat: 49.8358, lng: 8.0163 }; // Fallback Germany
+            // ---- city center ----
+            const cityName = filteredAddresses.find(a => a.city)?.city || '';
+            const country = companyCountry === 'DE' ? 'Germany' : 'Spain';
+            const region = companyCountry === 'DE' ? 'de' : 'es';
+            const lang = companyCountry === 'DE' ? 'de' : 'es';
+
+            let center = companyCountry === 'DE' ? { lat: 49.8358, lng: 8.0163 } : { lat: 40.4167, lng: -3.7037 }; // Default Madrid / Berlin
+            
+            if (cityName) {
+                setProgressLabel(`Localizando ${cityName}…`);
+                let cityResolved = false;
+                if (GOOGLE_KEY) {
+                    try {
+                        const address = [cityName, country].filter(Boolean).join(', ');
+                        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_KEY}&region=${region}&language=${lang}`;
+                        const res = await fetch(url);
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.status === 'OK' && data.results?.length > 0) {
+                                const loc = data.results[0].geometry.location;
+                                center = { lat: loc.lat, lng: loc.lng };
+                                cityResolved = true;
+                            }
+                        }
+                    } catch {}
+                }
+                if (!cityResolved) {
+                    try {
+                        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(cityName)}&limit=1&lang=${lang}`;
+                        const res = await fetch(url);
+                        if (res.ok) {
+                            const d = await res.json();
+                            if (d?.features?.length) {
+                                const [lng, lat] = d.features[0].geometry.coordinates;
+                                center = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                            }
+                        }
+                    } catch {}
+                }
+            }
+
+            if (cancelledRef.current) return;
 
             if (!mapInstanceRef.current) {
                 mapInstanceRef.current = L.map(mapRef.current, { zoomControl: false }).setView([center.lat, center.lng], 16);
@@ -187,23 +322,42 @@ const CivilWorksMap = () => {
                 markersGroupRef.current = L.featureGroup().addTo(mapInstanceRef.current);
                 workersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             } else {
+                mapInstanceRef.current.setView([center.lat, center.lng], 16);
                 markersGroupRef.current.clearLayers();
                 workersGroupRef.current.clearLayers();
             }
 
+            const BATCH = 10;
+            const DELAY = 80;
             const cache = loadCache();
             const coordsList = new Array(filteredAddresses.length).fill(null);
 
-            // Geocode or fetch existing coordinates
-            for (let i = 0; i < filteredAddresses.length; i++) {
-                const addr = filteredAddresses[i];
-                if (addr.gpsLat && addr.gpsLng) {
-                    coordsList[i] = { lat: addr.gpsLat, lng: addr.gpsLng };
-                } else {
-                    coordsList[i] = await geocodeFull(addr.street, addr.number, addr.city, cache);
+            // Geocode or fetch existing coordinates in parallel-safe batches
+            for (let i = 0; i < filteredAddresses.length; i += BATCH) {
+                if (cancelledRef.current) return;
+                const batch = filteredAddresses.slice(i, i + BATCH);
+                const results = await Promise.all(
+                    batch.map(addr => {
+                        if (addr.gpsLat && addr.gpsLng) {
+                            return { lat: addr.gpsLat, lng: addr.gpsLng };
+                        }
+                        return geocodeFull(addr.street, addr.number, addr.city, companyCountry, cache);
+                    })
+                );
+                results.forEach((c, j) => { coordsList[i + j] = c; });
+                saveCache(cache);
+
+                const done = Math.min(i + BATCH, filteredAddresses.length);
+                setProgress(Math.round((done / filteredAddresses.length) * 100));
+                setProgressLabel(`Geolocalizando ${done}/${filteredAddresses.length} clientes…`);
+
+                if (i + BATCH < filteredAddresses.length) {
+                    await new Promise(r => setTimeout(r, DELAY));
                 }
             }
-            saveCache(cache);
+
+            if (cancelledRef.current) return;
+            setLoadingMap(false);
 
             const validCoords = coordsList.filter(Boolean);
             if (validCoords.length > 0) {
@@ -214,6 +368,7 @@ const CivilWorksMap = () => {
 
             // Draw connection circles
             filteredAddresses.forEach((addr, i) => {
+                if (cancelledRef.current) return;
                 let coords = coordsList[i] || scatter(center, i);
                 const statusInfo = getStatusInfo(addr.civilWorkStatus);
 
@@ -239,6 +394,7 @@ const CivilWorksMap = () => {
 
             // Draw Subcontractor Duct lines
             filteredDuctRoutes.forEach(route => {
+                if (cancelledRef.current) return;
                 if (!route.coordinates || !Array.isArray(route.coordinates) || route.coordinates.length < 2) return;
                 const pathCoords = route.coordinates.map(pt => [pt.lat, pt.lng]);
                 
@@ -268,6 +424,7 @@ const CivilWorksMap = () => {
 
             // Draw active worker live locations
             activeWorkers.forEach(workerLog => {
+                if (cancelledRef.current) return;
                 if (!workerLog.gpsLat || !workerLog.gpsLng) return;
                 
                 const icon = L.divIcon({
@@ -286,12 +443,14 @@ const CivilWorksMap = () => {
             } else {
                 mapInstanceRef.current.setView([center.lat, center.lng], 16);
             }
-            
-            setLoadingMap(false);
         };
 
         buildMap();
-    }, [leafletLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes]);
+
+        return () => {
+            cancelledRef.current = true;
+        };
+    }, [leafletLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry]);
 
     // Bulk address selection
     const toggleSelectAddress = (id) => {
@@ -442,14 +601,32 @@ const CivilWorksMap = () => {
                 {activeTab === 'map' && (
                     <div className="flex-1 w-full h-full relative flex flex-col">
                         {(loadingData || loadingMap) && (
-                            <div className="absolute inset-0 bg-white/95 z-[1000] flex flex-col items-center justify-center">
+                            <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center p-6 text-center">
                                 <Loader2 className="animate-spin text-orange-600 mb-4" size={48} />
-                                <h4 className="font-extrabold text-slate-800">Cargando mapa interactivo...</h4>
+                                <h4 className="font-extrabold text-slate-800 text-lg">
+                                    {loadingData ? 'Cargando datos...' : 'Geolocalizando direcciones…'}
+                                </h4>
+                                <p className="text-slate-500 text-sm mt-1 max-w-xs">
+                                    {loadingData
+                                        ? 'Obteniendo clientes del servidor…'
+                                        : 'Utilizando APIs cartográficas para posicionamiento exacto.'}
+                                </p>
+                                {!loadingData && (
+                                    <>
+                                        <div className="w-72 bg-slate-100 h-3 rounded-full mt-5 overflow-hidden border border-slate-200">
+                                            <div
+                                                className="bg-orange-500 h-full transition-all duration-300 rounded-full"
+                                                style={{ width: `${progress}%` }}
+                                            />
+                                        </div>
+                                        <span className="text-xs font-bold text-orange-600 mt-2">{progressLabel}</span>
+                                    </>
+                                )}
                             </div>
                         )}
                         
                         {/* Map wrapper */}
-                        <div ref={mapRef} className="flex-1 w-full bg-slate-50" />
+                        <div ref={mapRef} className="w-full h-full flex-1 z-10" />
 
                         {/* Legend */}
                         <div className="absolute bottom-5 left-5 z-[500] bg-white/95 backdrop-blur border border-slate-200 rounded-2xl p-4 shadow-xl space-y-2 max-w-xs text-xs">

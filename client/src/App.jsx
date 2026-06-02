@@ -20,7 +20,6 @@ import VehicleManagement from './pages/VehicleManagement';
 import VehicleLogForm from './pages/VehicleLogForm';
 import InvoicingPage from './pages/InvoicingPage';
 import CompanySettingsPage from './pages/CompanySettingsPage';
-import ProjectMapPage from './pages/ProjectMapPage';
 import AccommodationsPage from './pages/AccommodationsPage';
 import CivilWorksMap from './pages/CivilWorksMap';
 import CivilWorkerDashboard from './pages/CivilWorkerDashboard';
@@ -52,7 +51,6 @@ function App() {
           <Route path="my-vehicle" element={<VehicleLogForm />} />
           <Route path="invoicing" element={<InvoicingPage />} />
           <Route path="company-settings" element={<CompanySettingsPage />} />
-          <Route path="project-map" element={<ProjectMapPage />} />
           <Route path="civil-works-map" element={<CivilWorksMap />} />
           <Route path="civil-worker" element={<CivilWorkerDashboard />} />
           <Route path="subcontractors" element={<SubcontractorManagement />} />
