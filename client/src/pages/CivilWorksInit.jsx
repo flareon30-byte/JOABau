@@ -819,7 +819,7 @@ const CivilWorksInit = () => {
                                 <div className="absolute top-4 left-4 z-[500] bg-orange-600/90 text-white px-4 py-2.5 rounded-2xl text-xs font-black shadow-md flex items-center gap-2 border border-orange-500/30 backdrop-blur-sm">
                                     <Compass size={14} className="animate-pulse" /> Modo Trazado: Haz clic sobre el mapa para dibujar el ducto punto por punto.
                                 </div>
-                                <div ref={initMapRef} className="w-full h-full flex-1 z-10" />
+                                <div ref={initMapRef} className="w-full h-full flex-1 z-10 drawing-map-container" />
                             </div>
                         </div>
                     )}
