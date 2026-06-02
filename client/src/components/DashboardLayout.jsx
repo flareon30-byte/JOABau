@@ -292,7 +292,8 @@ const DashboardLayout = () => {
                 { icon: Map, label: 'Mapa Obra Civil', path: '/dashboard/civil-works-map', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER', 'SUBCONTRACTOR'] },
                 { icon: ClipboardList, label: 'Reporte Diario', path: '/dashboard/subcontractor-log', roles: ['SUBCONTRACTOR', 'CIVIL_WORKER'] },
                 { icon: Users, label: 'Gestión Subcontratas', path: '/dashboard/subcontractors', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] },
-                { icon: FileText, label: 'Partes Diarios', path: '/dashboard/daily-reports', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] }
+                { icon: FileText, label: 'Partes Diarios', path: '/dashboard/daily-reports', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] },
+                { icon: CheckCircle, label: 'Inicialización Obra', path: '/dashboard/civil-works-init', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] }
             ]
         },
         {

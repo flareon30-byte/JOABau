@@ -175,7 +175,7 @@ const DailyReportsList = () => {
                                                                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100">
                                                                     <div>
                                                                         <span className="bg-purple-100 text-purple-700 text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-lg">
-                                                                            Ducto de Calle
+                                                                            Ducto de Calle {log.ductType || '7x22'}
                                                                         </span>
                                                                         <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-wider">
                                                                             Calculado: <span className="text-slate-800 font-black">{log.distance || 0} metros</span>

@@ -26,6 +26,7 @@ import CivilWorkerDashboard from './pages/CivilWorkerDashboard';
 import SubcontractorManagement from './pages/SubcontractorManagement';
 import DailyReportsList from './pages/DailyReportsList';
 import SubcontractorDailyLog from './pages/SubcontractorDailyLog';
+import CivilWorksInit from './pages/CivilWorksInit';
 
 function App() {
   return (
@@ -56,6 +57,7 @@ function App() {
           <Route path="subcontractors" element={<SubcontractorManagement />} />
           <Route path="daily-reports" element={<DailyReportsList />} />
           <Route path="subcontractor-log" element={<SubcontractorDailyLog />} />
+          <Route path="civil-works-init" element={<CivilWorksInit />} />
         </Route>
         <Route path="/" element={<Navigate to="/login" replace />} />
       </Routes>

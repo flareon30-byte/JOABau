@@ -453,8 +453,9 @@ const CivilWorksMap = () => {
                 if (!route.coordinates || !Array.isArray(route.coordinates) || route.coordinates.length < 2) return;
                 const pathCoords = route.coordinates.map(pt => [pt.lat, pt.lng]);
                 
+                const ductColor = route.ductType === '5x10' ? '#ec4899' : '#8b5cf6';
                 const polyline = L.polyline(pathCoords, {
-                    color: '#8b5cf6', // Premium Purple for streets ducts
+                    color: ductColor,
                     weight: 5,
                     opacity: 0.9,
                     dashArray: '8, 10'
@@ -466,7 +467,7 @@ const CivilWorksMap = () => {
 
                 polyline.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
-                        <b style="font-size:14px;color:#8b5cf6">Ducto de Calle (Zanja)</b><br>
+                        <b style="font-size:14px;color:${ductColor}">Ducto de Calle (${route.ductType || '7x22'})</b><br>
                         <b>Socio:</b> ${subName}<br>
                         <b>Longitud:</b> ${distText}<br>
                         <b>Fecha Reporte:</b> ${dateText}<br>
@@ -699,8 +700,12 @@ const CivilWorksMap = () => {
                                 <span className="text-slate-600 font-semibold">Verde: Tubo metido (Listo soplado)</span>
                             </div>
                             <div className="flex items-center gap-2 border-t border-slate-100 pt-1.5 mt-1">
-                                <div className="w-6 h-[2px] bg-purple-600 border-t border-dashed"></div>
-                                <span className="text-slate-600 font-semibold">Ducto de Calle (Zanja)</span>
+                                <div className="w-6 h-[2px] bg-[#8b5cf6] border-t border-dashed"></div>
+                                <span className="text-slate-600 font-semibold">Ducto de Calle 7x22</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-6 h-[2px] bg-[#ec4899] border-t border-dashed"></div>
+                                <span className="text-slate-600 font-semibold">Ducto de Calle 5x10</span>
                             </div>
                         </div>
                     </div>

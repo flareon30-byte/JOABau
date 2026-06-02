@@ -338,7 +338,8 @@ exports.submitDailyReport = async (req, res) => {
                         endLng: endLng ? parseFloat(endLng) : null,
                         coordinates: coordinates,
                         distance: log.distance ? parseFloat(log.distance) : null,
-                        confirmed: log.confirmed || false
+                        confirmed: log.confirmed || false,
+                        ductType: log.ductType || '7x22'
                     }
                 });
             }
@@ -648,7 +649,7 @@ exports.resubmitWorkLog = async (req, res) => {
 
 exports.resubmitDuctLog = async (req, res) => {
     const { id } = req.params;
-    const { photos, comments, distance } = req.body;
+    const { photos, comments, distance, ductType } = req.body;
     try {
         const log = await prisma.civilDailyDuctLog.update({
             where: { id },
@@ -656,6 +657,7 @@ exports.resubmitDuctLog = async (req, res) => {
                 photos: photos || [],
                 comments: comments || null,
                 distance: distance ? parseFloat(distance) : undefined,
+                ductType: ductType || undefined,
                 reviewStatus: 'PENDIENTE_REVISION',
                 reviewComments: null,
                 incorrectPhotos: []
@@ -666,6 +668,96 @@ exports.resubmitDuctLog = async (req, res) => {
     } catch (error) {
         console.error('Error resubmitting duct log:', error);
         res.status(500).json({ message: 'Error interno al reenviar el ducto.' });
+    }
+};
+
+function calculateHaversineDistance(coords) {
+    if (!coords || !Array.isArray(coords) || coords.length < 2) return 0;
+    let total = 0;
+    for (let i = 0; i < coords.length - 1; i++) {
+        const p1 = coords[i];
+        const p2 = coords[i+1];
+        const R = 6371e3; // metros
+        const phi1 = p1.lat * Math.PI/180;
+        const phi2 = p2.lat * Math.PI/180;
+        const deltaPhi = (p2.lat-p1.lat) * Math.PI/180;
+        const deltaLambda = (p2.lng-p1.lng) * Math.PI/180;
+
+        const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                  Math.cos(phi1) * Math.cos(phi2) *
+                  Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+        total += R * c;
+    }
+    return parseFloat(total.toFixed(2));
+}
+
+exports.createManualDuctLog = async (req, res) => {
+    const { subcontractorId, coordinates, ductType, comments } = req.body;
+
+    if (!subcontractorId) {
+        return res.status(400).json({ message: 'Se requiere especificar la subcontrata.' });
+    }
+
+    if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+        return res.status(400).json({ message: 'Se requieren al menos 2 puntos de coordenadas para dibujar el ducto.' });
+    }
+
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        let report = await prisma.civilDailyReport.findFirst({
+            where: {
+                subcontractorId,
+                date: {
+                    gte: today,
+                    lt: tomorrow
+                }
+            }
+        });
+
+        if (!report) {
+            report = await prisma.civilDailyReport.create({
+                data: {
+                    subcontractorId,
+                    date: new Date(),
+                    peoplePresent: 0,
+                    comments: 'Carga Inicial Manual (Inicialización)'
+                }
+            });
+        }
+
+        const startLat = coordinates[0]?.lat || null;
+        const startLng = coordinates[0]?.lng || null;
+        const endLat = coordinates[coordinates.length - 1]?.lat || null;
+        const endLng = coordinates[coordinates.length - 1]?.lng || null;
+        const distance = calculateHaversineDistance(coordinates);
+
+        const log = await prisma.civilDailyDuctLog.create({
+            data: {
+                reportId: report.id,
+                photos: [],
+                comments: comments || 'Carga Inicial Manual',
+                startLat,
+                startLng,
+                endLat,
+                endLng,
+                coordinates,
+                distance,
+                confirmed: true,
+                reviewStatus: 'REVISADO',
+                ductType: ductType || '7x22'
+            }
+        });
+
+        res.status(201).json({ message: 'Ducto manual registrado correctamente', log });
+    } catch (error) {
+        console.error('Error creating manual duct log:', error);
+        res.status(500).json({ message: 'Error interno al registrar el ducto manual.' });
     }
 };
 

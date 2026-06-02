@@ -113,6 +113,7 @@ const SubcontractorDailyLog = () => {
     const [processingDuct, setProcessingDuct] = useState(false);
     const [calculatedDuct, setCalculatedDuct] = useState(null);
     const [ductConfirmed, setDuctConfirmed] = useState(false);
+    const [ductType, setDuctType] = useState('7x22');
 
     // List of accumulated items for the submission
     const [addedConnections, setAddedConnections] = useState([]);
@@ -398,7 +399,8 @@ const SubcontractorDailyLog = () => {
             endLng: calculatedDuct.endPoint.lng,
             coordinates: calculatedDuct.coordinates,
             distance: calculatedDuct.distance,
-            confirmed: true
+            confirmed: true,
+            ductType: ductType
         };
 
         setAddedDucts(prev => [...prev, newDuct]);
@@ -408,6 +410,7 @@ const SubcontractorDailyLog = () => {
         setDuctComments('');
         setCalculatedDuct(null);
         setDuctConfirmed(false);
+        setDuctType('7x22');
         if (mapInstanceRef.current) {
             mapInstanceRef.current.remove();
             mapInstanceRef.current = null;
@@ -1026,6 +1029,18 @@ const SubcontractorDailyLog = () => {
                                     />
                                 </label>
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Medida de Ducto</label>
+                            <select
+                                value={ductType}
+                                onChange={(e) => setDuctType(e.target.value)}
+                                className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500/20 w-full"
+                            >
+                                <option value="7x22">Ducto 7x22 (Estándar)</option>
+                                <option value="5x10">Ducto 5x10 (Pequeño)</option>
+                            </select>
                         </div>
 
                         <div>
