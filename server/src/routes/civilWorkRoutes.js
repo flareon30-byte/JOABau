@@ -10,6 +10,7 @@ router.get('/addresses', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'CIVIL_
 router.post('/daily-report', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER', 'SUBCONTRACTOR']), civilWorkController.submitDailyReport);
 router.get('/daily-reports', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER', 'SUBCONTRACTOR']), civilWorkController.getDailyReports);
 router.post('/bulk-status', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.bulkUpdateCivilWorkStatus);
+router.post('/manual-duct', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.createManualDuctLog);
 router.post('/:id', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER', 'SUBCONTRACTOR']), civilWorkController.updateCivilWorkStatus);
 router.put('/work-log/:id/review', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.reviewWorkLog);
 router.put('/duct-log/:id/review', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.reviewDuctLog);
@@ -20,6 +21,5 @@ router.put('/duct-log/:id/return', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN
 router.get('/returned', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.getReturnedLogs);
 router.put('/work-log/:id/resubmit', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.resubmitWorkLog);
 router.put('/duct-log/:id/resubmit', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.resubmitDuctLog);
-router.post('/manual-duct', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.createManualDuctLog);
 
 module.exports = router;
