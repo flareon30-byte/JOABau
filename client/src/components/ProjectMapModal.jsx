@@ -145,6 +145,7 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
             document.head.appendChild(link);
         }
 
+        let iv = null;
         const scriptId = 'leaflet-js';
         if (!document.getElementById(scriptId)) {
             const script = document.createElement('script');
@@ -153,12 +154,21 @@ const ProjectMapModal = ({ isOpen, projectId, onClose }) => {
             script.onload = () => setLeafletLoaded(true);
             document.body.appendChild(script);
         } else {
-            if (window.L) setLeafletLoaded(true);
-            else {
-                const iv = setInterval(() => { if (window.L) { setLeafletLoaded(true); clearInterval(iv); } }, 100);
-                return () => clearInterval(iv);
+            if (window.L) {
+                setLeafletLoaded(true);
+            } else {
+                iv = setInterval(() => {
+                    if (window.L) {
+                        setLeafletLoaded(true);
+                        clearInterval(iv);
+                    }
+                }, 100);
             }
         }
+
+        return () => {
+            if (iv) clearInterval(iv);
+        };
     }, [isOpen]);
 
     // Fetch address data

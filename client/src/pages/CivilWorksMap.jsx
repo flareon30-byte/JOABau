@@ -15,6 +15,31 @@ const saveCache = (cache) => {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
 };
 
+const guessCountryCode = (street, city) => {
+    const s = (street || '').toLowerCase();
+    const c = (city || '').toLowerCase();
+    
+    // Spanish street indicators
+    if (s.startsWith('calle') || s.startsWith('avenida') || s.startsWith('plaza') || s.startsWith('paseo') || s.startsWith('avda') || s.startsWith('c/') || s.includes(' de ') || s.includes(' del ')) {
+        return 'ES';
+    }
+    // Spanish city indicators
+    if (c.includes('madrid') || c.includes('barcelona') || c.includes('valencia') || c.includes('sevilla') || c.includes('zaragoza') || c.includes('toledo') || c.includes('getafe') || c.includes('alcorcon') || c.includes('mostoles') || c.includes('leganes') || c.includes('fuenlabrada')) {
+        return 'ES';
+    }
+    
+    // German street indicators
+    if (s.includes('str.') || s.includes('straße') || s.includes('strasse') || s.includes('weg') || s.includes('gasse') || s.includes('platz') || s.includes('allee') || s.includes('pfad')) {
+        return 'DE';
+    }
+    // German city indicators
+    if (c.includes('berlin') || c.includes('münchen') || c.includes('munich') || c.includes('frankfurt') || c.includes('hamburg') || c.includes('mainz') || c.includes('wiesbaden') || c.includes('alzey') || c.includes('bickelheim') || c.includes('gau-bickelheim')) {
+        return 'DE';
+    }
+    
+    return null;
+};
+
 // Multi-stage geocoding — Stage 1: Google Maps (most accurate)
 // Stage 2: Photon (house verification)
 // Stage 3: Nominatim structured
@@ -24,9 +49,10 @@ const geocodeFull = async (street, number, city, countryCode, cache) => {
     if (!cacheKey) return null;
     if (cache[cacheKey]?.lat) return cache[cacheKey];
 
-    const country = countryCode === 'DE' ? 'Germany' : 'Spain';
-    const region = countryCode === 'DE' ? 'de' : 'es';
-    const lang = countryCode === 'DE' ? 'de' : 'es';
+    const guessed = guessCountryCode(street, city) || countryCode;
+    const country = guessed === 'DE' ? 'Germany' : 'Spain';
+    const region = guessed === 'DE' ? 'de' : 'es';
+    const lang = guessed === 'DE' ? 'de' : 'es';
 
     // Stage 1: Google Maps Geocoding API
     if (GOOGLE_KEY) {
@@ -163,6 +189,7 @@ const CivilWorksMap = () => {
             document.head.appendChild(link);
         }
 
+        let iv = null;
         const scriptId = 'leaflet-js';
         if (!document.getElementById(scriptId)) {
             const script = document.createElement('script');
@@ -171,8 +198,21 @@ const CivilWorksMap = () => {
             script.onload = () => setLeafletLoaded(true);
             document.body.appendChild(script);
         } else {
-            if (window.L) setLeafletLoaded(true);
+            if (window.L) {
+                setLeafletLoaded(true);
+            } else {
+                iv = setInterval(() => {
+                    if (window.L) {
+                        setLeafletLoaded(true);
+                        clearInterval(iv);
+                    }
+                }, 100);
+            }
         }
+
+        return () => {
+            if (iv) clearInterval(iv);
+        };
     }, []);
 
     // Fetch company settings for dynamic geolocalizer country code

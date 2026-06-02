@@ -57,6 +57,7 @@ const SubcontractorDailyLog = () => {
             document.head.appendChild(link);
         }
 
+        let iv = null;
         const scriptId = 'leaflet-js';
         if (!document.getElementById(scriptId)) {
             const script = document.createElement('script');
@@ -65,8 +66,21 @@ const SubcontractorDailyLog = () => {
             script.onload = () => setLeafletLoaded(true);
             document.body.appendChild(script);
         } else {
-            if (window.L) setLeafletLoaded(true);
+            if (window.L) {
+                setLeafletLoaded(true);
+            } else {
+                iv = setInterval(() => {
+                    if (window.L) {
+                        setLeafletLoaded(true);
+                        clearInterval(iv);
+                    }
+                }, 100);
+            }
         }
+
+        return () => {
+            if (iv) clearInterval(iv);
+        };
     }, []);
 
     // Load assigned pipes
