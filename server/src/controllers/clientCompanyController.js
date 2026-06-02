@@ -3,7 +3,11 @@ const prisma = require('../prisma');
 exports.getAllClients = async (req, res) => {
   try {
     const clients = await prisma.clientCompany.findMany({
-      include: { priceItems: true },
+      include: { 
+        priceItems: {
+          include: { subcontractor: true }
+        }
+      },
       orderBy: { name: 'asc' }
     });
     res.json(clients);
@@ -83,6 +87,7 @@ exports.getClientPriceItems = async (req, res) => {
     const { id } = req.params;
     const items = await prisma.clientPriceItem.findMany({
       where: { clientCompanyId: id },
+      include: { subcontractor: true },
       orderBy: { name: 'asc' }
     });
     res.json(items);
@@ -95,13 +100,14 @@ exports.getClientPriceItems = async (req, res) => {
 exports.addPriceItem = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, department, priceToClient, bonusToTeam, saturdayPay } = req.body;
+    const { name, department, priceToClient, bonusToTeam, saturdayPay, subcontractorId } = req.body;
     
     const newItem = await prisma.clientPriceItem.create({
       data: {
         clientCompanyId: id,
         name,
-        department,
+        department: department || null,
+        subcontractorId: subcontractorId || null,
         priceToClient: parseFloat(priceToClient || 0),
         bonusToTeam: parseFloat(bonusToTeam || 0),
         saturdayPay: parseFloat(saturdayPay || 0)
@@ -117,13 +123,14 @@ exports.addPriceItem = async (req, res) => {
 exports.updatePriceItem = async (req, res) => {
   try {
     const { itemId } = req.params;
-    const { name, department, priceToClient, bonusToTeam, saturdayPay } = req.body;
+    const { name, department, priceToClient, bonusToTeam, saturdayPay, subcontractorId } = req.body;
     
     const updated = await prisma.clientPriceItem.update({
       where: { id: itemId },
       data: {
         name,
-        department,
+        department: department || null,
+        subcontractorId: subcontractorId || null,
         priceToClient: parseFloat(priceToClient || 0),
         bonusToTeam: parseFloat(bonusToTeam || 0),
         saturdayPay: parseFloat(saturdayPay || 0)

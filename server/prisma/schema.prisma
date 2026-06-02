@@ -523,14 +523,16 @@ model CompanySettings {
 }
 
 model ClientPriceItem {
-  id              String        @id @default(uuid())
+  id              String         @id @default(uuid())
   clientCompanyId String
-  clientCompany   ClientCompany @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
+  clientCompany   ClientCompany  @relation(fields: [clientCompanyId], references: [id], onDelete: Cascade)
   name            String
-  department      Department // ACTIVATION, BLOWING, etc.
-  priceToClient   Float         @default(0.0) // What Joa charges the client
-  bonusToTeam     Float         @default(0.0) // Extra pay for the team (Standard)
-  saturdayPay     Float         @default(0.0) // Specific extra pay for technician on SATURDAY
+  department      Department?
+  subcontractorId String?
+  subcontractor   Subcontractor? @relation(fields: [subcontractorId], references: [id], onDelete: SetNull)
+  priceToClient   Float          @default(0.0) // What Joa charges the client
+  bonusToTeam     Float          @default(0.0) // Extra pay for the team (Standard)
+  saturdayPay     Float          @default(0.0) // Specific extra pay for technician on SATURDAY
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -752,6 +754,7 @@ model Subcontractor {
   users       User[]    
   
   dailyReports CivilDailyReport[]
+  priceItems   ClientPriceItem[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
