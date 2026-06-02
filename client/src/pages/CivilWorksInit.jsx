@@ -72,6 +72,7 @@ const CivilWorksInit = () => {
     
     // Core Data
     const [addresses, setAddresses] = useState([]);
+    const [ductRoutes, setDuctRoutes] = useState([]);
     const [projects, setProjects] = useState([]);
     const [subcontractors, setSubcontractors] = useState([]);
     
@@ -98,6 +99,7 @@ const CivilWorksInit = () => {
     const mapInstanceRef = useRef(null);
     const polylineRef = useRef(null);
     const markersGroupRef = useRef(null);
+    const savedDuctsGroupRef = useRef(null);
     const searchMarkerRef = useRef(null);
 
     // Search and centering states
@@ -148,6 +150,7 @@ const CivilWorksInit = () => {
                 api.get('/api/company').catch(() => ({ data: {} }))
             ]);
             setAddresses(mapRes.data.addresses || []);
+            setDuctRoutes(mapRes.data.ductRoutes || []);
             setSubcontractors(subsRes.data || []);
             setProjects(projectsRes.data || []);
             if (companyRes.data?.country) {
@@ -271,6 +274,7 @@ const CivilWorksInit = () => {
             }).addTo(mapInstanceRef.current);
 
             markersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+            savedDuctsGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             polylineRef.current = L.polyline([], { 
                 color: ductType === '5x10' ? '#ec4899' : '#8b5cf6', 
                 weight: 5,
@@ -301,6 +305,7 @@ const CivilWorksInit = () => {
             });
         } else {
             markersGroupRef.current.clearLayers();
+            if (savedDuctsGroupRef.current) savedDuctsGroupRef.current.clearLayers();
             polylineRef.current.setLatLngs([]);
         }
 
@@ -330,6 +335,87 @@ const CivilWorksInit = () => {
             searchMarkerRef.current = null;
         }
     };
+
+    // Draw saved ducts on map
+    const drawSavedDucts = () => {
+        if (!leafletLoaded || !mapInstanceRef.current || !savedDuctsGroupRef.current) return;
+        const L = window.L;
+        savedDuctsGroupRef.current.clearLayers();
+
+        ductRoutes.forEach(route => {
+            if (!route.coordinates || !Array.isArray(route.coordinates) || route.coordinates.length < 2) return;
+            const pathCoords = route.coordinates.map(pt => [pt.lat, pt.lng]);
+            
+            const ductColor = route.ductType === '5x10' ? '#ec4899' : '#8b5cf6';
+            const polyline = L.polyline(pathCoords, {
+                color: ductColor,
+                weight: 5,
+                opacity: 0.95
+            });
+
+            const subName = route.report?.subcontractor?.name || 'Subcontrata';
+            const distText = route.distance ? `${route.distance}m` : 'No calculada';
+            const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
+
+            // Generate popup content with delete button dynamically
+            const popupContent = document.createElement('div');
+            popupContent.style.font = '13px sans-serif';
+            popupContent.style.color = '#1e293b';
+            popupContent.style.minWidth = '180px';
+            popupContent.innerHTML = `
+                <b style="font-size: 14px; color: ${ductColor}">Ducto de Calle (${route.ductType || '7x22'})</b><br>
+                <b>Socio:</b> ${subName}<br>
+                <b>Longitud:</b> ${distText}<br>
+                <b>Fecha:</b> ${dateText}<br>
+                ${route.comments ? `<b>Detalles:</b> <i>"${route.comments}"</i><br>` : ''}
+            `;
+
+            // Delete button for Admin / Super Admin
+            if (['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'].includes(user.role)) {
+                const btn = document.createElement('button');
+                btn.textContent = 'Borrar Ducto';
+                btn.style.marginTop = '10px';
+                btn.style.width = '100%';
+                btn.style.background = '#ef4444';
+                btn.style.color = 'white';
+                btn.style.border = 'none';
+                btn.style.padding = '8px 12px';
+                btn.style.borderRadius = '8px';
+                btn.style.fontWeight = 'bold';
+                btn.style.cursor = 'pointer';
+                btn.style.fontSize = '12px';
+                btn.style.transition = 'background 0.2s';
+                
+                btn.onmouseover = () => btn.style.background = '#dc2626';
+                btn.onmouseout = () => btn.style.background = '#ef4444';
+                
+                btn.onclick = async () => {
+                    if (window.confirm('¿Estás seguro de que deseas eliminar este ducto permanentemente?')) {
+                        try {
+                            await api.delete(`/api/civil-works/duct-log/${route.id}`);
+                            alert('Ducto eliminado correctamente.');
+                            if (mapInstanceRef.current) mapInstanceRef.current.closePopup();
+                            loadAllData(); // reload data to refresh map
+                        } catch (error) {
+                            console.error('Error deleting duct:', error);
+                            alert(error.response?.data?.message || 'Error al eliminar el ducto.');
+                        }
+                    }
+                };
+                popupContent.appendChild(btn);
+            }
+
+            polyline.bindPopup(popupContent);
+            savedDuctsGroupRef.current.addLayer(polyline);
+        });
+    };
+
+    // Redraw saved ducts when data updates
+    useEffect(() => {
+        if (activeTab === 'ducts') {
+            drawSavedDucts();
+        }
+    }, [leafletLoaded, activeTab, ductRoutes]);
 
     // Live search for centering map
     useEffect(() => {

@@ -761,3 +761,26 @@ exports.createManualDuctLog = async (req, res) => {
     }
 };
 
+exports.deleteDuctLog = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const ductLog = await prisma.civilDailyDuctLog.findUnique({
+            where: { id }
+        });
+
+        if (!ductLog) {
+            return res.status(404).json({ message: 'Ducto no encontrado.' });
+        }
+
+        await prisma.civilDailyDuctLog.delete({
+            where: { id }
+        });
+
+        res.json({ message: 'Ducto eliminado correctamente.' });
+    } catch (error) {
+        console.error('Error deleting duct log:', error);
+        res.status(500).json({ message: 'Error interno al eliminar el ducto.' });
+    }
+};
+

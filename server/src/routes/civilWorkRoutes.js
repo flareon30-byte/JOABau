@@ -21,5 +21,6 @@ router.put('/duct-log/:id/return', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN
 router.get('/returned', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.getReturnedLogs);
 router.put('/work-log/:id/resubmit', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.resubmitWorkLog);
 router.put('/duct-log/:id/resubmit', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.resubmitDuctLog);
+router.delete('/duct-log/:id', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.deleteDuctLog);
 
 module.exports = router;
