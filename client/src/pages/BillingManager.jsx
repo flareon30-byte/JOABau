@@ -121,10 +121,15 @@ const BillingPage = () => {
             if (filters.endDate) params.append('endDate', filters.endDate);
 
             const res = await api.get(`/api/billing/data?${params.toString()}`);
-            setBillingData(res.data || {
-                workLogs: [],
-                ductLogs: [],
-                totals: { totalEurosPending: 0, totalEurosApproved: 0, subcontractorSummary: [] }
+            const rawData = res.data || {};
+            setBillingData({
+                workLogs: Array.isArray(rawData.workLogs) ? rawData.workLogs : [],
+                ductLogs: Array.isArray(rawData.ductLogs) ? rawData.ductLogs : [],
+                totals: {
+                    totalEurosPending: rawData.totals?.totalEurosPending !== undefined ? rawData.totals.totalEurosPending : 0,
+                    totalEurosApproved: rawData.totals?.totalEurosApproved !== undefined ? rawData.totals.totalEurosApproved : 0,
+                    subcontractorSummary: Array.isArray(rawData.totals?.subcontractorSummary) ? rawData.totals.subcontractorSummary : []
+                }
             });
         } catch (error) {
             console.error('Error fetching billing data:', error);
