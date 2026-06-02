@@ -98,6 +98,11 @@ const CivilWorksInit = () => {
     const mapInstanceRef = useRef(null);
     const polylineRef = useRef(null);
     const markersGroupRef = useRef(null);
+    const searchMarkerRef = useRef(null);
+
+    // Search and centering states
+    const [mapSearchQuery, setMapSearchQuery] = useState('');
+    const [mapSearchResults, setMapSearchResults] = useState([]);
     
     // Load Leaflet Script & CSS
     useEffect(() => {
@@ -226,19 +231,40 @@ const CivilWorksInit = () => {
             initMapRef.current._leaflet_id = null;
         }
 
-        let center = companyCountry === 'DE' ? [49.8358, 8.0163] : [40.4167, -3.7037]; // Berlin / Madrid fallback
+        // Reset search marker reference
+        searchMarkerRef.current = null;
 
-        // Attempt to center on the first client address of the chosen project
-        if (filterProject && addresses.length > 0) {
-            const projectAddresses = addresses.filter(a => a.projectId === filterProject);
-            const geocoded = projectAddresses.find(a => a.gpsLat && a.gpsLng);
-            if (geocoded) {
-                center = [geocoded.gpsLat, geocoded.gpsLng];
+        const resolveCenterAndSet = async () => {
+            let center = companyCountry === 'DE' ? [49.8358, 8.0163] : [40.4167, -3.7037]; // Berlin / Madrid fallback
+
+            if (filterProject && addresses.length > 0) {
+                const projectAddresses = addresses.filter(a => a.projectId === filterProject);
+                const geocoded = projectAddresses.find(a => a.gpsLat && a.gpsLng);
+                if (geocoded) {
+                    center = [geocoded.gpsLat, geocoded.gpsLng];
+                } else {
+                    const city = projectAddresses.find(a => a.city)?.city;
+                    const projectObj = projects.find(p => p.id === filterProject);
+                    const searchTerm = city || projectObj?.name;
+                    if (searchTerm) {
+                        const cache = loadCache();
+                        const coords = await geocodeFull(searchTerm, '', '', companyCountry, cache);
+                        saveCache(cache);
+                        if (coords) {
+                            center = [coords.lat, coords.lng];
+                        }
+                    }
+                }
             }
-        }
+
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.setView(center, 15);
+            }
+        };
 
         if (!mapInstanceRef.current) {
-            mapInstanceRef.current = L.map(initMapRef.current, { zoomControl: false }).setView(center, 15);
+            let initialCenter = companyCountry === 'DE' ? [49.8358, 8.0163] : [40.4167, -3.7037];
+            mapInstanceRef.current = L.map(initMapRef.current, { zoomControl: false }).setView(initialCenter, 15);
             L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                 attribution: '&copy; OpenStreetMap'
@@ -259,10 +285,8 @@ const CivilWorksInit = () => {
 
                 setDrawnPoints(prev => {
                     const updated = [...prev, newPoint];
-                    // Update polyline on map
                     polylineRef.current.setLatLngs(updated.map(pt => [pt.lat, pt.lng]));
                     
-                    // Add dot marker
                     const marker = L.circleMarker([lat, lng], {
                         color: ductType === '5x10' ? '#ec4899' : '#8b5cf6',
                         fillColor: '#fff',
@@ -272,19 +296,18 @@ const CivilWorksInit = () => {
                     }).addTo(markersGroupRef.current);
 
                     marker.bindPopup(`Punto ${updated.length}`);
-                    
                     return updated;
                 });
             });
         } else {
-            mapInstanceRef.current.setView(center, 15);
             markersGroupRef.current.clearLayers();
             polylineRef.current.setLatLngs([]);
         }
 
-        // Clean up on unmount or tab change
+        resolveCenterAndSet();
+
         return () => {
-            // we keep it running unless tab changes
+            // Keep map running
         };
     }, [leafletLoaded, activeTab, filterProject]);
 
@@ -302,6 +325,67 @@ const CivilWorksInit = () => {
         setDrawnPoints([]);
         if (polylineRef.current) polylineRef.current.setLatLngs([]);
         if (markersGroupRef.current) markersGroupRef.current.clearLayers();
+        if (searchMarkerRef.current && mapInstanceRef.current) {
+            try { mapInstanceRef.current.removeLayer(searchMarkerRef.current); } catch (e) {}
+            searchMarkerRef.current = null;
+        }
+    };
+
+    // Live search for centering map
+    useEffect(() => {
+        if (!mapSearchQuery.trim()) {
+            setMapSearchResults([]);
+            return;
+        }
+        const q = mapSearchQuery.toLowerCase();
+        const matches = addresses.filter(addr => {
+            if (filterProject && addr.projectId !== filterProject) return false;
+            const streetMatch = addr.street?.toLowerCase().includes(q);
+            const nvtMatch = addr.nvt?.toLowerCase().includes(q);
+            const numMatch = addr.number?.toLowerCase().includes(q);
+            return streetMatch || nvtMatch || numMatch;
+        });
+        setMapSearchResults(matches.slice(0, 5));
+    }, [mapSearchQuery, filterProject, addresses]);
+
+    const handleSelectSearchAddress = async (addr) => {
+        setMapSearchQuery('');
+        setMapSearchResults([]);
+
+        const L = window.L;
+        if (!mapInstanceRef.current || !L) return;
+
+        let coords = null;
+        if (addr.gpsLat && addr.gpsLng) {
+            coords = { lat: addr.gpsLat, lng: addr.gpsLng };
+        } else {
+            const cache = loadCache();
+            coords = await geocodeFull(addr.street, addr.number || '', addr.city || '', companyCountry, cache);
+            saveCache(cache);
+        }
+
+        if (coords) {
+            mapInstanceRef.current.setView([coords.lat, coords.lng], 18);
+
+            // Clean previous search marker
+            if (searchMarkerRef.current) {
+                try { mapInstanceRef.current.removeLayer(searchMarkerRef.current); } catch (e) {}
+            }
+
+            // Create blue marker for address location
+            const searchIcon = L.divIcon({
+                html: `<div class="flex flex-col items-center select-none pointer-events-none">
+                        <div class="bg-blue-600 text-white font-bold text-[9px] px-1.5 py-0.5 rounded-md shadow-md whitespace-nowrap mb-1">${addr.street} ${addr.number || ''}</div>
+                        <div class="w-6 h-6 rounded-full bg-white border-2 border-blue-600 flex items-center justify-center text-[10px] shadow-lg">📍</div>
+                       </div>`,
+                className: '', iconSize: [50, 40], iconAnchor: [25, 40]
+            });
+
+            searchMarkerRef.current = L.marker([coords.lat, coords.lng], { icon: searchIcon }).addTo(mapInstanceRef.current);
+            searchMarkerRef.current.bindPopup(`<b>${addr.street} ${addr.number || ''}</b><br>NVT: ${addr.nvt || 'N/A'}`).openPopup();
+        } else {
+            alert('No se pudo geolocalizar la dirección seleccionada.');
+        }
     };
 
     // Remove the last drawn point (Undo)
@@ -591,6 +675,48 @@ const CivilWorksInit = () => {
                                             ))}
                                         </select>
                                     </div>
+
+                                    {/* Search address to center map */}
+                                    {filterProject && (
+                                        <div className="relative">
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Buscar Dirección para ubicar en Mapa</label>
+                                            <div className="relative">
+                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                                <input
+                                                    type="text"
+                                                    value={mapSearchQuery}
+                                                    onChange={(e) => setMapSearchQuery(e.target.value)}
+                                                    placeholder="Escribe calle o NVT..."
+                                                    className="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-700 font-medium"
+                                                />
+                                                {mapSearchQuery && (
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => { setMapSearchQuery(''); setMapSearchResults([]); }}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                    >
+                                                        <X size={14} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                            
+                                            {mapSearchResults.length > 0 && (
+                                                <div className="absolute left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl z-[1000] mt-1 overflow-hidden max-h-48 overflow-y-auto">
+                                                    {mapSearchResults.map(addr => (
+                                                        <button
+                                                            key={addr.id}
+                                                            type="button"
+                                                            onClick={() => handleSelectSearchAddress(addr)}
+                                                            className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 text-[11px] font-semibold text-slate-700 flex flex-col gap-0.5"
+                                                        >
+                                                            <span className="font-extrabold text-slate-900">{addr.street} {addr.number || ''}</span>
+                                                            <span className="text-[9px] text-slate-400 font-bold uppercase">NVT: {addr.nvt || 'N/A'}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
 
                                     {/* Duct type selector */}
                                     <div>
