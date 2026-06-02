@@ -261,7 +261,8 @@ exports.submitDailyReport = async (req, res) => {
                         status: log.status,
                         photos: log.photos || [],
                         comments: log.comments || null,
-                        ready: log.ready || false
+                        ready: log.ready || false,
+                        connectionColor: log.connectionColor || null
                     }
                 });
 
@@ -270,7 +271,10 @@ exports.submitDailyReport = async (req, res) => {
                 
                 await prisma.address.update({
                     where: { id: log.addressId },
-                    data: { civilWorkStatus: finalStatus }
+                    data: { 
+                        civilWorkStatus: finalStatus,
+                        connectionColor: log.connectionColor || null
+                    }
                 });
 
                 // Upsert CivilWorkInfo

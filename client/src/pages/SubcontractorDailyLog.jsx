@@ -7,6 +7,48 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
+const CONNECTION_COLORS = [
+    'rojo', 'verde', 'azul', 'amarillo', 'blanco', 'gris', 'marron', 'violeta', 'turquesa', 'negro', 'naranja', 'rosa',
+    'Rojo-raya', 'verde-raya', 'azul-raya', 'amarillo-raya', 'blanco-raya', 'gris-raya', 'marron-raya', 'violeta-raya', 'turquesa-raya', 'negro-raya'
+];
+
+const getColorStyle = (colorName) => {
+    if (!colorName) return {};
+    const isStripe = colorName.endsWith('-raya');
+    const baseName = isStripe ? colorName.split('-')[0] : colorName;
+    
+    const colorMap = {
+        rojo: '#ef4444',
+        verde: '#22c55e',
+        azul: '#3b82f6',
+        amarillo: '#facc15',
+        blanco: '#ffffff',
+        gris: '#6b7280',
+        marron: '#78350f',
+        violeta: '#a855f7',
+        turquesa: '#14b8a6',
+        negro: '#0f172a',
+        naranja: '#f97316',
+        rosa: '#ec4899'
+    };
+    
+    const key = baseName.toLowerCase();
+    const colorHex = colorMap[key] || '#cbd5e1';
+    
+    if (isStripe) {
+        const stripeColor = key === 'blanco' ? '#000000' : '#ffffff';
+        return {
+            background: `repeating-linear-gradient(135deg, ${colorHex}, ${colorHex} 6px, ${stripeColor} 6px, ${stripeColor} 12px)`,
+            border: '1.5px solid #94a3b8'
+        };
+    } else {
+        return {
+            backgroundColor: colorHex,
+            border: key === 'blanco' ? '1.5px solid #cbd5e1' : `1.5px solid ${colorHex}`
+        };
+    }
+};
+
 const SubcontractorDailyLog = () => {
     const navigate = useNavigate();
     const [leafletLoaded, setLeafletLoaded] = useState(false);
@@ -27,6 +69,7 @@ const SubcontractorDailyLog = () => {
     const [connectionComments, setConnectionComments] = useState('');
     const [connectionPhotos, setConnectionPhotos] = useState([]);
     const [connectionReady, setConnectionReady] = useState(false);
+    const [connectionColor, setConnectionColor] = useState('');
     
     // Active Duct Log form state
     const [ductPhotos, setDuctPhotos] = useState([]);
@@ -264,14 +307,27 @@ const SubcontractorDailyLog = () => {
             return;
         }
 
+        const isHecho = connectionReady || connectionStatus === 'HECHO';
+
+        if (isHecho && connectionPhotos.length === 0) {
+            alert('Debes subir al menos una foto de comprobación (profundidad, bola colocada, posición, etc.) para marcar la acometida como lista.');
+            return;
+        }
+
+        if (isHecho && !connectionColor) {
+            alert('Debes seleccionar en qué color se ha realizado la conexión.');
+            return;
+        }
+
         const newLog = {
             addressId: selectedAddress.id,
             addressName: `${selectedAddress.street} ${selectedAddress.number || ''} (${selectedAddress.city || ''})`,
             nvt: selectedAddress.nvt,
-            status: connectionReady ? 'HECHO' : connectionStatus,
+            status: isHecho ? 'HECHO' : connectionStatus,
             comments: connectionComments,
             photos: connectionPhotos,
-            ready: connectionReady
+            ready: isHecho,
+            connectionColor: isHecho ? connectionColor : null
         };
 
         setAddedConnections(prev => [...prev, newLog]);
@@ -282,6 +338,7 @@ const SubcontractorDailyLog = () => {
         setConnectionComments('');
         setConnectionPhotos([]);
         setConnectionReady(false);
+        setConnectionColor('');
         setSearchQuery('');
         
         setStatusMsg({ type: 'success', text: 'Acometida añadida al parte del día.' });
@@ -646,6 +703,40 @@ const SubcontractorDailyLog = () => {
                                 </div>
                             </div>
 
+                            {(connectionReady || connectionStatus === 'HECHO') && (
+                                <div className="space-y-3 bg-[#fffaf5] p-5 rounded-2xl border border-orange-100 shadow-sm animate-in fade-in duration-200">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">
+                                        Color de la Conexión <span className="text-red-500 font-extrabold">* Obligatorio</span>
+                                    </label>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase">Selecciona el color del tubo al que se ha conectado el portal:</p>
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                        {CONNECTION_COLORS.map((color) => {
+                                            const isSelected = connectionColor === color;
+                                            const style = getColorStyle(color);
+                                            return (
+                                                <button
+                                                    key={color}
+                                                    type="button"
+                                                    onClick={() => setConnectionColor(color)}
+                                                    className={`px-3 py-2.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                                                        isSelected
+                                                            ? 'bg-orange-500/10 ring-4 ring-orange-500/20 border-orange-500 text-orange-950 font-black scale-[1.03]'
+                                                            : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:scale-[1.02]'
+                                                    }`}
+                                                >
+                                                    <span 
+                                                        className="w-3.5 h-3.5 rounded-full inline-block shrink-0 shadow-sm" 
+                                                        style={style}
+                                                    />
+                                                    <span className="capitalize">{color.replace('-raya', ' (Raya)')}</span>
+                                                    {isSelected && <Check size={12} className="text-orange-600 shrink-0" />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Comentarios de la acometida</label>
                                 <textarea
@@ -833,7 +924,7 @@ const SubcontractorDailyLog = () => {
                                     <div key={idx} className="bg-slate-50 rounded-2xl p-4 border border-slate-150 flex justify-between items-start">
                                         <div>
                                             <h5 className="font-extrabold text-slate-800 text-sm">{item.addressName}</h5>
-                                            <div className="flex gap-2 items-center mt-1">
+                                            <div className="flex flex-wrap gap-2 items-center mt-1">
                                                 <span className="text-[9px] bg-slate-200 text-slate-600 font-bold px-1.5 py-0.5 rounded">NVT: {item.nvt || 'N/A'}</span>
                                                 <span className={`text-[9px] font-black px-1.5 py-0.5 rounded border ${
                                                     item.ready 
@@ -842,6 +933,15 @@ const SubcontractorDailyLog = () => {
                                                 }`}>
                                                     {item.ready ? 'HECHO (Lista)' : item.status}
                                                 </span>
+                                                {item.connectionColor && (
+                                                    <span className="text-[9px] bg-slate-100 text-slate-700 border border-slate-200 font-bold px-1.5 py-0.5 rounded flex items-center gap-1">
+                                                        <span 
+                                                            className="w-2 h-2 rounded-full inline-block shrink-0" 
+                                                            style={getColorStyle(item.connectionColor)}
+                                                        />
+                                                        {item.connectionColor.replace('-raya', ' (Raya)')}
+                                                    </span>
+                                                )}
                                             </div>
                                             {item.comments && <p className="text-xs text-slate-500 italic mt-2">"{item.comments}"</p>}
                                         </div>

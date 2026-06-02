@@ -197,6 +197,7 @@ model Address {
   civilWorkInfo   CivilWorkInfo?
   gpsLat          Float?
   gpsLng          Float?
+  connectionColor String?
 
   civilDailyWorkLogs CivilDailyWorkLog[]
 
@@ -772,18 +773,19 @@ model CivilDailyReport {
 }
 
 model CivilDailyWorkLog {
-  id           String           @id @default(uuid())
-  reportId     String
-  report       CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  addressId    String
-  address      Address          @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  status       CivilWorkStatus
-  photos       String[]
-  comments     String?
-  ready        Boolean          @default(false)
-  reviewStatus String           @default("PENDIENTE_REVISION")
-  pricePaid    Float            @default(0.0)
-  createdAt    DateTime         @default(now())
+  id              String           @id @default(uuid())
+  reportId        String
+  report          CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  addressId       String
+  address         Address          @relation(fields: [addressId], references: [id], onDelete: Cascade)
+  status          CivilWorkStatus
+  photos          String[]
+  comments        String?
+  ready           Boolean          @default(false)
+  reviewStatus    String           @default("PENDIENTE_REVISION")
+  pricePaid       Float            @default(0.0)
+  connectionColor String?
+  createdAt       DateTime         @default(now())
 }
 
 model CivilDailyDuctLog {

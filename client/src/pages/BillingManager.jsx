@@ -8,6 +8,43 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
+const getColorStyle = (colorName) => {
+    if (!colorName) return {};
+    const isStripe = colorName.endsWith('-raya');
+    const baseName = isStripe ? colorName.split('-')[0] : colorName;
+    
+    const colorMap = {
+        rojo: '#ef4444',
+        verde: '#22c55e',
+        azul: '#3b82f6',
+        amarillo: '#facc15',
+        blanco: '#ffffff',
+        gris: '#6b7280',
+        marron: '#78350f',
+        violeta: '#a855f7',
+        turquesa: '#14b8a6',
+        negro: '#0f172a',
+        naranja: '#f97316',
+        rosa: '#ec4899'
+    };
+    
+    const key = baseName.toLowerCase();
+    const colorHex = colorMap[key] || '#cbd5e1';
+    
+    if (isStripe) {
+        const stripeColor = key === 'blanco' ? '#000000' : '#ffffff';
+        return {
+            background: `repeating-linear-gradient(135deg, ${colorHex}, ${colorHex} 4px, ${stripeColor} 4px, ${stripeColor} 8px)`,
+            border: '1px solid #94a3b8'
+        };
+    } else {
+        return {
+            backgroundColor: colorHex,
+            border: key === 'blanco' ? '1px solid #cbd5e1' : `1px solid ${colorHex}`
+        };
+    }
+};
+
 const BillingPage = () => {
     const navigate = useNavigate();
     const { t } = useTranslation();
@@ -470,9 +507,20 @@ const BillingPage = () => {
                                                     <td className="p-4 font-bold text-slate-800">{wl.report?.subcontractor?.name}</td>
                                                     <td className="p-4 text-slate-500">{project?.name || 'N/A'}</td>
                                                     <td className="p-4">
-                                                        <div>{wl.address?.street} {wl.address?.number}</div>
-                                                        <span className="text-[10px] text-slate-400 font-bold uppercase">NVT: {wl.address?.nvt || 'Sin NVT'}</span>
-                                                    </td>
+                                                         <div>{wl.address?.street} {wl.address?.number}</div>
+                                                         <div className="flex flex-wrap gap-1.5 items-center mt-1">
+                                                             <span className="text-[10px] text-slate-400 font-bold uppercase">NVT: {wl.address?.nvt || 'Sin NVT'}</span>
+                                                             {wl.connectionColor && (
+                                                                 <span className="text-[10px] text-slate-500 font-extrabold uppercase px-1.5 py-0.5 bg-slate-50 rounded border border-slate-200 flex items-center gap-1 shadow-sm">
+                                                                     <span 
+                                                                         className="w-2.5 h-2.5 rounded-full inline-block shrink-0 shadow-sm" 
+                                                                         style={getColorStyle(wl.connectionColor)}
+                                                                     />
+                                                                     {wl.connectionColor.replace('-raya', ' (Raya)')}
+                                                                 </span>
+                                                             )}
+                                                         </div>
+                                                     </td>
                                                     <td className="p-4">
                                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${wl.status === 'HECHO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
                                                             {wl.status}

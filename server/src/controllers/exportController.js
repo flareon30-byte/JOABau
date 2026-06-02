@@ -400,6 +400,7 @@ exports.exportBillingExcel = async (req, res) => {
                 'Subcontrata': wl.report.subcontractor.name,
                 'Proyecto': project?.name || 'N/A',
                 'Dirección': `${wl.address?.street || ''} ${wl.address?.number || ''}, ${wl.address?.city || ''}`,
+                'Color Conexión': wl.connectionColor || 'No indicado',
                 'Estado Físico': wl.status,
                 'Estado Revisión': wl.reviewStatus === 'REVISADO' ? 'Revisado' : 'Pendiente de Revisión',
                 'Comentarios': wl.comments || '',
