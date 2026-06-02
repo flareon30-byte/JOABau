@@ -316,10 +316,11 @@ const CivilWorksMap = () => {
 
         setBulkUpdating(true);
         try {
-            // Bulk post status updates sequentially or parallel
-            await Promise.all(selectedAddressIds.map(id => 
-                api.post(`/api/civil-works/${id}`, { status: newStatus })
-            ));
+            // Llamar al endpoint de actualización masiva optimizado
+            await api.post('/api/civil-works/bulk-status', {
+                addressIds: selectedAddressIds,
+                status: newStatus
+            });
             
             alert('Estados de las acometidas actualizados correctamente.');
             setSelectedAddressIds([]);

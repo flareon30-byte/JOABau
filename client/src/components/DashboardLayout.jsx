@@ -333,12 +333,12 @@ const DashboardLayout = () => {
             id: 'civil',
             label: 'Obra Civil',
             icon: HardHat,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER', 'SUBCONTRACTOR'],
+            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER', 'SUBCONTRACTOR'],
             items: [
-                { icon: Map, label: 'Mapa Obra Civil', path: '/dashboard/civil-works-map', roles: ['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER', 'SUBCONTRACTOR'] },
+                { icon: Map, label: 'Mapa Obra Civil', path: '/dashboard/civil-works-map', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER', 'SUBCONTRACTOR'] },
                 { icon: ClipboardList, label: 'Reporte Diario', path: '/dashboard/subcontractor-log', roles: ['SUBCONTRACTOR', 'CIVIL_WORKER'] },
-                { icon: Users, label: 'Gestión Subcontratas', path: '/dashboard/subcontractors', roles: ['SUPER_ADMIN', 'ADMIN'] },
-                { icon: FileText, label: 'Partes Diarios', path: '/dashboard/daily-reports', roles: ['SUPER_ADMIN', 'ADMIN'] }
+                { icon: Users, label: 'Gestión Subcontratas', path: '/dashboard/subcontractors', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] },
+                { icon: FileText, label: 'Partes Diarios', path: '/dashboard/daily-reports', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'] }
             ]
         }
     ];

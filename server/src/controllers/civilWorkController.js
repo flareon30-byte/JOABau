@@ -381,3 +381,55 @@ exports.getDailyReports = async (req, res) => {
         res.status(500).json({ message: 'Error al obtener los partes diarios' });
     }
 };
+
+exports.bulkUpdateCivilWorkStatus = async (req, res) => {
+    const { addressIds, status } = req.body;
+    const userId = req.userId;
+
+    if (!addressIds || !Array.isArray(addressIds) || addressIds.length === 0) {
+        return res.status(400).json({ message: 'Se requiere una lista de IDs de acometidas.' });
+    }
+
+    if (!status) {
+        return res.status(400).json({ message: 'Se requiere el estado.' });
+    }
+
+    try {
+        await prisma.$transaction(async (tx) => {
+            for (const id of addressIds) {
+                // Actualizar estado en la dirección física
+                await tx.address.update({
+                    where: { id },
+                    data: { civilWorkStatus: status }
+                });
+
+                // Crear o actualizar la información detallada de obra civil
+                const existingInfo = await tx.civilWorkInfo.findUnique({ where: { addressId: id } });
+                if (existingInfo) {
+                    await tx.civilWorkInfo.update({
+                        where: { addressId: id },
+                        data: {
+                            performerIds: { push: userId },
+                            completedAt: status === 'HECHO' ? new Date() : undefined
+                        }
+                    });
+                } else {
+                    await tx.civilWorkInfo.create({
+                        data: {
+                            addressId: id,
+                            performerIds: [userId],
+                            completedAt: status === 'HECHO' ? new Date() : null,
+                            startedAt: new Date()
+                        }
+                    });
+                }
+            }
+        });
+
+        res.json({ message: `Se actualizaron correctamente ${addressIds.length} acometidas.` });
+    } catch (error) {
+        console.error('Error in bulkUpdateCivilWorkStatus:', error);
+        res.status(500).json({ message: 'Error interno al realizar la actualización en lote.' });
+    }
+};
+

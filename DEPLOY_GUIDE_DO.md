@@ -1,10 +1,12 @@
 # Guía de Despliegue en Digital Ocean
 
-Para actualizar tu servidor en Digital Ocean con los últimos cambios (corrección de búsqueda), sigue estos pasos:
+¡El despliegue de esta aplicación está automatizado! Cada vez que subes cambios a la rama principal (`master`) en GitHub, un flujo de trabajo automático (GitHub Actions) se encarga de actualizar y reiniciar el servidor en tu Droplet de Digital Ocean.
 
-## Paso 1: Subir cambios locales a GitHub
+---
 
-Desde tu terminal local (en Visual Studio Code):
+## 🚀 Despliegue Automático (Recomendado)
+
+Para subir y desplegar tus cambios locales:
 
 1.  Añade los cambios al control de versiones:
     ```powershell
@@ -13,56 +15,70 @@ Desde tu terminal local (en Visual Studio Code):
 
 2.  Guarda los cambios con un mensaje descriptivo:
     ```powershell
-    git commit -m "Corrección de búsqueda y restauración de administrador"
+    git commit -m "Descripción de los cambios realizados"
     ```
 
-3.  Envía los cambios a GitHub:
+3.  Envía los cambios a GitHub (esto inicia el despliegue automático):
     ```powershell
     git push origin master
     ```
 
+Puedes monitorear el progreso del despliegue en la pestaña **Actions** de tu repositorio en GitHub.
+
 ---
 
-## Paso 2: Conectar al Servidor
+## 🛠️ Acceso Manual y Diagnóstico
 
-Abre una terminal nueva o usa PuTTY para conectar a tu servidor Digital Ocean:
+Si necesitas conectarte directamente al servidor para verificar logs, reiniciar contenedores manualmente o depurar algún problema:
+
+### 1. Conectar al Servidor por SSH
+
+Usa tu terminal o cliente SSH (como PuTTY) con la IP del servidor correcto:
 
 ```bash
-ssh root@139.59.141.99
+ssh root@161.35.68.77
 ```
-*(Si te pide contraseña, úsala. Si tienes llave SSH configurada, entrarás directo)*.
 
----
+### 2. Navegar al Directorio del Proyecto
 
-## Paso 3: Actualizar el Proyecto en el Servidor
+El proyecto está ubicado en el siguiente directorio del servidor:
 
-Una vez dentro del servidor, ejecuta los siguientes comandos uno por uno:
+```bash
+cd /opt/JOABau
+```
 
-1.  Navega a la carpeta del proyecto (ajusta la ruta si es diferente, por ejemplo `/var/www/joa-technologien` o `~/Joa-Technologien`):
+### 3. Comandos Útiles de Docker
+
+Una vez dentro de `/opt/JOABau`, puedes ejecutar:
+
+*   **Ver logs en tiempo real (Backend/Frontend/BD):**
     ```bash
-    cd Joa-Technologien
+    docker-compose logs -f
     ```
-    *(Si no recuerdas la carpeta, usa `ls` para buscarla)*.
-
-2.  Descarga los últimos cambios de GitHub:
+*   **Ver logs de un contenedor específico (ej. server):**
     ```bash
-    git pull origin master
+    docker-compose logs -f server
     ```
-
-3.  Reconstruye y reinicia los contenedores (si usas Docker):
+*   **Reiniciar manualmente los contenedores:**
     ```bash
-    docker-compose up -d --build
+    docker-compose down
+    docker-compose up -d
     ```
-    
-    *O si usas PM2 directamente:*
+*   **Forzar recreación y reconstrucción manual de contenedores:**
     ```bash
-    cd server
-    npm install
-    pm2 restart all
-    cd ../client
-    npm run build
+    docker-compose up -d --build --force-recreate
     ```
 
-## Notas Importantes
-- Si la base de datos en el servidor también está vacía o dañada, es posible que necesites ejecutar el script de creación de administrador (`node server/create_admin.js`) dentro del contenedor o servidor.
-- Para ver los logs en tiempo real si algo falla: `docker-compose logs -f`.
+### 4. Inicializar o Modificar la Base de Datos
+
+Si necesitas forzar una actualización del esquema de la base de datos (Prisma) o sembrar datos de prueba desde el servidor:
+
+*   **Actualizar esquema (Prisma db push):**
+    ```bash
+    docker-compose exec -T server npx prisma db push --accept-data-loss
+    ```
+*   **Ejecutar un script específico (ej. crear admin o seed):**
+    ```bash
+    docker-compose exec -T server node src/seed_admin.js
+    ```
+

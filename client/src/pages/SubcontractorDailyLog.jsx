@@ -448,6 +448,48 @@ const SubcontractorDailyLog = () => {
                 </h3>
 
                 <div className="space-y-4">
+                    {/* Lista de Acometidas Asignadas */}
+                    {assignedPipes.length > 0 && (
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Mis Acometidas Asignadas (Hacer clic para seleccionar)</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-44 overflow-y-auto p-3 bg-slate-50 rounded-2xl border border-slate-100/80">
+                                {assignedPipes.map(addr => {
+                                    const isSelected = selectedAddress?.id === addr.id;
+                                    return (
+                                        <button
+                                            key={addr.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedAddress(addr);
+                                                setSearchResults([]);
+                                                setSearchQuery('');
+                                            }}
+                                            className={`text-left p-3 rounded-xl border transition-all flex justify-between items-center text-xs font-semibold ${
+                                                isSelected 
+                                                    ? 'bg-orange-500/10 border-orange-500 text-orange-800 ring-2 ring-orange-500/20' 
+                                                    : 'bg-white hover:bg-orange-50/40 border-slate-200/60 text-slate-700 hover:border-orange-200'
+                                            }`}
+                                        >
+                                            <div className="truncate pr-2">
+                                                <span className="font-extrabold block truncate">{addr.street} {addr.number || ''}</span>
+                                                <span className="text-[9px] text-slate-400 font-bold block mt-0.5">NVT: {addr.nvt || 'N/A'}</span>
+                                            </div>
+                                            <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
+                                                addr.civilWorkStatus === 'HECHO'
+                                                    ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                                    : addr.civilWorkStatus === 'PLANIFICADO'
+                                                        ? 'bg-amber-50 text-amber-600 border border-amber-100'
+                                                        : 'bg-slate-100 text-slate-500 border border-slate-200'
+                                            }`}>
+                                                {addr.civilWorkStatus || 'SIN_TUBO'}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Address Selection Search */}
                     <div>
                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Buscar Dirección Asignada</label>
