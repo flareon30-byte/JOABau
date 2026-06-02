@@ -48,7 +48,7 @@ const geocodeFull = async (street, number, city, countryCode, cache) => {
 
     // Stage 2: Photon
     try {
-        const q = [street, number, city].filter(Boolean).join(', ').trim();
+        const q = [street, number, city, country].filter(Boolean).join(', ').trim();
         const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=${lang}`;
         const res = await fetch(url);
         if (res.ok) {
@@ -93,7 +93,7 @@ const geocodeFull = async (street, number, city, countryCode, cache) => {
     }
 
     // Stage 4: Photon street-only
-    const streetKey = [street, city].filter(Boolean).join(', ').trim();
+    const streetKey = [street, city, country].filter(Boolean).join(', ').trim();
     if (cache[streetKey]?.lat) return cache[streetKey];
     try {
         const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(streetKey)}&limit=1&lang=${lang}`;
@@ -298,7 +298,7 @@ const CivilWorksMap = () => {
                 }
                 if (!cityResolved) {
                     try {
-                        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(cityName)}&limit=1&lang=${lang}`;
+                        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(cityName + ', ' + country)}&limit=1&lang=${lang}`;
                         const res = await fetch(url);
                         if (res.ok) {
                             const d = await res.json();
@@ -312,6 +312,21 @@ const CivilWorksMap = () => {
             }
 
             if (cancelledRef.current) return;
+
+            // If the map instance exists but container changed (e.g. switched tabs), clean it up first
+            if (mapInstanceRef.current && mapInstanceRef.current.getContainer() !== mapRef.current) {
+                try {
+                    mapInstanceRef.current.remove();
+                } catch (e) {
+                    console.error("Error removing old Leaflet map container:", e);
+                }
+                mapInstanceRef.current = null;
+            }
+
+            // Bulletproof: Clear any internal leaflet id set on the new container DOM element
+            if (mapRef.current && mapRef.current._leaflet_id) {
+                mapRef.current._leaflet_id = null;
+            }
 
             if (!mapInstanceRef.current) {
                 mapInstanceRef.current = L.map(mapRef.current, { zoomControl: false }).setView([center.lat, center.lng], 16);
