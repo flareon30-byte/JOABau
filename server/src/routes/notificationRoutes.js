@@ -69,7 +69,8 @@ router.get('/', async (req, res) => {
             where: {
                 OR: [
                     { targetRole: user.role },
-                    { createdById: userId } // Maybe they want to see what they sent, or specific targetUserId if added later
+                    { targetUserId: userId },
+                    { createdById: userId }
                 ]
             },
             include: {
@@ -138,6 +139,7 @@ router.delete('/', async (req, res) => {
             where: {
                 OR: [
                     { targetRole: user.role },
+                    { targetUserId: userId },
                     { createdById: userId }
                 ]
             }

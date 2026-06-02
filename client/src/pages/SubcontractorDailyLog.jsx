@@ -58,6 +58,42 @@ const SubcontractorDailyLog = () => {
     const [loadingPipes, setLoadingPipes] = useState(true);
     const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
+    // Returned Logs State
+    const [returnedLogs, setReturnedLogs] = useState({ workLogs: [], ductLogs: [] });
+    const [loadingReturned, setLoadingReturned] = useState(false);
+
+    // Correction Modal State
+    const [correctionModalOpen, setCorrectionModalOpen] = useState(false);
+    const [selectedCorrectionLog, setSelectedCorrectionLog] = useState(null); // { log, type: 'work' | 'duct' }
+    const [correctedPhotos, setCorrectedPhotos] = useState([]);
+    const [correctedComments, setCorrectedComments] = useState('');
+    const [correctedDistance, setCorrectedDistance] = useState('');
+    const [submittingCorrection, setSubmittingCorrection] = useState(false);
+
+    const getFileUrl = (path) => {
+        if (!path) return '';
+        if (path.startsWith('http://') || path.startsWith('https://')) return path;
+        let cleanPath = path.split('?')[0].replace(/\\/g, '/');
+        if (!cleanPath.startsWith('/')) cleanPath = '/' + cleanPath;
+        let baseUrl = api.defaults.baseURL || '';
+        if (baseUrl === '/') baseUrl = '';
+        if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+        const encodedPath = cleanPath.split('/').map(segment => encodeURIComponent(segment)).join('/');
+        return `${baseUrl}${encodedPath}`;
+    };
+
+    const fetchReturnedLogs = async () => {
+        setLoadingReturned(true);
+        try {
+            const res = await api.get('/api/civil-works/returned');
+            setReturnedLogs(res.data || { workLogs: [], ductLogs: [] });
+        } catch (error) {
+            console.error('Error fetching returned logs:', error);
+        } finally {
+            setLoadingReturned(false);
+        }
+    };
+
     // Main Report State
     const [peoplePresent, setPeoplePresent] = useState(1);
     const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
@@ -140,6 +176,7 @@ const SubcontractorDailyLog = () => {
 
     useEffect(() => {
         fetchAssignedPipes();
+        fetchReturnedLogs();
     }, []);
 
     // Handle Address Search
@@ -379,6 +416,79 @@ const SubcontractorDailyLog = () => {
         setStatusMsg({ type: 'success', text: 'Ducto de calle añadido al parte del día.' });
     };
 
+    // Correction Handlers
+    const openCorrectionModal = (log, type) => {
+        setSelectedCorrectionLog({ log, type });
+        const goodPhotos = (log.photos || []).filter(p => !(log.incorrectPhotos || []).includes(p));
+        setCorrectedPhotos(goodPhotos);
+        setCorrectedComments(log.comments || '');
+        if (type === 'duct') {
+            setCorrectedDistance(log.distance ? log.distance.toString() : '');
+        } else {
+            setCorrectedDistance('');
+        }
+        setCorrectionModalOpen(true);
+    };
+
+    const handleCorrectionPhotoUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        setUploadingPhotos(true);
+        const formData = new FormData();
+        files.forEach(file => {
+            formData.append('photos', file);
+        });
+
+        try {
+            const res = await api.post('/api/uploads', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            const uploadedUrls = res.data.urls || [];
+            setCorrectedPhotos(prev => [...prev, ...uploadedUrls]);
+        } catch (error) {
+            console.error('Error uploading correction photos:', error);
+            alert('Error al subir fotos al servidor.');
+        } finally {
+            setUploadingPhotos(false);
+        }
+    };
+
+    const submitCorrection = async () => {
+        if (!selectedCorrectionLog) return;
+        if (correctedPhotos.length === 0) {
+            alert('Por favor, suba al menos una foto correcta para reenviar el trabajo.');
+            return;
+        }
+        setSubmittingCorrection(true);
+        try {
+            const endpoint = selectedCorrectionLog.type === 'work'
+                ? `/api/civil-works/work-log/${selectedCorrectionLog.log.id}/resubmit`
+                : `/api/civil-works/duct-log/${selectedCorrectionLog.log.id}/resubmit`;
+
+            const payload = {
+                photos: correctedPhotos,
+                comments: correctedComments
+            };
+
+            if (selectedCorrectionLog.type === 'duct') {
+                payload.distance = parseFloat(correctedDistance) || undefined;
+            }
+
+            await api.put(endpoint, payload);
+            setCorrectionModalOpen(false);
+            setStatusMsg({ type: 'success', text: 'Trabajo corregido y reenviado a revisión correctamente.' });
+            
+            fetchReturnedLogs();
+            fetchAssignedPipes();
+        } catch (error) {
+            console.error('Error resubmitting correction:', error);
+            alert('Error al reenviar el trabajo corregido.');
+        } finally {
+            setSubmittingCorrection(false);
+        }
+    };
+
     // Remove added connection item
     const handleRemoveConnection = (idx) => {
         setAddedConnections(prev => prev.filter((_, i) => i !== idx));
@@ -462,6 +572,113 @@ const SubcontractorDailyLog = () => {
                     <button onClick={() => setStatusMsg({ type: '', text: '' })} className="ml-auto p-0.5 text-slate-400 hover:text-slate-600">
                         <X size={16} />
                     </button>
+                </div>
+            )}
+
+            {/* Trabajos Devueltos Section */}
+            {(returnedLogs.workLogs.length > 0 || returnedLogs.ductLogs.length > 0) && (
+                <div className="glass-panel bg-white rounded-3xl p-6 shadow-sm border-2 border-rose-200 space-y-4">
+                    <div className="flex items-center gap-2 border-b border-rose-50 pb-3">
+                        <AlertTriangle className="text-rose-500 animate-pulse shrink-0" size={24} />
+                        <div>
+                            <h3 className="text-lg font-black text-rose-955">Trabajos Devueltos (Revisión Fallida)</h3>
+                            <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider mt-0.5">
+                                Tienes trabajos rechazados por el cliente. Revise los motivos y reenvíelos.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-4">
+                        {/* Returned Work Logs (Acometidas) */}
+                        {returnedLogs.workLogs.map((wl) => (
+                            <div key={wl.id} className="bg-rose-50/20 border border-rose-100 rounded-2xl p-4 space-y-3">
+                                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                    <div>
+                                        <span className="text-[10px] bg-rose-100 text-rose-800 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Acometida Rechazada</span>
+                                        <h4 className="font-extrabold text-slate-800 text-sm mt-1">{wl.address?.street} {wl.address?.number}</h4>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">NVT: {wl.address?.nvt || 'Sin NVT'} | Proyecto: {wl.address?.project?.name}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => openCorrectionModal(wl, 'work')}
+                                        className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 self-start"
+                                    >
+                                        <BrainCircuit size={14} /> Corregir y Reenviar
+                                    </button>
+                                </div>
+
+                                <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 text-xs text-rose-900 font-semibold leading-relaxed">
+                                    <strong>Motivo de rechazo:</strong> "{wl.reviewComments || 'Sin comentarios específicos.'}"
+                                </div>
+
+                                <div>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Fotos del Trabajo:</span>
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {wl.photos && wl.photos.map((photo, idx) => {
+                                            const isIncorrect = (wl.incorrectPhotos || []).includes(photo);
+                                            return (
+                                                <div key={idx} className={`relative w-20 h-20 rounded-xl overflow-hidden border ${isIncorrect ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'}`}>
+                                                    <img src={getFileUrl(photo)} alt="Evidence" className="w-full h-full object-cover" />
+                                                    {isIncorrect && (
+                                                        <div className="absolute inset-0 bg-rose-500/30 flex items-center justify-center">
+                                                            <div className="bg-rose-600 text-white p-0.5 rounded-full shadow-sm" title="Foto Incorrecta">
+                                                                <AlertTriangle size={12} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Returned Duct Logs (Ductos) */}
+                        {returnedLogs.ductLogs.map((dl) => (
+                            <div key={dl.id} className="bg-rose-50/20 border border-rose-100 rounded-2xl p-4 space-y-3">
+                                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                    <div>
+                                        <span className="text-[10px] bg-rose-100 text-rose-800 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">Ducto Rechazado</span>
+                                        <h4 className="font-extrabold text-slate-800 text-sm mt-1">Ducto de calle - {dl.distance} metros</h4>
+                                        <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">Proyecto: {dl.report?.subcontractor?.projects?.[0]?.name || 'N/A'}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => openCorrectionModal(dl, 'duct')}
+                                        className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 self-start"
+                                    >
+                                        <BrainCircuit size={14} /> Corregir y Reenviar
+                                    </button>
+                                </div>
+
+                                <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 text-xs text-rose-900 font-semibold leading-relaxed">
+                                    <strong>Motivo de rechazo:</strong> "{dl.reviewComments || 'Sin comentarios específicos.'}"
+                                </div>
+
+                                <div>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Fotos del Ducto:</span>
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {dl.photos && dl.photos.map((photo, idx) => {
+                                            const isIncorrect = (dl.incorrectPhotos || []).includes(photo);
+                                            return (
+                                                <div key={idx} className={`relative w-20 h-20 rounded-xl overflow-hidden border ${isIncorrect ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'}`}>
+                                                    <img src={getFileUrl(photo)} alt="Evidence" className="w-full h-full object-cover" />
+                                                    {isIncorrect && (
+                                                        <div className="absolute inset-0 bg-rose-500/30 flex items-center justify-center">
+                                                            <div className="bg-rose-600 text-white p-0.5 rounded-full shadow-sm" title="Foto Incorrecta">
+                                                                <AlertTriangle size={12} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             )}
 
@@ -1028,6 +1245,137 @@ const SubcontractorDailyLog = () => {
                     )}
                 </button>
             </div>
+
+            {/* CORRECTION / RESUBMIT MODAL */}
+            {correctionModalOpen && selectedCorrectionLog && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-xl p-6 shadow-2xl border border-slate-100 flex flex-col space-y-4 max-h-[90vh]">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                <BrainCircuit className="text-rose-600" /> Corregir Trabajo Devuelto
+                            </h3>
+                            <button
+                                onClick={() => setCorrectionModalOpen(false)}
+                                className="text-slate-400 hover:text-slate-600 text-xl font-bold"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="text-sm text-slate-600">
+                            {selectedCorrectionLog.type === 'work' ? (
+                                <>
+                                    <strong>Acometida:</strong> {selectedCorrectionLog.log.address?.street} {selectedCorrectionLog.log.address?.number}
+                                </>
+                            ) : (
+                                <>
+                                    <strong>Ducto de calle:</strong> {selectedCorrectionLog.log.distance} metros
+                                </>
+                            )}
+                            <div className="bg-rose-50 text-rose-950 p-3 rounded-xl border border-rose-100 text-xs font-semibold mt-2 leading-relaxed">
+                                <strong>Motivo de rechazo:</strong> "{selectedCorrectionLog.log.reviewComments}"
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+                            {/* Duct distance field if duct log */}
+                            {selectedCorrectionLog.type === 'duct' && (
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                                        Distancia (m)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        step="0.1"
+                                        value={correctedDistance}
+                                        onChange={(e) => setCorrectedDistance(e.target.value)}
+                                        className="w-full border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-800 font-bold focus:bg-white outline-none focus:ring-2 focus:ring-rose-500/20 text-sm transition-all"
+                                        placeholder="0.0"
+                                        required
+                                    />
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                                    Fotos de Evidencia (Correctas + Nuevas cargadas)
+                                </label>
+                                <div className="flex flex-wrap gap-3 items-center">
+                                    {correctedPhotos.map((url, idx) => (
+                                        <div key={idx} className="w-20 h-20 rounded-xl overflow-hidden border border-slate-200 relative bg-slate-100 group">
+                                            <img src={getFileUrl(url)} alt="Correction upload" className="w-full h-full object-cover" />
+                                            <button
+                                                type="button"
+                                                onClick={() => setCorrectedPhotos(prev => prev.filter((_, i) => i !== idx))}
+                                                className="absolute top-1 right-1 bg-black/60 hover:bg-black text-white p-0.5 rounded-full"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    
+                                    <label className="w-20 h-20 rounded-xl border-2 border-dashed border-slate-300 hover:border-rose-500 flex flex-col items-center justify-center cursor-pointer transition-colors bg-white relative">
+                                        {uploadingPhotos ? (
+                                            <Loader2 className="animate-spin text-rose-600" size={20} />
+                                        ) : (
+                                            <>
+                                                <Camera size={20} className="text-slate-400" />
+                                                <span className="text-[9px] font-bold text-slate-400 uppercase mt-1">Añadir Foto</span>
+                                            </>
+                                        )}
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            onChange={handleCorrectionPhotoUpload}
+                                            className="hidden"
+                                            disabled={uploadingPhotos}
+                                        />
+                                    </label>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-1 italic">
+                                    * Hemos mantenido las fotos que el revisor NO marcó como erróneas. Reemplace las incorrectas subiendo las nuevas imágenes correctas.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                                    Comentario o Aclaraciones (Opcional)
+                                </label>
+                                <textarea
+                                    value={correctedComments}
+                                    onChange={(e) => setCorrectedComments(e.target.value)}
+                                    rows="2"
+                                    className="w-full border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-800 text-sm focus:bg-white outline-none focus:ring-2 focus:ring-rose-500/20 transition-all placeholder:text-slate-400"
+                                    placeholder="Indique los cambios realizados..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                            <button
+                                onClick={() => setCorrectionModalOpen(false)}
+                                className="px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 text-sm font-bold transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={submitCorrection}
+                                disabled={submittingCorrection || uploadingPhotos}
+                                className="bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-1.5"
+                            >
+                                {submittingCorrection ? (
+                                    <>
+                                        <Loader2 className="animate-spin" size={14} /> Reenviando...
+                                    </>
+                                ) : (
+                                    'Volver a Enviar al Cliente'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

@@ -14,4 +14,11 @@ router.post('/:id', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKE
 router.put('/work-log/:id/review', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.reviewWorkLog);
 router.put('/duct-log/:id/review', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.reviewDuctLog);
 
+// Rejection and Resubmission routes
+router.put('/work-log/:id/return', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.returnWorkLog);
+router.put('/duct-log/:id/return', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.returnDuctLog);
+router.get('/returned', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.getReturnedLogs);
+router.put('/work-log/:id/resubmit', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.resubmitWorkLog);
+router.put('/duct-log/:id/resubmit', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.resubmitDuctLog);
+
 module.exports = router;

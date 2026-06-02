@@ -788,6 +788,8 @@ model CivilDailyWorkLog {
   reviewStatus    String           @default("PENDIENTE_REVISION")
   pricePaid       Float            @default(0.0)
   connectionColor String?
+  reviewComments  String?
+  incorrectPhotos String[]         @default([])
   createdAt       DateTime         @default(now())
 }
 
@@ -806,5 +808,7 @@ model CivilDailyDuctLog {
   confirmed    Boolean          @default(false)
   reviewStatus String           @default("PENDIENTE_REVISION")
   pricePaid    Float            @default(0.0)
+  reviewComments  String?
+  incorrectPhotos String[]         @default([])
   createdAt    DateTime         @default(now())
 }

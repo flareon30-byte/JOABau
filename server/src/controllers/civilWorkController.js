@@ -473,3 +473,199 @@ exports.reviewDuctLog = async (req, res) => {
     }
 };
 
+exports.returnWorkLog = async (req, res) => {
+    const { id } = req.params;
+    const { reviewComments, incorrectPhotos } = req.body;
+    try {
+        const log = await prisma.civilDailyWorkLog.update({
+            where: { id },
+            data: {
+                reviewStatus: 'DEVUELTO',
+                reviewComments: reviewComments || null,
+                incorrectPhotos: incorrectPhotos || []
+            },
+            include: {
+                report: {
+                    include: { subcontractor: true }
+                },
+                address: true
+            }
+        });
+
+        // Notify subcontractor users
+        const subUsers = await prisma.user.findMany({
+            where: { subcontractorId: log.report.subcontractorId }
+        });
+
+        const addressStr = log.address 
+            ? `${log.address.street || ''} ${log.address.number || ''} (NVT: ${log.address.nvt || 'N/A'})` 
+            : 'Acometida';
+
+        for (const user of subUsers) {
+            await prisma.notification.create({
+                data: {
+                    type: 'WORK_FAILED',
+                    message: `Trabajo devuelto por fotos incorrectas en ${addressStr}. Motivo: ${reviewComments || 'Sin comentarios'}`,
+                    addressId: log.addressId,
+                    targetUserId: user.id,
+                    createdById: req.userId
+                }
+            });
+        }
+
+        res.json({ message: 'Acometida devuelta correctamente', log });
+    } catch (error) {
+        console.error('Error returning work log:', error);
+        res.status(500).json({ message: 'Error interno al devolver el trabajo.' });
+    }
+};
+
+exports.returnDuctLog = async (req, res) => {
+    const { id } = req.params;
+    const { reviewComments, incorrectPhotos } = req.body;
+    try {
+        const log = await prisma.civilDailyDuctLog.update({
+            where: { id },
+            data: {
+                reviewStatus: 'DEVUELTO',
+                reviewComments: reviewComments || null,
+                incorrectPhotos: incorrectPhotos || []
+            },
+            include: {
+                report: {
+                    include: { subcontractor: true }
+                }
+            }
+        });
+
+        // Notify subcontractor users
+        const subUsers = await prisma.user.findMany({
+            where: { subcontractorId: log.report.subcontractorId }
+        });
+
+        const infoStr = `Ducto de calle (${log.distance || 0}m)`;
+
+        for (const user of subUsers) {
+            await prisma.notification.create({
+                data: {
+                    type: 'WORK_FAILED',
+                    message: `Trabajo devuelto por fotos incorrectas en ${infoStr}. Motivo: ${reviewComments || 'Sin comentarios'}`,
+                    targetUserId: user.id,
+                    createdById: req.userId
+                }
+            });
+        }
+
+        res.json({ message: 'Ducto devuelto correctamente', log });
+    } catch (error) {
+        console.error('Error returning duct log:', error);
+        res.status(500).json({ message: 'Error interno al devolver el ducto.' });
+    }
+};
+
+exports.getReturnedLogs = async (req, res) => {
+    const userId = req.userId;
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+
+        if (!user || !user.subcontractorId) {
+            return res.status(400).json({ message: 'El usuario no pertenece a ninguna subcontrata.' });
+        }
+
+        // Fetch returned work logs
+        const workLogs = await prisma.civilDailyWorkLog.findMany({
+            where: {
+                reviewStatus: 'DEVUELTO',
+                report: { subcontractorId: user.subcontractorId }
+            },
+            include: {
+                address: {
+                    include: { project: true }
+                },
+                report: true
+            }
+        });
+
+        // Fetch returned duct logs
+        const ductLogs = await prisma.civilDailyDuctLog.findMany({
+            where: {
+                reviewStatus: 'DEVUELTO',
+                report: { subcontractorId: user.subcontractorId }
+            },
+            include: {
+                report: {
+                    include: {
+                        subcontractor: {
+                            include: { projects: true }
+                        }
+                    }
+                }
+            }
+        });
+
+        res.json({ workLogs, ductLogs });
+    } catch (error) {
+        console.error('Error fetching returned logs:', error);
+        res.status(500).json({ message: 'Error al obtener los trabajos devueltos.' });
+    }
+};
+
+exports.resubmitWorkLog = async (req, res) => {
+    const { id } = req.params;
+    const { photos, comments } = req.body;
+    try {
+        const log = await prisma.civilDailyWorkLog.update({
+            where: { id },
+            data: {
+                photos: photos || [],
+                comments: comments || null,
+                reviewStatus: 'PENDIENTE_REVISION',
+                reviewComments: null,
+                incorrectPhotos: []
+            },
+            include: { address: true }
+        });
+
+        if (log.addressId) {
+            const existingInfo = await prisma.civilWorkInfo.findUnique({ where: { addressId: log.addressId } });
+            if (existingInfo) {
+                const allPhotos = Array.from(new Set([...existingInfo.photos, ...(photos || [])]));
+                await prisma.civilWorkInfo.update({
+                    where: { addressId: log.addressId },
+                    data: { photos: allPhotos }
+                });
+            }
+        }
+
+        res.json({ message: 'Acometida reenviada correctamente', log });
+    } catch (error) {
+        console.error('Error resubmitting work log:', error);
+        res.status(500).json({ message: 'Error interno al reenviar el trabajo.' });
+    }
+};
+
+exports.resubmitDuctLog = async (req, res) => {
+    const { id } = req.params;
+    const { photos, comments, distance } = req.body;
+    try {
+        const log = await prisma.civilDailyDuctLog.update({
+            where: { id },
+            data: {
+                photos: photos || [],
+                comments: comments || null,
+                distance: distance ? parseFloat(distance) : undefined,
+                reviewStatus: 'PENDIENTE_REVISION',
+                reviewComments: null,
+                incorrectPhotos: []
+            }
+        });
+
+        res.json({ message: 'Ducto reenviado correctamente', log });
+    } catch (error) {
+        console.error('Error resubmitting duct log:', error);
+        res.status(500).json({ message: 'Error interno al reenviar el ducto.' });
+    }
+};
+

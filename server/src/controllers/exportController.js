@@ -131,6 +131,117 @@ exports.debugBilling = async (req, res) => {
     }
 };
 
+// Helper to resolve price per acometida based on client price items
+function resolvePricePerAcometida(priceItems, subcontractorId, fallbackPrice) {
+    const keywords = [
+        'acometida', 'portal', 'conexión', 'conexion', 'civil', 'punto',
+        'hausanschluss', 'anschluss', 'hauseinführung', 'hnp', 'bfe', 'hüp', 'huep',
+        'connection', 'house', 'drop', 'home', 'entry'
+    ];
+    
+    // We want to avoid items that represent meter-based prices
+    const meterKeywords = [
+        'metro', 'zanja', 'canalización', 'canalizacion', 'ducto', 'tubería', 'tubo',
+        'meter', 'trench', 'duct', 'pipe', 'linear', 'distance',
+        'graben', 'rohr', 'trasse', 'lfdm', 'laufende', 'kabelgraben'
+    ];
+
+    let matchingItem = null;
+
+    // 1. Search for subcontractor-specific items with keywords
+    for (const keyword of keywords) {
+        matchingItem = priceItems.find(item => 
+            item.subcontractorId === subcontractorId && 
+            (item.name || '').toLowerCase().includes(keyword) &&
+            !meterKeywords.some(m => (item.name || '').toLowerCase().includes(m))
+        );
+        if (matchingItem) break;
+    }
+
+    // 2. Search for subcontractor-specific items in CIVIL_WORKS department that don't match meter keywords
+    if (!matchingItem) {
+        matchingItem = priceItems.find(item => 
+            item.subcontractorId === subcontractorId && 
+            item.department === 'CIVIL_WORKS' &&
+            !meterKeywords.some(m => (item.name || '').toLowerCase().includes(m))
+        );
+    }
+
+    // 3. Search for general (no subcontractor) items with keywords
+    if (!matchingItem) {
+        for (const keyword of keywords) {
+            matchingItem = priceItems.find(item => 
+                !item.subcontractorId && 
+                (item.name || '').toLowerCase().includes(keyword) &&
+                !meterKeywords.some(m => (item.name || '').toLowerCase().includes(m))
+            );
+            if (matchingItem) break;
+        }
+    }
+
+    // 4. Search for general items in CIVIL_WORKS department that don't match meter keywords
+    if (!matchingItem) {
+        matchingItem = priceItems.find(item => 
+            !item.subcontractorId && 
+            item.department === 'CIVIL_WORKS' &&
+            !meterKeywords.some(m => (item.name || '').toLowerCase().includes(m))
+        );
+    }
+
+    return matchingItem ? matchingItem.priceToClient : fallbackPrice;
+}
+
+// Helper to resolve price per meter of duct/trench based on client price items
+function resolvePricePerMeter(priceItems, subcontractorId, fallbackPrice) {
+    const keywords = [
+        'metro', 'zanja', 'canalización', 'canalizacion', 'ducto', 'tubería', 'tubo',
+        'meter', 'trench', 'duct', 'pipe', 'linear', 'distance',
+        'graben', 'rohr', 'trasse', 'lfdm', 'laufende', 'kabelgraben', 'oberfläche', 'asphalt', 'pflaster'
+    ];
+
+    let matchingItem = null;
+
+    // 1. Search for subcontractor-specific items with keywords
+    for (const keyword of keywords) {
+        matchingItem = priceItems.find(item => 
+            item.subcontractorId === subcontractorId && 
+            (item.name || '').toLowerCase().includes(keyword)
+        );
+        if (matchingItem) break;
+    }
+
+    // 2. Search for subcontractor-specific items in CIVIL_WORKS department that match meter keywords or just exist
+    if (!matchingItem) {
+        matchingItem = priceItems.find(item => 
+            item.subcontractorId === subcontractorId && 
+            item.department === 'CIVIL_WORKS' &&
+            keywords.some(k => (item.name || '').toLowerCase().includes(k))
+        );
+    }
+
+    // 3. Search for general (no subcontractor) items with keywords
+    if (!matchingItem) {
+        for (const keyword of keywords) {
+            matchingItem = priceItems.find(item => 
+                !item.subcontractorId && 
+                (item.name || '').toLowerCase().includes(keyword)
+            );
+            if (matchingItem) break;
+        }
+    }
+
+    // 4. Search for general items in CIVIL_WORKS department that match keywords
+    if (!matchingItem) {
+        matchingItem = priceItems.find(item => 
+            !item.subcontractorId && 
+            item.department === 'CIVIL_WORKS' &&
+            keywords.some(k => (item.name || '').toLowerCase().includes(k))
+        );
+    }
+
+    return matchingItem ? matchingItem.priceToClient : fallbackPrice;
+}
+
 exports.getBillingData = async (req, res) => {
     const { projectId, subcontractorId, reviewStatus, startDate, endDate } = req.query;
 
@@ -154,14 +265,34 @@ exports.getBillingData = async (req, res) => {
             include: {
                 subcontractor: {
                     include: {
-                        projects: true
+                        projects: {
+                            include: {
+                                clientCompany: {
+                                    include: {
+                                        priceItems: {
+                                            include: { subcontractor: true }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 workLogs: {
                     include: {
                         address: {
                             include: {
-                                project: true
+                                project: {
+                                    include: {
+                                        clientCompany: {
+                                            include: {
+                                                priceItems: {
+                                                    include: { subcontractor: true }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -186,8 +317,16 @@ exports.getBillingData = async (req, res) => {
                     }
                 }
                 
+                const project = wl.address?.project;
+                const client = project?.clientCompany;
+                const priceItems = client?.priceItems || [];
+                const subId = report.subcontractorId;
+                const fallbackPrice = project?.pricePerAcometida || 0.0;
+                const resolvedPrice = resolvePricePerAcometida(priceItems, subId, fallbackPrice);
+                
                 workLogs.push({
                     ...wl,
+                    price: resolvedPrice,
                     report: {
                         id: report.id,
                         date: report.date,
@@ -218,8 +357,17 @@ exports.getBillingData = async (req, res) => {
                     ? report.subcontractor.projects.find(p => p.id === projectId)
                     : report.subcontractor.projects[0] || null;
 
+                const client = associatedProject?.clientCompany;
+                const priceItems = client?.priceItems || [];
+                const subId = report.subcontractorId;
+                const fallbackPrice = associatedProject?.pricePerMeter || 0.0;
+                const resolvedPricePerMeter = resolvePricePerMeter(priceItems, subId, fallbackPrice);
+                const distance = dl.distance || 0.0;
+                const estimatedPrice = distance * resolvedPricePerMeter;
+
                 ductLogs.push({
                     ...dl,
+                    price: estimatedPrice,
                     project: associatedProject,
                     report: {
                         id: report.id,
@@ -240,8 +388,7 @@ exports.getBillingData = async (req, res) => {
         let totalEurosApproved = 0;
 
         workLogs.forEach(wl => {
-            const project = wl.address?.project;
-            const pricePerAcometida = project?.pricePerAcometida || 0.0;
+            const price = wl.price || 0.0;
             const subId = wl.report.subcontractor.id;
             const subName = wl.report.subcontractor.name;
 
@@ -259,20 +406,17 @@ exports.getBillingData = async (req, res) => {
             subcontractorSummary[subId].workLogsCount++;
 
             if (wl.reviewStatus === 'REVISADO') {
-                const finalPrice = wl.pricePaid > 0 ? wl.pricePaid : pricePerAcometida;
+                const finalPrice = wl.pricePaid > 0 ? wl.pricePaid : price;
                 subcontractorSummary[subId].approvedAmount += finalPrice;
                 totalEurosApproved += finalPrice;
             } else {
-                subcontractorSummary[subId].pendingAmount += pricePerAcometida;
-                totalEurosPending += pricePerAcometida;
+                subcontractorSummary[subId].pendingAmount += price;
+                totalEurosPending += price;
             }
         });
 
         ductLogs.forEach(dl => {
-            const project = dl.project;
-            const pricePerMeter = project?.pricePerMeter || 0.0;
-            const distance = dl.distance || 0.0;
-            const estimatedPrice = distance * pricePerMeter;
+            const price = dl.price || 0.0;
             const subId = dl.report.subcontractor.id;
             const subName = dl.report.subcontractor.name;
 
@@ -290,12 +434,12 @@ exports.getBillingData = async (req, res) => {
             subcontractorSummary[subId].ductLogsCount++;
 
             if (dl.reviewStatus === 'REVISADO') {
-                const finalPrice = dl.pricePaid > 0 ? dl.pricePaid : estimatedPrice;
+                const finalPrice = dl.pricePaid > 0 ? dl.pricePaid : price;
                 subcontractorSummary[subId].approvedAmount += finalPrice;
                 totalEurosApproved += finalPrice;
             } else {
-                subcontractorSummary[subId].pendingAmount += estimatedPrice;
-                totalEurosPending += estimatedPrice;
+                subcontractorSummary[subId].pendingAmount += price;
+                totalEurosPending += price;
             }
         });
 
@@ -343,14 +487,34 @@ exports.exportBillingExcel = async (req, res) => {
             include: {
                 subcontractor: {
                     include: {
-                        projects: true
+                        projects: {
+                            include: {
+                                clientCompany: {
+                                    include: {
+                                        priceItems: {
+                                            include: { subcontractor: true }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     }
                 },
                 workLogs: {
                     include: {
                         address: {
                             include: {
-                                project: true
+                                project: {
+                                    include: {
+                                        clientCompany: {
+                                            include: {
+                                                priceItems: {
+                                                    include: { subcontractor: true }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -367,7 +531,15 @@ exports.exportBillingExcel = async (req, res) => {
             report.workLogs.forEach(wl => {
                 if (projectId && wl.address?.projectId !== projectId) return;
                 if (reviewStatus && reviewStatus !== 'TODOS' && wl.reviewStatus !== reviewStatus) return;
-                workLogs.push({ ...wl, report });
+                
+                const project = wl.address?.project;
+                const client = project?.clientCompany;
+                const priceItems = client?.priceItems || [];
+                const subId = report.subcontractorId;
+                const fallbackPrice = project?.pricePerAcometida || 0.0;
+                const resolvedPrice = resolvePricePerAcometida(priceItems, subId, fallbackPrice);
+
+                workLogs.push({ ...wl, price: resolvedPrice, report });
             });
 
             report.ductLogs.forEach(dl => {
@@ -381,7 +553,15 @@ exports.exportBillingExcel = async (req, res) => {
                     ? report.subcontractor.projects.find(p => p.id === projectId)
                     : report.subcontractor.projects[0] || null;
 
-                ductLogs.push({ ...dl, project: associatedProject, report });
+                const client = associatedProject?.clientCompany;
+                const priceItems = client?.priceItems || [];
+                const subId = report.subcontractorId;
+                const fallbackPrice = associatedProject?.pricePerMeter || 0.0;
+                const resolvedPricePerMeter = resolvePricePerMeter(priceItems, subId, fallbackPrice);
+                const distance = dl.distance || 0.0;
+                const estimatedPrice = distance * resolvedPricePerMeter;
+
+                ductLogs.push({ ...dl, price: estimatedPrice, project: associatedProject, report });
             });
         });
 
@@ -389,16 +569,14 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 1. Sheet Acometidas
         const workRows = workLogs.map(wl => {
-            const project = wl.address?.project;
-            const pricePerAcometida = project?.pricePerAcometida || 0.0;
             const price = wl.reviewStatus === 'REVISADO' 
-                ? (wl.pricePaid > 0 ? wl.pricePaid : pricePerAcometida)
-                : pricePerAcometida;
+                ? (wl.pricePaid > 0 ? wl.pricePaid : wl.price)
+                : wl.price;
 
             return {
                 'Fecha Parte': wl.report.date.toISOString().split('T')[0],
                 'Subcontrata': wl.report.subcontractor.name,
-                'Proyecto': project?.name || 'N/A',
+                'Proyecto': wl.address?.project?.name || 'N/A',
                 'Dirección': `${wl.address?.street || ''} ${wl.address?.number || ''}, ${wl.address?.city || ''}`,
                 'Color Conexión': wl.connectionColor || 'No indicado',
                 'Estado Físico': wl.status,
@@ -413,19 +591,15 @@ exports.exportBillingExcel = async (req, res) => {
 
         // 2. Sheet Ductos de Calle
         const ductRows = ductLogs.map(dl => {
-            const project = dl.project;
-            const pricePerMeter = project?.pricePerMeter || 0.0;
-            const distance = dl.distance || 0.0;
-            const estimatedPrice = distance * pricePerMeter;
             const price = dl.reviewStatus === 'REVISADO'
-                ? (dl.pricePaid > 0 ? dl.pricePaid : estimatedPrice)
-                : estimatedPrice;
+                ? (dl.pricePaid > 0 ? dl.pricePaid : dl.price)
+                : dl.price;
 
             return {
                 'Fecha Parte': dl.report.date.toISOString().split('T')[0],
                 'Subcontrata': dl.report.subcontractor.name,
-                'Proyecto': project?.name || 'N/A',
-                'Distancia (m)': distance,
+                'Proyecto': dl.project?.name || 'N/A',
+                'Distancia (m)': dl.distance || 0.0,
                 'Estado Revisión': dl.reviewStatus === 'REVISADO' ? 'Revisado' : 'Pendiente de Revisión',
                 'Comentarios': dl.comments || '',
                 'Precio Asignado (€)': price,

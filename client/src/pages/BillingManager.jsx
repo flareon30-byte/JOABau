@@ -115,7 +115,13 @@ const BillingPage = () => {
     const [pricePaidInput, setPricePaidInput] = useState('');
     const [submittingConformity, setSubmittingConformity] = useState(false);
 
-    // 5. Photo Gallery Modal State
+    // 5. Return Modal State
+    const [returnModalOpen, setReturnModalOpen] = useState(false);
+    const [returnComments, setReturnComments] = useState('');
+    const [incorrectPhotosList, setIncorrectPhotosList] = useState([]);
+    const [submittingReturn, setSubmittingReturn] = useState(false);
+
+    // 6. Photo Gallery Modal State
     const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
     const [selectedPhotos, setSelectedPhotos] = useState([]);
     const [zoomPhoto, setZoomPhoto] = useState(null);
@@ -217,12 +223,10 @@ const BillingPage = () => {
     const openConformityModal = (log, type) => {
         setSelectedLog({ log, type });
         if (type === 'work') {
-            const suggested = log.address?.project?.pricePerAcometida || 0;
+            const suggested = log.price || log.address?.project?.pricePerAcometida || 0;
             setPricePaidInput(suggested.toString());
         } else {
-            const distance = log.distance || 0;
-            const pricePerMeter = log.project?.pricePerMeter || 0;
-            const suggested = (distance * pricePerMeter).toFixed(2);
+            const suggested = (log.price || 0).toFixed(2);
             setPricePaidInput(suggested);
         }
         setConformityModalOpen(true);
@@ -249,6 +253,49 @@ const BillingPage = () => {
             alert('Error al procesar la conformidad del trabajo.');
         } finally {
             setSubmittingConformity(false);
+        }
+    };
+
+    // Open Return Modal
+    const openReturnModal = (log, type) => {
+        setSelectedLog({ log, type });
+        setReturnComments('');
+        setIncorrectPhotosList([]);
+        setReturnModalOpen(true);
+    };
+
+    const toggleIncorrectPhoto = (photoUrl) => {
+        setIncorrectPhotosList(prev => 
+            prev.includes(photoUrl) 
+                ? prev.filter(p => p !== photoUrl) 
+                : [...prev, photoUrl]
+        );
+    };
+
+    const submitReturn = async () => {
+        if (!selectedLog) return;
+        if (!returnComments.trim()) {
+            alert('Por favor, introduce un comentario explicando el motivo de la devolución.');
+            return;
+        }
+        setSubmittingReturn(true);
+        try {
+            const endpoint = selectedLog.type === 'work'
+                ? `/api/civil-works/work-log/${selectedLog.log.id}/return`
+                : `/api/civil-works/duct-log/${selectedLog.log.id}/return`;
+
+            await api.put(endpoint, {
+                reviewComments: returnComments,
+                incorrectPhotos: incorrectPhotosList
+            });
+
+            setReturnModalOpen(false);
+            fetchBillingData();
+        } catch (error) {
+            console.error('Error returning work log:', error);
+            alert('Error al devolver el trabajo a la subcontrata.');
+        } finally {
+            setSubmittingReturn(false);
         }
     };
 
@@ -498,8 +545,7 @@ const BillingPage = () => {
                                     ) : (
                                         billingData.workLogs.map((wl) => {
                                             const project = wl.address?.project;
-                                            const pricePerAcometida = project?.pricePerAcometida || 0;
-                                            const displayPrice = wl.reviewStatus === 'REVISADO' ? wl.pricePaid : pricePerAcometida;
+                                            const displayPrice = wl.reviewStatus === 'REVISADO' ? wl.pricePaid : (wl.price || 0);
 
                                             return (
                                                 <tr key={wl.id} className="hover:bg-slate-50/50 transition-colors text-sm text-slate-700">
@@ -539,8 +585,14 @@ const BillingPage = () => {
                                                         )}
                                                     </td>
                                                     <td className="p-4">
-                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${wl.reviewStatus === 'REVISADO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                                                            {wl.reviewStatus === 'REVISADO' ? 'Revisado' : 'Pendiente'}
+                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                                            wl.reviewStatus === 'REVISADO' 
+                                                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                                                : wl.reviewStatus === 'DEVUELTO'
+                                                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                                                : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                        }`}>
+                                                            {wl.reviewStatus === 'REVISADO' ? 'Revisado' : wl.reviewStatus === 'DEVUELTO' ? 'Devuelto' : 'Pendiente'}
                                                         </span>
                                                     </td>
                                                     <td className="p-4 text-right font-mono font-bold text-slate-800">
@@ -548,12 +600,22 @@ const BillingPage = () => {
                                                     </td>
                                                     <td className="p-4 text-center">
                                                         {wl.reviewStatus === 'PENDIENTE_REVISION' ? (
-                                                            <button
-                                                                onClick={() => openConformityModal(wl, 'work')}
-                                                                className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-all border border-blue-200"
-                                                            >
-                                                                Dar Conformidad
-                                                            </button>
+                                                            <div className="flex items-center justify-center gap-2">
+                                                                <button
+                                                                    onClick={() => openConformityModal(wl, 'work')}
+                                                                    className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-blue-200 shadow-sm"
+                                                                >
+                                                                    Dar Conformidad
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => openReturnModal(wl, 'work')}
+                                                                    className="bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-rose-200 shadow-sm"
+                                                                >
+                                                                    Devolver
+                                                                </button>
+                                                            </div>
+                                                        ) : wl.reviewStatus === 'DEVUELTO' ? (
+                                                            <span className="text-[10px] text-rose-500 font-bold bg-rose-50 border border-rose-100 px-2.5 py-1 rounded">Devuelto a Sub</span>
                                                         ) : (
                                                             <span className="text-[10px] text-slate-400 font-mono italic">Conformado</span>
                                                         )}
@@ -591,9 +653,8 @@ const BillingPage = () => {
                                     ) : (
                                         billingData.ductLogs.map((dl) => {
                                             const project = dl.project;
-                                            const pricePerMeter = project?.pricePerMeter || 0;
                                             const distance = dl.distance || 0;
-                                            const displayPrice = dl.reviewStatus === 'REVISADO' ? dl.pricePaid : (distance * pricePerMeter);
+                                            const displayPrice = dl.reviewStatus === 'REVISADO' ? dl.pricePaid : (dl.price || 0);
 
                                             return (
                                                 <tr key={dl.id} className="hover:bg-slate-50/50 transition-colors text-sm text-slate-700">
@@ -616,25 +677,41 @@ const BillingPage = () => {
                                                         )}
                                                     </td>
                                                     <td className="p-4">
-                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${dl.reviewStatus === 'REVISADO' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                                                            {dl.reviewStatus === 'REVISADO' ? 'Revisado' : 'Pendiente'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-4 text-right font-mono font-bold text-slate-800">
-                                                        {parseFloat(displayPrice || 0).toFixed(2)}€
-                                                    </td>
-                                                    <td className="p-4 text-center">
-                                                        {dl.reviewStatus === 'PENDIENTE_REVISION' ? (
-                                                            <button
-                                                                onClick={() => openConformityModal(dl, 'duct')}
-                                                                className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1 rounded-lg text-xs font-bold transition-all border border-blue-200"
-                                                            >
-                                                                Dar Conformidad
-                                                            </button>
-                                                        ) : (
-                                                            <span className="text-[10px] text-slate-400 font-mono italic">Conformado</span>
-                                                        )}
-                                                    </td>
+                                                         <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold ${
+                                                             dl.reviewStatus === 'REVISADO' 
+                                                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                                                 : dl.reviewStatus === 'DEVUELTO'
+                                                                 ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                                                 : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                         }`}>
+                                                             {dl.reviewStatus === 'REVISADO' ? 'Revisado' : dl.reviewStatus === 'DEVUELTO' ? 'Devuelto' : 'Pendiente'}
+                                                         </span>
+                                                     </td>
+                                                     <td className="p-4 text-right font-mono font-bold text-slate-800">
+                                                         {parseFloat(displayPrice || 0).toFixed(2)}€
+                                                     </td>
+                                                     <td className="p-4 text-center">
+                                                         {dl.reviewStatus === 'PENDIENTE_REVISION' ? (
+                                                             <div className="flex items-center justify-center gap-2">
+                                                                 <button
+                                                                     onClick={() => openConformityModal(dl, 'duct')}
+                                                                     className="bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-blue-200 shadow-sm"
+                                                                 >
+                                                                     Dar Conformidad
+                                                                 </button>
+                                                                 <button
+                                                                     onClick={() => openReturnModal(dl, 'duct')}
+                                                                     className="bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-rose-200 shadow-sm"
+                                                                 >
+                                                                     Devolver
+                                                                 </button>
+                                                             </div>
+                                                         ) : dl.reviewStatus === 'DEVUELTO' ? (
+                                                             <span className="text-[10px] text-rose-500 font-bold bg-rose-50 border border-rose-100 px-2.5 py-1 rounded">Devuelto a Sub</span>
+                                                         ) : (
+                                                             <span className="text-[10px] text-slate-400 font-mono italic">Conformado</span>
+                                                         )}
+                                                     </td>
                                                 </tr>
                                             );
                                         })
@@ -711,6 +788,119 @@ const BillingPage = () => {
                                 className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-sm transition-all"
                             >
                                 {submittingConformity ? 'Guardando...' : 'Confirmar y Aprobar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* RETURN WORK LOG MODAL */}
+            {returnModalOpen && selectedLog && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-[5000] p-4">
+                    <div className="bg-white rounded-3xl w-full max-w-2xl p-6 shadow-2xl border border-slate-100 flex flex-col space-y-4 max-h-[90vh]">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                            <h3 className="font-bold text-slate-800 text-lg flex items-center gap-2">
+                                <AlertCircle className="text-rose-500" /> Devolver Trabajo a Subcontrata
+                            </h3>
+                            <button
+                                onClick={() => setReturnModalOpen(false)}
+                                className="text-slate-400 hover:text-slate-600 text-xl font-bold"
+                            >
+                                &times;
+                            </button>
+                        </div>
+
+                        <div className="text-sm text-slate-600 grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div>
+                                <strong>Subcontrata:</strong> {selectedLog.log.report?.subcontractor?.name}
+                            </div>
+                            <div>
+                                <strong>Proyecto:</strong> {selectedLog.type === 'work' ? selectedLog.log.address?.project?.name : selectedLog.log.project?.name}
+                            </div>
+                            {selectedLog.type === 'work' ? (
+                                <div className="md:col-span-2">
+                                    <strong>Dirección:</strong> {selectedLog.log.address?.street} {selectedLog.log.address?.number}
+                                </div>
+                            ) : (
+                                <div className="md:col-span-2">
+                                    <strong>Ducto de calle:</strong> {selectedLog.log.distance} metros
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                                    Selecciona las fotos incorrectas (haga clic sobre ellas):
+                                </label>
+                                {selectedLog.log.photos && selectedLog.log.photos.length > 0 ? (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                        {selectedLog.log.photos.map((photo, idx) => {
+                                            const url = getFileUrl(photo);
+                                            const isIncorrect = incorrectPhotosList.includes(photo);
+                                            return (
+                                                <div 
+                                                    key={idx}
+                                                    onClick={() => toggleIncorrectPhoto(photo)}
+                                                    className={`relative aspect-video rounded-xl overflow-hidden cursor-pointer border-2 transition-all shadow-sm ${
+                                                        isIncorrect 
+                                                            ? 'border-rose-500 ring-4 ring-rose-500/20' 
+                                                            : 'border-slate-200 hover:border-slate-400'
+                                                    }`}
+                                                >
+                                                    <img 
+                                                        src={url} 
+                                                        alt={`Evidencia ${idx}`} 
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => { e.target.src = '/image-placeholder.png'; }}
+                                                    />
+                                                    {isIncorrect && (
+                                                        <div className="absolute inset-0 bg-rose-500/30 flex items-center justify-center">
+                                                            <div className="bg-rose-600 text-white p-1 rounded-full shadow-md">
+                                                                <AlertCircle size={18} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded font-mono">
+                                                        Foto {idx + 1}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    <p className="text-slate-400 text-xs italic">El trabajo no tiene fotos cargadas.</p>
+                                )}
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="block text-xs font-bold text-slate-500 uppercase">
+                                    Comentario de Devolución (Obligatorio)
+                                </label>
+                                <textarea
+                                    value={returnComments}
+                                    onChange={(e) => setReturnComments(e.target.value)}
+                                    rows="3"
+                                    className="w-full border border-slate-200 rounded-xl p-3 bg-slate-50 text-slate-800 text-sm focus:bg-white outline-none focus:ring-2 focus:ring-rose-500/20 transition-all placeholder:text-slate-400"
+                                    placeholder="Indique a la subcontrata qué fotos están mal, qué falta corregir o qué detalles del trabajo no son conformes..."
+                                    required
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
+                            <button
+                                onClick={() => setReturnModalOpen(false)}
+                                className="px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 text-sm font-bold transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={submitReturn}
+                                disabled={submittingReturn}
+                                className="bg-rose-600 hover:bg-rose-700 disabled:bg-rose-400 text-white px-6 py-2 rounded-xl font-bold text-sm shadow-sm transition-all flex items-center gap-1"
+                            >
+                                {submittingReturn ? 'Procesando...' : 'Devolver a Subcontrata'}
                             </button>
                         </div>
                     </div>
