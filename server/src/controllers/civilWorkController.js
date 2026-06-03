@@ -697,7 +697,7 @@ function calculateHaversineDistance(coords) {
 }
 
 exports.createManualDuctLog = async (req, res) => {
-    const { subcontractorId, coordinates, ductType, comments } = req.body;
+    const { subcontractorId, coordinates, ductType, comments, photos } = req.body;
 
     if (!subcontractorId) {
         return res.status(400).json({ message: 'Se requiere especificar la subcontrata.' });
@@ -743,7 +743,7 @@ exports.createManualDuctLog = async (req, res) => {
         const log = await prisma.civilDailyDuctLog.create({
             data: {
                 reportId: report.id,
-                photos: [],
+                photos: photos || [],
                 comments: comments || 'Carga Inicial Manual',
                 startLat,
                 startLng,

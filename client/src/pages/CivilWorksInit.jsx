@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     HardHat, Search, Check, RefreshCw, X, MapPin, 
-    Layers, Plus, Trash2, Save, Undo, Loader2, Compass
+    Layers, Plus, Trash2, Save, Undo, Loader2, Compass,
+    UploadCloud, AlertCircle, FileImage, Image as ImageIcon
 } from 'lucide-react';
 import api from '../api/axios';
+import exifr from 'exifr';
 
 const CACHE_KEY = 'joa-map-geo-cache-v5';
 const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
@@ -194,6 +196,17 @@ const CivilWorksInit = () => {
     const [companyCountry, setCompanyCountry] = useState('ES');
     const [activePhotoModal, setActivePhotoModal] = useState(null);
 
+    // States for Photo Batch Import
+    const [photoImportFiles, setPhotoImportFiles] = useState([]);
+    const [photoImportPoints, setPhotoImportPoints] = useState([]);
+    const [isParsingPhotos, setIsParsingPhotos] = useState(false);
+    const [photoImportSubcontractorId, setPhotoImportSubcontractorId] = useState('');
+    const [photoImportDuctType, setPhotoImportDuctType] = useState('7x22');
+    const [photoImportComments, setPhotoImportComments] = useState('');
+    const [photoImportErrors, setPhotoImportErrors] = useState([]);
+    const [isSavingPhotoImport, setIsSavingPhotoImport] = useState(false);
+    const [uploadProgressText, setUploadProgressText] = useState('');
+
     // References
     const initMapRef = useRef(null);
     const mapInstanceRef = useRef(null);
@@ -203,6 +216,7 @@ const CivilWorksInit = () => {
     const addressesGroupRef = useRef(null);
     const photoMarkersGroupRef = useRef(null);
     const searchMarkerRef = useRef(null);
+    const importPreviewGroupRef = useRef(null);
 
     // Search and centering states
     const [mapSearchQuery, setMapSearchQuery] = useState('');
@@ -321,9 +335,14 @@ const CivilWorksInit = () => {
         }
     };
 
-    // Initialize Leaflet Map for Duct Drawing
+    const activeTabRef = useRef(activeTab);
     useEffect(() => {
-        if (!leafletLoaded || !initMapRef.current || activeTab !== 'ducts') return;
+        activeTabRef.current = activeTab;
+    }, [activeTab]);
+
+    // Initialize Leaflet Map for Duct Drawing and Photo Import
+    useEffect(() => {
+        if (!leafletLoaded || !initMapRef.current || (activeTab !== 'ducts' && activeTab !== 'photoImport')) return;
         const L = window.L;
 
         // Clean container first if needed
@@ -379,6 +398,7 @@ const CivilWorksInit = () => {
             savedDuctsGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             addressesGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             photoMarkersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+            importPreviewGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             polylineRef.current = L.polyline([], { 
                 color: ductType === '5x10' ? '#ec4899' : '#8b5cf6', 
                 weight: 5,
@@ -388,6 +408,7 @@ const CivilWorksInit = () => {
 
             // Add map click listener for drawing points
             mapInstanceRef.current.on('click', (e) => {
+                if (activeTabRef.current !== 'ducts') return;
                 const { lat, lng } = e.latlng;
                 const newPoint = { lat, lng };
 
@@ -412,6 +433,7 @@ const CivilWorksInit = () => {
             if (savedDuctsGroupRef.current) savedDuctsGroupRef.current.clearLayers();
             if (addressesGroupRef.current) addressesGroupRef.current.clearLayers();
             if (photoMarkersGroupRef.current) photoMarkersGroupRef.current.clearLayers();
+            if (importPreviewGroupRef.current) importPreviewGroupRef.current.clearLayers();
             polylineRef.current.setLatLngs([]);
         }
 
@@ -672,14 +694,77 @@ const CivilWorksInit = () => {
         });
     };
 
+    const drawPhotoImportPreview = () => {
+        if (!leafletLoaded || !mapInstanceRef.current || !importPreviewGroupRef.current) return;
+        const L = window.L;
+        importPreviewGroupRef.current.clearLayers();
+
+        if (photoImportPoints.length === 0) return;
+
+        // Draw polyline connecting points
+        const pathCoords = photoImportPoints.map(pt => [pt.lat, pt.lng]);
+        const color = photoImportDuctType === '5x10' ? '#ec4899' : '#8b5cf6';
+        
+        const polyline = L.polyline(pathCoords, {
+            color: color,
+            weight: 5,
+            opacity: 0.8,
+            dashArray: '5, 10'
+        });
+        importPreviewGroupRef.current.addLayer(polyline);
+
+        // Draw camera markers for each point
+        const cameraIcon = L.divIcon({
+            html: `<div class="flex items-center justify-center w-7 h-7 rounded-full bg-blue-500 border-2 border-white shadow-md text-[13px] hover:scale-125 transition-transform cursor-pointer">📸</div>`,
+            className: '', iconSize: [28, 28], iconAnchor: [14, 14]
+        });
+
+        photoImportPoints.forEach((pt, idx) => {
+            const marker = L.marker([pt.lat, pt.lng], { icon: cameraIcon });
+            
+            // Generate a local object URL to display the image locally in tooltip
+            const localUrl = URL.createObjectURL(pt.file);
+            const timeText = pt.timestamp.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            const dateText = pt.timestamp.toLocaleDateString('es-ES');
+
+            marker.bindTooltip(`
+                <div style="padding:2px; width:135px; text-align:center; font:11px sans-serif; white-space: normal;">
+                    <img src="${localUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
+                    <b>Foto #${idx + 1} de Ducto</b><br>
+                    <span style="font-size:9px; color:#64748b">${pt.file.name}</span><br>
+                    <b>Hora:</b> ${timeText} (${dateText})
+                </div>
+            `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+
+            marker.on('click', () => {
+                setActivePhotoModal(localUrl);
+            });
+
+            importPreviewGroupRef.current.addLayer(marker);
+        });
+
+        // Fit map bounds to the preview path
+        if (pathCoords.length > 0) {
+            mapInstanceRef.current.fitBounds(L.latLngBounds(pathCoords), { padding: [50, 50] });
+        }
+    };
+
     // Redraw saved ducts, project address markers, and photos when data/project updates
     useEffect(() => {
         if (activeTab === 'ducts') {
             drawSavedDucts();
             drawProjectAddresses();
             drawPhotoMarkers();
+            if (importPreviewGroupRef.current) importPreviewGroupRef.current.clearLayers();
+        } else if (activeTab === 'photoImport') {
+            drawSavedDucts();
+            drawProjectAddresses();
+            drawPhotoMarkers();
+            drawPhotoImportPreview();
+            if (polylineRef.current) polylineRef.current.setLatLngs([]);
+            if (markersGroupRef.current) markersGroupRef.current.clearLayers();
         }
-    }, [leafletLoaded, activeTab, ductRoutes, filterProject, addresses]);
+    }, [leafletLoaded, activeTab, ductRoutes, filterProject, addresses, photoImportPoints, photoImportDuctType]);
 
     // Live search for centering map
     useEffect(() => {
@@ -793,6 +878,128 @@ const CivilWorksInit = () => {
         }
     };
 
+    // Handle Photo Selection and Metadata Parsing
+    const handlePhotoImportSelect = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+
+        setIsParsingPhotos(true);
+        setPhotoImportErrors([]);
+        
+        const validPoints = [];
+        const invalidFiles = [];
+
+        for (const file of files) {
+            try {
+                if (!file.type.startsWith('image/')) {
+                    invalidFiles.push(`${file.name} (No es una imagen)`);
+                    continue;
+                }
+
+                // Extract GPS
+                const gps = await exifr.gps(file).catch(() => null);
+                // Extract timestamp
+                const meta = await exifr.parse(file, ['DateTimeOriginal']).catch(() => null);
+                
+                if (gps && gps.latitude && gps.longitude) {
+                    const timestamp = meta?.DateTimeOriginal || file.lastModifiedDate || new Date();
+                    validPoints.push({
+                        lat: gps.latitude,
+                        lng: gps.longitude,
+                        timestamp: new Date(timestamp),
+                        file: file
+                    });
+                } else {
+                    invalidFiles.push(`${file.name} (Sin metadatos GPS)`);
+                }
+            } catch (err) {
+                console.error('Error parsing EXIF for', file.name, err);
+                invalidFiles.push(`${file.name} (Error al leer metadatos)`);
+            }
+        }
+
+        // Sort chronologically by timestamp
+        validPoints.sort((a, b) => a.timestamp - b.timestamp);
+
+        setPhotoImportPoints(validPoints);
+        setPhotoImportErrors(invalidFiles);
+        setIsParsingPhotos(false);
+    };
+
+    // Save Duct from Photos Import
+    const handleSavePhotoImport = async () => {
+        if (!photoImportSubcontractorId) {
+            alert('Debes seleccionar una subcontrata para asociar la autoría del ducto.');
+            return;
+        }
+        if (photoImportPoints.length < 2) {
+            alert('Se requieren al menos 2 fotos con coordenadas GPS para poder trazar un ducto.');
+            return;
+        }
+
+        setIsSavingPhotoImport(true);
+        setUploadProgressText('Iniciando subida de imágenes...');
+
+        try {
+            // 1. Upload photos in batches of 10
+            const filesToUpload = photoImportPoints.map(pt => pt.file);
+            const BATCH_SIZE = 10;
+            const urls = [];
+
+            for (let i = 0; i < filesToUpload.length; i += BATCH_SIZE) {
+                const chunk = filesToUpload.slice(i, i + BATCH_SIZE);
+                setUploadProgressText(`Subiendo fotos ${i + 1} a ${Math.min(i + BATCH_SIZE, filesToUpload.length)} de ${filesToUpload.length}...`);
+                
+                const formData = new FormData();
+                chunk.forEach(file => {
+                    formData.append('photos', file);
+                });
+
+                const response = await api.post('/api/uploads', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                if (response.data && Array.isArray(response.data.urls)) {
+                    urls.push(...response.data.urls);
+                }
+            }
+
+            setUploadProgressText('Registrando ducto y asociando coordenadas...');
+
+            // 2. Map URLs to coordinates (matching index of sorted files)
+            const coordinates = photoImportPoints.map((pt, idx) => ({
+                lat: pt.lat,
+                lng: pt.lng,
+                timestamp: pt.timestamp.toISOString(),
+                photoUrl: urls[idx] || null
+            }));
+
+            // 3. Post to manual-duct API (now saving photos in database as well)
+            await api.post('/api/civil-works/manual-duct', {
+                subcontractorId: photoImportSubcontractorId,
+                coordinates,
+                ductType: photoImportDuctType,
+                comments: photoImportComments || 'Importado por lote de fotos geolocalizadas',
+                photos: urls
+            });
+
+            alert('¡Ducto y fotos importados correctamente! Ya están visibles en el mapa de obra civil.');
+            
+            // Clean up
+            setPhotoImportPoints([]);
+            setPhotoImportFiles([]);
+            setPhotoImportComments('');
+            setPhotoImportErrors([]);
+            setUploadProgressText('');
+            loadAllData();
+        } catch (error) {
+            console.error('Error saving photo import:', error);
+            alert(error.response?.data?.message || 'Error al guardar la importación de fotos.');
+        } finally {
+            setIsSavingPhotoImport(false);
+        }
+    };
+
     const calculatedMeters = calculateDistance(drawnPoints);
 
     return (
@@ -830,6 +1037,16 @@ const CivilWorksInit = () => {
                         }`}
                     >
                         <Layers size={14} /> Ductos Iniciales
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('photoImport')}
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+                            activeTab === 'photoImport' 
+                                ? 'bg-white text-orange-600 shadow-md shadow-slate-200' 
+                                : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                        <UploadCloud size={14} /> Importar desde Fotos
                     </button>
                 </div>
             </div>
@@ -988,186 +1205,359 @@ const CivilWorksInit = () => {
                         </div>
                     )}
 
-                    {/* TAB 2: MANUAL DUCTS IN MAP */}
-                    {activeTab === 'ducts' && (
+                    {/* TAB 2 & 3: DUCT INITIALIZATION (MANUAL & BATCH PHOTO IMPORT) */}
+                    {(activeTab === 'ducts' || activeTab === 'photoImport') && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Drawing form panel */}
-                            <div className="lg:col-span-1 space-y-6 flex flex-col justify-between bg-white border border-slate-100 p-6 rounded-3xl shadow-xl h-fit">
-                                <div className="space-y-5">
-                                    <h4 className="font-black text-slate-800 text-md border-b border-slate-50 pb-2">Registro de Ducto Manual</h4>
-                                    
-                                    {/* Subcontractor selection */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Subcontrata Constructora</label>
-                                        <select
-                                            value={selectedSubcontractorId}
-                                            onChange={(e) => setSelectedSubcontractorId(e.target.value)}
-                                            className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 w-full font-semibold"
-                                        >
-                                            <option value="">Selecciona Subcontrata...</option>
-                                            {subcontractors.map(s => (
-                                                <option key={s.id} value={s.id}>{s.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                            {activeTab === 'ducts' ? (
+                                /* Drawing form panel */
+                                <div className="lg:col-span-1 space-y-6 flex flex-col justify-between bg-white border border-slate-100 p-6 rounded-3xl shadow-xl h-fit">
+                                    <div className="space-y-5">
+                                        <h4 className="font-black text-slate-800 text-md border-b border-slate-50 pb-2">Registro de Ducto Manual</h4>
+                                        
+                                        {/* Subcontractor selection */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Subcontrata Constructora</label>
+                                            <select
+                                                value={selectedSubcontractorId}
+                                                onChange={(e) => setSelectedSubcontractorId(e.target.value)}
+                                                className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 w-full font-semibold"
+                                            >
+                                                <option value="">Selecciona Subcontrata...</option>
+                                                {subcontractors.map(s => (
+                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
 
-                                    {/* Project filter (centering fallback) */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Proyecto Destino (Centrar Mapa)</label>
-                                        <select
-                                            value={filterProject}
-                                            onChange={(e) => setFilterProject(e.target.value)}
-                                            className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 w-full font-semibold"
-                                        >
-                                            <option value="">Selecciona Proyecto...</option>
-                                            {projects.map(p => (
-                                                <option key={p.id} value={p.id}>{p.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                        {/* Project filter (centering fallback) */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Proyecto Destino (Centrar Mapa)</label>
+                                            <select
+                                                value={filterProject}
+                                                onChange={(e) => setFilterProject(e.target.value)}
+                                                className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 w-full font-semibold"
+                                            >
+                                                <option value="">Selecciona Proyecto...</option>
+                                                {projects.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
 
-                                    {/* Search address to center map */}
-                                    {filterProject && (
-                                        <div className="relative">
-                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Buscar Dirección para ubicar en Mapa</label>
+                                        {/* Search address to center map */}
+                                        {filterProject && (
                                             <div className="relative">
-                                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                                                <input
-                                                    type="text"
-                                                    value={mapSearchQuery}
-                                                    onChange={(e) => setMapSearchQuery(e.target.value)}
-                                                    placeholder="Escribe calle o NVT..."
-                                                    className="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-700 font-medium"
-                                                />
-                                                {mapSearchQuery && (
-                                                    <button 
-                                                        type="button"
-                                                        onClick={() => { setMapSearchQuery(''); setMapSearchResults([]); }}
-                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                                    >
-                                                        <X size={14} />
-                                                    </button>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Buscar Dirección para ubicar en Mapa</label>
+                                                <div className="relative">
+                                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                                    <input
+                                                        type="text"
+                                                        value={mapSearchQuery}
+                                                        onChange={(e) => setMapSearchQuery(e.target.value)}
+                                                        placeholder="Escribe calle o NVT..."
+                                                        className="w-full pl-9 pr-4 py-2.5 text-xs border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 text-slate-700 font-medium"
+                                                    />
+                                                    {mapSearchQuery && (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => { setMapSearchQuery(''); setMapSearchResults([]); }}
+                                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                
+                                                {mapSearchResults.length > 0 && (
+                                                    <div className="absolute left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl z-[1000] mt-1 overflow-hidden max-h-48 overflow-y-auto">
+                                                        {mapSearchResults.map(addr => (
+                                                            <button
+                                                                key={addr.id}
+                                                                type="button"
+                                                                onClick={() => handleSelectSearchAddress(addr)}
+                                                                className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 text-[11px] font-semibold text-slate-700 flex flex-col gap-0.5"
+                                                            >
+                                                                <span className="font-extrabold text-slate-900">{addr.street} {addr.number || ''}</span>
+                                                                <span className="text-[9px] text-slate-400 font-bold uppercase">NVT: {addr.nvt || 'N/A'}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 )}
                                             </div>
-                                            
-                                            {mapSearchResults.length > 0 && (
-                                                <div className="absolute left-0 right-0 bg-white border border-slate-100 rounded-2xl shadow-xl z-[1000] mt-1 overflow-hidden max-h-48 overflow-y-auto">
-                                                    {mapSearchResults.map(addr => (
-                                                        <button
-                                                            key={addr.id}
-                                                            type="button"
-                                                            onClick={() => handleSelectSearchAddress(addr)}
-                                                            className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 text-[11px] font-semibold text-slate-700 flex flex-col gap-0.5"
-                                                        >
-                                                            <span className="font-extrabold text-slate-900">{addr.street} {addr.number || ''}</span>
-                                                            <span className="text-[9px] text-slate-400 font-bold uppercase">NVT: {addr.nvt || 'N/A'}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {/* Duct type selector */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Tipo de Ducto</label>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <button
-                                                type="button"
-                                                onClick={() => setDuctType('7x22')}
-                                                className={`p-3.5 rounded-2xl border text-xs font-black transition-all flex flex-col items-center gap-1.5 ${
-                                                    ductType === '7x22'
-                                                        ? 'border-purple-600 bg-purple-50 text-purple-800 ring-2 ring-purple-500/20'
-                                                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                                                }`}
-                                            >
-                                                <span className="w-4 h-4 rounded-full bg-purple-500 border border-white shadow"></span>
-                                                Ducto 7x22
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => setDuctType('5x10')}
-                                                className={`p-3.5 rounded-2xl border text-xs font-black transition-all flex flex-col items-center gap-1.5 ${
-                                                    ductType === '5x10'
-                                                        ? 'border-pink-600 bg-pink-50 text-pink-800 ring-2 ring-pink-500/20'
-                                                        : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                                                }`}
-                                            >
-                                                <span className="w-4 h-4 rounded-full bg-pink-500 border border-white shadow"></span>
-                                                Ducto 5x10
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Coordinates details */}
-                                    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2 text-xs">
-                                        <div className="flex justify-between font-semibold text-slate-500">
-                                            <span>Puntos marcados:</span>
-                                            <span className="text-slate-800 font-bold">{drawnPoints.length}</span>
-                                        </div>
-                                        <div className="flex justify-between font-semibold text-slate-500">
-                                            <span>Longitud calculada:</span>
-                                            <span className="text-orange-600 font-extrabold">{calculatedMeters} metros</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Comments */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Comentarios (Opcional)</label>
-                                        <textarea
-                                            value={ductComments}
-                                            onChange={(e) => setDuctComments(e.target.value)}
-                                            rows="2"
-                                            className="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-700 text-xs"
-                                            placeholder="Indica detalles de la zanja/ducto ya colocados..."
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2 pt-4 border-t border-slate-55 flex flex-col gap-2">
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={handleUndoLastPoint}
-                                            disabled={drawnPoints.length === 0}
-                                            className="flex-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-slate-200"
-                                            title="Deshacer último punto marcado"
-                                        >
-                                            <Undo size={14} /> Deshacer
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleClearDrawnDuct}
-                                            disabled={drawnPoints.length === 0}
-                                            className="flex-1 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-700 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-rose-200"
-                                        >
-                                            <Trash2 size={14} /> Limpiar
-                                        </button>
-                                    </div>
-                                    
-                                    <button
-                                        type="button"
-                                        onClick={handleSaveManualDuct}
-                                        disabled={savingDuct || drawnPoints.length < 2 || !selectedSubcontractorId}
-                                        className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
-                                    >
-                                        {savingDuct ? (
-                                            <>
-                                                <Loader2 className="animate-spin" size={16} /> Guardando...
-                                            </>
-                                        ) : (
-                                            <>
-                                                <Save size={16} /> Guardar Ducto en Obra
-                                            </>
                                         )}
-                                    </button>
-                                </div>
-                            </div>
 
-                            {/* Interactive drawing Map */}
+                                        {/* Duct type selector */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Tipo de Ducto</label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDuctType('7x22')}
+                                                    className={`p-3.5 rounded-2xl border text-xs font-black transition-all flex flex-col items-center gap-1.5 ${
+                                                        ductType === '7x22'
+                                                            ? 'border-purple-600 bg-purple-50 text-purple-800 ring-2 ring-purple-500/20'
+                                                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                                    }`}
+                                                >
+                                                    <span className="w-4 h-4 rounded-full bg-purple-500 border border-white shadow"></span>
+                                                    Ducto 7x22
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDuctType('5x10')}
+                                                    className={`p-3.5 rounded-2xl border text-xs font-black transition-all flex flex-col items-center gap-1.5 ${
+                                                        ductType === '5x10'
+                                                            ? 'border-pink-600 bg-pink-50 text-pink-800 ring-2 ring-pink-500/20'
+                                                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                                    }`}
+                                                >
+                                                    <span className="w-4 h-4 rounded-full bg-pink-500 border border-white shadow"></span>
+                                                    Ducto 5x10
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Coordinates details */}
+                                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2 text-xs">
+                                            <div className="flex justify-between font-semibold text-slate-500">
+                                                <span>Puntos marcados:</span>
+                                                <span className="text-slate-800 font-bold">{drawnPoints.length}</span>
+                                            </div>
+                                            <div className="flex justify-between font-semibold text-slate-500">
+                                                <span>Longitud calculada:</span>
+                                                <span className="text-orange-600 font-extrabold">{calculatedMeters} metros</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Comments */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Comentarios (Opcional)</label>
+                                            <textarea
+                                                value={ductComments}
+                                                onChange={(e) => setDuctComments(e.target.value)}
+                                                rows="2"
+                                                className="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-700 text-xs"
+                                                placeholder="Indica detalles de la zanja/ducto ya colocados..."
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2 pt-4 border-t border-slate-55 flex flex-col gap-2">
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={handleUndoLastPoint}
+                                                disabled={drawnPoints.length === 0}
+                                                className="flex-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-slate-200"
+                                                title="Deshacer último punto marcado"
+                                            >
+                                                <Undo size={14} /> Deshacer
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleClearDrawnDuct}
+                                                disabled={drawnPoints.length === 0}
+                                                className="flex-1 bg-rose-50 hover:bg-rose-100 disabled:opacity-50 text-rose-700 py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-rose-200"
+                                            >
+                                                <Trash2 size={14} /> Limpiar
+                                            </button>
+                                        </div>
+                                        
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveManualDuct}
+                                            disabled={savingDuct || drawnPoints.length < 2 || !selectedSubcontractorId}
+                                            className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
+                                        >
+                                            {savingDuct ? (
+                                                <>
+                                                    <Loader2 className="animate-spin" size={16} /> Guardando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save size={16} /> Guardar Ducto en Obra
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Photo Import Form Panel */
+                                <div className="lg:col-span-1 space-y-6 flex flex-col justify-between bg-white border border-slate-100 p-6 rounded-3xl shadow-xl h-fit">
+                                    <div className="space-y-5">
+                                        <h4 className="font-black text-slate-800 text-md border-b border-slate-50 pb-2">Importar Ducto por Fotos</h4>
+                                        
+                                        {/* Subcontractor selection */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Subcontrata Constructora</label>
+                                            <select
+                                                value={photoImportSubcontractorId}
+                                                onChange={(e) => setPhotoImportSubcontractorId(e.target.value)}
+                                                className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 w-full font-semibold"
+                                            >
+                                                <option value="">Selecciona Subcontrata...</option>
+                                                {subcontractors.map(s => (
+                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Project selection */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Proyecto Destino</label>
+                                            <select
+                                                value={filterProject}
+                                                onChange={(e) => setFilterProject(e.target.value)}
+                                                className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3.5 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500/20 w-full font-semibold"
+                                            >
+                                                <option value="">Selecciona Proyecto...</option>
+                                                {projects.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Duct type */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Medida de Ducto</label>
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPhotoImportDuctType('7x22')}
+                                                    className={`py-3 rounded-xl border text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+                                                        photoImportDuctType === '7x22'
+                                                            ? 'border-violet-200 bg-violet-50 text-violet-700 ring-2 ring-violet-500/10'
+                                                            : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                                    }`}
+                                                >
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-[#8b5cf6]" />
+                                                    Ducto 7x22 (Violeta)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPhotoImportDuctType('5x10')}
+                                                    className={`py-3 rounded-xl border text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+                                                        photoImportDuctType === '5x10'
+                                                            ? 'border-pink-200 bg-pink-50/50 text-pink-700 ring-2 ring-pink-500/10'
+                                                            : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                                    }`}
+                                                >
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-[#ec4899]" />
+                                                    Ducto 5x10 (Rosa)
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* File Uploader Dropzone */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Subir Lote de Fotos con GPS</label>
+                                            <div className="border-2 border-dashed border-slate-200 hover:border-orange-500 rounded-2xl p-5 text-center transition-all bg-slate-50/50 hover:bg-orange-50/5 cursor-pointer relative group">
+                                                <input 
+                                                    type="file" 
+                                                    multiple 
+                                                    accept="image/*" 
+                                                    onChange={handlePhotoImportSelect}
+                                                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                                                    disabled={isParsingPhotos || isSavingPhotoImport}
+                                                />
+                                                <div className="flex flex-col items-center gap-2.5 py-2">
+                                                    <div className="bg-orange-100 text-orange-600 p-2.5 rounded-full group-hover:scale-110 transition-transform">
+                                                        <UploadCloud size={20} />
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-xs font-extrabold text-slate-700 block">Selecciona las fotos de obra</span>
+                                                        <span className="text-[10px] text-slate-400 font-bold block mt-1 uppercase tracking-wider">Las fotos se ordenarán automáticamente</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Parsing progress */}
+                                        {isParsingPhotos && (
+                                            <div className="flex items-center gap-2 text-xs font-bold text-orange-600 bg-orange-50/50 border border-orange-100 p-3.5 rounded-xl animate-pulse">
+                                                <Loader2 size={14} className="animate-spin" />
+                                                Procesando metadatos de las imágenes...
+                                            </div>
+                                        )}
+
+                                        {/* Summary analysis */}
+                                        {(photoImportPoints.length > 0 || photoImportErrors.length > 0) && (
+                                            <div className="space-y-3 bg-slate-50 border border-slate-100 rounded-2xl p-4 text-xs font-semibold text-slate-700">
+                                                {photoImportPoints.length > 0 && (
+                                                    <>
+                                                        <div className="flex justify-between items-center border-b border-slate-200/50 pb-2">
+                                                            <span>Fotos geolocalizadas:</span>
+                                                            <span className="font-extrabold text-emerald-600 bg-emerald-50 border border-emerald-100 px-2 py-0.5 rounded-lg">{photoImportPoints.length} fotos</span>
+                                                        </div>
+                                                        <div className="flex justify-between items-center border-b border-slate-200/50 pb-2">
+                                                            <span>Distancia estimada:</span>
+                                                            <span className="font-extrabold text-slate-800">{calculateDistance(photoImportPoints)} metros</span>
+                                                        </div>
+                                                    </>
+                                                )}
+                                                {photoImportErrors.length > 0 && (
+                                                    <div className="space-y-1 pt-1">
+                                                        <div className="text-amber-600 font-bold flex items-center gap-1 text-[10px] uppercase">
+                                                            <AlertCircle size={12} />
+                                                            Omitidas sin metadatos GPS ({photoImportErrors.length}):
+                                                        </div>
+                                                        <div className="max-h-24 overflow-y-auto text-[9px] text-slate-500 bg-white border border-slate-200/60 rounded-xl p-2 font-mono custom-scrollbar">
+                                                            {photoImportErrors.map((err, idx) => (
+                                                                <div key={idx} className="truncate">{err}</div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Comments */}
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Comentarios (Opcional)</label>
+                                            <textarea
+                                                value={photoImportComments}
+                                                onChange={(e) => setPhotoImportComments(e.target.value)}
+                                                rows="2"
+                                                className="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 text-slate-700 text-xs"
+                                                placeholder="Comentarios sobre este lote de fotos importadas..."
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-slate-100">
+                                        <button
+                                            type="button"
+                                            onClick={handleSavePhotoImport}
+                                            disabled={isSavingPhotoImport || photoImportPoints.length < 2 || !photoImportSubcontractorId}
+                                            className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-slate-200 disabled:text-slate-400 text-white font-bold py-3.5 rounded-xl shadow-md flex items-center justify-center gap-2 transition-all active:scale-95 text-sm"
+                                        >
+                                            {isSavingPhotoImport ? (
+                                                <>
+                                                    <Loader2 className="animate-spin" size={16} />
+                                                    <span className="text-xs truncate">{uploadProgressText}</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save size={16} /> Importar y Guardar Ducto
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Shared Interactive Map */}
                             <div className="lg:col-span-2 bg-slate-100 border border-slate-100 rounded-3xl overflow-hidden shadow-xl min-h-[500px] relative flex flex-col">
                                 <div className="absolute top-4 left-4 z-[500] bg-orange-600/90 text-white px-4 py-2.5 rounded-2xl text-xs font-black shadow-md flex items-center gap-2 border border-orange-500/30 backdrop-blur-sm">
-                                    <Compass size={14} className="animate-pulse" /> Modo Trazado: Haz clic sobre el mapa para dibujar el ducto punto por punto.
+                                    {activeTab === 'ducts' ? (
+                                        <>
+                                            <Compass size={14} className="animate-pulse" /> Modo Trazado: Haz clic sobre el mapa para dibujar el ducto punto por punto.
+                                        </>
+                                    ) : (
+                                        <>
+                                            <UploadCloud size={14} className="animate-pulse" /> Vista Previa: Trazado generado cronológicamente a partir de las fotos.
+                                        </>
+                                    )}
                                 </div>
                                 <div ref={initMapRef} className="w-full h-full flex-1 z-10 drawing-map-container" />
                             </div>
