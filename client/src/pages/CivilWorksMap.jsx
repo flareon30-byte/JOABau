@@ -262,8 +262,6 @@ const CivilWorksMap = () => {
 
     useEffect(() => {
         fetchAllData();
-        const interval = setInterval(fetchAllData, 30000); // refresh every 30s
-        return () => clearInterval(interval);
     }, []);
 
     // Clean status colors according to request
@@ -400,6 +398,7 @@ const CivilWorksMap = () => {
                 workersGroupRef.current.clearLayers();
                 if (photoMarkersGroupRef.current) photoMarkersGroupRef.current.clearLayers();
             }
+            mapInstanceRef.current.invalidateSize();
 
             const BATCH = 10;
             const DELAY = 80;
@@ -793,7 +792,7 @@ const CivilWorksMap = () => {
                         )}
                         
                         {/* Map wrapper */}
-                        <div ref={mapRef} className="w-full h-full flex-1 z-10" />
+                        <div ref={mapRef} className="w-full h-[55vh] sm:h-full flex-1 z-10 min-h-[420px]" />
 
                         {/* Legend */}
                         <div className="z-[500] bg-white/95 backdrop-blur border border-slate-200 p-4 shadow-xl text-xs sm:absolute sm:bottom-5 sm:left-5 sm:max-w-xs sm:rounded-2xl space-y-2 max-sm:border-t max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none max-sm:p-3 max-sm:space-y-0 max-sm:flex max-sm:flex-wrap max-sm:gap-x-4 max-sm:gap-y-2 max-sm:justify-center max-sm:w-full relative sm:absolute">
