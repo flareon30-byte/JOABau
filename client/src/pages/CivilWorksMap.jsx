@@ -155,10 +155,10 @@ const CivilWorksMap = () => {
     const [ductRoutes, setDuctRoutes] = useState([]);
     const [projects, setProjects] = useState([]);
     const [subcontractors, setSubcontractors] = useState([]);
-    
     // UI Filters and Tabs
     const [activeTab, setActiveTab] = useState('map'); // 'map' | 'table'
     const [isFullScreen, setIsFullScreen] = useState(false);
+    const [showLegend, setShowLegend] = useState(true);
     const [loadingData, setLoadingData] = useState(true);
     const [loadingMap, setLoadingMap] = useState(false);
     const [filterProject, setFilterProject] = useState('');
@@ -826,33 +826,56 @@ const CivilWorksMap = () => {
                         <div ref={mapRef} className={isFullScreen ? "w-full h-full flex-1 z-10" : "w-full h-[55vh] sm:h-full flex-1 z-10 min-h-[420px]"} />
 
                         {/* Legend */}
-                        <div className={`z-[500] bg-white/95 backdrop-blur border border-slate-200 p-4 shadow-xl text-xs ${
-                            isFullScreen 
-                                ? 'absolute bottom-5 left-5 max-w-xs rounded-2xl space-y-2' 
-                                : 'sm:absolute sm:bottom-5 sm:left-5 sm:max-w-xs sm:rounded-2xl space-y-2 max-sm:border-t max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none max-sm:p-3 max-sm:space-y-0 max-sm:flex max-sm:flex-wrap max-sm:gap-x-4 max-sm:gap-y-2 max-sm:justify-center max-sm:w-full relative sm:absolute'
-                        }`}>
-                            <h5 className="font-black text-slate-800 uppercase tracking-widest text-[10px] mb-2 flex items-center gap-1 max-sm:w-full max-sm:justify-center max-sm:mb-1"><Layers size={12}/> Leyenda</h5>
-                            <div className="flex items-center gap-2 max-sm:inline-flex">
-                                <div className="w-3.5 h-3.5 rounded-full bg-slate-400 border border-slate-200"></div>
-                                <span className="text-slate-600 font-semibold">Gris: Sin tubo en portal</span>
+                        {!showLegend ? (
+                            <button
+                                onClick={() => setShowLegend(true)}
+                                className={`z-[500] bg-white/95 backdrop-blur border border-slate-200 text-slate-700 hover:text-orange-600 p-2.5 rounded-xl shadow-xl flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${
+                                    isFullScreen 
+                                        ? 'absolute bottom-5 left-5' 
+                                        : 'sm:absolute sm:bottom-5 sm:left-5 max-sm:my-2 max-sm:mx-auto relative'
+                                }`}
+                                title="Mostrar leyenda"
+                            >
+                                <Layers size={12} /> Mostrar Leyenda
+                            </button>
+                        ) : (
+                            <div className={`z-[500] bg-white/95 backdrop-blur border border-slate-200 p-4 shadow-xl text-xs ${
+                                isFullScreen 
+                                    ? 'absolute bottom-5 left-5 max-w-xs rounded-2xl space-y-2' 
+                                    : 'sm:absolute sm:bottom-5 sm:left-5 sm:max-w-xs sm:rounded-2xl space-y-2 max-sm:border-t max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none max-sm:p-3 max-sm:space-y-0 max-sm:flex max-sm:flex-wrap max-sm:gap-x-4 max-sm:gap-y-2 max-sm:justify-center max-sm:w-full relative sm:absolute'
+                            }`}>
+                                <div className="flex justify-between items-center mb-2 max-sm:w-full max-sm:justify-between max-sm:mb-1">
+                                    <h5 className="font-black text-slate-800 uppercase tracking-widest text-[10px] flex items-center gap-1"><Layers size={12}/> Leyenda</h5>
+                                    <button 
+                                        onClick={() => setShowLegend(false)} 
+                                        className="text-slate-400 hover:text-slate-600 transition-colors p-0.5 rounded-lg hover:bg-slate-100/50"
+                                        title="Ocultar leyenda"
+                                    >
+                                        <X size={12} />
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-2 max-sm:inline-flex">
+                                    <div className="w-3.5 h-3.5 rounded-full bg-slate-400 border border-slate-200"></div>
+                                    <span className="text-slate-600 font-semibold">Gris: Sin tubo en portal</span>
+                                </div>
+                                <div className="flex items-center gap-2 max-sm:inline-flex">
+                                    <div className="w-3.5 h-3.5 rounded-full bg-amber-400 border border-amber-200"></div>
+                                    <span className="text-slate-600 font-semibold">Amarillo: Citado o Planificado</span>
+                                </div>
+                                <div className="flex items-center gap-2 max-sm:inline-flex">
+                                    <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border border-emerald-200"></div>
+                                    <span className="text-slate-600 font-semibold">Verde: Tubo metido (Listo soplado)</span>
+                                </div>
+                                <div className="flex items-center gap-2 border-t border-slate-100 pt-1.5 mt-1 max-sm:border-t-0 max-sm:pt-0 max-sm:mt-0 max-sm:inline-flex">
+                                    <div className="w-6 h-[2px] bg-[#8b5cf6] border-t border-dashed"></div>
+                                    <span className="text-slate-600 font-semibold">Ducto de Calle 7x22</span>
+                                </div>
+                                <div className="flex items-center gap-2 max-sm:inline-flex">
+                                    <div className="w-6 h-[2px] bg-[#ec4899] border-t border-dashed"></div>
+                                    <span className="text-slate-600 font-semibold">Ducto de Calle 5x10</span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2 max-sm:inline-flex">
-                                <div className="w-3.5 h-3.5 rounded-full bg-amber-400 border border-amber-200"></div>
-                                <span className="text-slate-600 font-semibold">Amarillo: Citado o Planificado</span>
-                            </div>
-                            <div className="flex items-center gap-2 max-sm:inline-flex">
-                                <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border border-emerald-200"></div>
-                                <span className="text-slate-600 font-semibold">Verde: Tubo metido (Listo soplado)</span>
-                            </div>
-                            <div className="flex items-center gap-2 border-t border-slate-100 pt-1.5 mt-1 max-sm:border-t-0 max-sm:pt-0 max-sm:mt-0 max-sm:inline-flex">
-                                <div className="w-6 h-[2px] bg-[#8b5cf6] border-t border-dashed"></div>
-                                <span className="text-slate-600 font-semibold">Ducto de Calle 7x22</span>
-                            </div>
-                            <div className="flex items-center gap-2 max-sm:inline-flex">
-                                <div className="w-6 h-[2px] bg-[#ec4899] border-t border-dashed"></div>
-                                <span className="text-slate-600 font-semibold">Ducto de Calle 5x10</span>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 )}
 
