@@ -5,35 +5,117 @@ const { getUnifiedUserStats } = require('../services/performanceService');
 
 exports.getDashboardStats = async (req, res) => {
     try {
-        const [pendingCount, assignedCount, completedActivationsCount] = await Promise.all([
+        const isDemo = req.isDemo || false;
+
+        // 1. Fetch overall counts
+        const [builtCount, plannedCount, pendingCount] = await Promise.all([
             prisma.address.count({
                 where: {
-                    sopladoStatus: 'OK',
-                    project: { isDemo: req.isDemo || false },
-                    orderStatus: { notIn: ['CERRADA', 'DERIVADA'] },
-                    AND: [{ clientName: { not: { startsWith: '***' } } }],
+                    project: { isDemo },
+                    civilWorkStatus: 'HECHO'
+                }
+            }),
+            prisma.address.count({
+                where: {
+                    project: { isDemo },
+                    civilWorkStatus: 'PLANIFICADO'
+                }
+            }),
+            prisma.address.count({
+                where: {
+                    project: { isDemo },
                     OR: [
-                        { appointment: { is: null } },
-                        { appointment: { status: 'PENDIENTE' } }
+                        { civilWorkStatus: null },
+                        { civilWorkStatus: 'SIN_TUBO' }
                     ]
                 }
-            }),
-            prisma.appointment.count({
-                where: {
-                    status: 'CITADO',
-                    address: { project: { isDemo: req.isDemo || false } }
-                }
-            }),
-            prisma.activationInfo.count({
-                where: { address: { project: { isDemo: req.isDemo || false } } }
             })
         ]);
 
+        // 2. Fetch project metrics (total, completed, pending, percentages)
+        const projects = await prisma.project.findMany({
+            where: { isDemo },
+            include: {
+                addresses: {
+                    select: {
+                        civilWorkStatus: true
+                    }
+                }
+            }
+        });
+
+        const projectMetrics = projects.map(p => {
+            const total = p.addresses.length;
+            const completed = p.addresses.filter(a => a.civilWorkStatus === 'HECHO').length;
+            const pending = p.addresses.filter(a => !a.civilWorkStatus || a.civilWorkStatus === 'SIN_TUBO').length;
+
+            const percentCompleted = total > 0 ? parseFloat(((completed / total) * 100).toFixed(2)) : 0;
+            const percentPending = total > 0 ? parseFloat(((pending / total) * 100).toFixed(2)) : 0;
+
+            return {
+                id: p.id,
+                name: p.name,
+                total,
+                completed,
+                pending,
+                percentCompleted,
+                percentPending
+            };
+        });
+
+        // 3. Fetch subcontractor metrics (total completed acometidas, total meters of duct)
+        const subcontractors = await prisma.subcontractor.findMany({
+            include: {
+                projects: {
+                    where: { isDemo },
+                    include: {
+                        addresses: {
+                            select: {
+                                civilWorkStatus: true
+                            }
+                        }
+                    }
+                },
+                dailyReports: {
+                    include: {
+                        ductLogs: {
+                            where: { confirmed: true },
+                            select: {
+                                distance: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        const subcontractorMetrics = subcontractors.map(s => {
+            let completedConnections = 0;
+            s.projects.forEach(p => {
+                completedConnections += p.addresses.filter(a => a.civilWorkStatus === 'HECHO').length;
+            });
+
+            let totalMeters = 0;
+            s.dailyReports.forEach(report => {
+                report.ductLogs.forEach(log => {
+                    totalMeters += log.distance || 0;
+                });
+            });
+
+            return {
+                id: s.id,
+                name: s.name,
+                completedConnections,
+                totalMeters: parseFloat(totalMeters.toFixed(2))
+            };
+        });
+
         res.json({
-            pendingAppointments: pendingCount,
-            assignedAppointments: assignedCount,
-            completedActivations: completedActivationsCount,
-            simpleCount: 0 // G&K EXTIRPATED
+            builtConnections: builtCount,
+            plannedConnections: plannedCount,
+            pendingConnections: pendingCount,
+            projectMetrics,
+            subcontractorMetrics
         });
     } catch (error) {
         console.error(error);

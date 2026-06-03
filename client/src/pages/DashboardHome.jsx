@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
-import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target, Camera, Trash2, Navigation, Calculator, Truck, Percent, Wallet } from 'lucide-react';
+import { Calendar, CheckCircle, Clock, TrendingUp, Users, MapPin, DollarSign, Star, AlertCircle, X, Target, Camera, Trash2, Navigation, Calculator, Truck, Percent, Wallet, HardHat } from 'lucide-react';
 import OfflineSyncManager from '../components/OfflineSyncManager';
 
 const StatCard = ({ title, value, icon: Icon, colorClass, subtext, onClick }) => (
@@ -795,121 +795,97 @@ const DashboardHome = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <StatCard
-                    title={t('home.pending_appointments')}
-                    value={stats.pendingAppointments || 0}
-                    icon={Clock}
-                    colorClass="text-orange-500 bg-orange-500"
-                    subtext={t('home.pending_desc')}
-                    onClick={() => navigate('/dashboard/appointments?view=pending')}
-                />
-                <StatCard
-                    title={t('home.assigned_appointments')}
-                    value={stats.assignedAppointments || 0}
-                    icon={Calendar}
-                    colorClass="text-joa-blue bg-joa-blue"
-                    subtext={t('home.assigned_desc')}
-                    onClick={() => navigate('/dashboard/appointments?view=scheduled')}
-                />
-                <StatCard
-                    title={t('home.completed_activations')}
-                    value={stats.completedActivations || 0}
+                    title="Acometidas Construidas"
+                    value={stats.builtConnections || 0}
                     icon={CheckCircle}
                     colorClass="text-green-500 bg-green-500"
-                    subtext={t('home.completed_desc')}
-                    onClick={() => navigate('/dashboard/billing')}
+                    subtext="Acometidas finalizadas con tubo"
+                    onClick={() => navigate('/dashboard/civil-works-map')}
+                />
+                <StatCard
+                    title="Acometidas Planificadas"
+                    value={stats.plannedConnections || 0}
+                    icon={Calendar}
+                    colorClass="text-orange-500 bg-orange-500"
+                    subtext="Acometidas citadas o planificadas"
+                    onClick={() => navigate('/dashboard/civil-works-map')}
+                />
+                <StatCard
+                    title="Acometidas Pendientes"
+                    value={stats.pendingConnections || 0}
+                    icon={Clock}
+                    colorClass="text-slate-500 bg-slate-500"
+                    subtext="Acometidas pendientes o sin tubo"
+                    onClick={() => navigate('/dashboard/civil-works-map')}
                 />
             </div>
 
             {isAdmin && (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                    {/* Teams Table */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <Users size={20} className="text-joa-blue" />
-                                {t('home.team_performance')}
+                    {/* Projects Progress Table */}
+                    <div className="glass-panel bg-white/80 border border-slate-100 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-slate-50 flex items-center justify-between">
+                            <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                <Target size={18} className="text-orange-600" />
+                                Progreso por Proyecto
                             </h3>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-slate-600">
-                                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
-                                    <tr>
-                                        <th className="p-4 pl-6">{t('home.team')}</th>
-                                        <th className="p-4">{t('home.production')}</th>
-                                        <th className="p-4 text-right pr-6">{t('home.status')}</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {(!payroll.teams || payroll.teams.length === 0) ? (
-                                        <tr>
-                                            <td colSpan="3" className="p-8 text-center text-slate-400">No hay datos</td>
-                                        </tr>
-                                    ) : (
-                                        payroll.teams.map((team, index) => (
-                                            <tr key={index} className="hover:bg-slate-50 transition-colors">
-                                                <td className="p-4 pl-6 font-medium text-slate-800">{team.name}</td>
-                                                <td className="p-4 font-bold">{money(team.earnings)}</td>
-                                                <td className="p-4 text-right pr-6">
-                                                    <div className="flex items-center justify-end gap-3">
-                                                        <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                            <div
-                                                                className="h-full bg-gradient-to-r from-joa-blue to-joa-cyan"
-                                                                style={{ width: `${team.progress}%` }}
-                                                            ></div>
-                                                        </div>
-                                                        <span className="text-[10px] font-black text-slate-400">
-                                                            {Math.round(team.progress)}%
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
-                            </table>
+                        <div className="flex-1 overflow-auto custom-scrollbar space-y-4 p-4">
+                            {(!stats.projectMetrics || stats.projectMetrics.length === 0) ? (
+                                <p className="text-center text-slate-400 text-sm py-8">No hay datos de proyectos</p>
+                            ) : (
+                                stats.projectMetrics.map((proj) => (
+                                    <div key={proj.id} className="bg-slate-50/50 border border-slate-100/50 p-4 rounded-2xl space-y-2">
+                                        <div className="flex justify-between items-center text-xs">
+                                            <span className="font-bold text-slate-800 text-sm">{proj.name}</span>
+                                            <span className="text-slate-500 font-semibold">
+                                                {proj.completed} / {proj.total} acometidas
+                                            </span>
+                                        </div>
+                                        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
+                                            <div 
+                                                className="h-full bg-emerald-500 rounded-full transition-all duration-500" 
+                                                style={{ width: `${proj.percentCompleted}%` }}
+                                            />
+                                        </div>
+                                        <div className="flex justify-between text-[10px] font-bold">
+                                            <span className="text-emerald-600">{proj.percentCompleted}% Terminado</span>
+                                            <span className="text-slate-400">{proj.percentPending}% Pendiente</span>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
 
-                    {/* Individual Technicians Table */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <Star size={20} className="text-yellow-500" />
-                                {t('home.tech_performance')}
+                    {/* Subcontractor Performance Table */}
+                    <div className="glass-panel bg-white/80 border border-slate-100 rounded-3xl p-6 shadow-sm overflow-hidden flex flex-col">
+                        <div className="p-4 border-b border-slate-50 flex items-center justify-between">
+                            <h3 className="font-extrabold text-slate-800 flex items-center gap-2 text-sm uppercase tracking-wider">
+                                <HardHat size={18} className="text-orange-600" />
+                                Rendimiento de Subcontratas
                             </h3>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left text-sm text-slate-600">
-                                <thead className="bg-slate-50 text-slate-700 font-semibold border-b border-slate-100">
-                                    <tr>
-                                        <th className="p-4 pl-6">{t('home.technician')}</th>
-                                        <th className="p-4">{t('home.total')}</th>
-                                        <th className="p-4 text-right pr-6">{t('home.progress_bonus')}</th>
+                        <div className="flex-1 overflow-auto custom-scrollbar p-4">
+                            <table className="w-full text-left text-sm text-slate-600 border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 text-slate-500 text-[10px] font-bold uppercase tracking-wider border-b border-slate-100">
+                                        <th className="p-3 pl-4">Subcontrata</th>
+                                        <th className="p-3 text-center">Acometidas Hechas</th>
+                                        <th className="p-3 text-right pr-4">Metros Ducto</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {(!payroll.technicians || payroll.technicians.length === 0) ? (
+                                <tbody>
+                                    {(!stats.subcontractorMetrics || stats.subcontractorMetrics.length === 0) ? (
                                         <tr>
-                                            <td colSpan="3" className="p-8 text-center text-slate-400">No hay datos</td>
+                                            <td colSpan="3" className="p-8 text-center text-slate-400">No hay datos de subcontratas</td>
                                         </tr>
                                     ) : (
-                                        payroll.technicians.map((tech, index) => (
-                                            <tr key={index} className="hover:bg-slate-50 transition-colors">
-                                                <td className="p-4 pl-6 font-medium text-slate-800">{tech.name}</td>
-                                                <td className="p-4 font-bold text-green-600">{money(tech.earnings)}</td>
-                                                <td className="p-4 text-right pr-6">
-                                                    <div className="flex items-center justify-end gap-3">
-                                                        <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                            <div
-                                                                className="h-full bg-gradient-to-r from-yellow-400 to-orange-500"
-                                                                style={{ width: `${tech.progress}%` }}
-                                                            ></div>
-                                                        </div>
-                                                        <span className="text-[10px] font-black text-slate-400">
-                                                            {Math.round(tech.progress)}%
-                                                        </span>
-                                                    </div>
-                                                </td>
+                                        stats.subcontractorMetrics.map((sub) => (
+                                            <tr key={sub.id} className="hover:bg-slate-50/50 border-b border-slate-50 transition-colors">
+                                                <td className="p-3 pl-4 font-bold text-slate-800">{sub.name}</td>
+                                                <td className="p-3 text-center font-extrabold text-emerald-600">{sub.completedConnections}</td>
+                                                <td className="p-3 text-right pr-4 font-extrabold text-purple-600">{sub.totalMeters}m</td>
                                             </tr>
                                         ))
                                     )}

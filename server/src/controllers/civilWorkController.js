@@ -348,6 +348,28 @@ exports.submitDailyReport = async (req, res) => {
             }
         }
 
+        // Create notification in DB for SUPER_ADMINs
+        try {
+            await prisma.notification.create({
+                data: {
+                    type: 'DAILY_REPORT_SUBMITTED',
+                    message: `La subcontrata "${user.subcontractor.name}" ha enviado el parte diario para la fecha ${new Date(date || Date.now()).toLocaleDateString('es-ES')}.`,
+                    targetRole: 'SUPER_ADMIN',
+                    createdById: userId
+                }
+            });
+
+            // Send push notification to SUPER_ADMINs
+            const { sendPushToRole } = require('../utils/notificationUtils');
+            await sendPushToRole('SUPER_ADMIN', {
+                title: 'Nuevo Parte Diario',
+                body: `La subcontrata "${user.subcontractor.name}" ha enviado el parte diario para la fecha ${new Date(date || Date.now()).toLocaleDateString('es-ES')}.`,
+                data: { url: '/dashboard/daily-reports' }
+            });
+        } catch (notifErr) {
+            console.error('Error creating daily report notification:', notifErr);
+        }
+
         res.status(201).json({ message: 'Parte diario enviado correctamente', reportId: report.id });
     } catch (error) {
         console.error('Error submitting daily report:', error);
