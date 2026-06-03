@@ -311,7 +311,10 @@ exports.submitDailyReport = async (req, res) => {
                     for (const photoUrl of log.photos) {
                         const gpsData = await extractGpsFromImage(photoUrl);
                         if (gpsData) {
-                            coordinates.push(gpsData);
+                            coordinates.push({
+                                ...gpsData,
+                                photoUrl
+                            });
                         }
                     }
                 }

@@ -192,6 +192,7 @@ const CivilWorksInit = () => {
     const [drawnPoints, setDrawnPoints] = useState([]);
     const [savingDuct, setSavingDuct] = useState(false);
     const [companyCountry, setCompanyCountry] = useState('ES');
+    const [activePhotoModal, setActivePhotoModal] = useState(null);
 
     // References
     const initMapRef = useRef(null);
@@ -200,6 +201,7 @@ const CivilWorksInit = () => {
     const markersGroupRef = useRef(null);
     const savedDuctsGroupRef = useRef(null);
     const addressesGroupRef = useRef(null);
+    const photoMarkersGroupRef = useRef(null);
     const searchMarkerRef = useRef(null);
 
     // Search and centering states
@@ -376,6 +378,7 @@ const CivilWorksInit = () => {
             markersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             savedDuctsGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             addressesGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+            photoMarkersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             polylineRef.current = L.polyline([], { 
                 color: ductType === '5x10' ? '#ec4899' : '#8b5cf6', 
                 weight: 5,
@@ -408,6 +411,7 @@ const CivilWorksInit = () => {
             markersGroupRef.current.clearLayers();
             if (savedDuctsGroupRef.current) savedDuctsGroupRef.current.clearLayers();
             if (addressesGroupRef.current) addressesGroupRef.current.clearLayers();
+            if (photoMarkersGroupRef.current) photoMarkersGroupRef.current.clearLayers();
             polylineRef.current.setLatLngs([]);
         }
 
@@ -586,11 +590,94 @@ const CivilWorksInit = () => {
         }
     };
 
-    // Redraw saved ducts and project address markers when data/project updates
+    const drawPhotoMarkers = () => {
+        if (!leafletLoaded || !mapInstanceRef.current || !photoMarkersGroupRef.current) return;
+        const L = window.L;
+        photoMarkersGroupRef.current.clearLayers();
+
+        const cameraIcon = L.divIcon({
+            html: `<div class="flex items-center justify-center w-7 h-7 rounded-full bg-orange-500 border-2 border-white shadow-md text-[13px] hover:scale-125 transition-transform cursor-pointer">📸</div>`,
+            className: '', iconSize: [28, 28], iconAnchor: [14, 14]
+        });
+
+        // A. Connection Photos (Acometidas) - only for the selected project
+        if (filterProject) {
+            const projectAddresses = addresses.filter(addr => addr.projectId === filterProject);
+            projectAddresses.forEach((addr, i) => {
+                if (addr.civilWorkInfo?.photos && Array.isArray(addr.civilWorkInfo.photos) && addr.civilWorkInfo.photos.length > 0) {
+                    let coords = null;
+                    if (addr.gpsLat && addr.gpsLng) {
+                        coords = { lat: addr.gpsLat, lng: addr.gpsLng };
+                    } else {
+                        const cache = loadCache();
+                        const cacheKey = [addr.street, addr.number, addr.city].filter(Boolean).join(' ').trim();
+                        coords = cache[cacheKey]; // fetch from cache
+                    }
+                    if (!coords) return;
+
+                    addr.civilWorkInfo.photos.forEach((photoUrl, photoIdx) => {
+                        const photoCoords = addr.civilWorkInfo.photos.length > 1 ? scatter(coords, photoIdx) : coords;
+                        const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
+                        
+                        photoMarker.bindTooltip(`
+                            <div style="padding:2px; width:135px; text-align:center; font:11px sans-serif; white-space: normal;">
+                                <img src="${photoUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
+                                <b>Acometida</b><br>
+                                ${addr.street} ${addr.number || ''}
+                            </div>
+                        `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+
+                        photoMarker.on('click', () => {
+                            setActivePhotoModal(photoUrl);
+                        });
+
+                        photoMarkersGroupRef.current.addLayer(photoMarker);
+                    });
+                }
+            });
+        }
+
+        // B. Duct Photos (Ductos)
+        ductRoutes.forEach(route => {
+            if (route.photos && Array.isArray(route.photos) && route.photos.length > 0) {
+                route.photos.forEach((photoUrl, photoIdx) => {
+                    let pt = null;
+                    if (route.coordinates && Array.isArray(route.coordinates) && route.coordinates[photoIdx]) {
+                        pt = route.coordinates[photoIdx];
+                    } else if (route.coordinates && Array.isArray(route.coordinates) && route.coordinates.length > 0) {
+                        pt = route.coordinates[0]; // fallback
+                    }
+                    if (!pt || !pt.lat || !pt.lng) return;
+
+                    const photoMarker = L.marker([pt.lat, pt.lng], { icon: cameraIcon });
+                    
+                    const subName = route.report?.subcontractor?.name || 'Socio';
+                    const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
+
+                    photoMarker.bindTooltip(`
+                        <div style="padding:2px; width:135px; text-align:center; font:11px sans-serif; white-space: normal;">
+                            <img src="${photoUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
+                            <b>Ducto (${route.ductType || '7x22'})</b><br>
+                            ${subName} - ${dateText}
+                        </div>
+                    `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+
+                    photoMarker.on('click', () => {
+                        setActivePhotoModal(photoUrl);
+                    });
+
+                    photoMarkersGroupRef.current.addLayer(photoMarker);
+                });
+            }
+        });
+    };
+
+    // Redraw saved ducts, project address markers, and photos when data/project updates
     useEffect(() => {
         if (activeTab === 'ducts') {
             drawSavedDucts();
             drawProjectAddresses();
+            drawPhotoMarkers();
         }
     }, [leafletLoaded, activeTab, ductRoutes, filterProject, addresses]);
 
@@ -1087,6 +1174,28 @@ const CivilWorksInit = () => {
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Full-screen Photo Modal */}
+            {activePhotoModal && (
+                <div 
+                    className="fixed inset-0 bg-black/85 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm"
+                    onClick={() => setActivePhotoModal(null)}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+                        <button 
+                            className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-2.5 transition-colors"
+                            onClick={() => setActivePhotoModal(null)}
+                        >
+                            <X size={24} />
+                        </button>
+                        <img 
+                            src={activePhotoModal} 
+                            alt="Trabajo realizado" 
+                            className="max-w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl border border-white/10" 
+                        />
+                    </div>
+                </div>
             )}
         </div>
     );

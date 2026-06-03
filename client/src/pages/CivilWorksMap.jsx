@@ -171,12 +171,15 @@ const CivilWorksMap = () => {
     const [companyCountry, setCompanyCountry] = useState('ES');
     const [progress, setProgress] = useState(0);
     const [progressLabel, setProgressLabel] = useState('');
+    const [showPhotos, setShowPhotos] = useState(true);
+    const [activePhotoModal, setActivePhotoModal] = useState(null);
     const cancelledRef = useRef(false);
 
     const mapRef = useRef(null);
     const mapInstanceRef = useRef(null);
     const markersGroupRef = useRef(null);
     const workersGroupRef = useRef(null);
+    const photoMarkersGroupRef = useRef(null);
 
     // Initialize Leaflet
     useEffect(() => {
@@ -376,10 +379,12 @@ const CivilWorksMap = () => {
                 }).addTo(mapInstanceRef.current);
                 markersGroupRef.current = L.featureGroup().addTo(mapInstanceRef.current);
                 workersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+                photoMarkersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             } else {
                 mapInstanceRef.current.setView([center.lat, center.lng], 16);
                 markersGroupRef.current.clearLayers();
                 workersGroupRef.current.clearLayers();
+                if (photoMarkersGroupRef.current) photoMarkersGroupRef.current.clearLayers();
             }
 
             const BATCH = 10;
@@ -478,6 +483,78 @@ const CivilWorksMap = () => {
                 markersGroupRef.current.addLayer(polyline);
             });
 
+            // Draw Photo Markers (Visual Record of Civil Works)
+            if (showPhotos && photoMarkersGroupRef.current) {
+                photoMarkersGroupRef.current.clearLayers();
+                const cameraIcon = L.divIcon({
+                    html: `<div class="flex items-center justify-center w-7 h-7 rounded-full bg-orange-500 border-2 border-white shadow-md text-[13px] hover:scale-125 transition-transform cursor-pointer">📸</div>`,
+                    className: '', iconSize: [28, 28], iconAnchor: [14, 14]
+                });
+
+                // A. Connection Photos (Acometidas)
+                filteredAddresses.forEach((addr, i) => {
+                    if (cancelledRef.current) return;
+                    let coords = coordsList[i] || scatter(center, i);
+                    if (addr.civilWorkInfo?.photos && Array.isArray(addr.civilWorkInfo.photos) && addr.civilWorkInfo.photos.length > 0) {
+                        addr.civilWorkInfo.photos.forEach((photoUrl, photoIdx) => {
+                            // Scatter slightly if there are multiple photos for the same connection
+                            const photoCoords = addr.civilWorkInfo.photos.length > 1 ? scatter(coords, photoIdx) : coords;
+                            
+                            const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
+                            
+                            photoMarker.bindTooltip(`
+                                <div style="padding:2px; width:130px; text-align:center; font:11px sans-serif; white-space: normal;">
+                                    <img src="${photoUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
+                                    <b>Acometida</b><br>
+                                    ${addr.street} ${addr.number || ''}
+                                </div>
+                            `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+
+                            photoMarker.on('click', () => {
+                                setActivePhotoModal(photoUrl);
+                            });
+
+                            photoMarkersGroupRef.current.addLayer(photoMarker);
+                        });
+                    }
+                });
+
+                // B. Duct Photos (Ductos)
+                filteredDuctRoutes.forEach(route => {
+                    if (cancelledRef.current) return;
+                    if (route.photos && Array.isArray(route.photos) && route.photos.length > 0) {
+                        route.photos.forEach((photoUrl, photoIdx) => {
+                            let pt = null;
+                            if (route.coordinates && Array.isArray(route.coordinates) && route.coordinates[photoIdx]) {
+                                pt = route.coordinates[photoIdx];
+                            } else if (route.coordinates && Array.isArray(route.coordinates) && route.coordinates.length > 0) {
+                                pt = route.coordinates[0]; // fallback
+                            }
+                            if (!pt || !pt.lat || !pt.lng) return;
+
+                            const photoMarker = L.marker([pt.lat, pt.lng], { icon: cameraIcon });
+                            
+                            const subName = route.report?.subcontractor?.name || 'Socio';
+                            const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
+
+                            photoMarker.bindTooltip(`
+                                <div style="padding:2px; width:130px; text-align:center; font:11px sans-serif; white-space: normal;">
+                                    <img src="${photoUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
+                                    <b>Ducto (${route.ductType || '7x22'})</b><br>
+                                    ${subName} - ${dateText}
+                                </div>
+                            `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+
+                            photoMarker.on('click', () => {
+                                setActivePhotoModal(photoUrl);
+                            });
+
+                            photoMarkersGroupRef.current.addLayer(photoMarker);
+                        });
+                    }
+                });
+            }
+
             // Draw active worker live locations
             activeWorkers.forEach(workerLog => {
                 if (cancelledRef.current) return;
@@ -506,7 +583,7 @@ const CivilWorksMap = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry]);
+    }, [leafletLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry, showPhotos]);
 
     // Bulk address selection
     const toggleSelectAddress = (id) => {
@@ -638,6 +715,17 @@ const CivilWorksMap = () => {
                         <option value="PLANIFICADO">Amarillo - Citado / Planificado</option>
                         <option value="HECHO">Verde - Tubo instalado (Hecho)</option>
                     </select>
+
+                    {/* Toggle show photos */}
+                    <label className="flex items-center gap-2 bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-xl px-3.5 py-2.5 cursor-pointer hover:bg-slate-50 select-none">
+                        <input
+                            type="checkbox"
+                            checked={showPhotos}
+                            onChange={(e) => setShowPhotos(e.target.checked)}
+                            className="w-4 h-4 rounded cursor-pointer accent-orange-600"
+                        />
+                        <span>Ver Fotos (Registro Visual)</span>
+                    </label>
 
                     {/* Refresh btn */}
                     <button
@@ -863,6 +951,28 @@ const CivilWorksMap = () => {
                     </div>
                 )}
             </div>
+
+            {/* Full-screen Photo Modal */}
+            {activePhotoModal && (
+                <div 
+                    className="fixed inset-0 bg-black/85 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm"
+                    onClick={() => setActivePhotoModal(null)}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
+                        <button 
+                            className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-2.5 transition-colors"
+                            onClick={() => setActivePhotoModal(null)}
+                        >
+                            <X size={24} />
+                        </button>
+                        <img 
+                            src={activePhotoModal} 
+                            alt="Trabajo realizado" 
+                            className="max-w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl border border-white/10" 
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
