@@ -136,8 +136,8 @@ exports.importProject = async (req, res) => {
             if (!addr.street || addr.street === 'Sin calle') return false;
             
             const s = (addr.status || '').toLowerCase();
-            // Importamos pendientes y también instaladas (Installiert / instalada)
-            return s.includes('installation') || s.includes('geplant') || s.includes('installiert') || s.includes('instalad');
+            // Importamos pendientes, instaladas y aplazadas (Zurückgestellt)
+            return s.includes('installation') || s.includes('geplant') || s.includes('installiert') || s.includes('instalad') || s.includes('zurückgestellt') || s.includes('zuruckgestellt');
         });
 
         // Group / Collate duplicate addresses by physical portal for Civil Works
