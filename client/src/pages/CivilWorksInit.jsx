@@ -295,6 +295,20 @@ const CivilWorksInit = () => {
             if (!streetMatch && !nvtMatch && !cityMatch && !numMatch) return false;
         }
         return true;
+    }).sort((a, b) => {
+        const streetA = a.street || '';
+        const streetB = b.street || '';
+        const comp = streetA.localeCompare(streetB, 'es', { sensitivity: 'base' });
+        if (comp !== 0) return comp;
+        
+        const numA = a.number || '';
+        const numB = b.number || '';
+        const intA = parseInt(numA, 10);
+        const intB = parseInt(numB, 10);
+        if (!isNaN(intA) && !isNaN(intB)) {
+            return intA - intB;
+        }
+        return numA.localeCompare(numB, 'es', { numeric: true, sensitivity: 'base' });
     });
 
     // Checkboxes helpers
