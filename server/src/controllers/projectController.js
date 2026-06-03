@@ -136,8 +136,8 @@ exports.importProject = async (req, res) => {
             if (!addr.street || addr.street === 'Sin calle') return false;
             
             const s = (addr.status || '').toLowerCase();
-            // Solo importamos las que estén realmente pendientes
-            return s.includes('installation') || s.includes('geplant');
+            // Importamos pendientes y también instaladas (Installiert / instalada)
+            return s.includes('installation') || s.includes('geplant') || s.includes('installiert') || s.includes('instalad');
         });
 
         // Group / Collate duplicate addresses by physical portal for Civil Works
@@ -232,6 +232,7 @@ exports.importProject = async (req, res) => {
 
             if (existing) {
                 const statusFromExcel = addrData.status || 'geplant';
+                const isInstalliert = (statusFromExcel || '').toLowerCase().includes('installiert') || (statusFromExcel || '').toLowerCase().includes('instalad');
                 
                 // CRITICAL PROTECTION: Do NOT revert addresses that are already in "Archivo" (DERIVADA, CERRADA, etc.)
                 // Only update status if the current DB status is 'geplant' or 'RECITAR' (pending states)
@@ -256,12 +257,18 @@ exports.importProject = async (req, res) => {
                     updateData.requiresProtocol = true;
                 }
 
+                // If status is "Installiert", automatically mark civilWorkStatus as "HECHO"
+                if (isInstalliert) {
+                    updateData.civilWorkStatus = 'HECHO';
+                }
+
                 await prisma.address.update({
                     where: { id: existing.id },
                     data: updateData
                 });
                 updatedCount++;
             } else {
+                const isInstalliert = (addrData.status || '').toLowerCase().includes('installiert') || (addrData.status || '').toLowerCase().includes('instalad');
                 await prisma.address.create({
                     data: {
                         projectId: project.id,
@@ -274,7 +281,8 @@ exports.importProject = async (req, res) => {
                         nvt: addrData.nvt,
                         orderStatus: addrData.status, // Load status from excel
                         requiresProtocol: isProtocol, // Set flag if this is a protocol import
-                        apartmentCount: addrData.apartmentCount
+                        apartmentCount: addrData.apartmentCount,
+                        civilWorkStatus: isInstalliert ? 'HECHO' : 'SIN_TUBO'
                     }
                 });
                 createdCount++;
