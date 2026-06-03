@@ -180,6 +180,12 @@ const CivilWorksMap = () => {
     const markersGroupRef = useRef(null);
     const workersGroupRef = useRef(null);
     const photoMarkersGroupRef = useRef(null);
+    const lastCenteredFiltersRef = useRef({
+        project: undefined,
+        subcontractor: undefined,
+        status: undefined,
+        query: undefined
+    });
 
     // Initialize Leaflet
     useEffect(() => {
@@ -371,6 +377,12 @@ const CivilWorksMap = () => {
                 mapRef.current._leaflet_id = null;
             }
 
+            const filtersChanged = 
+                lastCenteredFiltersRef.current.project !== filterProject ||
+                lastCenteredFiltersRef.current.subcontractor !== filterSubcontractor ||
+                lastCenteredFiltersRef.current.status !== filterStatus ||
+                lastCenteredFiltersRef.current.query !== searchQuery;
+
             if (!mapInstanceRef.current) {
                 mapInstanceRef.current = L.map(mapRef.current, { zoomControl: false }).setView([center.lat, center.lng], 16);
                 L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
@@ -381,7 +393,9 @@ const CivilWorksMap = () => {
                 workersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
                 photoMarkersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             } else {
-                mapInstanceRef.current.setView([center.lat, center.lng], 16);
+                if (filtersChanged) {
+                    mapInstanceRef.current.setView([center.lat, center.lng], 16);
+                }
                 markersGroupRef.current.clearLayers();
                 workersGroupRef.current.clearLayers();
                 if (photoMarkersGroupRef.current) photoMarkersGroupRef.current.clearLayers();
@@ -571,10 +585,19 @@ const CivilWorksMap = () => {
                 workersGroupRef.current.addLayer(workerMarker);
             });
 
-            if (validCoords.length > 0) {
-                mapInstanceRef.current.fitBounds(L.latLngBounds(validCoords), { padding: [40, 40] });
-            } else {
-                mapInstanceRef.current.setView([center.lat, center.lng], 16);
+            if (filtersChanged) {
+                if (validCoords.length > 0) {
+                    mapInstanceRef.current.fitBounds(L.latLngBounds(validCoords), { padding: [40, 40] });
+                } else {
+                    mapInstanceRef.current.setView([center.lat, center.lng], 16);
+                }
+                // Save current snapshot
+                lastCenteredFiltersRef.current = {
+                    project: filterProject,
+                    subcontractor: filterSubcontractor,
+                    status: filterStatus,
+                    query: searchQuery
+                };
             }
         };
 
@@ -773,25 +796,25 @@ const CivilWorksMap = () => {
                         <div ref={mapRef} className="w-full h-full flex-1 z-10" />
 
                         {/* Legend */}
-                        <div className="absolute bottom-5 left-5 z-[500] bg-white/95 backdrop-blur border border-slate-200 rounded-2xl p-4 shadow-xl space-y-2 max-w-xs text-xs">
-                            <h5 className="font-black text-slate-800 uppercase tracking-widest text-[10px] mb-2 flex items-center gap-1"><Layers size={12}/> Leyenda</h5>
-                            <div className="flex items-center gap-2">
+                        <div className="z-[500] bg-white/95 backdrop-blur border border-slate-200 p-4 shadow-xl text-xs sm:absolute sm:bottom-5 sm:left-5 sm:max-w-xs sm:rounded-2xl space-y-2 max-sm:border-t max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none max-sm:p-3 max-sm:space-y-0 max-sm:flex max-sm:flex-wrap max-sm:gap-x-4 max-sm:gap-y-2 max-sm:justify-center max-sm:w-full relative sm:absolute">
+                            <h5 className="font-black text-slate-800 uppercase tracking-widest text-[10px] mb-2 flex items-center gap-1 max-sm:w-full max-sm:justify-center max-sm:mb-1"><Layers size={12}/> Leyenda</h5>
+                            <div className="flex items-center gap-2 max-sm:inline-flex">
                                 <div className="w-3.5 h-3.5 rounded-full bg-slate-400 border border-slate-200"></div>
                                 <span className="text-slate-600 font-semibold">Gris: Sin tubo en portal</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 max-sm:inline-flex">
                                 <div className="w-3.5 h-3.5 rounded-full bg-amber-400 border border-amber-200"></div>
                                 <span className="text-slate-600 font-semibold">Amarillo: Citado o Planificado</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 max-sm:inline-flex">
                                 <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border border-emerald-200"></div>
                                 <span className="text-slate-600 font-semibold">Verde: Tubo metido (Listo soplado)</span>
                             </div>
-                            <div className="flex items-center gap-2 border-t border-slate-100 pt-1.5 mt-1">
+                            <div className="flex items-center gap-2 border-t border-slate-100 pt-1.5 mt-1 max-sm:border-t-0 max-sm:pt-0 max-sm:mt-0 max-sm:inline-flex">
                                 <div className="w-6 h-[2px] bg-[#8b5cf6] border-t border-dashed"></div>
                                 <span className="text-slate-600 font-semibold">Ducto de Calle 7x22</span>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 max-sm:inline-flex">
                                 <div className="w-6 h-[2px] bg-[#ec4899] border-t border-dashed"></div>
                                 <span className="text-slate-600 font-semibold">Ducto de Calle 5x10</span>
                             </div>
