@@ -15,16 +15,43 @@ const saveCache = (cache) => {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
 };
 
-// Geocoding helper
+const guessCountryCode = (street, city) => {
+    const s = (street || '').toLowerCase();
+    const c = (city || '').toLowerCase();
+    
+    // Spanish street indicators
+    if (s.startsWith('calle') || s.startsWith('avenida') || s.startsWith('plaza') || s.startsWith('paseo') || s.startsWith('avda') || s.startsWith('c/') || s.includes(' de ') || s.includes(' del ')) {
+        return 'ES';
+    }
+    // Spanish city indicators
+    if (c.includes('madrid') || c.includes('barcelona') || c.includes('valencia') || c.includes('sevilla') || c.includes('zaragoza') || c.includes('toledo') || c.includes('getafe') || c.includes('alcorcon') || c.includes('mostoles') || c.includes('leganes') || c.includes('fuenlabrada')) {
+        return 'ES';
+    }
+    
+    // German street indicators
+    if (s.includes('str.') || s.includes('straße') || s.includes('strasse') || s.includes('weg') || s.includes('gasse') || s.includes('platz') || s.includes('allee') || s.includes('pfad')) {
+        return 'DE';
+    }
+    // German city indicators
+    if (c.includes('berlin') || c.includes('münchen') || c.includes('munich') || c.includes('frankfurt') || c.includes('hamburg') || c.includes('mainz') || c.includes('wiesbaden') || c.includes('alzey') || c.includes('bickelheim') || c.includes('gau-bickelheim')) {
+        return 'DE';
+    }
+    
+    return null;
+};
+
+// Geocoding helper with Nominatim / Photon fallbacks
 const geocodeFull = async (street, number, city, countryCode, cache) => {
     const cacheKey = [street, number, city].filter(Boolean).join(' ').trim();
     if (!cacheKey) return null;
     if (cache[cacheKey]?.lat) return cache[cacheKey];
 
-    const country = countryCode === 'DE' ? 'Germany' : 'Spain';
-    const region = countryCode === 'DE' ? 'de' : 'es';
-    const lang = countryCode === 'DE' ? 'de' : 'es';
+    const guessed = guessCountryCode(street, city) || countryCode;
+    const country = guessed === 'DE' ? 'Germany' : 'Spain';
+    const region = guessed === 'DE' ? 'de' : 'es';
+    const lang = guessed === 'DE' ? 'de' : 'es';
 
+    // Stage 1: Google Maps Geocoding API
     if (GOOGLE_KEY) {
         try {
             const address = [street, number, city, country].filter(Boolean).join(', ');
@@ -41,7 +68,79 @@ const geocodeFull = async (street, number, city, countryCode, cache) => {
             }
         } catch {}
     }
+
+    // Stage 2: Photon
+    try {
+        const q = [street, number, city, country].filter(Boolean).join(', ').trim();
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=1&lang=${lang}`;
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            if (data?.features?.length > 0) {
+                const feat = data.features[0];
+                const [lng, lat] = feat.geometry.coordinates;
+                const type = feat.properties?.type || '';
+                if (['house', 'building', 'amenity', 'tourism'].includes(type)) {
+                    const coords = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                    cache[cacheKey] = coords;
+                    return coords;
+                }
+            }
+        }
+    } catch {}
+
+    // Stage 3: Nominatim structured
+    if (number && street) {
+        try {
+            const params = new URLSearchParams({
+                format: 'json',
+                housenumber: number,
+                street: street,
+                city: city || '',
+                countrycodes: region,
+                limit: '1',
+            });
+            const url = `https://nominatim.openstreetmap.org/search?${params}`;
+            const res = await fetch(url, {
+                headers: { 'Accept': 'application/json', 'Accept-Language': lang }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.length > 0) {
+                    const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+                    cache[cacheKey] = coords;
+                    return coords;
+                }
+            }
+        } catch {}
+    }
+
+    // Stage 4: Photon street-only
+    const streetKey = [street, city, country].filter(Boolean).join(', ').trim();
+    if (cache[streetKey]?.lat) return cache[streetKey];
+    try {
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(streetKey)}&limit=1&lang=${lang}`;
+        const res = await fetch(url);
+        if (res.ok) {
+            const data = await res.json();
+            if (data?.features?.length > 0) {
+                const [lng, lat] = data.features[0].geometry.coordinates;
+                const coords = { lat: parseFloat(lat), lng: parseFloat(lng) };
+                cache[streetKey] = coords;
+                return coords;
+            }
+        }
+    } catch {}
+
     return null;
+};
+
+// Circle scatter math for overlapping pins
+const scatter = (center, index) => {
+    const a = 137.5 * (Math.PI / 180);
+    const r = Math.sqrt(index + 1) * 0.00025;
+    const t = (index + 1) * a;
+    return { lat: center.lat + r * Math.sin(t), lng: center.lng + r * Math.cos(t) };
 };
 
 // Haversine formula to compute distance in meters for live UI display
@@ -100,6 +199,7 @@ const CivilWorksInit = () => {
     const polylineRef = useRef(null);
     const markersGroupRef = useRef(null);
     const savedDuctsGroupRef = useRef(null);
+    const addressesGroupRef = useRef(null);
     const searchMarkerRef = useRef(null);
 
     // Search and centering states
@@ -275,6 +375,7 @@ const CivilWorksInit = () => {
 
             markersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             savedDuctsGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+            addressesGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             polylineRef.current = L.polyline([], { 
                 color: ductType === '5x10' ? '#ec4899' : '#8b5cf6', 
                 weight: 5,
@@ -306,6 +407,7 @@ const CivilWorksInit = () => {
         } else {
             markersGroupRef.current.clearLayers();
             if (savedDuctsGroupRef.current) savedDuctsGroupRef.current.clearLayers();
+            if (addressesGroupRef.current) addressesGroupRef.current.clearLayers();
             polylineRef.current.setLatLngs([]);
         }
 
@@ -410,12 +512,87 @@ const CivilWorksInit = () => {
         });
     };
 
-    // Redraw saved ducts when data updates
+    const getStatusInfo = (status) => {
+        switch (status) {
+            case 'HECHO': 
+                return { color: 'green', cls: 'bg-emerald-500 border-emerald-300', label: 'Tubo instalado (Listo soplado)' };
+            case 'PLANIFICADO': 
+                return { color: 'yellow', cls: 'bg-amber-400 border-amber-300', label: 'Citado o Planificado' };
+            default: 
+                return { color: 'grey', cls: 'bg-slate-400 border-slate-300', label: 'Sin tubo / Pendiente' };
+        }
+    };
+
+    const drawProjectAddresses = async () => {
+        if (!leafletLoaded || !mapInstanceRef.current || !addressesGroupRef.current) return;
+        const L = window.L;
+        addressesGroupRef.current.clearLayers();
+
+        if (!filterProject) return;
+
+        const projectAddresses = addresses.filter(addr => addr.projectId === filterProject);
+        if (projectAddresses.length === 0) return;
+
+        const cache = loadCache();
+        const BATCH = 10;
+        const DELAY = 80;
+
+        for (let i = 0; i < projectAddresses.length; i += BATCH) {
+            const batch = projectAddresses.slice(i, i + BATCH);
+            const results = await Promise.all(
+                batch.map(async (addr) => {
+                    if (addr.gpsLat && addr.gpsLng) {
+                        return { addr, coords: { lat: addr.gpsLat, lng: addr.gpsLng } };
+                    }
+                    const coords = await geocodeFull(addr.street, addr.number || '', addr.city || '', companyCountry, cache);
+                    return { addr, coords };
+                })
+            );
+            
+            saveCache(cache);
+
+            results.forEach(({ addr, coords }, idx) => {
+                if (!coords) return;
+                
+                // If coordinates are overlapping, scatter them slightly
+                const isOverlapping = results.slice(0, idx).some(r => r.coords && r.coords.lat === coords.lat && r.coords.lng === coords.lng);
+                const finalCoords = isOverlapping ? scatter(coords, idx) : coords;
+
+                const statusInfo = getStatusInfo(addr.civilWorkStatus);
+
+                const icon = L.divIcon({
+                    html: `<div style="width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.35)" class="${statusInfo.cls}"></div>`,
+                    className: '', iconSize: [14, 14], iconAnchor: [7, 7]
+                });
+
+                const marker = L.marker([finalCoords.lat, finalCoords.lng], { icon });
+                marker.bindPopup(`
+                    <div style="font:13px sans-serif;color:#1e293b;min-width:180px">
+                        <b style="font-size:13px;color:#f97316">Acometida</b><br>
+                        <b>Dirección:</b> ${addr.street} ${addr.number || ''}<br>
+                        <b>NVT:</b> ${addr.nvt || 'N/A'}<br>
+                        <b>Estado:</b> <span style="font-weight:bold">${statusInfo.label}</span>
+                    </div>
+                `);
+                
+                if (addressesGroupRef.current) {
+                    addressesGroupRef.current.addLayer(marker);
+                }
+            });
+
+            if (i + BATCH < projectAddresses.length) {
+                await new Promise(r => setTimeout(r, DELAY));
+            }
+        }
+    };
+
+    // Redraw saved ducts and project address markers when data/project updates
     useEffect(() => {
         if (activeTab === 'ducts') {
             drawSavedDucts();
+            drawProjectAddresses();
         }
-    }, [leafletLoaded, activeTab, ductRoutes]);
+    }, [leafletLoaded, activeTab, ductRoutes, filterProject, addresses]);
 
     // Live search for centering map
     useEffect(() => {
