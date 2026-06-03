@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
     MapPin, Loader2, HardHat, Map as MapIcon, ClipboardList, 
-    Search, Check, RefreshCw, Layers, CheckCircle2, ChevronRight, X 
+    Search, Check, RefreshCw, Layers, CheckCircle2, ChevronRight, X,
+    Maximize2, Minimize2
 } from 'lucide-react';
 import api from '../api/axios';
 
@@ -157,6 +158,7 @@ const CivilWorksMap = () => {
     
     // UI Filters and Tabs
     const [activeTab, setActiveTab] = useState('map'); // 'map' | 'table'
+    const [isFullScreen, setIsFullScreen] = useState(false);
     const [loadingData, setLoadingData] = useState(true);
     const [loadingMap, setLoadingMap] = useState(false);
     const [filterProject, setFilterProject] = useState('');
@@ -238,6 +240,16 @@ const CivilWorksMap = () => {
         };
         fetchCompanyCountry();
     }, []);
+
+    // Force Leaflet to recalculate map size when entering/exiting fullscreen mode
+    useEffect(() => {
+        if (mapInstanceRef.current) {
+            const timer = setTimeout(() => {
+                mapInstanceRef.current.invalidateSize();
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [isFullScreen]);
 
     // Load filter options and map coordinates
     const fetchAllData = async () => {
@@ -765,7 +777,7 @@ const CivilWorksMap = () => {
                 
                 {/* 1. Map Tab View */}
                 {activeTab === 'map' && (
-                    <div className="flex-1 w-full h-full relative flex flex-col">
+                    <div className={isFullScreen ? "fixed inset-0 z-[9999] w-screen h-screen bg-white flex flex-col" : "flex-1 w-full h-full relative flex flex-col"}>
                         {(loadingData || loadingMap) && (
                             <div className="absolute inset-0 bg-white/95 backdrop-blur-sm z-[1000] flex flex-col items-center justify-center p-6 text-center">
                                 <Loader2 className="animate-spin text-orange-600 mb-4" size={48} />
@@ -791,11 +803,34 @@ const CivilWorksMap = () => {
                             </div>
                         )}
                         
+                        {/* Full Screen Toggle Button */}
+                        <button
+                            onClick={() => setIsFullScreen(!isFullScreen)}
+                            className="absolute top-4 right-4 z-[10000] bg-white/95 backdrop-blur border border-slate-200 text-slate-700 hover:text-orange-600 p-3 rounded-2xl shadow-xl hover:scale-105 transition-all flex items-center gap-2 text-xs font-bold"
+                            title={isFullScreen ? "Salir de pantalla completa" : "Pantalla completa"}
+                        >
+                            {isFullScreen ? (
+                                <>
+                                    <Minimize2 size={16} />
+                                    <span>Salir</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Maximize2 size={16} />
+                                    <span>Pantalla Completa</span>
+                                </>
+                            )}
+                        </button>
+                        
                         {/* Map wrapper */}
-                        <div ref={mapRef} className="w-full h-[55vh] sm:h-full flex-1 z-10 min-h-[420px]" />
+                        <div ref={mapRef} className={isFullScreen ? "w-full h-full flex-1 z-10" : "w-full h-[55vh] sm:h-full flex-1 z-10 min-h-[420px]"} />
 
                         {/* Legend */}
-                        <div className="z-[500] bg-white/95 backdrop-blur border border-slate-200 p-4 shadow-xl text-xs sm:absolute sm:bottom-5 sm:left-5 sm:max-w-xs sm:rounded-2xl space-y-2 max-sm:border-t max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none max-sm:p-3 max-sm:space-y-0 max-sm:flex max-sm:flex-wrap max-sm:gap-x-4 max-sm:gap-y-2 max-sm:justify-center max-sm:w-full relative sm:absolute">
+                        <div className={`z-[500] bg-white/95 backdrop-blur border border-slate-200 p-4 shadow-xl text-xs ${
+                            isFullScreen 
+                                ? 'absolute bottom-5 left-5 max-w-xs rounded-2xl space-y-2' 
+                                : 'sm:absolute sm:bottom-5 sm:left-5 sm:max-w-xs sm:rounded-2xl space-y-2 max-sm:border-t max-sm:border-x-0 max-sm:border-b-0 max-sm:shadow-none max-sm:p-3 max-sm:space-y-0 max-sm:flex max-sm:flex-wrap max-sm:gap-x-4 max-sm:gap-y-2 max-sm:justify-center max-sm:w-full relative sm:absolute'
+                        }`}>
                             <h5 className="font-black text-slate-800 uppercase tracking-widest text-[10px] mb-2 flex items-center gap-1 max-sm:w-full max-sm:justify-center max-sm:mb-1"><Layers size={12}/> Leyenda</h5>
                             <div className="flex items-center gap-2 max-sm:inline-flex">
                                 <div className="w-3.5 h-3.5 rounded-full bg-slate-400 border border-slate-200"></div>
