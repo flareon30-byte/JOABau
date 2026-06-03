@@ -6,24 +6,31 @@ const { getUnifiedUserStats } = require('../services/performanceService');
 exports.getDashboardStats = async (req, res) => {
     try {
         const isDemo = req.isDemo || false;
+        const { subcontractorId } = req.query;
+
+        // Base filter for projects
+        const projectFilter = {
+            isDemo,
+            ...(subcontractorId ? { subcontractorId } : {})
+        };
 
         // 1. Fetch overall counts
         const [builtCount, plannedCount, pendingCount] = await Promise.all([
             prisma.address.count({
                 where: {
-                    project: { isDemo },
+                    project: projectFilter,
                     civilWorkStatus: 'HECHO'
                 }
             }),
             prisma.address.count({
                 where: {
-                    project: { isDemo },
+                    project: projectFilter,
                     civilWorkStatus: 'PLANIFICADO'
                 }
             }),
             prisma.address.count({
                 where: {
-                    project: { isDemo },
+                    project: projectFilter,
                     OR: [
                         { civilWorkStatus: null },
                         { civilWorkStatus: 'SIN_TUBO' }
@@ -34,7 +41,7 @@ exports.getDashboardStats = async (req, res) => {
 
         // 2. Fetch project metrics (total, completed, pending, percentages)
         const projects = await prisma.project.findMany({
-            where: { isDemo },
+            where: projectFilter,
             include: {
                 addresses: {
                     select: {
@@ -65,6 +72,7 @@ exports.getDashboardStats = async (req, res) => {
 
         // 3. Fetch subcontractor metrics (total completed acometidas, total meters of duct)
         const subcontractors = await prisma.subcontractor.findMany({
+            where: subcontractorId ? { id: subcontractorId } : undefined,
             include: {
                 projects: {
                     where: { isDemo },

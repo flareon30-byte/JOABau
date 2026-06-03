@@ -50,8 +50,8 @@ const resources = {
       home: {
         hello: "¡Hola",
         welcome_admin: "Bienvenido al panel central de comando de",
-        client_analyzed: "Cliente Analizado",
-        select_client: "-- Selecciona Cliente --",
+        client_analyzed: "Subcontrata Analizada",
+        select_client: "-- Todas las Subcontratas --",
         pending_appointments: "Citas Pendientes",
         pending_desc: "Requieren atención del Back Office",
         assigned_appointments: "Citas Asignadas",
@@ -1274,8 +1274,8 @@ const resources = {
       home: {
         hello: "Hallo",
         welcome_admin: "Willkommen in der zentralen Steuerkonsole von",
-        client_analyzed: "Analysierter Kunde",
-        select_client: "-- Kunde auswählen --",
+        client_analyzed: "Analysierter Subunternehmer",
+        select_client: "-- Alle Subunternehmer --",
         pending_appointments: "Ausstehende Termine",
         pending_desc: "Erfordern Aufmerksamkeit des Back Office",
         assigned_appointments: "Zugewiesene Termine",

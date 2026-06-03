@@ -300,7 +300,8 @@ const DashboardHome = () => {
     });
     const [activatorData, setActivatorData] = useState(null);
     const [payroll, setPayroll] = useState([]);
-    const [clients, setClients] = useState([]);
+    const [subcontractors, setSubcontractors] = useState([]);
+    const [selectedSubcontractorId, setSelectedSubcontractorId] = useState(localStorage.getItem('activeSubcontractorId') || '');
     const [loading, setLoading] = useState(true);
     const [selectedAppointment, setSelectedAppointment] = useState(null);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'completed'
@@ -337,9 +338,9 @@ const DashboardHome = () => {
                 }
             }
 
-            // Fetch clients for the dropdown
-            const clientsRes = await api.get('/api/clients').catch(() => ({ data: [] }));
-            setClients(clientsRes.data);
+            // Fetch subcontractors for the dropdown
+            const subcontractorsRes = await api.get('/api/subcontractors').catch(() => ({ data: [] }));
+            setSubcontractors(subcontractorsRes.data);
 
             if (isActivator) {
                 if (navigator.onLine) {
@@ -356,7 +357,8 @@ const DashboardHome = () => {
                     if (cached) setActivatorData(cached);
                 }
             } else {
-                const statsRes = await api.get('/api/dashboard/stats');
+                const activeSubId = localStorage.getItem('activeSubcontractorId') || '';
+                const statsRes = await api.get('/api/dashboard/stats', { params: { subcontractorId: activeSubId } });
                 setStats(statsRes.data);
 
                 if (isAdmin) {
@@ -374,25 +376,12 @@ const DashboardHome = () => {
 
     useEffect(() => {
         fetchData();
-    }, [isActivator, isAdmin]);
+    }, [isActivator, isAdmin, selectedSubcontractorId]);
 
-    const [updatingClient, setUpdatingClient] = useState(false);
-
-    const handleClientChange = async (e) => {
-        const clientId = e.target.value;
-        setUpdatingClient(true);
-        try {
-            const res = await api.put('/api/users/active-client', { activeClientCompanyId: clientId });
-            // Update local storage user
-            const updatedUser = { ...user, activeClientCompanyId: res.data.activeClientCompanyId, activeClientCompany: res.data.activeClientCompany };
-            localStorage.setItem('user', JSON.stringify(updatedUser));
-            window.location.reload(); // Reload to refresh contexts/dashboard
-        } catch (err) {
-            console.error('Error changing client:', err);
-            alert('Error al cambiar de cliente activo');
-        } finally {
-            setUpdatingClient(false);
-        }
+    const handleSubcontractorChange = (e) => {
+        const subId = e.target.value;
+        localStorage.setItem('activeSubcontractorId', subId);
+        setSelectedSubcontractorId(subId);
     };
 
     if (loading) return (
@@ -769,19 +758,18 @@ const DashboardHome = () => {
                             </p>
                         </div>
 
-                        {/* Client Switcher Selector for Admin */}
+                        {/* Subcontractor Switcher Selector for Admin */}
                         <div className="bg-white/5 p-4 rounded-2xl border border-white/10 backdrop-blur-md self-stretch md:self-auto flex flex-col justify-center mb-6 md:mb-0 shadow-inner shadow-black/10">
                             <label className="text-[10px] font-bold text-joa-cyan uppercase tracking-wider mb-2 block">{t('home.client_analyzed')}</label>
                             <div className="relative">
                                 <select 
-                                    value={user.activeClientCompanyId || ''} 
-                                    onChange={handleClientChange}
-                                    disabled={updatingClient}
+                                    value={selectedSubcontractorId} 
+                                    onChange={handleSubcontractorChange}
                                     className="bg-transparent text-white border-0 border-b-2 border-white/20 focus:border-joa-cyan focus:ring-0 px-0 py-2 text-base font-bold w-full md:w-56 appearance-none cursor-pointer outline-none transition-colors"
                                 >
                                     <option value="" className="text-slate-800">{t('home.select_client')}</option>
-                                    {clients.map(c => (
-                                        <option key={c.id} value={c.id} className="text-slate-800">{c.name}</option>
+                                    {subcontractors.map(s => (
+                                        <option key={s.id} value={s.id} className="text-slate-800">{s.name}</option>
                                     ))}
                                 </select>
                                 <div className="absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-white/50">
