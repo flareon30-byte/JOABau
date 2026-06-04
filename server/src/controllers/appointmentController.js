@@ -2,14 +2,19 @@ const prisma = require('../prisma');
 const { processImages } = require('../utils/imageProcessor');
 const { sendPushToTeam, sendPushToRole } = require('../utils/notificationUtils');
 
-// Get addresses ready for appointment (Soplado OK, Appointment Pending/Null)
+// Get addresses ready for appointment (Civil Work Pending, Appointment Pending/Null)
 exports.getPendingAppointments = async (req, res) => {
     try {
         const addresses = await prisma.address.findMany({
             where: {
                 AND: [
                     { clientName: { not: { startsWith: '***' } } },
-                    { sopladoStatus: 'OK' },
+                    {
+                        OR: [
+                            { civilWorkStatus: null },
+                            { civilWorkStatus: { not: 'HECHO' } }
+                        ]
+                    },
                     { project: { isDemo: req.isDemo || false } },
                     { orderStatus: { notIn: ['CERRADA', 'DERIVADA'] } },
                     {
@@ -46,7 +51,12 @@ exports.getAiManagerSuggestions = async (req, res) => {
         const whereClause = {
             AND: [
                 { clientName: { not: { startsWith: '***' } } },
-                { sopladoStatus: 'OK' },
+                {
+                    OR: [
+                        { civilWorkStatus: null },
+                        { civilWorkStatus: { not: 'HECHO' } }
+                    ]
+                },
                 { project: { isDemo: req.isDemo || false } },
                 { orderStatus: { notIn: ['CERRADA', 'DERIVADA'] } },
                 {
@@ -178,7 +188,7 @@ exports.logContactAttempt = async (req, res) => {
 // Schedule an appointment
 exports.scheduleAppointment = async (req, res) => {
     const { addressId } = req.params;
-    const { date, teamId, clientName, apartmentCount, type = 'ACTIVATION', orientationComment } = req.body;
+    const { date, teamId, clientName, apartmentCount, type = 'CIVIL_WORK', orientationComment } = req.body;
 
     if (!clientName || !apartmentCount) {
         return res.status(400).json({ message: 'El nombre del cliente y el número de apartamentos son obligatorios.' });
@@ -203,6 +213,19 @@ exports.scheduleAppointment = async (req, res) => {
             }
         }
 
+        // Detect if teamId is a Subcontractor or a Team
+        let assignedSubcontractorId = null;
+        let assignedTeamId = null;
+
+        if (teamId) {
+            const subcontractor = await prisma.subcontractor.findUnique({ where: { id: teamId } });
+            if (subcontractor) {
+                assignedSubcontractorId = teamId;
+            } else {
+                assignedTeamId = teamId;
+            }
+        }
+
         // 2. Transaction to update Appointment and Address Status
         const userId = req.userId; // Who is scheduling this?
 
@@ -211,7 +234,8 @@ exports.scheduleAppointment = async (req, res) => {
                 where: { addressId },
                 update: {
                     assignedDate: new Date(date),
-                    assignedTeamId: teamId,
+                    assignedTeamId: assignedTeamId,
+                    assignedSubcontractorId: assignedSubcontractorId,
                     status: 'CITADO',
                     clientName,
                     apartmentCount: parseInt(apartmentCount),
@@ -222,7 +246,8 @@ exports.scheduleAppointment = async (req, res) => {
                 create: {
                     addressId,
                     assignedDate: new Date(date),
-                    assignedTeamId: teamId,
+                    assignedTeamId: assignedTeamId,
+                    assignedSubcontractorId: assignedSubcontractorId,
                     status: 'CITADO',
                     clientName,
                     apartmentCount: parseInt(apartmentCount),
@@ -248,22 +273,32 @@ exports.scheduleAppointment = async (req, res) => {
             try {
                 // Fetch full address for the message
                 const addr = await prisma.address.findUnique({ where: { id: addressId } });
-                const team = await prisma.team.findUnique({ where: { id: teamId } });
-                let targetUrl = '/dashboard';
-                if (team) {
-                    if (team.department === 'ACTIVATION') {
-                        targetUrl = `/dashboard/activations?editAddressId=${addr.id}`;
-                    } else if (team.department === 'BLOWING') {
-                        targetUrl = '/dashboard/blowing';
-                    } else if (team.department === 'PROTOCOLS') {
-                        targetUrl = '/dashboard/protocols';
+                
+                if (assignedSubcontractorId) {
+                    const { sendPushToSubcontractor } = require('../utils/notificationUtils');
+                    sendPushToSubcontractor(assignedSubcontractorId, {
+                        title: '📋 Nueva Cita de Obra Civil',
+                        body: `Asignado: ${addr.street} ${addr.number || ''} para ${new Date(date).toLocaleDateString()}.`,
+                        data: { addressId: addr.id, type: 'ASSIGNMENT', url: '/dashboard/daily-reports' }
+                    }).catch(e => console.error('Push signal subcontractor error:', e.message));
+                } else if (assignedTeamId) {
+                    const team = await prisma.team.findUnique({ where: { id: assignedTeamId } });
+                    let targetUrl = '/dashboard';
+                    if (team) {
+                        if (team.department === 'ACTIVATION') {
+                            targetUrl = `/dashboard/activations?editAddressId=${addr.id}`;
+                        } else if (team.department === 'BLOWING') {
+                            targetUrl = '/dashboard/blowing';
+                        } else if (team.department === 'PROTOCOLS') {
+                            targetUrl = '/dashboard/protocols';
+                        }
                     }
+                    sendPushToTeam(assignedTeamId, {
+                        title: '📋 Nueva Orden de Trabajo',
+                        body: `Asignado: ${addr.street} ${addr.number || ''} para ${new Date(date).toLocaleDateString()}.`,
+                        data: { addressId: addr.id, type: 'ASSIGNMENT', url: targetUrl }
+                    }).catch(e => console.error('Push signal error:', e.message));
                 }
-                sendPushToTeam(teamId, {
-                    title: '📋 Nueva Orden de Trabajo',
-                    body: `Asignado: ${addr.street} ${addr.number || ''} para ${new Date(date).toLocaleDateString()}.`,
-                    data: { addressId: addr.id, type: 'ASSIGNMENT', url: targetUrl }
-                }).catch(e => console.error('Push signal error:', e.message));
             } catch (pError) {
                 console.error('Failed to prepare push payload:', pError);
             }
@@ -298,7 +333,8 @@ exports.getScheduledAppointments = async (req, res) => {
                 address: {
                     include: { project: true }
                 },
-                assignedTeam: true
+                assignedTeam: true,
+                assignedSubcontractor: true
             },
             orderBy: { assignedDate: 'asc' }
         });
@@ -328,7 +364,8 @@ exports.exportScheduledAppointments = async (req, res) => {
             where,
             include: {
                 address: { include: { project: true } },
-                assignedTeam: true
+                assignedTeam: true,
+                assignedSubcontractor: true
             },
             orderBy: { assignedDate: 'asc' }
         });
@@ -344,7 +381,7 @@ exports.exportScheduledAppointments = async (req, res) => {
             'NVT': app.address.nvt || '',
             'Cliente': app.clientName || app.address.clientName || '',
             'Aptos': app.apartmentCount || '',
-            'Equipo': app.assignedTeam ? app.assignedTeam.name : 'Sin asignar',
+            'Subcontrata': app.assignedSubcontractor ? app.assignedSubcontractor.name : (app.assignedTeam ? app.assignedTeam.name : 'Sin asignar'),
             'Estado': app.status,
             'Bauauftrag ID': app.address.bauauftragId || '',
             'KLS ID': app.address.klsId || ''
@@ -381,7 +418,8 @@ exports.exportAllByProject = async (req, res) => {
                 appointment: {
                     include: {
                         comments: true,
-                        assignedTeam: true
+                        assignedTeam: true,
+                        assignedSubcontractor: true
                     }
                 }
             },
@@ -422,7 +460,7 @@ exports.exportAllByProject = async (req, res) => {
                 'Estado Cita': app ? app.status : 'SIN CITA',
                 'Fecha Cita': (app && app.assignedDate) ? new Date(app.assignedDate).toLocaleDateString('es-ES') : '',
                 'Hora Cita': (app && app.assignedDate) ? new Date(app.assignedDate).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '',
-                'Equipo': (app && app.assignedTeam) ? app.assignedTeam.name : '',
+                'Subcontrata': app ? (app.assignedSubcontractor ? app.assignedSubcontractor.name : (app.assignedTeam ? app.assignedTeam.name : '')) : '',
                 'Comentarios': commentsText,
                 'Historial Contacto': historyText
             };
@@ -448,7 +486,7 @@ exports.exportAllByProject = async (req, res) => {
             {wch: 15}, // Estado Cita
             {wch: 15}, // Fecha
             {wch: 10}, // Hora
-            {wch: 15}, // Equipo
+            {wch: 15}, // Subcontrata
             {wch: 50}, // Comentarios
             {wch: 50}  // Historial
         ];

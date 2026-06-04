@@ -147,10 +147,10 @@ const AppointmentsPage = () => {
 
     const fetchTeams = async () => {
         try {
-            const res = await api.get('/api/teams');
+            const res = await api.get('/api/subcontractors');
             setTeams(res.data);
         } catch (error) {
-            console.error('Error fetching teams:', error);
+            console.error('Error fetching subcontractors:', error);
         }
     };
 
@@ -388,7 +388,7 @@ const AppointmentsPage = () => {
             setScheduleForm({
                 appointmentId: existingAppointment.id,
                 date: formattedDate,
-                teamId: existingAppointment.assignedTeamId || '',
+                teamId: existingAppointment.assignedSubcontractorId || existingAppointment.assignedTeamId || '',
                 clientName: existingAppointment.clientName || '',
                 apartmentCount: existingAppointment.apartmentCount || '',
                 type: existingAppointment.type || 'ACTIVATION',
@@ -532,7 +532,7 @@ const AppointmentsPage = () => {
 
     // Addresses ready for Activation (or standard) (excluding RECITAR)
     const filteredPending = sortAddresses(allPendingFiltered.filter(a =>
-        (!a.requiresProtocol || a.protocolStatus === 'OK') && a.sopladoStatus === 'OK' && a.appointment?.status !== 'RECITAR'
+        (!a.requiresProtocol || a.protocolStatus === 'OK') && a.appointment?.status !== 'RECITAR'
     ));
 
     // Custom sort for Scheduled
@@ -556,8 +556,8 @@ const AppointmentsPage = () => {
                 const nvtB = addrB.nvt || '';
                 comparison = nvtA.localeCompare(nvtB, undefined, { numeric: true, sensitivity: 'base' });
             } else if (sortColumn === 'team') {
-                const teamA = a.assignedTeam ? a.assignedTeam.name : '';
-                const teamB = b.assignedTeam ? b.assignedTeam.name : '';
+                const teamA = a.assignedSubcontractor ? a.assignedSubcontractor.name : (a.assignedTeam ? a.assignedTeam.name : '');
+                const teamB = b.assignedSubcontractor ? b.assignedSubcontractor.name : (b.assignedTeam ? b.assignedTeam.name : '');
                 comparison = teamA.localeCompare(teamB, undefined, { sensitivity: 'base' });
             }
 
@@ -1225,12 +1225,16 @@ const AppointmentsPage = () => {
                                                 {app.address.nvt || '-'}
                                             </td>
                                             <td className="p-4">
-                                                {app.assignedTeam ? (
-                                                    <span className="flex items-center gap-2">
-                                                        <Users size={14} /> {app.assignedTeam.name}
-                                                    </span>
-                                                ) : <span className="text-red-400">{t('appointments.unassigned')}</span>}
-                                            </td>
+                                                 {app.assignedSubcontractor ? (
+                                                     <span className="flex items-center gap-2">
+                                                         <Users size={14} /> {app.assignedSubcontractor.name}
+                                                     </span>
+                                                 ) : app.assignedTeam ? (
+                                                     <span className="flex items-center gap-2">
+                                                         <Users size={14} /> {app.assignedTeam.name}
+                                                     </span>
+                                                 ) : <span className="text-red-400">{t('appointments.unassigned')}</span>}
+                                             </td>
                                             <td className="p-4">
                                                 <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold">
                                                     {app.status}
@@ -1445,7 +1449,7 @@ const AppointmentsPage = () => {
                                 >
                                     <option value="">{t('appointments.select_team')}</option>
                                     {teams.map(team => (
-                                        <option key={team.id} value={team.id}>{team.name} ({team.department})</option>
+                                        <option key={team.id} value={team.id}>{team.name}</option>
                                     ))}
                                 </select>
                             </div>

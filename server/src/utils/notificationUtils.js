@@ -104,3 +104,24 @@ exports.sendPushToRole = async (role, payload) => {
         return [];
     }
 };
+
+/**
+ * Sends a push notification to all users of a specific subcontractor
+ * @param {string} subcontractorId - Subcontractor ID
+ * @param {object} payload - { title: string, body: string, data: object }
+ */
+exports.sendPushToSubcontractor = async (subcontractorId, payload) => {
+    try {
+        const users = await prisma.user.findMany({
+            where: { subcontractorId },
+            select: { id: true }
+        });
+
+        return await Promise.all(
+            users.map(u => exports.sendPushToUser(u.id, payload))
+        );
+    } catch (error) {
+        console.error('Error in sendPushToSubcontractor:', error);
+        return [];
+    }
+};

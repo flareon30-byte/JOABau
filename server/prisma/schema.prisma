@@ -274,6 +274,9 @@ model Appointment {
   assignedTeamId String?
   assignedTeam   Team?     @relation(fields: [assignedTeamId], references: [id], onDelete: SetNull)
 
+  assignedSubcontractorId String?
+  assignedSubcontractor   Subcontractor? @relation(fields: [assignedSubcontractorId], references: [id], onDelete: SetNull)
+
   scheduledById String?
   scheduledBy   User?   @relation("ScheduledBy", fields: [scheduledById], references: [id], onDelete: SetNull)
 
@@ -755,6 +758,7 @@ model Subcontractor {
   
   dailyReports CivilDailyReport[]
   priceItems   ClientPriceItem[]
+  appointments Appointment[]
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

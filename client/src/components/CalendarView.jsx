@@ -110,7 +110,7 @@ const CalendarView = ({ appointments, onSlotClick, onEventClick }) => {
                                             <div
                                                 key={app.id}
                                                 className="bg-blue-100 border-l-2 border-blue-500 p-1 mb-1 rounded text-[10px] overflow-hidden cursor-pointer hover:bg-blue-200 transition-colors relative z-10"
-                                                title={`${app.address.street} - ${app.assignedTeam?.name}`}
+                                                title={`${app.address.street} - ${app.assignedSubcontractor?.name || app.assignedTeam?.name || ''}`}
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     if (onEventClick) {
@@ -122,7 +122,7 @@ const CalendarView = ({ appointments, onSlotClick, onEventClick }) => {
                                             >
                                                 <div className="font-bold text-blue-800 truncate">{app.address.street}</div>
                                                 <div className="text-blue-600 truncate flex items-center gap-1">
-                                                    <Users size={8} /> {app.assignedTeam?.name || 'Sin asignar'}
+                                                    <Users size={8} /> {app.assignedSubcontractor?.name || app.assignedTeam?.name || 'Sin asignar'}
                                                 </div>
                                             </div>
                                         ))}
