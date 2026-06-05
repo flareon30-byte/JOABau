@@ -674,7 +674,7 @@ const CivilWorksMap = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry, showPhotos]);
+    }, [leafletLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry, showPhotos, isFullScreen]);
 
     // Bulk address selection
     const toggleSelectAddress = (id) => {
@@ -881,7 +881,7 @@ const CivilWorksMap = () => {
                         </button>
                         
                         {/* Map wrapper */}
-                        <div ref={mapRef} className={isFullScreen ? "w-full h-full flex-1 z-10" : "w-full h-[55vh] sm:h-full flex-1 z-10 min-h-[420px]"} />
+                        <div key={isFullScreen ? 'fs-map' : 'normal-map'} ref={mapRef} className={isFullScreen ? "w-full h-full flex-1 z-10" : "w-full h-[55vh] sm:h-full flex-1 z-10 min-h-[420px]"} />
 
                         {/* Legend */}
                         {!showLegend ? (
