@@ -879,7 +879,7 @@ const CivilWorksMap = () => {
                             
                             itemsHtml += `
                                 <div class="spiderfy-item" style="--tx: ${tx}px; --ty: ${ty}px;" onclick="window.showMapPhotoModal('${safeUrl}')">
-                                    📸
+                                    <img src="${p.url}" class="spiderfy-item-img" />
                                     <div class="spiderfy-tooltip">
                                         <img src="${p.url}" />
                                         <b>${p.title}</b><br>
