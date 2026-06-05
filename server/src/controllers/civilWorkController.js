@@ -809,3 +809,27 @@ exports.deleteDuctLog = async (req, res) => {
     }
 };
 
+exports.updateAddressGps = async (req, res) => {
+    const { id } = req.params;
+    const { gpsLat, gpsLng } = req.body;
+
+    if (gpsLat === undefined || gpsLng === undefined) {
+        return res.status(400).json({ message: 'Se requieren latitud y longitud.' });
+    }
+
+    try {
+        const address = await prisma.address.update({
+            where: { id },
+            data: {
+                gpsLat: parseFloat(gpsLat),
+                gpsLng: parseFloat(gpsLng)
+            }
+        });
+        res.json({ message: 'Coordenadas GPS actualizadas correctamente.', address });
+    } catch (error) {
+        console.error('Error al actualizar coordenadas GPS:', error);
+        res.status(500).json({ message: 'Error interno del servidor.' });
+    }
+};
+
+

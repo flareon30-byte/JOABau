@@ -162,6 +162,7 @@ const CivilWorksMap = () => {
     const [loadingData, setLoadingData] = useState(true);
     const [loadingMap, setLoadingMap] = useState(false);
     const [filterProject, setFilterProject] = useState('');
+    const [filterCity, setFilterCity] = useState('');
     const [filterSubcontractor, setFilterSubcontractor] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -184,9 +185,11 @@ const CivilWorksMap = () => {
     const photoMarkersGroupRef = useRef(null);
     const lastCenteredFiltersRef = useRef({
         project: undefined,
+        city: undefined,
         subcontractor: undefined,
         status: undefined,
-        query: undefined
+        query: undefined,
+        tab: undefined
     });
 
     // Initialize Leaflet
@@ -277,8 +280,11 @@ const CivilWorksMap = () => {
     }, []);
 
     // Clean status colors according to request
-    // Grey: SIN_TUBO, Yellow: PLANIFICADO, Green: HECHO
-    const getStatusInfo = (status) => {
+    // Grey: SIN_TUBO, Yellow: PLANIFICADO, Green: HECHO, Blue: INSTALLIERT
+    const getStatusInfo = (status, orderStatus) => {
+        if (orderStatus === 'Installiert') {
+            return { color: 'blue', cls: 'bg-blue-600 border-blue-300', label: 'Activado (Installiert)' };
+        }
         switch (status) {
             case 'HECHO': 
                 return { color: 'green', cls: 'bg-emerald-500 border-emerald-300', label: 'Tubo instalado (Listo soplado)' };
@@ -289,6 +295,9 @@ const CivilWorksMap = () => {
         }
     };
 
+    // Cities list extractor
+    const cities = [...new Set(addresses.map(a => a.city).filter(Boolean))].sort();
+
     // Filter Logic
     const filteredAddresses = addresses.filter(addr => {
         // If worker is associated with a subcontractor, restrict to their project
@@ -297,8 +306,18 @@ const CivilWorksMap = () => {
         }
 
         if (filterProject && addr.projectId !== filterProject) return false;
-        if (filterStatus && (addr.civilWorkStatus || 'SIN_TUBO') !== filterStatus) return false;
+        if (filterCity && addr.city !== filterCity) return false;
         if (filterSubcontractor && addr.project?.subcontractorId !== filterSubcontractor) return false;
+        
+        if (filterStatus) {
+            if (filterStatus === 'INSTALLIERT') {
+                if (addr.orderStatus !== 'Installiert') return false;
+            } else if (filterStatus === 'HECHO') {
+                if (addr.civilWorkStatus !== 'HECHO' || addr.orderStatus === 'Installiert') return false;
+            } else {
+                if ((addr.civilWorkStatus || 'SIN_TUBO') !== filterStatus) return false;
+            }
+        }
         
         if (searchQuery.trim()) {
             const q = searchQuery.toLowerCase();
@@ -387,14 +406,17 @@ const CivilWorksMap = () => {
                 mapRef.current._leaflet_id = null;
             }
 
+            const isNewMap = !mapInstanceRef.current;
             const filtersChanged = 
                 lastCenteredFiltersRef.current.project !== filterProject ||
+                lastCenteredFiltersRef.current.city !== filterCity ||
                 lastCenteredFiltersRef.current.subcontractor !== filterSubcontractor ||
                 lastCenteredFiltersRef.current.status !== filterStatus ||
-                lastCenteredFiltersRef.current.query !== searchQuery;
+                lastCenteredFiltersRef.current.query !== searchQuery ||
+                lastCenteredFiltersRef.current.tab !== activeTab;
 
-            if (!mapInstanceRef.current) {
-                mapInstanceRef.current = L.map(mapRef.current, { zoomControl: false }).setView([center.lat, center.lng], 16);
+            if (isNewMap) {
+                mapInstanceRef.current = L.map(mapRef.current, { zoomControl: false }).setView([center.lat, center.lng], 14);
                 L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; OpenStreetMap'
@@ -403,9 +425,6 @@ const CivilWorksMap = () => {
                 workersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
                 photoMarkersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             } else {
-                if (filtersChanged) {
-                    mapInstanceRef.current.setView([center.lat, center.lng], 16);
-                }
                 markersGroupRef.current.clearLayers();
                 workersGroupRef.current.clearLayers();
                 if (photoMarkersGroupRef.current) photoMarkersGroupRef.current.clearLayers();
@@ -422,11 +441,20 @@ const CivilWorksMap = () => {
                 if (cancelledRef.current) return;
                 const batch = filteredAddresses.slice(i, i + BATCH);
                 const results = await Promise.all(
-                    batch.map(addr => {
+                    batch.map(async (addr) => {
                         if (addr.gpsLat && addr.gpsLng) {
                             return { lat: addr.gpsLat, lng: addr.gpsLng };
                         }
-                        return geocodeFull(addr.street, addr.number, addr.city, companyCountry, cache);
+                        const coords = await geocodeFull(addr.street, addr.number, addr.city, companyCountry, cache);
+                        if (coords && coords.lat && coords.lng) {
+                            api.put(`/api/civil-works/address/${addr.id}/gps`, {
+                                gpsLat: coords.lat,
+                                gpsLng: coords.lng
+                            }).catch(err => console.error("Error saving geocoded GPS to backend:", err));
+                            addr.gpsLat = coords.lat;
+                            addr.gpsLng = coords.lng;
+                        }
+                        return coords;
                     })
                 );
                 results.forEach((c, j) => { coordsList[i + j] = c; });
@@ -455,12 +483,23 @@ const CivilWorksMap = () => {
             filteredAddresses.forEach((addr, i) => {
                 if (cancelledRef.current) return;
                 let coords = coordsList[i] || scatter(center, i);
-                const statusInfo = getStatusInfo(addr.civilWorkStatus);
+                const statusInfo = getStatusInfo(addr.civilWorkStatus, addr.orderStatus);
 
-                const icon = L.divIcon({
-                    html: `<div style="width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)" class="${statusInfo.cls}"></div>`,
-                    className: '', iconSize: [16, 16], iconAnchor: [8, 8]
-                });
+                let icon;
+                if (addr.orderStatus === 'Installiert') {
+                    icon = L.divIcon({
+                        html: `<div class="relative flex items-center justify-center w-5 h-5">
+                                 <div class="absolute inset-0 rounded-full border-[3px] border-blue-600 bg-white/30 shadow-md"></div>
+                                 <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 border border-white z-10"></div>
+                               </div>`,
+                        className: '', iconSize: [20, 20], iconAnchor: [10, 10]
+                    });
+                } else {
+                    icon = L.divIcon({
+                        html: `<div style="width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35)" class="${statusInfo.cls}"></div>`,
+                        className: '', iconSize: [16, 16], iconAnchor: [8, 8]
+                    });
+                }
 
                 const marker = L.marker([coords.lat, coords.lng], { icon });
                 marker.bindPopup(`
@@ -596,18 +635,20 @@ const CivilWorksMap = () => {
                 workersGroupRef.current.addLayer(workerMarker);
             });
 
-            if (filtersChanged) {
+            if (isNewMap || filtersChanged) {
                 if (validCoords.length > 0) {
                     mapInstanceRef.current.fitBounds(L.latLngBounds(validCoords), { padding: [40, 40] });
                 } else {
-                    mapInstanceRef.current.setView([center.lat, center.lng], 16);
+                    mapInstanceRef.current.setView([center.lat, center.lng], 14);
                 }
                 // Save current snapshot
                 lastCenteredFiltersRef.current = {
                     project: filterProject,
+                    city: filterCity,
                     subcontractor: filterSubcontractor,
                     status: filterStatus,
-                    query: searchQuery
+                    query: searchQuery,
+                    tab: activeTab
                 };
             }
         };
@@ -617,7 +658,7 @@ const CivilWorksMap = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry, showPhotos]);
+    }, [leafletLoaded, activeTab, filterProject, filterCity, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry, showPhotos]);
 
     // Bulk address selection
     const toggleSelectAddress = (id) => {
@@ -724,6 +765,18 @@ const CivilWorksMap = () => {
                         ))}
                     </select>
 
+                    {/* City filter */}
+                    <select
+                        value={filterCity}
+                        onChange={(e) => setFilterCity(e.target.value)}
+                        className="bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
+                    >
+                        <option value="">Todas las Ciudades</option>
+                        {cities.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                        ))}
+                    </select>
+
                     {/* Subcontractor filter (Admins only) */}
                     {['SUPER_ADMIN', 'ADMIN'].includes(user.role) && (
                         <select
@@ -748,6 +801,7 @@ const CivilWorksMap = () => {
                         <option value="SIN_TUBO">Gris - Sin Tubo</option>
                         <option value="PLANIFICADO">Amarillo - Citado / Planificado</option>
                         <option value="HECHO">Verde - Tubo instalado (Hecho)</option>
+                        <option value="INSTALLIERT">Azul - Activado (Installiert)</option>
                     </select>
 
                     {/* Toggle show photos */}
@@ -865,6 +919,13 @@ const CivilWorksMap = () => {
                                 <div className="flex items-center gap-2 max-sm:inline-flex">
                                     <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border border-emerald-200"></div>
                                     <span className="text-slate-600 font-semibold">Verde: Tubo metido (Listo soplado)</span>
+                                </div>
+                                <div className="flex items-center gap-2 max-sm:inline-flex">
+                                    <div className="relative flex items-center justify-center w-3.5 h-3.5">
+                                        <div className="absolute inset-0 rounded-full border-[2.5px] border-blue-600 bg-white/30"></div>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 border border-white z-10"></div>
+                                    </div>
+                                    <span className="text-slate-600 font-semibold">Doble anillo (Azul/Verde): Activado (Installiert)</span>
                                 </div>
                                 <div className="flex items-center gap-2 border-t border-slate-100 pt-1.5 mt-1 max-sm:border-t-0 max-sm:pt-0 max-sm:mt-0 max-sm:inline-flex">
                                     <div className="w-6 h-[2px] bg-[#8b5cf6] border-t border-dashed"></div>
