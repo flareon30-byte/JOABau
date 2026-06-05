@@ -56,7 +56,7 @@ jobs:
             
             echo "4.5. Sincronizando contraseña de base de datos..."
             sleep 5
-            docker exec -T joabau-postgres-1 psql -U postgres -c "ALTER USER postgres WITH PASSWORD '12345';" || echo "Aviso: Falló el ALTER USER, continuando..."
+            docker exec -u postgres -T joabau-postgres-1 psql -c "ALTER USER postgres WITH PASSWORD '12345';" || echo "Aviso: Falló el ALTER USER, continuando..."
             
             echo "5. Actualizando Base de Datos (en segundo plano)..."
             # Intentamos la migración; si falla por RAM, la app sigue arriba
