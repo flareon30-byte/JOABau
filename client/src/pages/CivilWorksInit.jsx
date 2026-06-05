@@ -734,7 +734,9 @@ const CivilWorksInit = () => {
         });
 
         photoImportPoints.forEach((pt, idx) => {
-            const marker = L.marker([pt.lat, pt.lng], { icon: cameraIcon });
+            const isOverlapping = photoImportPoints.slice(0, idx).some(p => p.lat === pt.lat && p.lng === pt.lng);
+            const finalCoords = isOverlapping ? scatter(pt, idx) : pt;
+            const marker = L.marker([finalCoords.lat, finalCoords.lng], { icon: cameraIcon });
             
             // Generate a local object URL to display the image locally in tooltip
             const localUrl = URL.createObjectURL(pt.file);
