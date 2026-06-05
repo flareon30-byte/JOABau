@@ -145,6 +145,33 @@ const scatter = (center, index, scale = 1.0) => {
     return { lat: center.lat + r * Math.sin(t), lng: center.lng + r * Math.cos(t) };
 };
 
+// Clean and validate coordinate arrays
+const cleanCoordinates = (coords) => {
+    if (!coords) return [];
+    let parsed = coords;
+    if (typeof coords === 'string') {
+        try {
+            parsed = JSON.parse(coords);
+        } catch (e) {
+            return [];
+        }
+    }
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+        .map(pt => {
+            if (!pt) return null;
+            const lat = typeof pt.lat === 'number' ? pt.lat : (typeof pt.latitude === 'number' ? pt.latitude : parseFloat(pt.lat));
+            const lng = typeof pt.lng === 'number' ? pt.lng : (typeof pt.longitude === 'number' ? pt.longitude : parseFloat(pt.lng));
+            if (isNaN(lat) || isNaN(lng)) return null;
+            return {
+                ...pt,
+                lat,
+                lng
+            };
+        })
+        .filter(Boolean);
+};
+
 // Perpendicular offset helpers for parallel and overlapping routes
 const getPerpendicularOffset = (p1, p2, offsetDeg) => {
     const latDiff = p2.lat - p1.lat;
@@ -158,46 +185,51 @@ const getPerpendicularOffset = (p1, p2, offsetDeg) => {
 };
 
 const offsetPolyline = (coordinates, offsetMeters) => {
-    if (!coordinates || coordinates.length === 0) return [];
-    if (coordinates.length < 2) return coordinates;
-    if (offsetMeters === 0) return coordinates;
+    const coords = cleanCoordinates(coordinates);
+    if (coords.length === 0) return [];
+    if (coords.length < 2) return coords;
+    if (offsetMeters === 0) return coords;
     
     const offsetDeg = offsetMeters * 0.000009; // 1 meter ~ 0.000009 degrees
     const newCoords = [];
     
-    for (let i = 0; i < coordinates.length; i++) {
+    for (let i = 0; i < coords.length; i++) {
         let latOffset = 0;
         let lngOffset = 0;
         
         if (i === 0) {
-            const offset = getPerpendicularOffset(coordinates[0], coordinates[1], offsetDeg);
+            const offset = getPerpendicularOffset(coords[0], coords[1], offsetDeg);
             latOffset = offset.latOffset;
             lngOffset = offset.lngOffset;
-        } else if (i === coordinates.length - 1) {
-            const offset = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
+        } else if (i === coords.length - 1) {
+            const offset = getPerpendicularOffset(coords[i - 1], coords[i], offsetDeg);
             latOffset = offset.latOffset;
             lngOffset = offset.lngOffset;
         } else {
-            const offset1 = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
-            const offset2 = getPerpendicularOffset(coordinates[i], coordinates[i + 1], offsetDeg);
+            const offset1 = getPerpendicularOffset(coords[i - 1], coords[i], offsetDeg);
+            const offset2 = getPerpendicularOffset(coords[i], coords[i + 1], offsetDeg);
             latOffset = (offset1.latOffset + offset2.latOffset) / 2;
             lngOffset = (offset1.lngOffset + offset2.lngOffset) / 2;
         }
         
         newCoords.push({
-            lat: coordinates[i].lat + latOffset,
-            lng: coordinates[i].lng + lngOffset,
-            timestamp: coordinates[i].timestamp,
-            photoUrl: coordinates[i].photoUrl
+            lat: coords[i].lat + latOffset,
+            lng: coords[i].lng + lngOffset,
+            timestamp: coords[i].timestamp,
+            photoUrl: coords[i].photoUrl
         });
     }
     return newCoords;
 };
 
 const offsetPoint = (pt, routeCoordinates, photoIdx, offsetMeters) => {
+    if (!pt || typeof pt.lat !== 'number' || typeof pt.lng !== 'number' || isNaN(pt.lat) || isNaN(pt.lng)) return pt;
     if (offsetMeters === 0) return pt;
-    let nextPt = routeCoordinates[photoIdx + 1] || routeCoordinates[photoIdx - 1];
-    if (!nextPt) return pt;
+    const coords = cleanCoordinates(routeCoordinates);
+    if (coords.length < 2) return pt;
+    
+    let nextPt = coords[photoIdx + 1] || coords[photoIdx - 1];
+    if (!nextPt || typeof nextPt.lat !== 'number' || typeof nextPt.lng !== 'number' || isNaN(nextPt.lat) || isNaN(nextPt.lng)) return pt;
     
     const offsetDeg = offsetMeters * 0.000009;
     const offset = getPerpendicularOffset(pt, nextPt, offsetDeg);
@@ -208,14 +240,16 @@ const offsetPoint = (pt, routeCoordinates, photoIdx, offsetMeters) => {
 };
 
 const areRoutesOverlapping = (r1, r2) => {
-    if (!r1.coordinates || r1.coordinates.length < 2) return false;
-    if (!r2.coordinates || r2.coordinates.length < 2) return false;
+    const coords1 = cleanCoordinates(r1?.coordinates);
+    const coords2 = cleanCoordinates(r2?.coordinates);
     
-    const start1 = r1.coordinates[0];
-    const end1 = r1.coordinates[r1.coordinates.length - 1];
+    if (coords1.length < 2 || coords2.length < 2) return false;
     
-    const start2 = r2.coordinates[0];
-    const end2 = r2.coordinates[r2.coordinates.length - 1];
+    const start1 = coords1[0];
+    const end1 = coords1[coords1.length - 1];
+    
+    const start2 = coords2[0];
+    const end2 = coords2[coords2.length - 1];
     
     const threshold = 0.00015; // ~15-16 meters
     
@@ -228,20 +262,23 @@ const areRoutesOverlapping = (r1, r2) => {
 };
 
 const getOffsetForRoute = (newRoute, existingRoutes) => {
-    if (!newRoute.coordinates || newRoute.coordinates.length < 2) return 0;
+    const coords = cleanCoordinates(newRoute?.coordinates);
+    if (coords.length < 2) return 0;
     
     let currentOffset = 0;
-    existingRoutes.forEach(savedRoute => {
-        if (areRoutesOverlapping(newRoute, savedRoute)) {
-            let spacing = 4.0;
-            if (savedRoute.ductType === 'ambos' && newRoute.ductType === 'ambos') {
-                spacing = 7.0;
-            } else if (savedRoute.ductType === 'ambos' || newRoute.ductType === 'ambos') {
-                spacing = 5.5;
+    if (Array.isArray(existingRoutes)) {
+        existingRoutes.forEach(savedRoute => {
+            if (areRoutesOverlapping(newRoute, savedRoute)) {
+                let spacing = 4.0;
+                if (savedRoute.ductType === 'ambos' && newRoute.ductType === 'ambos') {
+                    spacing = 7.0;
+                } else if (savedRoute.ductType === 'ambos' || newRoute.ductType === 'ambos') {
+                    spacing = 5.5;
+                }
+                currentOffset += spacing;
             }
-            currentOffset += spacing;
-        }
-    });
+        });
+    }
     return currentOffset;
 };
 
@@ -633,7 +670,8 @@ const CivilWorksInit = () => {
         const processedRoutes = [];
         routeOffsetsRef.current = {};
         const getRouteOffset = (route) => {
-            if (!route.coordinates || route.coordinates.length < 2) return 0;
+            const coords = cleanCoordinates(route?.coordinates);
+            if (coords.length < 2) return 0;
             
             let currentOffset = 0;
             processedRoutes.forEach(prevRoute => {
@@ -653,7 +691,8 @@ const CivilWorksInit = () => {
         };
 
         ductRoutes.forEach(route => {
-            if (!route.coordinates || !Array.isArray(route.coordinates) || route.coordinates.length < 2) return;
+            const coords = cleanCoordinates(route?.coordinates);
+            if (coords.length < 2) return;
             
             const routeOffset = getRouteOffset(route);
             routeOffsetsRef.current[route.id] = routeOffset;

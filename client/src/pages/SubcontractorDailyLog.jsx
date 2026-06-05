@@ -49,6 +49,33 @@ const getColorStyle = (colorName) => {
     }
 };
 
+// Clean and validate coordinate arrays
+const cleanCoordinates = (coords) => {
+    if (!coords) return [];
+    let parsed = coords;
+    if (typeof coords === 'string') {
+        try {
+            parsed = JSON.parse(coords);
+        } catch (e) {
+            return [];
+        }
+    }
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+        .map(pt => {
+            if (!pt) return null;
+            const lat = typeof pt.lat === 'number' ? pt.lat : (typeof pt.latitude === 'number' ? pt.latitude : parseFloat(pt.lat));
+            const lng = typeof pt.lng === 'number' ? pt.lng : (typeof pt.longitude === 'number' ? pt.longitude : parseFloat(pt.lng));
+            if (isNaN(lat) || isNaN(lng)) return null;
+            return {
+                ...pt,
+                lat,
+                lng
+            };
+        })
+        .filter(Boolean);
+};
+
 const getPerpendicularOffset = (p1, p2, offsetDeg) => {
     const latDiff = p2.lat - p1.lat;
     const lngDiff = p2.lng - p1.lng;
@@ -61,35 +88,36 @@ const getPerpendicularOffset = (p1, p2, offsetDeg) => {
 };
 
 const offsetPolyline = (coordinates, offsetMeters) => {
-    if (!coordinates || coordinates.length === 0) return [];
-    if (coordinates.length < 2) return coordinates;
-    if (offsetMeters === 0) return coordinates;
+    const coords = cleanCoordinates(coordinates);
+    if (coords.length === 0) return [];
+    if (coords.length < 2) return coords;
+    if (offsetMeters === 0) return coords;
     
     const offsetDeg = offsetMeters * 0.000009; // 1 meter ~ 0.000009 degrees
     const newCoords = [];
     
-    for (let i = 0; i < coordinates.length; i++) {
+    for (let i = 0; i < coords.length; i++) {
         let latOffset = 0;
         let lngOffset = 0;
         
         if (i === 0) {
-            const offset = getPerpendicularOffset(coordinates[0], coordinates[1], offsetDeg);
+            const offset = getPerpendicularOffset(coords[0], coords[1], offsetDeg);
             latOffset = offset.latOffset;
             lngOffset = offset.lngOffset;
-        } else if (i === coordinates.length - 1) {
-            const offset = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
+        } else if (i === coords.length - 1) {
+            const offset = getPerpendicularOffset(coords[i - 1], coords[i], offsetDeg);
             latOffset = offset.latOffset;
             lngOffset = offset.lngOffset;
         } else {
-            const offset1 = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
-            const offset2 = getPerpendicularOffset(coordinates[i], coordinates[i + 1], offsetDeg);
+            const offset1 = getPerpendicularOffset(coords[i - 1], coords[i], offsetDeg);
+            const offset2 = getPerpendicularOffset(coords[i], coords[i + 1], offsetDeg);
             latOffset = (offset1.latOffset + offset2.latOffset) / 2;
             lngOffset = (offset1.lngOffset + offset2.lngOffset) / 2;
         }
         
         newCoords.push({
-            lat: coordinates[i].lat + latOffset,
-            lng: coordinates[i].lng + lngOffset
+            lat: coords[i].lat + latOffset,
+            lng: coords[i].lng + lngOffset
         });
     }
     return newCoords;
@@ -363,10 +391,11 @@ const SubcontractorDailyLog = () => {
 
     // Render Leaflet Route Preview
     const renderDuctPreviewMap = (ductData) => {
-        if (!leafletLoaded || !previewMapRef.current || !window.L) return;
+        if (!leafletLoaded || !previewMapRef.current || !window.L || !ductData) return;
         const L = window.L;
 
-        const coords = ductData.coordinates.map(c => [c.lat, c.lng]);
+        const cleaned = cleanCoordinates(ductData.coordinates);
+        const coords = cleaned.map(c => [c.lat, c.lng]);
         if (coords.length === 0) return;
 
         if (!mapInstanceRef.current) {
