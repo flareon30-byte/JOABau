@@ -8,8 +8,9 @@ services:
       POSTGRES_DB: ${DB_NAME:-fiberoptics}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5434:5432"
+    # Exposing the db port is dangerous. If needed, bind to 127.0.0.1 (local only)
+    # ports:
+    #   - "127.0.0.1:5434:5432"
 
   server:
     build: ./server
