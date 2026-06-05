@@ -3,6 +3,68 @@ const exifr = require('exifr');
 const path = require('path');
 const fs = require('fs');
 
+// Fallback: extract GPS visually from image text overlay (like Timemark Camera)
+async function extractGpsVisually(fullPath) {
+    try {
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (!apiKey) {
+            console.warn("[GPS Fallback] GEMINI_API_KEY is missing, skipping visual check.");
+            return null;
+        }
+
+        if (!fs.existsSync(fullPath)) {
+            console.warn(`[GPS Fallback] File not found: ${fullPath}`);
+            return null;
+        }
+
+        const imageBuffer = fs.readFileSync(fullPath);
+        const base64Data = imageBuffer.toString('base64');
+        const ext = path.extname(fullPath).toLowerCase();
+        const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
+
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+        const prompt = `Analiza la marca de agua o texto superpuesto en esta foto (habitualmente en la esquina inferior izquierda, creada por aplicaciones de cámara como Timemark Camera, GPS Camera, etc.).
+Tu tarea es extraer:
+1. La latitud y longitud geográfica que aparecen escritas (en formato decimal, ej: "49.835978" y "8.009682").
+2. La fecha y hora indicadas (ej: "Vie, 05 de jun 2026 09:07").
+
+Responde ESTRICTAMENTE con un objeto JSON (sin bloques de formato de markdown \`\`\`json ni texto adicional, solo el JSON plano en una sola línea) con las siguientes propiedades:
+{
+  "latitude": decimal o null,
+  "longitude": decimal o null,
+  "timestamp": "YYYY-MM-DDTHH:mm:ss" o null
+}
+Si no se encuentran las coordenadas o la fecha, responde con null en esas propiedades. Si la fecha está en español, conviértela a formato ISO de fecha/hora (YYYY-MM-DDTHH:mm:ss).`;
+
+        const result = await model.generateContent([
+            prompt,
+            {
+                inlineData: {
+                    data: base64Data,
+                    mimeType: mimeType,
+                },
+            },
+        ]);
+
+        const responseText = result.response.text().trim();
+        const cleanJsonText = responseText.replace(/^```json/i, '').replace(/```$/, '').trim();
+        
+        const data = JSON.parse(cleanJsonText);
+        if (data && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+            return {
+                lat: data.latitude,
+                lng: data.longitude,
+                timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
+            };
+        }
+    } catch (err) {
+        console.error(`[GPS Fallback] Error in visual extraction for ${fullPath}:`, err);
+    }
+    return null;
+}
+
 // Helper to extract GPS metadata from uploaded photo
 async function extractGpsFromImage(relativeUrl) {
     try {
@@ -24,6 +86,12 @@ async function extractGpsFromImage(relativeUrl) {
                 lng: gps.longitude,
                 timestamp: meta?.DateTimeOriginal || new Date()
             };
+        }
+
+        // Fallback to visual extraction if EXIF metadata is missing
+        const visualGps = await extractGpsVisually(fullPath);
+        if (visualGps) {
+            return visualGps;
         }
     } catch (error) {
         console.error(`[EXIF Parser] Error parsing image EXIF:`, error);

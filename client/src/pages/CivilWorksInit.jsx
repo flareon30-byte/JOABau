@@ -921,10 +921,28 @@ const CivilWorksInit = () => {
                         lat: gps.latitude,
                         lng: gps.longitude,
                         timestamp: new Date(timestamp),
-                        file: file
+                        file: file,
+                        uploadedUrl: null
                     });
                 } else {
-                    invalidFiles.push(`${file.name} (Sin metadatos GPS)`);
+                    // Try server-side visual extraction (via extract-gps endpoint)
+                    const formData = new FormData();
+                    formData.append('photo', file);
+                    const response = await api.post('/api/uploads/extract-gps', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    }).catch(() => null);
+
+                    if (response && response.data && response.data.status === 'ok') {
+                        validPoints.push({
+                            lat: response.data.gps.lat,
+                            lng: response.data.gps.lng,
+                            timestamp: new Date(response.data.timestamp),
+                            file: file,
+                            uploadedUrl: response.data.url
+                        });
+                    } else {
+                        invalidFiles.push(`${file.name} (Sin metadatos GPS ni marca de agua legible)`);
+                    }
                 }
             } catch (err) {
                 console.error('Error parsing EXIF for', file.name, err);
@@ -955,26 +973,24 @@ const CivilWorksInit = () => {
         setUploadProgressText('Iniciando subida de imágenes...');
 
         try {
-            // 1. Upload photos in batches of 10
-            const filesToUpload = photoImportPoints.map(pt => pt.file);
-            const BATCH_SIZE = 10;
+            // 1. Upload photos sequentially (reusing already uploaded ones)
             const urls = [];
-
-            for (let i = 0; i < filesToUpload.length; i += BATCH_SIZE) {
-                const chunk = filesToUpload.slice(i, i + BATCH_SIZE);
-                setUploadProgressText(`Subiendo fotos ${i + 1} a ${Math.min(i + BATCH_SIZE, filesToUpload.length)} de ${filesToUpload.length}...`);
-                
-                const formData = new FormData();
-                chunk.forEach(file => {
-                    formData.append('photos', file);
-                });
-
-                const response = await api.post('/api/uploads', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-
-                if (response.data && Array.isArray(response.data.urls)) {
-                    urls.push(...response.data.urls);
+            for (let i = 0; i < photoImportPoints.length; i++) {
+                const pt = photoImportPoints[i];
+                if (pt.uploadedUrl) {
+                    urls.push(pt.uploadedUrl);
+                } else {
+                    setUploadProgressText(`Subiendo foto ${i + 1} de ${photoImportPoints.length}...`);
+                    const formData = new FormData();
+                    formData.append('photos', pt.file);
+                    const response = await api.post('/api/uploads', formData, {
+                        headers: { 'Content-Type': 'multipart/form-data' }
+                    });
+                    if (response.data && Array.isArray(response.data.urls)) {
+                        urls.push(response.data.urls[0]);
+                    } else {
+                        throw new Error(`Error al subir la foto: ${pt.file.name}`);
+                    }
                 }
             }
 
