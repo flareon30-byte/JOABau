@@ -150,9 +150,9 @@ const geocodeFull = async (street, number, city, countryCode, cache, projectName
 };
 
 // Circle scatter math for overlapping pins
-const scatter = (center, index) => {
+const scatter = (center, index, scale = 1.0) => {
     const a = 137.5 * (Math.PI / 180);
-    const r = Math.sqrt(index + 1) * 0.00025;
+    const r = Math.sqrt(index + 1) * 0.00025 * scale;
     const t = (index + 1) * a;
     return { lat: center.lat + r * Math.sin(t), lng: center.lng + r * Math.cos(t) };
 };
@@ -572,6 +572,22 @@ const CivilWorksMap = () => {
                     className: '', iconSize: [28, 28], iconAnchor: [14, 14]
                 });
 
+                // Track already plotted photo coordinates to apply scatter offset on overlap
+                const plottedPhotoCoords = [];
+                const getNonOverlappingCoords = (coords, scale = 0.08) => {
+                    let matchCount = 0;
+                    plottedPhotoCoords.forEach(p => {
+                        const dist = Math.abs(p.origLat - coords.lat) + Math.abs(p.origLng - coords.lng);
+                        if (dist < 0.00005) { // ~5 meters
+                            matchCount++;
+                        }
+                    });
+                    
+                    const finalCoords = matchCount > 0 ? scatter(coords, matchCount, scale) : coords;
+                    plottedPhotoCoords.push({ origLat: coords.lat, origLng: coords.lng, lat: finalCoords.lat, lng: finalCoords.lng });
+                    return finalCoords;
+                };
+
                 // A. Connection Photos (Acometidas)
                 filteredAddresses.forEach((addr, i) => {
                     if (cancelledRef.current) return;
@@ -579,7 +595,7 @@ const CivilWorksMap = () => {
                     if (addr.civilWorkInfo?.photos && Array.isArray(addr.civilWorkInfo.photos) && addr.civilWorkInfo.photos.length > 0) {
                         addr.civilWorkInfo.photos.forEach((photoUrl, photoIdx) => {
                             // Scatter slightly if there are multiple photos for the same connection
-                            const photoCoords = addr.civilWorkInfo.photos.length > 1 ? scatter(coords, photoIdx) : coords;
+                            const photoCoords = getNonOverlappingCoords(coords, 0.08);
                             
                             const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
                             
@@ -613,7 +629,8 @@ const CivilWorksMap = () => {
                             }
                             if (!pt || !pt.lat || !pt.lng) return;
 
-                            const photoMarker = L.marker([pt.lat, pt.lng], { icon: cameraIcon });
+                            const photoCoords = getNonOverlappingCoords(pt, 0.08);
+                            const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
                             
                             const subName = route.report?.subcontractor?.name || 'Socio';
                             const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
