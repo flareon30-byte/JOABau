@@ -69,7 +69,7 @@ router.post('/extract-gps', verifyToken, upload.single('photo'), async (req, res
         const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
 
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `Analiza la marca de agua o texto superpuesto en esta foto (habitualmente en la esquina inferior izquierda, creada por aplicaciones de cámara como Timemark Camera, GPS Camera, etc.).
 Tu tarea es extraer:
