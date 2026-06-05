@@ -69,11 +69,17 @@ jobs:
             docker system prune -f || true
             
             echo "--- DIAGNOSTICOS ---"
-            echo "1. Contenedores corriendo:"
+            echo "1. Variables .env de base de datos:"
+            cat /opt/JOABau/.env | grep -E "DB_|DATABASE_URL" || true
+            echo "2. Usuarios de la Base de Datos:"
+            docker exec -u postgres -T joabau-postgres-1 psql -c "\du" || true
+            echo "3. Bases de Datos existentes:"
+            docker exec -u postgres -T joabau-postgres-1 psql -c "\l" || true
+            echo "4. Contenedores corriendo:"
             docker-compose ps
-            echo "2. Logs de postgres (últimas 30 líneas):"
+            echo "5. Logs de postgres (últimas 30 líneas):"
             docker-compose logs --tail=30 postgres || true
-            echo "3. Logs del servidor (últimas 30 líneas):"
+            echo "6. Logs del servidor (últimas 30 líneas):"
             docker-compose logs --tail=30 server || true
             
             echo "DESPLIEGUE FINALIZADO"
