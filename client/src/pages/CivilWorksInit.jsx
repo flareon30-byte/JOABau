@@ -145,6 +145,69 @@ const scatter = (center, index, scale = 1.0) => {
     return { lat: center.lat + r * Math.sin(t), lng: center.lng + r * Math.cos(t) };
 };
 
+// Perpendicular offset helpers for parallel and overlapping routes
+const getPerpendicularOffset = (p1, p2, offsetDeg) => {
+    const latDiff = p2.lat - p1.lat;
+    const lngDiff = p2.lng - p1.lng;
+    const len = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+    if (len === 0) return { latOffset: 0, lngOffset: 0 };
+    return {
+        latOffset: (-lngDiff / len) * offsetDeg,
+        lngOffset: (latDiff / len) * offsetDeg
+    };
+};
+
+const offsetPolyline = (coordinates, offsetMeters) => {
+    if (!coordinates || coordinates.length === 0) return [];
+    if (coordinates.length < 2) return coordinates;
+    if (offsetMeters === 0) return coordinates;
+    
+    const offsetDeg = offsetMeters * 0.000009; // 1 meter ~ 0.000009 degrees
+    const newCoords = [];
+    
+    for (let i = 0; i < coordinates.length; i++) {
+        let latOffset = 0;
+        let lngOffset = 0;
+        
+        if (i === 0) {
+            const offset = getPerpendicularOffset(coordinates[0], coordinates[1], offsetDeg);
+            latOffset = offset.latOffset;
+            lngOffset = offset.lngOffset;
+        } else if (i === coordinates.length - 1) {
+            const offset = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
+            latOffset = offset.latOffset;
+            lngOffset = offset.lngOffset;
+        } else {
+            const offset1 = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
+            const offset2 = getPerpendicularOffset(coordinates[i], coordinates[i + 1], offsetDeg);
+            latOffset = (offset1.latOffset + offset2.latOffset) / 2;
+            lngOffset = (offset1.lngOffset + offset2.lngOffset) / 2;
+        }
+        
+        newCoords.push({
+            lat: coordinates[i].lat + latOffset,
+            lng: coordinates[i].lng + lngOffset,
+            timestamp: coordinates[i].timestamp,
+            photoUrl: coordinates[i].photoUrl
+        });
+    }
+    return newCoords;
+};
+
+const offsetPoint = (pt, routeCoordinates, photoIdx, offsetMeters) => {
+    if (offsetMeters === 0) return pt;
+    let nextPt = routeCoordinates[photoIdx + 1] || routeCoordinates[photoIdx - 1];
+    if (!nextPt) return pt;
+    
+    const offsetDeg = offsetMeters * 0.000009;
+    const offset = getPerpendicularOffset(pt, nextPt, offsetDeg);
+    return {
+        lat: pt.lat + offset.latOffset,
+        lng: pt.lng + offset.lngOffset
+    };
+};
+
+
 // Haversine formula to compute distance in meters for live UI display
 const calculateDistance = (points) => {
     if (!points || points.length < 2) return 0;
@@ -217,6 +280,7 @@ const CivilWorksInit = () => {
     const photoMarkersGroupRef = useRef(null);
     const searchMarkerRef = useRef(null);
     const importPreviewGroupRef = useRef(null);
+    const routeOffsetsRef = useRef({});
 
     // Search and centering states
     const [mapSearchQuery, setMapSearchQuery] = useState('');
@@ -484,71 +548,128 @@ const CivilWorksInit = () => {
         const L = window.L;
         savedDuctsGroupRef.current.clearLayers();
 
+        const startPointsSeen = [];
+        routeOffsetsRef.current = {};
+        const getRouteOffset = (route) => {
+            if (!route.coordinates || route.coordinates.length < 2) return 0;
+            const start = route.coordinates[0];
+            
+            let matchCount = 0;
+            startPointsSeen.forEach(pt => {
+                const dist = Math.abs(pt.lat - start.lat) + Math.abs(pt.lng - start.lng);
+                if (dist < 0.00015) { // ~15 meters
+                    matchCount++;
+                }
+            });
+            
+            startPointsSeen.push(start);
+            if (matchCount === 0) return 0;
+            const sign = matchCount % 2 === 0 ? -1 : 1;
+            const mag = Math.ceil(matchCount / 2) * 3.5; // 3.5m, -3.5m, 7m, -7m...
+            return sign * mag;
+        };
+
         ductRoutes.forEach(route => {
             if (!route.coordinates || !Array.isArray(route.coordinates) || route.coordinates.length < 2) return;
-            const pathCoords = route.coordinates.map(pt => [pt.lat, pt.lng]);
             
-            const ductColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
-            const polyline = L.polyline(pathCoords, {
-                color: ductColor,
-                weight: 5,
-                opacity: 0.95
-            });
-
+            const routeOffset = getRouteOffset(route);
+            routeOffsetsRef.current[route.id] = routeOffset;
+            
             const subName = route.report?.subcontractor?.name || 'Subcontrata';
             const distText = route.distance ? `${route.distance}m` : 'No calculada';
             const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
 
-            // Generate popup content with delete button dynamically
-            const popupContent = document.createElement('div');
-            popupContent.style.font = '13px sans-serif';
-            popupContent.style.color = '#1e293b';
-            popupContent.style.minWidth = '180px';
-            popupContent.innerHTML = `
-                <b style="font-size: 14px; color: ${ductColor}">Conducto (${route.ductType || '7x22'})</b><br>
-                <b>Socio:</b> ${subName}<br>
-                <b>Longitud:</b> ${distText}<br>
-                <b>Fecha:</b> ${dateText}<br>
-                ${route.comments ? `<b>Detalles:</b> <i>"${route.comments}"</i><br>` : ''}
-            `;
+            const createPopup = () => {
+                const popupContent = document.createElement('div');
+                popupContent.style.font = '13px sans-serif';
+                popupContent.style.color = '#1e293b';
+                popupContent.style.minWidth = '180px';
+                
+                const label = route.ductType === 'ambos' ? '7x22 y 10x6' : (route.ductType || '7x22');
+                const titleColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
+                
+                popupContent.innerHTML = `
+                    <b style="font-size: 14px; color: ${titleColor}">Conducto (${label})</b><br>
+                    <b>Socio:</b> ${subName}<br>
+                    <b>Longitud:</b> ${distText}<br>
+                    <b>Fecha:</b> ${dateText}<br>
+                    ${route.comments ? `<b>Detalles:</b> <i>"${route.comments}"</i><br>` : ''}
+                `;
 
-            // Delete button for Admin / Super Admin
-            if (['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'].includes(user.role)) {
-                const btn = document.createElement('button');
-                btn.textContent = 'Borrar Ducto';
-                btn.style.marginTop = '10px';
-                btn.style.width = '100%';
-                btn.style.background = '#ef4444';
-                btn.style.color = 'white';
-                btn.style.border = 'none';
-                btn.style.padding = '8px 12px';
-                btn.style.borderRadius = '8px';
-                btn.style.fontWeight = 'bold';
-                btn.style.cursor = 'pointer';
-                btn.style.fontSize = '12px';
-                btn.style.transition = 'background 0.2s';
-                
-                btn.onmouseover = () => btn.style.background = '#dc2626';
-                btn.onmouseout = () => btn.style.background = '#ef4444';
-                
-                btn.onclick = async () => {
-                    if (window.confirm('¿Estás seguro de que deseas eliminar este ducto permanentemente?')) {
-                        try {
-                            await api.delete(`/api/civil-works/duct-log/${route.id}`);
-                            alert('Ducto eliminado correctamente.');
-                            if (mapInstanceRef.current) mapInstanceRef.current.closePopup();
-                            loadAllData(); // reload data to refresh map
-                        } catch (error) {
-                            console.error('Error deleting duct:', error);
-                            alert(error.response?.data?.message || 'Error al eliminar el ducto.');
+                if (['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'].includes(user.role)) {
+                    const btn = document.createElement('button');
+                    btn.textContent = 'Borrar Ducto';
+                    btn.style.marginTop = '10px';
+                    btn.style.width = '100%';
+                    btn.style.background = '#ef4444';
+                    btn.style.color = 'white';
+                    btn.style.border = 'none';
+                    btn.style.padding = '8px 12px';
+                    btn.style.borderRadius = '8px';
+                    btn.style.fontWeight = 'bold';
+                    btn.style.cursor = 'pointer';
+                    btn.style.fontSize = '12px';
+                    btn.style.transition = 'background 0.2s';
+                    
+                    btn.onmouseover = () => btn.style.background = '#dc2626';
+                    btn.onmouseout = () => btn.style.background = '#ef4444';
+                    
+                    btn.onclick = async () => {
+                        if (window.confirm('¿Estás seguro de que deseas eliminar este ducto permanentemente?')) {
+                            try {
+                                await api.delete(`/api/civil-works/duct-log/${route.id}`);
+                                alert('Ducto eliminado correctamente.');
+                                if (mapInstanceRef.current) mapInstanceRef.current.closePopup();
+                                loadAllData(); // reload data to refresh map
+                            } catch (error) {
+                                console.error('Error deleting duct:', error);
+                                alert(error.response?.data?.message || 'Error al eliminar el ducto.');
+                            }
                         }
-                    }
-                };
-                popupContent.appendChild(btn);
-            }
+                    };
+                    popupContent.appendChild(btn);
+                }
+                return popupContent;
+            };
 
-            polyline.bindPopup(popupContent);
-            savedDuctsGroupRef.current.addLayer(polyline);
+            if (route.ductType === 'ambos') {
+                // Draw 7x22 (orange) shifted slightly left (-1.8 meters relative to routeOffset)
+                const coordsOrange = offsetPolyline(route.coordinates, routeOffset - 1.8);
+                const pathCoordsOrange = coordsOrange.map(pt => [pt.lat, pt.lng]);
+                const polylineOrange = L.polyline(pathCoordsOrange, {
+                    color: '#f97316',
+                    weight: 5,
+                    opacity: 0.95
+                });
+                
+                // Draw 10x6 (pink) shifted slightly right (+1.8 meters relative to routeOffset)
+                const coordsPink = offsetPolyline(route.coordinates, routeOffset + 1.8);
+                const pathCoordsPink = coordsPink.map(pt => [pt.lat, pt.lng]);
+                const polylinePink = L.polyline(pathCoordsPink, {
+                    color: '#ec4899',
+                    weight: 5,
+                    opacity: 0.95
+                });
+
+                polylineOrange.bindPopup(createPopup());
+                polylinePink.bindPopup(createPopup());
+                
+                savedDuctsGroupRef.current.addLayer(polylineOrange);
+                savedDuctsGroupRef.current.addLayer(polylinePink);
+            } else {
+                const coords = offsetPolyline(route.coordinates, routeOffset);
+                const pathCoords = coords.map(pt => [pt.lat, pt.lng]);
+                
+                const ductColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
+                const polyline = L.polyline(pathCoords, {
+                    color: ductColor,
+                    weight: 5,
+                    opacity: 0.95
+                });
+
+                polyline.bindPopup(createPopup());
+                savedDuctsGroupRef.current.addLayer(polyline);
+            }
         });
     };
 
@@ -676,6 +797,7 @@ const CivilWorksInit = () => {
         // B. Duct Photos (Ductos)
         ductRoutes.forEach(route => {
             if (route.photos && Array.isArray(route.photos) && route.photos.length > 0) {
+                const routeOffset = routeOffsetsRef.current[route.id] || 0;
                 route.photos.forEach((photoUrl, photoIdx) => {
                     let pt = null;
                     if (route.coordinates && Array.isArray(route.coordinates) && route.coordinates[photoIdx]) {
@@ -685,15 +807,18 @@ const CivilWorksInit = () => {
                     }
                     if (!pt || !pt.lat || !pt.lng) return;
 
-                    const photoMarker = L.marker([pt.lat, pt.lng], { icon: cameraIcon });
+                    const offsetPt = offsetPoint(pt, route.coordinates, photoIdx, routeOffset);
+                    const photoCoords = photoIdx > 0 ? scatter(offsetPt, photoIdx) : offsetPt;
+                    const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
                     
                     const subName = route.report?.subcontractor?.name || 'Socio';
                     const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
+                    const ductLabel = route.ductType === 'ambos' ? '7x22 y 10x6' : (route.ductType || '7x22');
 
                     photoMarker.bindTooltip(`
                         <div style="padding:2px; width:135px; text-align:center; font:11px sans-serif; white-space: normal;">
                             <img src="${photoUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
-                            <b>Conducto (${route.ductType || '7x22'})</b><br>
+                            <b>Conducto (${ductLabel})</b><br>
                             ${subName} - ${dateText}
                         </div>
                     `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
@@ -1321,7 +1446,7 @@ const CivilWorksInit = () => {
                                         {/* Duct type selector */}
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Tipo de Ducto</label>
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-3 gap-3">
                                                 <button
                                                     type="button"
                                                     onClick={() => setDuctType('7x22')}
@@ -1345,6 +1470,21 @@ const CivilWorksInit = () => {
                                                 >
                                                     <span className="w-4 h-4 rounded-full bg-pink-500 border border-white shadow"></span>
                                                     Conducto 10x6
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDuctType('ambos')}
+                                                    className={`p-3.5 rounded-2xl border text-xs font-black transition-all flex flex-col items-center gap-1.5 ${
+                                                        ductType === 'ambos'
+                                                            ? 'border-indigo-600 bg-indigo-50 text-indigo-800 ring-2 ring-indigo-500/20'
+                                                            : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
+                                                    }`}
+                                                >
+                                                    <div className="flex gap-1">
+                                                        <span className="w-3.5 h-3.5 rounded-full bg-[#f97316] border border-white shadow"></span>
+                                                        <span className="w-3.5 h-3.5 rounded-full bg-[#ec4899] border border-white shadow"></span>
+                                                    </div>
+                                                    Ambos (Paralelo)
                                                 </button>
                                             </div>
                                         </div>
@@ -1452,7 +1592,7 @@ const CivilWorksInit = () => {
                                         {/* Duct type */}
                                         <div>
                                             <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Medida de Ducto</label>
-                                            <div className="grid grid-cols-2 gap-3">
+                                            <div className="grid grid-cols-3 gap-3">
                                                 <button
                                                     type="button"
                                                     onClick={() => setPhotoImportDuctType('7x22')}
@@ -1463,7 +1603,7 @@ const CivilWorksInit = () => {
                                                     }`}
                                                 >
                                                     <span className="w-2.5 h-2.5 rounded-full bg-[#f97316]" />
-                                                    Conducto 7x22 (Naranja)
+                                                    Conducto 7x22
                                                 </button>
                                                 <button
                                                     type="button"
@@ -1475,7 +1615,22 @@ const CivilWorksInit = () => {
                                                     }`}
                                                 >
                                                     <span className="w-2.5 h-2.5 rounded-full bg-[#ec4899]" />
-                                                    Conducto 10x6 (Rosa)
+                                                    Conducto 10x6
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setPhotoImportDuctType('ambos')}
+                                                    className={`py-3 rounded-xl border text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
+                                                        photoImportDuctType === 'ambos'
+                                                            ? 'border-indigo-200 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/10'
+                                                            : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                                    }`}
+                                                >
+                                                    <div className="flex gap-0.5">
+                                                        <span className="w-2 h-2 rounded-full bg-[#f97316]" />
+                                                        <span className="w-2 h-2 rounded-full bg-[#ec4899]" />
+                                                    </div>
+                                                    Ambos
                                                 </button>
                                             </div>
                                         </div>

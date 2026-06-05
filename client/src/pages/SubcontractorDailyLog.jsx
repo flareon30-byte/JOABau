@@ -1049,6 +1049,7 @@ const SubcontractorDailyLog = () => {
                             >
                                 <option value="7x22">Conducto 7x22</option>
                                 <option value="10x6">Conducto 10x6</option>
+                                <option value="ambos">Ambos (7x22 y 10x6 en paralelo)</option>
                             </select>
                         </div>
 

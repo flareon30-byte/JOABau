@@ -157,6 +157,69 @@ const scatter = (center, index, scale = 1.0) => {
     return { lat: center.lat + r * Math.sin(t), lng: center.lng + r * Math.cos(t) };
 };
 
+// Perpendicular offset helpers for parallel and overlapping routes
+const getPerpendicularOffset = (p1, p2, offsetDeg) => {
+    const latDiff = p2.lat - p1.lat;
+    const lngDiff = p2.lng - p1.lng;
+    const len = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+    if (len === 0) return { latOffset: 0, lngOffset: 0 };
+    return {
+        latOffset: (-lngDiff / len) * offsetDeg,
+        lngOffset: (latDiff / len) * offsetDeg
+    };
+};
+
+const offsetPolyline = (coordinates, offsetMeters) => {
+    if (!coordinates || coordinates.length === 0) return [];
+    if (coordinates.length < 2) return coordinates;
+    if (offsetMeters === 0) return coordinates;
+    
+    const offsetDeg = offsetMeters * 0.000009; // 1 meter ~ 0.000009 degrees
+    const newCoords = [];
+    
+    for (let i = 0; i < coordinates.length; i++) {
+        let latOffset = 0;
+        let lngOffset = 0;
+        
+        if (i === 0) {
+            const offset = getPerpendicularOffset(coordinates[0], coordinates[1], offsetDeg);
+            latOffset = offset.latOffset;
+            lngOffset = offset.lngOffset;
+        } else if (i === coordinates.length - 1) {
+            const offset = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
+            latOffset = offset.latOffset;
+            lngOffset = offset.lngOffset;
+        } else {
+            const offset1 = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
+            const offset2 = getPerpendicularOffset(coordinates[i], coordinates[i + 1], offsetDeg);
+            latOffset = (offset1.latOffset + offset2.latOffset) / 2;
+            lngOffset = (offset1.lngOffset + offset2.lngOffset) / 2;
+        }
+        
+        newCoords.push({
+            lat: coordinates[i].lat + latOffset,
+            lng: coordinates[i].lng + lngOffset,
+            timestamp: coordinates[i].timestamp,
+            photoUrl: coordinates[i].photoUrl
+        });
+    }
+    return newCoords;
+};
+
+const offsetPoint = (pt, routeCoordinates, photoIdx, offsetMeters) => {
+    if (offsetMeters === 0) return pt;
+    let nextPt = routeCoordinates[photoIdx + 1] || routeCoordinates[photoIdx - 1];
+    if (!nextPt) return pt;
+    
+    const offsetDeg = offsetMeters * 0.000009;
+    const offset = getPerpendicularOffset(pt, nextPt, offsetDeg);
+    return {
+        lat: pt.lat + offset.latOffset,
+        lng: pt.lng + offset.lngOffset
+    };
+};
+
+
 const CivilWorksMap = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [leafletLoaded, setLeafletLoaded] = useState(false);
@@ -534,34 +597,97 @@ const CivilWorksMap = () => {
             });
 
             // Draw Subcontractor Duct lines
+            const startPointsSeen = [];
+            const routeOffsets = {};
+            const getRouteOffset = (route) => {
+                if (!route.coordinates || route.coordinates.length < 2) return 0;
+                const start = route.coordinates[0];
+                
+                let matchCount = 0;
+                startPointsSeen.forEach(pt => {
+                    const dist = Math.abs(pt.lat - start.lat) + Math.abs(pt.lng - start.lng);
+                    if (dist < 0.00015) { // ~15 meters
+                        matchCount++;
+                    }
+                });
+                
+                startPointsSeen.push(start);
+                if (matchCount === 0) return 0;
+                const sign = matchCount % 2 === 0 ? -1 : 1;
+                const mag = Math.ceil(matchCount / 2) * 3.5; // 3.5m, -3.5m, 7m, -7m...
+                return sign * mag;
+            };
+
             filteredDuctRoutes.forEach(route => {
                 if (cancelledRef.current) return;
                 if (!route.coordinates || !Array.isArray(route.coordinates) || route.coordinates.length < 2) return;
-                const pathCoords = route.coordinates.map(pt => [pt.lat, pt.lng]);
                 
-                const ductColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
-                const polyline = L.polyline(pathCoords, {
-                    color: ductColor,
-                    weight: 5,
-                    opacity: 0.9,
-                    dashArray: '8, 10'
-                });
-
+                const routeOffset = getRouteOffset(route);
+                routeOffsets[route.id] = routeOffset;
+                
                 const subName = route.report?.subcontractor?.name || 'Subcontrata';
                 const distText = route.distance ? `${route.distance}m` : 'No calculada';
                 const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
 
-                polyline.bindPopup(`
-                    <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
-                        <b style="font-size:14px;color:${ductColor}">Conducto (${route.ductType || '7x22'})</b><br>
-                        <b>Socio:</b> ${subName}<br>
-                        <b>Longitud:</b> ${distText}<br>
-                        <b>Fecha Reporte:</b> ${dateText}<br>
-                        ${route.comments ? `<b>Detalles:</b> <i>"${route.comments}"</i>` : ''}
-                    </div>
-                `);
+                if (route.ductType === 'ambos') {
+                    // Draw 7x22 (orange) shifted slightly left (-1.8 meters relative to routeOffset)
+                    const coordsOrange = offsetPolyline(route.coordinates, routeOffset - 1.8);
+                    const pathCoordsOrange = coordsOrange.map(pt => [pt.lat, pt.lng]);
+                    const polylineOrange = L.polyline(pathCoordsOrange, {
+                        color: '#f97316',
+                        weight: 5,
+                        opacity: 0.9,
+                        dashArray: '8, 10'
+                    });
+                    
+                    // Draw 10x6 (pink) shifted slightly right (+1.8 meters relative to routeOffset)
+                    const coordsPink = offsetPolyline(route.coordinates, routeOffset + 1.8);
+                    const pathCoordsPink = coordsPink.map(pt => [pt.lat, pt.lng]);
+                    const polylinePink = L.polyline(pathCoordsPink, {
+                        color: '#ec4899',
+                        weight: 5,
+                        opacity: 0.9,
+                        dashArray: '8, 10'
+                    });
+                    
+                    const popupContent = `
+                        <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
+                            <b style="font-size:14px;color:#f97316">Conductos en Paralelo (7x22 y 10x6)</b><br>
+                            <b>Socio:</b> ${subName}<br>
+                            <b>Longitud:</b> ${distText}<br>
+                            <b>Fecha Reporte:</b> ${dateText}<br>
+                            ${route.comments ? `<b>Detalles:</b> <i>"${route.comments}"</i>` : ''}
+                        </div>
+                    `;
+                    polylineOrange.bindPopup(popupContent);
+                    polylinePink.bindPopup(popupContent);
+                    
+                    markersGroupRef.current.addLayer(polylineOrange);
+                    markersGroupRef.current.addLayer(polylinePink);
+                } else {
+                    const coords = offsetPolyline(route.coordinates, routeOffset);
+                    const pathCoords = coords.map(pt => [pt.lat, pt.lng]);
+                    
+                    const ductColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
+                    const polyline = L.polyline(pathCoords, {
+                        color: ductColor,
+                        weight: 5,
+                        opacity: 0.9,
+                        dashArray: '8, 10'
+                    });
 
-                markersGroupRef.current.addLayer(polyline);
+                    polyline.bindPopup(`
+                        <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
+                            <b style="font-size:14px;color:${ductColor}">Conducto (${route.ductType || '7x22'})</b><br>
+                            <b>Socio:</b> ${subName}<br>
+                            <b>Longitud:</b> ${distText}<br>
+                            <b>Fecha Reporte:</b> ${dateText}<br>
+                            ${route.comments ? `<b>Detalles:</b> <i>"${route.comments}"</i>` : ''}
+                        </div>
+                    `);
+
+                    markersGroupRef.current.addLayer(polyline);
+                }
             });
 
             // Draw Photo Markers (Visual Record of Civil Works)
@@ -620,6 +746,7 @@ const CivilWorksMap = () => {
                 filteredDuctRoutes.forEach(route => {
                     if (cancelledRef.current) return;
                     if (route.photos && Array.isArray(route.photos) && route.photos.length > 0) {
+                        const routeOffset = routeOffsets[route.id] || 0;
                         route.photos.forEach((photoUrl, photoIdx) => {
                             let pt = null;
                             if (route.coordinates && Array.isArray(route.coordinates) && route.coordinates[photoIdx]) {
@@ -629,16 +756,18 @@ const CivilWorksMap = () => {
                             }
                             if (!pt || !pt.lat || !pt.lng) return;
 
-                            const photoCoords = getNonOverlappingCoords(pt, 0.08);
+                            const offsetPt = offsetPoint(pt, route.coordinates, photoIdx, routeOffset);
+                            const photoCoords = getNonOverlappingCoords(offsetPt, 0.08);
                             const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
                             
                             const subName = route.report?.subcontractor?.name || 'Socio';
                             const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
+                            const ductLabel = route.ductType === 'ambos' ? '7x22 y 10x6' : (route.ductType || '7x22');
 
                             photoMarker.bindTooltip(`
                                 <div style="padding:2px; width:130px; text-align:center; font:11px sans-serif; white-space: normal;">
                                     <img src="${photoUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
-                                    <b>Ducto (${route.ductType || '7x22'})</b><br>
+                                    <b>Ducto (${ductLabel})</b><br>
                                     ${subName} - ${dateText}
                                 </div>
                             `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
