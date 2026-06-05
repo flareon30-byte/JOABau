@@ -818,14 +818,38 @@ exports.updateAddressGps = async (req, res) => {
     }
 
     try {
-        const address = await prisma.address.update({
+        const address = await prisma.address.findUnique({
+            where: { id },
+            include: { project: true }
+        });
+
+        if (!address) {
+            return res.status(404).json({ message: 'Dirección no encontrada.' });
+        }
+
+        // Validate that a German address is not geocoded to Spain (Madrid)
+        const cityName = (address.city || '').toLowerCase();
+        const projectName = (address.project?.name || '').toLowerCase();
+        const streetName = (address.street || '').toLowerCase();
+        
+        const isGerman = 
+            projectName.includes('roxheim') || projectName.includes('bobenheim') || projectName.includes('bickelheim') || projectName.includes('germany') ||
+            cityName.includes('roxheim') || cityName.includes('bobenheim') || cityName.includes('bickelheim') ||
+            streetName.includes('strasse') || streetName.includes('straße') || streetName.includes('weg') || streetName.includes('ring') || streetName.includes('str.');
+
+        if (isGerman && parseFloat(gpsLat) < 45.0) {
+            console.warn(`[GPS Safeguard] Rejected incorrect Spain geocoding for German address ID: ${id} (${address.street}, ${address.city}). Latitude: ${gpsLat}`);
+            return res.status(400).json({ message: 'Las coordenadas enviadas no corresponden a Alemania.' });
+        }
+
+        const updatedAddress = await prisma.address.update({
             where: { id },
             data: {
                 gpsLat: parseFloat(gpsLat),
                 gpsLng: parseFloat(gpsLng)
             }
         });
-        res.json({ message: 'Coordenadas GPS actualizadas correctamente.', address });
+        res.json({ message: 'Coordenadas GPS actualizadas correctamente.', address: updatedAddress });
     } catch (error) {
         console.error('Error al actualizar coordenadas GPS:', error);
         res.status(500).json({ message: 'Error interno del servidor.' });
