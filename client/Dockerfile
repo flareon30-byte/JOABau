@@ -2,7 +2,7 @@
 FROM node:20-alpine as build
 WORKDIR /app
 COPY package*.json ./
-RUN npm install
+RUN npm ci --quiet --no-audit
 ENV FORCE_REBUILD=v2
 # Build-time arg for Google Maps API key (passed from docker-compose build.args)
 ARG VITE_GOOGLE_MAPS_KEY
