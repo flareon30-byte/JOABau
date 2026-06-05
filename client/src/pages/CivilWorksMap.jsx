@@ -539,7 +539,7 @@ const CivilWorksMap = () => {
                 if (!route.coordinates || !Array.isArray(route.coordinates) || route.coordinates.length < 2) return;
                 const pathCoords = route.coordinates.map(pt => [pt.lat, pt.lng]);
                 
-                const ductColor = route.ductType === '5x10' ? '#ec4899' : '#8b5cf6';
+                const ductColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
                 const polyline = L.polyline(pathCoords, {
                     color: ductColor,
                     weight: 5,
@@ -553,7 +553,7 @@ const CivilWorksMap = () => {
 
                 polyline.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
-                        <b style="font-size:14px;color:${ductColor}">Ducto de Calle (${route.ductType || '7x22'})</b><br>
+                        <b style="font-size:14px;color:${ductColor}">Conducto (${route.ductType || '7x22'})</b><br>
                         <b>Socio:</b> ${subName}<br>
                         <b>Longitud:</b> ${distText}<br>
                         <b>Fecha Reporte:</b> ${dateText}<br>
@@ -932,12 +932,12 @@ const CivilWorksMap = () => {
                                     <span className="text-slate-600 font-semibold">Doble anillo (Azul/Verde): Activado (Installiert)</span>
                                 </div>
                                 <div className="flex items-center gap-2 border-t border-slate-100 pt-1.5 mt-1 max-sm:border-t-0 max-sm:pt-0 max-sm:mt-0 max-sm:inline-flex">
-                                    <div className="w-6 h-[2px] bg-[#8b5cf6] border-t border-dashed"></div>
-                                    <span className="text-slate-600 font-semibold">Ducto de Calle 7x22</span>
+                                    <div className="w-6 h-[2px] bg-[#f97316] border-t border-dashed"></div>
+                                    <span className="text-slate-600 font-semibold">Conducto 7x22</span>
                                 </div>
                                 <div className="flex items-center gap-2 max-sm:inline-flex">
                                     <div className="w-6 h-[2px] bg-[#ec4899] border-t border-dashed"></div>
-                                    <span className="text-slate-600 font-semibold">Ducto de Calle 5x10</span>
+                                    <span className="text-slate-600 font-semibold">Conducto 10x6</span>
                                 </div>
                             </div>
                         )}

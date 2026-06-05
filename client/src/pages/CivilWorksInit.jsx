@@ -414,7 +414,7 @@ const CivilWorksInit = () => {
             photoMarkersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             importPreviewGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             polylineRef.current = L.polyline([], { 
-                color: ductType === '5x10' ? '#ec4899' : '#8b5cf6', 
+                color: ductType === '10x6' ? '#ec4899' : '#f97316', 
                 weight: 5,
                 opacity: 0.9,
                 dashArray: '8, 10'
@@ -431,7 +431,7 @@ const CivilWorksInit = () => {
                     polylineRef.current.setLatLngs(updated.map(pt => [pt.lat, pt.lng]));
                     
                     const marker = L.circleMarker([lat, lng], {
-                        color: ductType === '5x10' ? '#ec4899' : '#8b5cf6',
+                        color: ductType === '10x6' ? '#ec4899' : '#f97316',
                         fillColor: '#fff',
                         fillOpacity: 1,
                         radius: 5,
@@ -462,7 +462,7 @@ const CivilWorksInit = () => {
     useEffect(() => {
         if (polylineRef.current) {
             polylineRef.current.setStyle({
-                color: ductType === '5x10' ? '#ec4899' : '#8b5cf6'
+                color: ductType === '10x6' ? '#ec4899' : '#f97316'
             });
         }
     }, [ductType]);
@@ -488,7 +488,7 @@ const CivilWorksInit = () => {
             if (!route.coordinates || !Array.isArray(route.coordinates) || route.coordinates.length < 2) return;
             const pathCoords = route.coordinates.map(pt => [pt.lat, pt.lng]);
             
-            const ductColor = route.ductType === '5x10' ? '#ec4899' : '#8b5cf6';
+            const ductColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
             const polyline = L.polyline(pathCoords, {
                 color: ductColor,
                 weight: 5,
@@ -505,7 +505,7 @@ const CivilWorksInit = () => {
             popupContent.style.color = '#1e293b';
             popupContent.style.minWidth = '180px';
             popupContent.innerHTML = `
-                <b style="font-size: 14px; color: ${ductColor}">Ducto de Calle (${route.ductType || '7x22'})</b><br>
+                <b style="font-size: 14px; color: ${ductColor}">Conducto (${route.ductType || '7x22'})</b><br>
                 <b>Socio:</b> ${subName}<br>
                 <b>Longitud:</b> ${distText}<br>
                 <b>Fecha:</b> ${dateText}<br>
@@ -693,7 +693,7 @@ const CivilWorksInit = () => {
                     photoMarker.bindTooltip(`
                         <div style="padding:2px; width:135px; text-align:center; font:11px sans-serif; white-space: normal;">
                             <img src="${photoUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
-                            <b>Ducto (${route.ductType || '7x22'})</b><br>
+                            <b>Conducto (${route.ductType || '7x22'})</b><br>
                             ${subName} - ${dateText}
                         </div>
                     `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
@@ -717,7 +717,7 @@ const CivilWorksInit = () => {
 
         // Draw polyline connecting points
         const pathCoords = photoImportPoints.map(pt => [pt.lat, pt.lng]);
-        const color = photoImportDuctType === '5x10' ? '#ec4899' : '#8b5cf6';
+        const color = photoImportDuctType === '10x6' ? '#ec4899' : '#f97316';
         
         const polyline = L.polyline(pathCoords, {
             color: color,
@@ -1327,24 +1327,24 @@ const CivilWorksInit = () => {
                                                     onClick={() => setDuctType('7x22')}
                                                     className={`p-3.5 rounded-2xl border text-xs font-black transition-all flex flex-col items-center gap-1.5 ${
                                                         ductType === '7x22'
-                                                            ? 'border-purple-600 bg-purple-50 text-purple-800 ring-2 ring-purple-500/20'
+                                                            ? 'border-orange-600 bg-orange-50 text-orange-800 ring-2 ring-orange-500/20'
                                                             : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                                     }`}
                                                 >
-                                                    <span className="w-4 h-4 rounded-full bg-purple-500 border border-white shadow"></span>
-                                                    Ducto 7x22
+                                                    <span className="w-4 h-4 rounded-full bg-orange-500 border border-white shadow"></span>
+                                                    Conducto 7x22
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setDuctType('5x10')}
+                                                    onClick={() => setDuctType('10x6')}
                                                     className={`p-3.5 rounded-2xl border text-xs font-black transition-all flex flex-col items-center gap-1.5 ${
-                                                        ductType === '5x10'
+                                                        ductType === '10x6'
                                                             ? 'border-pink-600 bg-pink-50 text-pink-800 ring-2 ring-pink-500/20'
                                                             : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
                                                     }`}
                                                 >
                                                     <span className="w-4 h-4 rounded-full bg-pink-500 border border-white shadow"></span>
-                                                    Ducto 5x10
+                                                    Conducto 10x6
                                                 </button>
                                             </div>
                                         </div>
@@ -1458,24 +1458,24 @@ const CivilWorksInit = () => {
                                                     onClick={() => setPhotoImportDuctType('7x22')}
                                                     className={`py-3 rounded-xl border text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
                                                         photoImportDuctType === '7x22'
-                                                            ? 'border-violet-200 bg-violet-50 text-violet-700 ring-2 ring-violet-500/10'
+                                                            ? 'border-orange-200 bg-orange-50 text-orange-700 ring-2 ring-orange-500/10'
                                                             : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                                                     }`}
                                                 >
-                                                    <span className="w-2.5 h-2.5 rounded-full bg-[#8b5cf6]" />
-                                                    Ducto 7x22 (Violeta)
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-[#f97316]" />
+                                                    Conducto 7x22 (Naranja)
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    onClick={() => setPhotoImportDuctType('5x10')}
+                                                    onClick={() => setPhotoImportDuctType('10x6')}
                                                     className={`py-3 rounded-xl border text-xs font-extrabold transition-all flex items-center justify-center gap-2 ${
-                                                        photoImportDuctType === '5x10'
+                                                        photoImportDuctType === '10x6'
                                                             ? 'border-pink-200 bg-pink-50/50 text-pink-700 ring-2 ring-pink-500/10'
                                                             : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                                                     }`}
                                                 >
                                                     <span className="w-2.5 h-2.5 rounded-full bg-[#ec4899]" />
-                                                    Ducto 5x10 (Rosa)
+                                                    Conducto 10x6 (Rosa)
                                                 </button>
                                             </div>
                                         </div>

@@ -180,6 +180,14 @@ const SubcontractorDailyLog = () => {
         fetchReturnedLogs();
     }, []);
 
+    // Recolor polyline live when ductType changes
+    useEffect(() => {
+        if (polylineRef.current) {
+            const color = ductType === '10x6' ? '#ec4899' : '#f97316';
+            polylineRef.current.setStyle({ color });
+        }
+    }, [ductType]);
+
     // Handle Address Search
     useEffect(() => {
         if (!searchQuery.trim()) {
@@ -330,7 +338,8 @@ const SubcontractorDailyLog = () => {
         }
 
         // Draw new polyline
-        polylineRef.current = L.polyline(coords, { color: '#8b5cf6', weight: 4, dashArray: '5, 8' }).addTo(mapInstanceRef.current);
+        const color = ductType === '10x6' ? '#ec4899' : '#f97316';
+        polylineRef.current = L.polyline(coords, { color: color, weight: 4, dashArray: '5, 8' }).addTo(mapInstanceRef.current);
         mapInstanceRef.current.fitBounds(L.latLngBounds(coords), { padding: [20, 20] });
 
         // Add start and end circle markers
@@ -1038,8 +1047,8 @@ const SubcontractorDailyLog = () => {
                                 onChange={(e) => setDuctType(e.target.value)}
                                 className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500/20 w-full"
                             >
-                                <option value="7x22">Ducto 7x22 (Estándar)</option>
-                                <option value="5x10">Ducto 5x10 (Pequeño)</option>
+                                <option value="7x22">Conducto 7x22</option>
+                                <option value="10x6">Conducto 10x6</option>
                             </select>
                         </div>
 
