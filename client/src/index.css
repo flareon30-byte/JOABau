@@ -53,3 +53,134 @@ body {
 .drawing-map-container .leaflet-interactive {
   cursor: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cline x1='2' y1='12' x2='22' y2='12' stroke='white' stroke-width='3.5' stroke-linecap='round'/%3E%3Cline x1='12' y1='2' x2='12' y2='22' stroke='white' stroke-width='3.5' stroke-linecap='round'/%3E%3Cline x1='3' y1='12' x2='21' y2='12' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3Cline x1='12' y1='3' x2='12' y2='21' stroke='black' stroke-width='1.5' stroke-linecap='round'/%3E%3Ccircle cx='12' cy='12' r='2' fill='black' stroke='white' stroke-width='0.5'/%3E%3C/svg%3E") 12 12, crosshair !important;
 }
+
+/* Ensure hovered marker icons stay on top of others */
+.leaflet-marker-icon:hover {
+  z-index: 1000 !important;
+}
+
+/* Spiderfy photo markers styles */
+.spiderfy-group {
+  position: relative;
+  width: 28px;
+  height: 28px;
+}
+
+.spiderfy-center {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f97316;
+  border: 2px solid white;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.spiderfy-group:hover .spiderfy-center {
+  transform: scale(0.9);
+  background-color: #ea580c;
+}
+
+.spiderfy-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ef4444;
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 999px;
+  border: 1px solid white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.spiderfy-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #f97316;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s, z-index 0.1s;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(0, 0) scale(0.5);
+}
+
+.spiderfy-group:hover .spiderfy-item {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(var(--tx), var(--ty)) scale(1);
+  z-index: 15;
+}
+
+.spiderfy-item:hover {
+  transform: translate(var(--tx), var(--ty)) scale(1.2) !important;
+  background-color: #ea580c;
+  z-index: 50;
+}
+
+.spiderfy-tooltip {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 140px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 100;
+  text-align: center;
+  font-family: sans-serif;
+  color: #1e293b;
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.spiderfy-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: white transparent transparent transparent;
+}
+
+.spiderfy-item:hover .spiderfy-tooltip {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.spiderfy-tooltip img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin-bottom: 5px;
+  display: block;
+}
+

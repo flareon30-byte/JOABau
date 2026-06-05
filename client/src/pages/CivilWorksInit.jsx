@@ -423,6 +423,16 @@ const CivilWorksInit = () => {
         loadAllData();
     }, []);
 
+    useEffect(() => {
+        window.showMapPhotoModal = (url) => {
+            setActivePhotoModal(url);
+        };
+        return () => {
+            delete window.showMapPhotoModal;
+        };
+    }, []);
+
+
     // Filtered Addresses for Connections list
     const filteredAddresses = addresses.filter(addr => {
         if (filterProject && addr.projectId !== filterProject) return false;
@@ -879,26 +889,12 @@ const CivilWorksInit = () => {
             className: '', iconSize: [28, 28], iconAnchor: [14, 14]
         });
 
-        // Track already plotted photo coordinates to apply scatter offset on overlap
-        const plottedPhotoCoords = [];
-        const getNonOverlappingCoords = (coords, scale = 0.08) => {
-            let matchCount = 0;
-            plottedPhotoCoords.forEach(p => {
-                const dist = Math.abs(p.origLat - coords.lat) + Math.abs(p.origLng - coords.lng);
-                if (dist < 0.000005) { // ~0.5 meters (same spot)
-                    matchCount++;
-                }
-            });
-            
-            const finalCoords = matchCount > 0 ? scatter(coords, matchCount, scale) : coords;
-            plottedPhotoCoords.push({ origLat: coords.lat, origLng: coords.lng, lat: finalCoords.lat, lng: finalCoords.lng });
-            return finalCoords;
-        };
+        const allPhotos = [];
 
         // A. Connection Photos (Acometidas) - only for the selected project
         if (filterProject) {
             const projectAddresses = addresses.filter(addr => addr.projectId === filterProject);
-            projectAddresses.forEach((addr, i) => {
+            projectAddresses.forEach((addr) => {
                 if (addr.civilWorkInfo?.photos && Array.isArray(addr.civilWorkInfo.photos) && addr.civilWorkInfo.photos.length > 0) {
                     let coords = null;
                     if (addr.gpsLat && addr.gpsLng) {
@@ -910,23 +906,15 @@ const CivilWorksInit = () => {
                     }
                     if (!coords) return;
 
-                    addr.civilWorkInfo.photos.forEach((photoUrl, photoIdx) => {
-                        const photoCoords = getNonOverlappingCoords(coords, 0.08);
-                        const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
-                        
-                        photoMarker.bindTooltip(`
-                            <div style="padding:2px; width:135px; text-align:center; font:11px sans-serif; white-space: normal;">
-                                <img src="${photoUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
-                                <b>Acometida</b><br>
-                                ${addr.street} ${addr.number || ''}
-                            </div>
-                        `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
-
-                        photoMarker.on('click', () => {
-                            setActivePhotoModal(photoUrl);
+                    addr.civilWorkInfo.photos.forEach((photoUrl) => {
+                        allPhotos.push({
+                            url: photoUrl,
+                            lat: coords.lat,
+                            lng: coords.lng,
+                            type: 'acometida',
+                            title: 'Acometida',
+                            subtitle: `${addr.street} ${addr.number || ''}`
                         });
-
-                        photoMarkersGroupRef.current.addLayer(photoMarker);
                     });
                 }
             });
@@ -946,27 +934,111 @@ const CivilWorksInit = () => {
                     if (!pt || !pt.lat || !pt.lng) return;
 
                     const offsetPt = offsetPoint(pt, route.coordinates, photoIdx, routeOffset);
-                    const photoCoords = getNonOverlappingCoords(offsetPt, 0.08);
-                    const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
-                    
                     const subName = route.report?.subcontractor?.name || 'Socio';
                     const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
                     const ductLabel = route.ductType === 'ambos' ? '7x22 y 10x6' : (route.ductType || '7x22');
 
-                    photoMarker.bindTooltip(`
-                        <div style="padding:2px; width:135px; text-align:center; font:11px sans-serif; white-space: normal;">
-                            <img src="${photoUrl}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
-                            <b>Conducto (${ductLabel})</b><br>
-                            ${subName} - ${dateText}
-                        </div>
-                    `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
-
-                    photoMarker.on('click', () => {
-                        setActivePhotoModal(photoUrl);
+                    allPhotos.push({
+                        url: photoUrl,
+                        lat: offsetPt.lat,
+                        lng: offsetPt.lng,
+                        type: 'ducto',
+                        title: `Conducto (${ductLabel})`,
+                        subtitle: `${subName} - ${dateText}`
                     });
-
-                    photoMarkersGroupRef.current.addLayer(photoMarker);
                 });
+            }
+        });
+
+        // Proximity clustering algorithm
+        const clusters = [];
+        const threshold = 0.00003; // ~3 meters
+
+        allPhotos.forEach(photo => {
+            let added = false;
+            for (const cluster of clusters) {
+                const base = cluster[0];
+                const dist = Math.abs(base.lat - photo.lat) + Math.abs(base.lng - photo.lng);
+                if (dist < threshold) {
+                    cluster.push(photo);
+                    added = true;
+                    break;
+                }
+            }
+            if (!added) {
+                clusters.push([photo]);
+            }
+        });
+
+        // Calculate average coordinate for each cluster and draw
+        clusters.forEach(cluster => {
+            let sumLat = 0;
+            let sumLng = 0;
+            cluster.forEach(p => {
+                sumLat += p.lat;
+                sumLng += p.lng;
+            });
+            const lat = sumLat / cluster.length;
+            const lng = sumLng / cluster.length;
+
+            if (cluster.length === 1) {
+                const p = cluster[0];
+                const photoMarker = L.marker([lat, lng], { icon: cameraIcon });
+                
+                photoMarker.bindTooltip(`
+                    <div style="padding:2px; width:135px; text-align:center; font:11px sans-serif; white-space: normal;">
+                        <img src="${p.url}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
+                        <b>${p.title}</b><br>
+                        ${p.subtitle}
+                    </div>
+                `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
+
+                photoMarker.on('click', () => {
+                    setActivePhotoModal(p.url);
+                });
+
+                photoMarkersGroupRef.current.addLayer(photoMarker);
+            } else {
+                // Spiderfy group
+                const N = cluster.length;
+                let itemsHtml = '';
+                const radius = 45; // pixels radial expansion
+                
+                cluster.forEach((p, idx) => {
+                    const angle = (2 * Math.PI * idx) / N;
+                    const tx = (radius * Math.cos(angle)).toFixed(1);
+                    const ty = (radius * Math.sin(angle)).toFixed(1);
+                    const safeUrl = p.url.replace(/'/g, "\\'");
+                    
+                    itemsHtml += `
+                        <div class="spiderfy-item" style="--tx: ${tx}px; --ty: ${ty}px;" onclick="window.showMapPhotoModal('${safeUrl}')">
+                            📸
+                            <div class="spiderfy-tooltip">
+                                <img src="${p.url}" />
+                                <b>${p.title}</b><br>
+                                ${p.subtitle}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                const groupIcon = L.divIcon({
+                    html: `
+                        <div class="spiderfy-group">
+                            <div class="spiderfy-center">
+                                📸
+                                <span class="spiderfy-badge">${N}</span>
+                            </div>
+                            ${itemsHtml}
+                        </div>
+                    `,
+                    className: '',
+                    iconSize: [28, 28],
+                    iconAnchor: [14, 14]
+                });
+
+                const groupMarker = L.marker([lat, lng], { icon: groupIcon });
+                photoMarkersGroupRef.current.addLayer(groupMarker);
             }
         });
     };
