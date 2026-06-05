@@ -14,7 +14,7 @@ export default defineConfig({
       includeAssets: ['logo.png', 'pwa-192x192.png', 'pwa-512x512.png', 'vite.svg'],
       manifest: {
         name: 'JOA Bau',
-        short_name: 'JOA',
+        short_name: 'JOA Bau',
         description: 'Gestión Integral de Obra Civil',
         theme_color: '#0f172a',
         background_color: '#ffffff',
