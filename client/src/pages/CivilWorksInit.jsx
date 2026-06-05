@@ -138,9 +138,9 @@ const geocodeFull = async (street, number, city, countryCode, cache) => {
 };
 
 // Circle scatter math for overlapping pins
-const scatter = (center, index) => {
+const scatter = (center, index, scale = 1.0) => {
     const a = 137.5 * (Math.PI / 180);
-    const r = Math.sqrt(index + 1) * 0.00025;
+    const r = Math.sqrt(index + 1) * 0.00025 * scale;
     const t = (index + 1) * a;
     return { lat: center.lat + r * Math.sin(t), lng: center.lng + r * Math.cos(t) };
 };
@@ -735,7 +735,7 @@ const CivilWorksInit = () => {
 
         photoImportPoints.forEach((pt, idx) => {
             const isOverlapping = photoImportPoints.slice(0, idx).some(p => p.lat === pt.lat && p.lng === pt.lng);
-            const finalCoords = isOverlapping ? scatter(pt, idx) : pt;
+            const finalCoords = isOverlapping ? scatter(pt, idx, 0.08) : pt;
             const marker = L.marker([finalCoords.lat, finalCoords.lng], { icon: cameraIcon });
             
             // Generate a local object URL to display the image locally in tooltip
