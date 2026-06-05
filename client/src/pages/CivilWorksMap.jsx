@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import api from '../api/axios';
 
-const CACHE_KEY = 'joa-map-geo-cache-v5';
+const CACHE_KEY = 'joa-map-geo-cache-v6';
 const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
 
 const loadCache = () => {
@@ -172,7 +172,6 @@ const CivilWorksMap = () => {
     const [loadingData, setLoadingData] = useState(true);
     const [loadingMap, setLoadingMap] = useState(false);
     const [filterProject, setFilterProject] = useState('');
-    const [filterCity, setFilterCity] = useState('');
     const [filterSubcontractor, setFilterSubcontractor] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
@@ -316,7 +315,6 @@ const CivilWorksMap = () => {
         }
 
         if (filterProject && addr.projectId !== filterProject) return false;
-        if (filterCity && addr.city !== filterCity) return false;
         if (filterSubcontractor && addr.project?.subcontractorId !== filterSubcontractor) return false;
         
         if (filterStatus) {
@@ -429,7 +427,6 @@ const CivilWorksMap = () => {
             const isNewMap = !mapInstanceRef.current;
             const filtersChanged = 
                 lastCenteredFiltersRef.current.project !== filterProject ||
-                lastCenteredFiltersRef.current.city !== filterCity ||
                 lastCenteredFiltersRef.current.subcontractor !== filterSubcontractor ||
                 lastCenteredFiltersRef.current.status !== filterStatus ||
                 lastCenteredFiltersRef.current.query !== searchQuery ||
@@ -664,7 +661,6 @@ const CivilWorksMap = () => {
                 // Save current snapshot
                 lastCenteredFiltersRef.current = {
                     project: filterProject,
-                    city: filterCity,
                     subcontractor: filterSubcontractor,
                     status: filterStatus,
                     query: searchQuery,
@@ -678,7 +674,7 @@ const CivilWorksMap = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, activeTab, filterProject, filterCity, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry, showPhotos]);
+    }, [leafletLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry, showPhotos]);
 
     // Bulk address selection
     const toggleSelectAddress = (id) => {
@@ -782,18 +778,6 @@ const CivilWorksMap = () => {
                         <option value="">Todos los Proyectos</option>
                         {projects.map(p => (
                             <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                    </select>
-
-                    {/* City filter */}
-                    <select
-                        value={filterCity}
-                        onChange={(e) => setFilterCity(e.target.value)}
-                        className="bg-white border border-slate-200 text-slate-600 text-xs font-semibold rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                    >
-                        <option value="">Todas las Ciudades</option>
-                        {cities.map(c => (
-                            <option key={c} value={c}>{c}</option>
                         ))}
                     </select>
 
