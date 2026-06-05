@@ -17,6 +17,23 @@ jobs:
           command_timeout: 30m
           script: |
             set -e
+            
+            echo "0. Comprobando y configurando SWAP (Memoria Virtual)..."
+            if [ -z "$(swapon --show)" ]; then
+                echo "No se detectó memoria SWAP. Configurando un archivo SWAP de 2GB..."
+                fallocate -l 2G /swapfile || dd if=/dev/zero of=/swapfile bs=1M count=2048
+                chmod 600 /swapfile
+                mkswap /swapfile
+                swapon /swapfile
+                echo "/swapfile none swap sw 0 0" >> /etc/fstab
+                sysctl vm.swappiness=10
+                echo "vm.swappiness=10" >> /etc/sysctl.conf
+                echo "SWAP configurado con éxito."
+            else
+                echo "SWAP ya configurado:"
+                swapon --show
+            fi
+            
             cd /opt/JOABau
             
             echo "1. Descargando codigo de Github..."
