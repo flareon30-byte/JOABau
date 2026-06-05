@@ -81,5 +81,7 @@ jobs:
             docker-compose logs --tail=30 postgres || true
             echo "6. Logs del servidor (últimas 30 líneas):"
             docker-compose logs --tail=30 server || true
+            echo "7. Estructura de proyectos y usuarios en la app:"
+            docker-compose exec -T server node inspect_projects.js || true
             
             echo "DESPLIEGUE FINALIZADO"
