@@ -296,7 +296,7 @@ const CivilWorksMap = () => {
         }
         switch (status) {
             case 'HECHO': 
-                return { color: 'green', cls: 'bg-emerald-500 border-emerald-300', label: 'Tubo instalado (Listo soplado)' };
+                return { color: 'green', cls: 'bg-emerald-500 border-emerald-300', label: 'Acometida Construida' };
             case 'PLANIFICADO': 
                 return { color: 'yellow', cls: 'bg-amber-400 border-amber-300', label: 'Citado o Planificado' };
             default: 
@@ -804,7 +804,7 @@ const CivilWorksMap = () => {
                         <option value="">Todos los Estados</option>
                         <option value="SIN_TUBO">Gris - Sin Tubo</option>
                         <option value="PLANIFICADO">Amarillo - Citado / Planificado</option>
-                        <option value="HECHO">Verde - Tubo instalado (Hecho)</option>
+                        <option value="HECHO">Verde - Acometida Construida</option>
                         <option value="INSTALLIERT">Azul - Activado (Installiert)</option>
                     </select>
 
@@ -922,7 +922,7 @@ const CivilWorksMap = () => {
                                 </div>
                                 <div className="flex items-center gap-2 max-sm:inline-flex">
                                     <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 border border-emerald-200"></div>
-                                    <span className="text-slate-600 font-semibold">Verde: Tubo metido (Listo soplado)</span>
+                                    <span className="text-slate-600 font-semibold">Verde: Acometida Construida</span>
                                 </div>
                                 <div className="flex items-center gap-2 max-sm:inline-flex">
                                     <div className="relative flex items-center justify-center w-3.5 h-3.5">
@@ -978,7 +978,7 @@ const CivilWorksMap = () => {
                                         onClick={() => handleBulkStatusChange('HECHO')}
                                         className="bg-white hover:bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-bold px-3.5 py-2 rounded-xl transition-all"
                                     >
-                                        Marcar Tubo Metido (Verde)
+                                        Marcar Acometida Construida (Verde)
                                     </button>
                                     <button
                                         onClick={() => setSelectedAddressIds([])}
