@@ -207,6 +207,45 @@ const offsetPoint = (pt, routeCoordinates, photoIdx, offsetMeters) => {
     };
 };
 
+const areRoutesOverlapping = (r1, r2) => {
+    if (!r1.coordinates || r1.coordinates.length < 2) return false;
+    if (!r2.coordinates || r2.coordinates.length < 2) return false;
+    
+    const start1 = r1.coordinates[0];
+    const end1 = r1.coordinates[r1.coordinates.length - 1];
+    
+    const start2 = r2.coordinates[0];
+    const end2 = r2.coordinates[r2.coordinates.length - 1];
+    
+    const threshold = 0.00015; // ~15-16 meters
+    
+    const d1 = Math.abs(start1.lat - start2.lat) + Math.abs(start1.lng - start2.lng);
+    const d2 = Math.abs(start1.lat - end2.lat) + Math.abs(start1.lng - end2.lng);
+    const d3 = Math.abs(end1.lat - start2.lat) + Math.abs(end1.lng - start2.lng);
+    const d4 = Math.abs(end1.lat - end2.lat) + Math.abs(end1.lng - end2.lng);
+    
+    return d1 < threshold || d2 < threshold || d3 < threshold || d4 < threshold;
+};
+
+const getOffsetForRoute = (newRoute, existingRoutes) => {
+    if (!newRoute.coordinates || newRoute.coordinates.length < 2) return 0;
+    
+    let currentOffset = 0;
+    existingRoutes.forEach(savedRoute => {
+        if (areRoutesOverlapping(newRoute, savedRoute)) {
+            let spacing = 4.0;
+            if (savedRoute.ductType === 'ambos' && newRoute.ductType === 'ambos') {
+                spacing = 7.0;
+            } else if (savedRoute.ductType === 'ambos' || newRoute.ductType === 'ambos') {
+                spacing = 5.5;
+            }
+            currentOffset += spacing;
+        }
+    });
+    return currentOffset;
+};
+
+
 
 // Haversine formula to compute distance in meters for live UI display
 const calculateDistance = (points) => {
@@ -477,34 +516,13 @@ const CivilWorksInit = () => {
             addressesGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             photoMarkersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
             importPreviewGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
-            polylineRef.current = L.polyline([], { 
-                color: ductType === '10x6' ? '#ec4899' : '#f97316', 
-                weight: 5,
-                opacity: 0.9,
-                dashArray: '8, 10'
-            }).addTo(mapInstanceRef.current);
 
             // Add map click listener for drawing points
             mapInstanceRef.current.on('click', (e) => {
                 if (activeTabRef.current !== 'ducts') return;
                 const { lat, lng } = e.latlng;
                 const newPoint = { lat, lng };
-
-                setDrawnPoints(prev => {
-                    const updated = [...prev, newPoint];
-                    polylineRef.current.setLatLngs(updated.map(pt => [pt.lat, pt.lng]));
-                    
-                    const marker = L.circleMarker([lat, lng], {
-                        color: ductType === '10x6' ? '#ec4899' : '#f97316',
-                        fillColor: '#fff',
-                        fillOpacity: 1,
-                        radius: 5,
-                        weight: 2
-                    }).addTo(markersGroupRef.current);
-
-                    marker.bindPopup(`Punto ${updated.length}`);
-                    return updated;
-                });
+                setDrawnPoints(prev => [...prev, newPoint]);
             });
         } else {
             markersGroupRef.current.clearLayers();
@@ -512,7 +530,6 @@ const CivilWorksInit = () => {
             if (addressesGroupRef.current) addressesGroupRef.current.clearLayers();
             if (photoMarkersGroupRef.current) photoMarkersGroupRef.current.clearLayers();
             if (importPreviewGroupRef.current) importPreviewGroupRef.current.clearLayers();
-            polylineRef.current.setLatLngs([]);
         }
 
         resolveCenterAndSet();
@@ -522,19 +539,84 @@ const CivilWorksInit = () => {
         };
     }, [leafletLoaded, activeTab, filterProject]);
 
-    // Recolor polyline live when ductType changes
+    // Redraw/recolor polyline live when drawnPoints or ductType changes
     useEffect(() => {
-        if (polylineRef.current) {
-            polylineRef.current.setStyle({
-                color: ductType === '10x6' ? '#ec4899' : '#f97316'
+        if (!leafletLoaded || !mapInstanceRef.current || !markersGroupRef.current) return;
+        const L = window.L;
+        markersGroupRef.current.clearLayers();
+        
+        if (drawnPoints.length === 0) return;
+        
+        // Calculate offset relative to existing ducts
+        const liveRoute = { coordinates: drawnPoints, ductType: ductType };
+        const liveOffset = getOffsetForRoute(liveRoute, ductRoutes);
+        
+        if (ductType === 'ambos') {
+            // Draw 7x22 (orange) shifted left (-2.5 meters relative to liveOffset)
+            const coordsOrange = offsetPolyline(drawnPoints, liveOffset - 2.5);
+            const pathOrange = coordsOrange.map(pt => [pt.lat, pt.lng]);
+            const polyOrange = L.polyline(pathOrange, {
+                color: '#f97316',
+                weight: 5,
+                opacity: 0.9,
+                dashArray: '8, 10'
+            });
+            markersGroupRef.current.addLayer(polyOrange);
+            
+            // Draw 10x6 (pink) shifted right (+2.5 meters relative to liveOffset)
+            const coordsPink = offsetPolyline(drawnPoints, liveOffset + 2.5);
+            const pathPink = coordsPink.map(pt => [pt.lat, pt.lng]);
+            const polyPink = L.polyline(pathPink, {
+                color: '#ec4899',
+                weight: 5,
+                opacity: 0.9,
+                dashArray: '8, 10'
+            });
+            markersGroupRef.current.addLayer(polyPink);
+            
+            // Draw point circle markers offset correspondingly
+            drawnPoints.forEach((pt, idx) => {
+                const offsetPt = offsetPoint(pt, drawnPoints, idx, liveOffset);
+                const marker = L.circleMarker([offsetPt.lat, offsetPt.lng], {
+                    color: '#6366f1',
+                    fillColor: '#fff',
+                    fillOpacity: 1,
+                    radius: 5,
+                    weight: 2
+                });
+                marker.bindPopup(`Punto ${idx + 1}`);
+                markersGroupRef.current.addLayer(marker);
+            });
+        } else {
+            const coords = offsetPolyline(drawnPoints, liveOffset);
+            const pathCoords = coords.map(pt => [pt.lat, pt.lng]);
+            const color = ductType === '10x6' ? '#ec4899' : '#f97316';
+            const poly = L.polyline(pathCoords, {
+                color,
+                weight: 5,
+                opacity: 0.9,
+                dashArray: '8, 10'
+            });
+            markersGroupRef.current.addLayer(poly);
+            
+            drawnPoints.forEach((pt, idx) => {
+                const offsetPt = offsetPoint(pt, drawnPoints, idx, liveOffset);
+                const marker = L.circleMarker([offsetPt.lat, offsetPt.lng], {
+                    color,
+                    fillColor: '#fff',
+                    fillOpacity: 1,
+                    radius: 5,
+                    weight: 2
+                });
+                marker.bindPopup(`Punto ${idx + 1}`);
+                markersGroupRef.current.addLayer(marker);
             });
         }
-    }, [ductType]);
+    }, [leafletLoaded, drawnPoints, ductType, ductRoutes]);
 
     // Clear drawn duct points
     const handleClearDrawnDuct = () => {
         setDrawnPoints([]);
-        if (polylineRef.current) polylineRef.current.setLatLngs([]);
         if (markersGroupRef.current) markersGroupRef.current.clearLayers();
         if (searchMarkerRef.current && mapInstanceRef.current) {
             try { mapInstanceRef.current.removeLayer(searchMarkerRef.current); } catch (e) {}
@@ -548,25 +630,26 @@ const CivilWorksInit = () => {
         const L = window.L;
         savedDuctsGroupRef.current.clearLayers();
 
-        const startPointsSeen = [];
+        const processedRoutes = [];
         routeOffsetsRef.current = {};
         const getRouteOffset = (route) => {
             if (!route.coordinates || route.coordinates.length < 2) return 0;
-            const start = route.coordinates[0];
             
-            let matchCount = 0;
-            startPointsSeen.forEach(pt => {
-                const dist = Math.abs(pt.lat - start.lat) + Math.abs(pt.lng - start.lng);
-                if (dist < 0.00015) { // ~15 meters
-                    matchCount++;
+            let currentOffset = 0;
+            processedRoutes.forEach(prevRoute => {
+                if (areRoutesOverlapping(route, prevRoute)) {
+                    let spacing = 4.0;
+                    if (prevRoute.ductType === 'ambos' && route.ductType === 'ambos') {
+                        spacing = 7.0;
+                    } else if (prevRoute.ductType === 'ambos' || route.ductType === 'ambos') {
+                        spacing = 5.5;
+                    }
+                    currentOffset += spacing;
                 }
             });
             
-            startPointsSeen.push(start);
-            if (matchCount === 0) return 0;
-            const sign = matchCount % 2 === 0 ? -1 : 1;
-            const mag = Math.ceil(matchCount / 2) * 3.5; // 3.5m, -3.5m, 7m, -7m...
-            return sign * mag;
+            processedRoutes.push(route);
+            return currentOffset;
         };
 
         ductRoutes.forEach(route => {
@@ -617,61 +700,61 @@ const CivilWorksInit = () => {
                     btn.onclick = async () => {
                         if (window.confirm('¿Estás seguro de que deseas eliminar este ducto permanentemente?')) {
                             try {
-                                await api.delete(`/api/civil-works/duct-log/${route.id}`);
-                                alert('Ducto eliminado correctamente.');
-                                if (mapInstanceRef.current) mapInstanceRef.current.closePopup();
-                                loadAllData(); // reload data to refresh map
-                            } catch (error) {
-                                console.error('Error deleting duct:', error);
-                                alert(error.response?.data?.message || 'Error al eliminar el ducto.');
+                                    await api.delete(`/api/civil-works/duct-log/${route.id}`);
+                                    alert('Ducto eliminado correctamente.');
+                                    if (mapInstanceRef.current) mapInstanceRef.current.closePopup();
+                                    loadAllData(); // reload data to refresh map
+                                } catch (error) {
+                                    console.error('Error deleting duct:', error);
+                                    alert(error.response?.data?.message || 'Error al eliminar el ducto.');
+                                }
                             }
-                        }
-                    };
-                    popupContent.appendChild(btn);
+                        };
+                        popupContent.appendChild(btn);
+                    }
+                    return popupContent;
+                };
+    
+                if (route.ductType === 'ambos') {
+                    // Draw 7x22 (orange) shifted slightly left (-2.5 meters relative to routeOffset)
+                    const coordsOrange = offsetPolyline(route.coordinates, routeOffset - 2.5);
+                    const pathCoordsOrange = coordsOrange.map(pt => [pt.lat, pt.lng]);
+                    const polylineOrange = L.polyline(pathCoordsOrange, {
+                        color: '#f97316',
+                        weight: 5,
+                        opacity: 0.95
+                    });
+                    
+                    // Draw 10x6 (pink) shifted slightly right (+2.5 meters relative to routeOffset)
+                    const coordsPink = offsetPolyline(route.coordinates, routeOffset + 2.5);
+                    const pathCoordsPink = coordsPink.map(pt => [pt.lat, pt.lng]);
+                    const polylinePink = L.polyline(pathCoordsPink, {
+                        color: '#ec4899',
+                        weight: 5,
+                        opacity: 0.95
+                    });
+    
+                    polylineOrange.bindPopup(createPopup());
+                    polylinePink.bindPopup(createPopup());
+                    
+                    savedDuctsGroupRef.current.addLayer(polylineOrange);
+                    savedDuctsGroupRef.current.addLayer(polylinePink);
+                } else {
+                    const coords = offsetPolyline(route.coordinates, routeOffset);
+                    const pathCoords = coords.map(pt => [pt.lat, pt.lng]);
+                    
+                    const ductColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
+                    const polyline = L.polyline(pathCoords, {
+                        color: ductColor,
+                        weight: 5,
+                        opacity: 0.95
+                    });
+    
+                    polyline.bindPopup(createPopup());
+                    savedDuctsGroupRef.current.addLayer(polyline);
                 }
-                return popupContent;
-            };
-
-            if (route.ductType === 'ambos') {
-                // Draw 7x22 (orange) shifted slightly left (-1.8 meters relative to routeOffset)
-                const coordsOrange = offsetPolyline(route.coordinates, routeOffset - 1.8);
-                const pathCoordsOrange = coordsOrange.map(pt => [pt.lat, pt.lng]);
-                const polylineOrange = L.polyline(pathCoordsOrange, {
-                    color: '#f97316',
-                    weight: 5,
-                    opacity: 0.95
-                });
-                
-                // Draw 10x6 (pink) shifted slightly right (+1.8 meters relative to routeOffset)
-                const coordsPink = offsetPolyline(route.coordinates, routeOffset + 1.8);
-                const pathCoordsPink = coordsPink.map(pt => [pt.lat, pt.lng]);
-                const polylinePink = L.polyline(pathCoordsPink, {
-                    color: '#ec4899',
-                    weight: 5,
-                    opacity: 0.95
-                });
-
-                polylineOrange.bindPopup(createPopup());
-                polylinePink.bindPopup(createPopup());
-                
-                savedDuctsGroupRef.current.addLayer(polylineOrange);
-                savedDuctsGroupRef.current.addLayer(polylinePink);
-            } else {
-                const coords = offsetPolyline(route.coordinates, routeOffset);
-                const pathCoords = coords.map(pt => [pt.lat, pt.lng]);
-                
-                const ductColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
-                const polyline = L.polyline(pathCoords, {
-                    color: ductColor,
-                    weight: 5,
-                    opacity: 0.95
-                });
-
-                polyline.bindPopup(createPopup());
-                savedDuctsGroupRef.current.addLayer(polyline);
-            }
-        });
-    };
+            });
+        };
 
     const getStatusInfo = (status) => {
         switch (status) {
@@ -757,6 +840,22 @@ const CivilWorksInit = () => {
             className: '', iconSize: [28, 28], iconAnchor: [14, 14]
         });
 
+        // Track already plotted photo coordinates to apply scatter offset on overlap
+        const plottedPhotoCoords = [];
+        const getNonOverlappingCoords = (coords, scale = 0.08) => {
+            let matchCount = 0;
+            plottedPhotoCoords.forEach(p => {
+                const dist = Math.abs(p.origLat - coords.lat) + Math.abs(p.origLng - coords.lng);
+                if (dist < 0.000005) { // ~0.5 meters (same spot)
+                    matchCount++;
+                }
+            });
+            
+            const finalCoords = matchCount > 0 ? scatter(coords, matchCount, scale) : coords;
+            plottedPhotoCoords.push({ origLat: coords.lat, origLng: coords.lng, lat: finalCoords.lat, lng: finalCoords.lng });
+            return finalCoords;
+        };
+
         // A. Connection Photos (Acometidas) - only for the selected project
         if (filterProject) {
             const projectAddresses = addresses.filter(addr => addr.projectId === filterProject);
@@ -773,7 +872,7 @@ const CivilWorksInit = () => {
                     if (!coords) return;
 
                     addr.civilWorkInfo.photos.forEach((photoUrl, photoIdx) => {
-                        const photoCoords = addr.civilWorkInfo.photos.length > 1 ? scatter(coords, photoIdx) : coords;
+                        const photoCoords = getNonOverlappingCoords(coords, 0.08);
                         const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
                         
                         photoMarker.bindTooltip(`
@@ -808,7 +907,7 @@ const CivilWorksInit = () => {
                     if (!pt || !pt.lat || !pt.lng) return;
 
                     const offsetPt = offsetPoint(pt, route.coordinates, photoIdx, routeOffset);
-                    const photoCoords = photoIdx > 0 ? scatter(offsetPt, photoIdx) : offsetPt;
+                    const photoCoords = getNonOverlappingCoords(offsetPt, 0.08);
                     const photoMarker = L.marker([photoCoords.lat, photoCoords.lng], { icon: cameraIcon });
                     
                     const subName = route.report?.subcontractor?.name || 'Socio';
@@ -840,17 +939,48 @@ const CivilWorksInit = () => {
 
         if (photoImportPoints.length === 0) return;
 
+        // Calculate offset relative to existing ducts
+        const liveRoute = { coordinates: photoImportPoints, ductType: photoImportDuctType };
+        const liveOffset = getOffsetForRoute(liveRoute, ductRoutes);
+
         // Draw polyline connecting points
         const pathCoords = photoImportPoints.map(pt => [pt.lat, pt.lng]);
-        const color = photoImportDuctType === '10x6' ? '#ec4899' : '#f97316';
         
-        const polyline = L.polyline(pathCoords, {
-            color: color,
-            weight: 5,
-            opacity: 0.8,
-            dashArray: '5, 10'
-        });
-        importPreviewGroupRef.current.addLayer(polyline);
+        if (photoImportDuctType === 'ambos') {
+            // Draw 7x22 (orange) shifted left (-2.5 meters relative to liveOffset)
+            const coordsOrange = offsetPolyline(photoImportPoints, liveOffset - 2.5);
+            const pathOrange = coordsOrange.map(pt => [pt.lat, pt.lng]);
+            const polylineOrange = L.polyline(pathOrange, {
+                color: '#f97316',
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '5, 10'
+            });
+            importPreviewGroupRef.current.addLayer(polylineOrange);
+            
+            // Draw 10x6 (pink) shifted right (+2.5 meters relative to liveOffset)
+            const coordsPink = offsetPolyline(photoImportPoints, liveOffset + 2.5);
+            const pathPink = coordsPink.map(pt => [pt.lat, pt.lng]);
+            const polylinePink = L.polyline(pathPink, {
+                color: '#ec4899',
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '5, 10'
+            });
+            importPreviewGroupRef.current.addLayer(polylinePink);
+        } else {
+            const coords = offsetPolyline(photoImportPoints, liveOffset);
+            const pathCoordsOffset = coords.map(pt => [pt.lat, pt.lng]);
+            const color = photoImportDuctType === '10x6' ? '#ec4899' : '#f97316';
+            
+            const polyline = L.polyline(pathCoordsOffset, {
+                color: color,
+                weight: 5,
+                opacity: 0.8,
+                dashArray: '5, 10'
+            });
+            importPreviewGroupRef.current.addLayer(polyline);
+        }
 
         // Draw camera markers for each point
         const cameraIcon = L.divIcon({
@@ -859,8 +989,9 @@ const CivilWorksInit = () => {
         });
 
         photoImportPoints.forEach((pt, idx) => {
+            const offsetPt = offsetPoint(pt, photoImportPoints, idx, liveOffset);
             const isOverlapping = photoImportPoints.slice(0, idx).some(p => p.lat === pt.lat && p.lng === pt.lng);
-            const finalCoords = isOverlapping ? scatter(pt, idx, 0.08) : pt;
+            const finalCoords = isOverlapping ? scatter(offsetPt, idx, 0.08) : offsetPt;
             const marker = L.marker([finalCoords.lat, finalCoords.lng], { icon: cameraIcon });
             
             // Generate a local object URL to display the image locally in tooltip
@@ -902,7 +1033,6 @@ const CivilWorksInit = () => {
             drawProjectAddresses();
             drawPhotoMarkers();
             drawPhotoImportPreview();
-            if (polylineRef.current) polylineRef.current.setLatLngs([]);
             if (markersGroupRef.current) markersGroupRef.current.clearLayers();
         }
     }, [leafletLoaded, activeTab, ductRoutes, filterProject, addresses, photoImportPoints, photoImportDuctType]);
@@ -964,26 +1094,10 @@ const CivilWorksInit = () => {
         }
     };
 
-    // Remove the last drawn point (Undo)
     const handleUndoLastPoint = () => {
         setDrawnPoints(prev => {
             if (prev.length === 0) return prev;
-            const updated = prev.slice(0, -1);
-            
-            // Update polyline
-            if (polylineRef.current) {
-                polylineRef.current.setLatLngs(updated.map(pt => [pt.lat, pt.lng]));
-            }
-            
-            // Remove the last marker layer from Leaflet
-            if (markersGroupRef.current) {
-                const layers = markersGroupRef.current.getLayers();
-                if (layers.length > 0) {
-                    markersGroupRef.current.removeLayer(layers[layers.length - 1]);
-                }
-            }
-
-            return updated;
+            return prev.slice(0, -1);
         });
     };
 

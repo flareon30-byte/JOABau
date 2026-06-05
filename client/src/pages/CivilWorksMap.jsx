@@ -219,6 +219,27 @@ const offsetPoint = (pt, routeCoordinates, photoIdx, offsetMeters) => {
     };
 };
 
+const areRoutesOverlapping = (r1, r2) => {
+    if (!r1.coordinates || r1.coordinates.length < 2) return false;
+    if (!r2.coordinates || r2.coordinates.length < 2) return false;
+    
+    const start1 = r1.coordinates[0];
+    const end1 = r1.coordinates[r1.coordinates.length - 1];
+    
+    const start2 = r2.coordinates[0];
+    const end2 = r2.coordinates[r2.coordinates.length - 1];
+    
+    const threshold = 0.00015; // ~15-16 meters
+    
+    const d1 = Math.abs(start1.lat - start2.lat) + Math.abs(start1.lng - start2.lng);
+    const d2 = Math.abs(start1.lat - end2.lat) + Math.abs(start1.lng - end2.lng);
+    const d3 = Math.abs(end1.lat - start2.lat) + Math.abs(end1.lng - start2.lng);
+    const d4 = Math.abs(end1.lat - end2.lat) + Math.abs(end1.lng - end2.lng);
+    
+    return d1 < threshold || d2 < threshold || d3 < threshold || d4 < threshold;
+};
+
+
 
 const CivilWorksMap = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -597,25 +618,26 @@ const CivilWorksMap = () => {
             });
 
             // Draw Subcontractor Duct lines
-            const startPointsSeen = [];
+            const processedRoutes = [];
             const routeOffsets = {};
             const getRouteOffset = (route) => {
                 if (!route.coordinates || route.coordinates.length < 2) return 0;
-                const start = route.coordinates[0];
                 
-                let matchCount = 0;
-                startPointsSeen.forEach(pt => {
-                    const dist = Math.abs(pt.lat - start.lat) + Math.abs(pt.lng - start.lng);
-                    if (dist < 0.00015) { // ~15 meters
-                        matchCount++;
+                let currentOffset = 0;
+                processedRoutes.forEach(prevRoute => {
+                    if (areRoutesOverlapping(route, prevRoute)) {
+                        let spacing = 4.0;
+                        if (prevRoute.ductType === 'ambos' && route.ductType === 'ambos') {
+                            spacing = 7.0;
+                        } else if (prevRoute.ductType === 'ambos' || route.ductType === 'ambos') {
+                            spacing = 5.5;
+                        }
+                        currentOffset += spacing;
                     }
                 });
                 
-                startPointsSeen.push(start);
-                if (matchCount === 0) return 0;
-                const sign = matchCount % 2 === 0 ? -1 : 1;
-                const mag = Math.ceil(matchCount / 2) * 3.5; // 3.5m, -3.5m, 7m, -7m...
-                return sign * mag;
+                processedRoutes.push(route);
+                return currentOffset;
             };
 
             filteredDuctRoutes.forEach(route => {
@@ -630,8 +652,8 @@ const CivilWorksMap = () => {
                 const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
 
                 if (route.ductType === 'ambos') {
-                    // Draw 7x22 (orange) shifted slightly left (-1.8 meters relative to routeOffset)
-                    const coordsOrange = offsetPolyline(route.coordinates, routeOffset - 1.8);
+                    // Draw 7x22 (orange) shifted slightly left (-2.5 meters relative to routeOffset)
+                    const coordsOrange = offsetPolyline(route.coordinates, routeOffset - 2.5);
                     const pathCoordsOrange = coordsOrange.map(pt => [pt.lat, pt.lng]);
                     const polylineOrange = L.polyline(pathCoordsOrange, {
                         color: '#f97316',
@@ -640,8 +662,8 @@ const CivilWorksMap = () => {
                         dashArray: '8, 10'
                     });
                     
-                    // Draw 10x6 (pink) shifted slightly right (+1.8 meters relative to routeOffset)
-                    const coordsPink = offsetPolyline(route.coordinates, routeOffset + 1.8);
+                    // Draw 10x6 (pink) shifted slightly right (+2.5 meters relative to routeOffset)
+                    const coordsPink = offsetPolyline(route.coordinates, routeOffset + 2.5);
                     const pathCoordsPink = coordsPink.map(pt => [pt.lat, pt.lng]);
                     const polylinePink = L.polyline(pathCoordsPink, {
                         color: '#ec4899',
@@ -704,7 +726,7 @@ const CivilWorksMap = () => {
                     let matchCount = 0;
                     plottedPhotoCoords.forEach(p => {
                         const dist = Math.abs(p.origLat - coords.lat) + Math.abs(p.origLng - coords.lng);
-                        if (dist < 0.00005) { // ~5 meters
+                        if (dist < 0.000005) { // ~0.5 meters
                             matchCount++;
                         }
                     });

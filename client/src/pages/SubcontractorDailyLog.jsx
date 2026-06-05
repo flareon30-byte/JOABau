@@ -49,6 +49,52 @@ const getColorStyle = (colorName) => {
     }
 };
 
+const getPerpendicularOffset = (p1, p2, offsetDeg) => {
+    const latDiff = p2.lat - p1.lat;
+    const lngDiff = p2.lng - p1.lng;
+    const len = Math.sqrt(latDiff * latDiff + lngDiff * lngDiff);
+    if (len === 0) return { latOffset: 0, lngOffset: 0 };
+    return {
+        latOffset: (-lngDiff / len) * offsetDeg,
+        lngOffset: (latDiff / len) * offsetDeg
+    };
+};
+
+const offsetPolyline = (coordinates, offsetMeters) => {
+    if (!coordinates || coordinates.length === 0) return [];
+    if (coordinates.length < 2) return coordinates;
+    if (offsetMeters === 0) return coordinates;
+    
+    const offsetDeg = offsetMeters * 0.000009; // 1 meter ~ 0.000009 degrees
+    const newCoords = [];
+    
+    for (let i = 0; i < coordinates.length; i++) {
+        let latOffset = 0;
+        let lngOffset = 0;
+        
+        if (i === 0) {
+            const offset = getPerpendicularOffset(coordinates[0], coordinates[1], offsetDeg);
+            latOffset = offset.latOffset;
+            lngOffset = offset.lngOffset;
+        } else if (i === coordinates.length - 1) {
+            const offset = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
+            latOffset = offset.latOffset;
+            lngOffset = offset.lngOffset;
+        } else {
+            const offset1 = getPerpendicularOffset(coordinates[i - 1], coordinates[i], offsetDeg);
+            const offset2 = getPerpendicularOffset(coordinates[i], coordinates[i + 1], offsetDeg);
+            latOffset = (offset1.latOffset + offset2.latOffset) / 2;
+            lngOffset = (offset1.lngOffset + offset2.lngOffset) / 2;
+        }
+        
+        newCoords.push({
+            lat: coordinates[i].lat + latOffset,
+            lng: coordinates[i].lng + lngOffset
+        });
+    }
+    return newCoords;
+};
+
 const SubcontractorDailyLog = () => {
     const navigate = useNavigate();
     const [leafletLoaded, setLeafletLoaded] = useState(false);
@@ -338,8 +384,20 @@ const SubcontractorDailyLog = () => {
         }
 
         // Draw new polyline
-        const color = ductType === '10x6' ? '#ec4899' : '#f97316';
-        polylineRef.current = L.polyline(coords, { color: color, weight: 4, dashArray: '5, 8' }).addTo(mapInstanceRef.current);
+        if (ductType === 'ambos') {
+            const coordsOrange = offsetPolyline(ductData.coordinates, -2.5);
+            const pathOrange = coordsOrange.map(pt => [pt.lat, pt.lng]);
+            const polylineOrange = L.polyline(pathOrange, { color: '#f97316', weight: 4, dashArray: '5, 8' }).addTo(mapInstanceRef.current);
+            
+            const coordsPink = offsetPolyline(ductData.coordinates, 2.5);
+            const pathPink = coordsPink.map(pt => [pt.lat, pt.lng]);
+            const polylinePink = L.polyline(pathPink, { color: '#ec4899', weight: 4, dashArray: '5, 8' }).addTo(mapInstanceRef.current);
+            
+            polylineRef.current = L.featureGroup([polylineOrange, polylinePink]).addTo(mapInstanceRef.current);
+        } else {
+            const color = ductType === '10x6' ? '#ec4899' : '#f97316';
+            polylineRef.current = L.polyline(coords, { color: color, weight: 4, dashArray: '5, 8' }).addTo(mapInstanceRef.current);
+        }
         mapInstanceRef.current.fitBounds(L.latLngBounds(coords), { padding: [20, 20] });
 
         // Add start and end circle markers
