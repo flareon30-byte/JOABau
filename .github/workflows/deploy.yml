@@ -54,9 +54,16 @@ jobs:
             # Forzamos la recreación para asegurar que carguen los nuevos cambios
             docker-compose up -d --force-recreate
             
+            echo "4.5. Sincronizando contraseña de base de datos..."
+            sleep 5
+            docker exec -T joabau-postgres-1 psql -U postgres -c "ALTER USER postgres WITH PASSWORD '12345';" || echo "Aviso: Falló el ALTER USER, continuando..."
+            
             echo "5. Actualizando Base de Datos (en segundo plano)..."
             # Intentamos la migración; si falla por RAM, la app sigue arriba
             docker-compose exec -T server npx prisma db push --accept-data-loss || echo "Aviso: La migración falló por memoria, pero la app está funcionando."
+            
+            echo "5.5. Reiniciando servidor para reconectar..."
+            docker-compose restart server
             
             echo "6. Limpiando espacio en disco (Docker)..."
             docker system prune -f || true
