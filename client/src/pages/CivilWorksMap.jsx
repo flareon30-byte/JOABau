@@ -16,9 +16,19 @@ const saveCache = (cache) => {
     try { localStorage.setItem(CACHE_KEY, JSON.stringify(cache)); } catch {}
 };
 
-const guessCountryCode = (street, city) => {
+const guessCountryCode = (street, city, projectName) => {
     const s = (street || '').toLowerCase();
     const c = (city || '').toLowerCase();
+    const p = (projectName || '').toLowerCase();
+    
+    // German project name indicators
+    if (p.includes('bickelheim') || p.includes('roxheim') || p.includes('bobenheim') || p.includes('germany') || p.includes('deutschland') || p.includes('fiber city')) {
+        return 'DE';
+    }
+    // Spanish project name indicators
+    if (p.includes('madrid') || p.includes('españa') || p.includes('spain') || p.includes('proyecto demo')) {
+        return 'ES';
+    }
     
     // Spanish street indicators
     if (s.startsWith('calle') || s.startsWith('avenida') || s.startsWith('plaza') || s.startsWith('paseo') || s.startsWith('avda') || s.startsWith('c/') || s.includes(' de ') || s.includes(' del ')) {
@@ -30,11 +40,11 @@ const guessCountryCode = (street, city) => {
     }
     
     // German street indicators
-    if (s.includes('str.') || s.includes('straße') || s.includes('strasse') || s.includes('weg') || s.includes('gasse') || s.includes('platz') || s.includes('allee') || s.includes('pfad')) {
+    if (s.includes('str.') || s.includes('str ') || s.endsWith('str') || s.includes('straße') || s.includes('strasse') || s.includes('weg') || s.includes('gasse') || s.includes('platz') || s.includes('allee') || s.includes('pfad') || s.includes('ring') || s.includes('graben')) {
         return 'DE';
     }
     // German city indicators
-    if (c.includes('berlin') || c.includes('münchen') || c.includes('munich') || c.includes('frankfurt') || c.includes('hamburg') || c.includes('mainz') || c.includes('wiesbaden') || c.includes('alzey') || c.includes('bickelheim') || c.includes('gau-bickelheim')) {
+    if (c.includes('berlin') || c.includes('münchen') || c.includes('munich') || c.includes('frankfurt') || c.includes('hamburg') || c.includes('mainz') || c.includes('wiesbaden') || c.includes('alzey') || c.includes('bickelheim') || c.includes('gau-bickelheim') || c.includes('bobenheim') || c.includes('roxheim') || c.includes('heim') || c.includes('burg') || c.includes('dorf') || c.includes('bach') || c.includes('berg') || c.includes('stadt') || c.includes('furt')) {
         return 'DE';
     }
     
@@ -45,12 +55,12 @@ const guessCountryCode = (street, city) => {
 // Stage 2: Photon (house verification)
 // Stage 3: Nominatim structured
 // Stage 4: Photon street-only (fallback)
-const geocodeFull = async (street, number, city, countryCode, cache) => {
+const geocodeFull = async (street, number, city, countryCode, cache, projectName) => {
     const cacheKey = [street, number, city].filter(Boolean).join(' ').trim();
     if (!cacheKey) return null;
     if (cache[cacheKey]?.lat) return cache[cacheKey];
 
-    const guessed = guessCountryCode(street, city) || countryCode;
+    const guessed = guessCountryCode(street, city, projectName) || countryCode;
     const country = guessed === 'DE' ? 'Germany' : 'Spain';
     const region = guessed === 'DE' ? 'de' : 'es';
     const lang = guessed === 'DE' ? 'de' : 'es';
@@ -282,7 +292,7 @@ const CivilWorksMap = () => {
     // Clean status colors according to request
     // Grey: SIN_TUBO, Yellow: PLANIFICADO, Green: HECHO, Blue: INSTALLIERT
     const getStatusInfo = (status, orderStatus) => {
-        if (orderStatus === 'Installiert') {
+        if (status === 'HECHO' && orderStatus === 'Installiert') {
             return { color: 'blue', cls: 'bg-blue-600 border-blue-300', label: 'Activado (Installiert)' };
         }
         switch (status) {
@@ -311,7 +321,7 @@ const CivilWorksMap = () => {
         
         if (filterStatus) {
             if (filterStatus === 'INSTALLIERT') {
-                if (addr.orderStatus !== 'Installiert') return false;
+                if (addr.civilWorkStatus !== 'HECHO' || addr.orderStatus !== 'Installiert') return false;
             } else if (filterStatus === 'HECHO') {
                 if (addr.civilWorkStatus !== 'HECHO' || addr.orderStatus === 'Installiert') return false;
             } else {
@@ -350,11 +360,21 @@ const CivilWorksMap = () => {
         const buildMap = async () => {
             // ---- city center ----
             const cityName = filteredAddresses.find(a => a.city)?.city || '';
-            const country = companyCountry === 'DE' ? 'Germany' : 'Spain';
-            const region = companyCountry === 'DE' ? 'de' : 'es';
-            const lang = companyCountry === 'DE' ? 'de' : 'es';
+            
+            // Determine project country based on filtered addresses to avoid country mismatches
+            let projectCountry = companyCountry;
+            const hasGermanIndicator = filteredAddresses.some(addr => {
+                return guessCountryCode(addr.street, addr.city, addr.project?.name) === 'DE';
+            });
+            if (hasGermanIndicator) {
+                projectCountry = 'DE';
+            }
 
-            let center = companyCountry === 'DE' ? { lat: 49.8358, lng: 8.0163 } : { lat: 40.4167, lng: -3.7037 }; // Default Madrid / Berlin
+            const country = projectCountry === 'DE' ? 'Germany' : 'Spain';
+            const region = projectCountry === 'DE' ? 'de' : 'es';
+            const lang = projectCountry === 'DE' ? 'de' : 'es';
+
+            let center = projectCountry === 'DE' ? { lat: 49.8358, lng: 8.0163 } : { lat: 40.4167, lng: -3.7037 }; // Default Madrid / Berlin
             
             if (cityName) {
                 setProgressLabel(`Localizando ${cityName}…`);
@@ -445,7 +465,7 @@ const CivilWorksMap = () => {
                         if (addr.gpsLat && addr.gpsLng) {
                             return { lat: addr.gpsLat, lng: addr.gpsLng };
                         }
-                        const coords = await geocodeFull(addr.street, addr.number, addr.city, companyCountry, cache);
+                        const coords = await geocodeFull(addr.street, addr.number, addr.city, companyCountry, cache, addr.project?.name);
                         if (coords && coords.lat && coords.lng) {
                             api.put(`/api/civil-works/address/${addr.id}/gps`, {
                                 gpsLat: coords.lat,
@@ -486,7 +506,7 @@ const CivilWorksMap = () => {
                 const statusInfo = getStatusInfo(addr.civilWorkStatus, addr.orderStatus);
 
                 let icon;
-                if (addr.orderStatus === 'Installiert') {
+                if (statusInfo.color === 'blue') {
                     icon = L.divIcon({
                         html: `<div class="relative flex items-center justify-center w-5 h-5">
                                  <div class="absolute inset-0 rounded-full border-[3px] border-blue-600 bg-white/30 shadow-md"></div>
