@@ -845,6 +845,9 @@ model CivilDailyNvtLog {
 enum PlannedWorkType {
   ACOMETIDA
   DUCTO
+  DUCTO_7x22
+  DUCTO_10x6
+  DUCTO_AMBOS
   NVT
   BRECHA
 }

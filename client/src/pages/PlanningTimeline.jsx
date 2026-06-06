@@ -110,6 +110,9 @@ export default function PlanningTimeline() {
       case 'BRECHA': return 'Brecha (Problema)';
       case 'ACOMETIDA': return 'Acometida';
       case 'DUCTO': return 'Ducto de Calle';
+      case 'DUCTO_7x22': return 'Ducto de 7x22';
+      case 'DUCTO_10x6': return 'Ducto de 10x6';
+      case 'DUCTO_AMBOS': return 'Ducto de 7x22 + 10x6';
       case 'NVT': return 'Instalación NVT';
       default: return type;
     }

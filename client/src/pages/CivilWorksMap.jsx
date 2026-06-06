@@ -1007,7 +1007,7 @@ const CivilWorksMap = () => {
                 const popupHtml = `
                     <div style="font-family:sans-serif; padding:4px; min-width: 200px;">
                         <h4 style="margin:0 0 8px 0;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">
-                            ${work.type} ${isResolved ? '(Resuelto)' : ''}
+                            ${['DUCTO_7x22', 'DUCTO_10x6', 'DUCTO_AMBOS'].includes(work.type) ? work.type.replace('_', ' ') : work.type} ${isResolved ? '(Resuelto)' : ''}
                         </h4>
                         <div style="font-size:12px;color:#475569;margin-bottom:8px;">
                             <strong>Proyecto:</strong> ${projects.find(p=>p.id===work.projectId)?.name || 'N/A'}<br/>
