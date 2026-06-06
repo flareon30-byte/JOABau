@@ -84,14 +84,14 @@ const PlannedTasksList = () => {
                         const isBrecha = task.type === 'BRECHA';
                         
                         return (
-                            <div key={task.id} className={\`bg-white rounded-2xl shadow-sm border \${isBrecha && !isCompleted ? 'border-orange-300' : 'border-slate-200'} overflow-hidden flex flex-col\`}>
-                                <div className={\`p-4 border-b \${isCompleted ? 'bg-emerald-50 border-emerald-100' : (isBrecha ? 'bg-orange-50 border-orange-100' : 'bg-slate-50 border-slate-100')}\`}>
+                            <div key={task.id} className={`bg-white rounded-2xl shadow-sm border ${isBrecha && !isCompleted ? 'border-orange-300' : 'border-slate-200'} overflow-hidden flex flex-col`}>
+                                <div className={`p-4 border-b ${isCompleted ? 'bg-emerald-50 border-emerald-100' : (isBrecha ? 'bg-orange-50 border-orange-100' : 'bg-slate-50 border-slate-100')}`}>
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <span className={\`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium \${
+                                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${
                                                 isCompleted ? 'bg-emerald-100 text-emerald-800' : 
                                                 (isBrecha ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800')
-                                            }\`}>
+                                            }`}>
                                                 {isBrecha ? <AlertTriangle size={12} /> : <CheckCircle size={12} />}
                                                 {task.type}
                                             </span>
