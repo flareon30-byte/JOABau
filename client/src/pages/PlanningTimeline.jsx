@@ -1,11 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
-import { Loader2, Calendar, MapPin, AlertCircle, Plus, Filter } from 'lucide-react';
+import { Loader2, Calendar, MapPin, AlertCircle, Plus, Filter, CheckCircle, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function PlanningTimeline() {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('¿Seguro que deseas borrar esta planificación?')) return;
+    try {
+      await api.delete(`/api/planning/${id}`);
+      fetchWorks(selectedProject);
+    } catch (err) {
+      console.error(err);
+      alert('Error al borrar la planificación');
+    }
+  };
+
+  const handleComplete = async (id) => {
+    try {
+      await api.put(`/api/planning/${id}`, { status: 'COMPLETED' });
+      fetchWorks(selectedProject);
+    } catch (err) {
+      console.error(err);
+      alert('Error al completar la planificación');
+    }
+  };
+
+  const handleViewOnMap = (work) => {
+    if (work.coordinates) {
+      let lat, lng;
+      if (Array.isArray(work.coordinates)) {
+          lat = work.coordinates[0].lat;
+          lng = work.coordinates[0].lng;
+      } else {
+          lat = work.coordinates.lat;
+          lng = work.coordinates.lng;
+      }
+      navigate(`/dashboard/civil-works-map?lat=${lat}&lng=${lng}&zoom=18&taskId=${work.id}`);
+    } else {
+      navigate(`/dashboard/civil-works-map?taskId=${work.id}`);
+    }
+  };
+
   const [selectedProject, setSelectedProject] = useState('');
   const [works, setWorks] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -112,12 +153,13 @@ export default function PlanningTimeline() {
                   <th className="p-4 font-semibold uppercase">Subcontrata Asignada</th>
                   <th className="p-4 font-semibold uppercase">Fecha Límite</th>
                   <th className="p-4 font-semibold uppercase text-center">Estado</th>
+                  <th className="p-4 font-semibold uppercase text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {works.length === 0 ? (
                   <tr>
-                    <td colSpan="5" className="p-8 text-center text-slate-500">
+                    <td colSpan="6" className="p-8 text-center text-slate-500">
                       No hay trabajos planificados para este proyecto. Ve al Mapa de Obra para dibujar hitos.
                     </td>
                   </tr>
@@ -171,6 +213,35 @@ export default function PlanningTimeline() {
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${getStatusColor(work.status)}`}>
                           {work.status}
                         </span>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={() => handleViewOnMap(work)}
+                            className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Ver en Mapa"
+                          >
+                            <MapPin className="w-4 h-4" />
+                          </button>
+                          {work.status !== 'COMPLETED' && (
+                            <button 
+                              onClick={() => handleComplete(work.id)}
+                              className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                              title="Marcar como Completado"
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </button>
+                          )}
+                          {user.role === 'SUPER_ADMIN' && (
+                            <button 
+                              onClick={() => handleDelete(work.id)}
+                              className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Borrar Planificación"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))

@@ -287,7 +287,7 @@ const DashboardLayout = () => {
             id: 'civil',
             label: 'Obra Civil',
             icon: HardHat,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER', 'SUBCONTRACTOR'],
+            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER', 'SUBCONTRACTOR', 'PROJECT_MANAGER', 'SITE_MANAGER'],
             items: [
                 { icon: Map, label: 'Mapa Obra Civil', path: '/dashboard/civil-works-map', roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'CIVIL_WORKER', 'SUBCONTRACTOR', 'PROJECT_MANAGER', 'SITE_MANAGER'] },
                 { icon: ClipboardList, label: 'Reporte Diario', path: '/dashboard/subcontractor-log', roles: ['SUBCONTRACTOR', 'CIVIL_WORKER'] },
