@@ -113,8 +113,8 @@ exports.getExecutiveDashboardData = async (req, res) => {
                 where: { projectId: project.id, civilWorkStatus: 'HECHO' }
             });
 
-            const activations = await prisma.activationInfo.count({
-                where: { address: { projectId: project.id } }
+            const activations = await prisma.address.count({
+                where: { projectId: project.id, orderStatus: 'Installiert' }
             });
 
             return {
