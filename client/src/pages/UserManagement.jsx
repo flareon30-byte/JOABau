@@ -82,12 +82,13 @@ const UserManagement = () => {
 
     const getRoleLabel = (role) => {
         switch(role) {
-            case 'SUPER_ADMIN': return t('users.role_super_admin');
-            case 'ADMIN': return t('users.role_admin');
-            case 'BACK_OFFICE': return t('users.role_back_office');
-            case 'ACTIVATOR': return t('users.role_activator');
-            case 'BLOWER': return t('users.role_blower');
-            case 'PROTOCOL_MANAGER': return t('users.role_protocol_manager');
+            case 'SUPER_ADMIN': return 'Super Admin';
+            case 'ADMIN': return 'Admin';
+            case 'PROJECT_MANAGER': return 'Jefe de Proyecto';
+            case 'SITE_MANAGER': return 'Jefe de Obra';
+            case 'SUPERVISOR': return 'Supervisor';
+            case 'OPERATOR': return 'Operario';
+            case 'SUBCONTRACTOR': return 'Subcontrata';
             default: return role;
         }
     };
@@ -205,14 +206,36 @@ const UserManagement = () => {
                                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                                     className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
                                 >
-                                    <option value="SUPER_ADMIN">{t('users.role_super_admin')}</option>
-                                    <option value="ADMIN">{t('users.role_admin')}</option>
-                                    <option value="BACK_OFFICE">{t('users.role_back_office')}</option>
-                                    <option value="ACTIVATOR">{t('users.role_activator')}</option>
-                                    <option value="BLOWER">{t('users.role_blower')}</option>
-                                    <option value="PROTOCOL_MANAGER">{t('users.role_protocol_manager')}</option>
+                                    <option value="SUPER_ADMIN">Super Admin</option>
+                                    <option value="ADMIN">Admin</option>
+                                    <option value="PROJECT_MANAGER">Jefe de Proyecto</option>
+                                    <option value="SITE_MANAGER">Jefe de Obra</option>
+                                    <option value="SUPERVISOR">Supervisor</option>
+                                    <option value="OPERATOR">Operario</option>
+                                    <option value="SUBCONTRACTOR">Subcontrata</option>
                                 </select>
                             </div>
+                            
+                            {['PROJECT_MANAGER', 'SITE_MANAGER', 'SUPERVISOR'].includes(formData.role) && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Proyectos Asignados</label>
+                                    <select
+                                        multiple
+                                        value={formData.projectIds || []}
+                                        onChange={(e) => {
+                                            const options = [...e.target.options];
+                                            const selectedIds = options.filter(o => o.selected).map(o => o.value);
+                                            setFormData({ ...formData, projectIds: selectedIds });
+                                        }}
+                                        className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none h-32"
+                                    >
+                                        {projects.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-1">Mantén presionado Ctrl o Cmd para seleccionar varios.</p>
+                                </div>
+                            )}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">{t('users.label_vehicle')}</label>
                                 <select
