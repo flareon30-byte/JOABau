@@ -11,6 +11,8 @@ datasource db {
 enum Role {
   SUPER_ADMIN
   ADMIN
+  PROJECT_MANAGER
+  SITE_MANAGER
   BACK_OFFICE
   ACTIVATOR
   BLOWER
@@ -50,19 +52,20 @@ model User {
   activeClientCompanyId String?
   activeClientCompany   ClientCompany? @relation("ActiveClientCompany", fields: [activeClientCompanyId], references: [id])
 
-  vehicleId             String?
-  vehicle               Vehicle?             @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  vehicleId String?
+  vehicle   Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
 
   pushSubscriptions PushSubscription[]
   payrollLogs       PayrollLog[]
-  accommodations    Accommodation[]      @relation("AccommodationResidents")
+  accommodations    Accommodation[]    @relation("AccommodationResidents")
   locationLogs      LocationLog[]
 
-  subcontractorId       String?
-  subcontractor         Subcontractor?       @relation(fields: [subcontractorId], references: [id], onDelete: SetNull)
+  subcontractorId String?
+  subcontractor   Subcontractor? @relation(fields: [subcontractorId], references: [id], onDelete: SetNull)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  PlannedWork PlannedWork[]
 }
 
 model PushSubscription {
@@ -103,14 +106,14 @@ model VacationRequest {
 }
 
 model Team {
-  id           String        @id @default(uuid())
+  id           String          @id @default(uuid())
   name         String
   department   Department
-  isDemo       Boolean       @default(false)
+  isDemo       Boolean         @default(false)
   members      User[]
   appointments Appointment[]
   tools        Tool[]
-  soplados     SopladoInfo[] @relation("BlowingTeam")
+  soplados     SopladoInfo[]   @relation("BlowingTeam")
   civilWorks   CivilWorkInfo[] @relation("CivilTeam")
 
   activeClientCompanyId String?
@@ -148,24 +151,25 @@ model Project {
   subcontractorId String?
   subcontractor   Subcontractor? @relation(fields: [subcontractorId], references: [id], onDelete: SetNull)
 
-  pricePerAcometida Float        @default(0.0)
-  pricePerMeter     Float        @default(0.0)
+  pricePerAcometida Float @default(0.0)
+  pricePerMeter     Float @default(0.0)
 
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  PlannedWork PlannedWork[]
 }
 
 model Address {
-  id         String  @id @default(uuid())
-  projectId  String
-  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  nvt        String?
-  street     String
-  number     String?
-  city       String?
-  klsId      String?
+  id           String  @id @default(uuid())
+  projectId    String
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  nvt          String?
+  street       String
+  number       String?
+  city         String?
+  klsId        String?
   bauauftragId String?
-  clientName String?
+  clientName   String?
 
   // Soplado
   sopladoStatus SopladoStatus?
@@ -187,7 +191,7 @@ model Address {
   requiresProtocol Boolean @default(false)
   protocolStatus   String  @default("NONE") // NONE, PENDING, SCHEDULED, COMPLETED, RECITED
   orderStatus      String? @default("geplant") // Column C from Excel
-  apartmentCount   Int?    // Track apartments from Excel Customer Column (AA)
+  apartmentCount   Int? // Track apartments from Excel Customer Column (AA)
 
   notifications Notification[]
   repairs       Repair[]
@@ -283,8 +287,8 @@ model Appointment {
   type         String  @default("CIVIL_WORK")
   reciteReason String?
 
-  status   AppointmentStatus @default(PENDIENTE)
-  comments Comment[]
+  status             AppointmentStatus @default(PENDIENTE)
+  comments           Comment[]
   orientationComment String?
 
   // Invoicing
@@ -352,9 +356,9 @@ model ActivationInfo {
   invoiceId String?
   invoice   Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
-  isDraft      Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  isDraft   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   performerIds String[] // IDs of technicians who performed the activation
   createdById  String?
@@ -392,8 +396,8 @@ model Notification {
   addressId String?
   address   Address? @relation(fields: [addressId], references: [id], onDelete: Cascade)
 
-  createdById String?
-  targetRole  Role?
+  createdById  String?
+  targetRole   Role?
   targetUserId String?
 
   createdAt DateTime @default(now())
@@ -407,7 +411,7 @@ model FusionWork {
 
   type        String  @default("NVT") // "NVT" or "MUFFA"
   address     String? // Address for Muffas
-  hours       Float?  // Hours spent on Muffas
+  hours       Float? // Hours spent on Muffas
   fusionCount Int
   isTray      Boolean @default(false) // "en bandejas"
 
@@ -715,68 +719,70 @@ model CivilWorkInfo {
   id        String  @id @default(uuid())
   addressId String  @unique
   address   Address @relation(fields: [addressId], references: [id], onDelete: Cascade)
-  
-  metersTrench Float   @default(0.0)
+
+  metersTrench Float    @default(0.0)
   surfaceType  String? // TIERRA, ASFALTO, BALDOSA, etc.
   photos       String[]
-  
-  teamId       String?
-  team         Team?   @relation("CivilTeam", fields: [teamId], references: [id], onDelete: SetNull)
-  
+
+  teamId String?
+  team   Team?   @relation("CivilTeam", fields: [teamId], references: [id], onDelete: SetNull)
+
   performerIds String[]
-  
-  startedAt    DateTime?
-  completedAt  DateTime?
-  
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model LocationLog {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   gpsLat    Float
   gpsLng    Float
-  action    String?  // CHECK_IN, UPDATE, FINISH
+  action    String? // CHECK_IN, UPDATE, FINISH
   addressId String?
-  
+
   timestamp DateTime @default(now())
 }
 
 model Subcontractor {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  responsible String?  // Responsable de la subcontrata
+  id          String  @id @default(uuid())
+  name        String  @unique
+  responsible String? // Responsable de la subcontrata
   phone       String?
   email       String?
-  peopleCount Int      @default(0) // Personas que trabajarán
-  
-  projects    Project[] 
-  users       User[]    
-  
+  peopleCount Int     @default(0) // Personas que trabajarán
+
+  projects Project[]
+  users    User[]
+
   dailyReports CivilDailyReport[]
   priceItems   ClientPriceItem[]
   appointments Appointment[]
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  PlannedWork PlannedWork[]
 }
 
 model CivilDailyReport {
-  id              String               @id @default(uuid())
+  id              String        @id @default(uuid())
   subcontractorId String
-  subcontractor   Subcontractor        @relation(fields: [subcontractorId], references: [id], onDelete: Cascade)
+  subcontractor   Subcontractor @relation(fields: [subcontractorId], references: [id], onDelete: Cascade)
   date            DateTime
-  peoplePresent   Int                  @default(0)
+  peoplePresent   Int           @default(0)
   comments        String?
-  
-  workLogs        CivilDailyWorkLog[]
-  ductLogs        CivilDailyDuctLog[]
-  
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+
+  workLogs CivilDailyWorkLog[]
+  ductLogs CivilDailyDuctLog[]
+  nvtLogs  CivilDailyNvtLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model CivilDailyWorkLog {
@@ -798,22 +804,71 @@ model CivilDailyWorkLog {
 }
 
 model CivilDailyDuctLog {
-  id           String           @id @default(uuid())
-  reportId     String
-  report       CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  photos       String[]
-  comments     String?
-  startLat     Float?
-  startLng     Float?
-  endLat       Float?
-  endLng       Float?
-  coordinates  Json?            // Array of GPS coordinate objects {lat, lng, timestamp}
-  distance     Float?           // Calculated distance in meters
-  confirmed    Boolean          @default(false)
-  reviewStatus String           @default("PENDIENTE_REVISION")
-  pricePaid    Float            @default(0.0)
+  id              String           @id @default(uuid())
+  reportId        String
+  report          CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  photos          String[]
+  comments        String?
+  startLat        Float?
+  startLng        Float?
+  endLat          Float?
+  endLng          Float?
+  coordinates     Json? // Array of GPS coordinate objects {lat, lng, timestamp}
+  distance        Float? // Calculated distance in meters
+  confirmed       Boolean          @default(false)
+  reviewStatus    String           @default("PENDIENTE_REVISION")
+  pricePaid       Float            @default(0.0)
   reviewComments  String?
   incorrectPhotos String[]         @default([])
-  ductType     String?          @default("7x22")
-  createdAt    DateTime         @default(now())
+  ductType        String?          @default("7x22")
+  createdAt       DateTime         @default(now())
+}
+
+model CivilDailyNvtLog {
+  id              String           @id @default(uuid())
+  reportId        String
+  report          CivilDailyReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  nvtName         String?
+  lat             Float?
+  lng             Float?
+  photos          String[]
+  comments        String?
+  reviewStatus    String           @default("PENDIENTE_REVISION")
+  reviewComments  String?
+  incorrectPhotos String[]         @default([])
+  pricePaid       Float            @default(0.0)
+  status          String           @default("Instalado")
+  createdAt       DateTime         @default(now())
+}
+
+enum PlannedWorkType {
+  ACOMETIDA
+  DUCTO
+  NVT
+  BRECHA
+}
+
+enum PlannedWorkStatus {
+  PENDING
+  ASSIGNED
+  COMPLETED
+  OVERDUE
+}
+
+model PlannedWork {
+  id           String            @id @default(uuid())
+  projectId    String
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type         PlannedWorkType
+  coordinates  Json? // Array of objects {lat, lng} for points, lines or polygons
+  deadline     DateTime?
+  status       PlannedWorkStatus @default(PENDING)
+  assignedToId String? // Subcontractor ID
+  assignedTo   Subcontractor?    @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  notes        String?
+  createdById  String?
+  createdBy    User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

@@ -110,6 +110,11 @@ const DailyReportsList = () => {
     let returnedMeters = 0;
 
     let totalWorkers = 0;
+    
+    let totalNvts = 0;
+    let approvedNvts = 0;
+    let pendingNvts = 0;
+    let returnedNvts = 0;
 
     kpiReports.forEach(report => {
         totalWorkers += report.peoplePresent || 0;
@@ -127,6 +132,13 @@ const DailyReportsList = () => {
             if (dl.reviewStatus === 'REVISADO') approvedMeters += dist;
             else if (dl.reviewStatus === 'DEVUELTO') returnedMeters += dist;
             else pendingMeters += dist;
+        });
+
+        (report.nvtLogs || []).forEach(nl => {
+            totalNvts++;
+            if (nl.reviewStatus === 'REVISADO') approvedNvts++;
+            else if (nl.reviewStatus === 'DEVUELTO') returnedNvts++;
+            else pendingNvts++;
         });
     });
 
@@ -153,21 +165,24 @@ const DailyReportsList = () => {
         // Review status filtering for logs inside report
         let filteredWorkLogs = report.workLogs || [];
         let filteredDuctLogs = report.ductLogs || [];
+        let filteredNvtLogs = report.nvtLogs || [];
 
         if (filterStatus !== 'TODOS') {
             filteredWorkLogs = filteredWorkLogs.filter(wl => wl.reviewStatus === filterStatus);
             filteredDuctLogs = filteredDuctLogs.filter(dl => dl.reviewStatus === filterStatus);
+            filteredNvtLogs = filteredNvtLogs.filter(nl => nl.reviewStatus === filterStatus);
         }
 
         // Omit report if status filter is active and no logs match
-        if (filterStatus !== 'TODOS' && filteredWorkLogs.length === 0 && filteredDuctLogs.length === 0) {
+        if (filterStatus !== 'TODOS' && filteredWorkLogs.length === 0 && filteredDuctLogs.length === 0 && filteredNvtLogs.length === 0) {
             return null;
         }
 
         return {
             ...report,
             workLogs: filteredWorkLogs,
-            ductLogs: filteredDuctLogs
+            ductLogs: filteredDuctLogs,
+            nvtLogs: filteredNvtLogs
         };
     }).filter(Boolean);
 
@@ -175,9 +190,10 @@ const DailyReportsList = () => {
     const handleApprove = async () => {
         const { type, logId, pricePaid } = approvalModal;
         try {
-            const endpoint = type === 'work' 
-                ? `/api/civil-works/work-log/${logId}/review` 
-                : `/api/civil-works/duct-log/${logId}/review`;
+            let endpoint = '';
+            if (type === 'work') endpoint = `/api/civil-works/work-log/${logId}/review`;
+            else if (type === 'duct') endpoint = `/api/civil-works/duct-log/${logId}/review`;
+            else if (type === 'nvt') endpoint = `/api/civil-works/nvt-log/${logId}/review`;
             
             await api.put(endpoint, {
                 status: 'REVISADO',
@@ -200,9 +216,10 @@ const DailyReportsList = () => {
             return;
         }
         try {
-            const endpoint = type === 'work' 
-                ? `/api/civil-works/work-log/${logId}/return` 
-                : `/api/civil-works/duct-log/${logId}/return`;
+            let endpoint = '';
+            if (type === 'work') endpoint = `/api/civil-works/work-log/${logId}/return`;
+            else if (type === 'duct') endpoint = `/api/civil-works/duct-log/${logId}/return`;
+            else if (type === 'nvt') endpoint = `/api/civil-works/nvt-log/${logId}/return`;
             
             await api.put(endpoint, {
                 reviewComments: comments,
@@ -480,6 +497,10 @@ const DailyReportsList = () => {
                                             <Map size={14} />
                                             {report.ductLogs ? report.ductLogs.length : 0} ductos
                                         </span>
+                                        <span className="text-xs font-bold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-xl border border-emerald-200/50 flex items-center gap-1.5">
+                                            <CheckCircle2 size={14} />
+                                            {report.nvtLogs ? report.nvtLogs.length : 0} NVTs
+                                        </span>
                                         <div className="ml-2 text-slate-400">
                                             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
                                         </div>
@@ -685,6 +706,88 @@ const DailyReportsList = () => {
                                                     })
                                                 ) : (
                                                     <p className="text-xs text-slate-400 italic">No se reportaron ductos de calle en este parte.</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* NVT Area */}
+                                        <div className="space-y-3">
+                                            <h5 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                                <CheckCircle2 size={14} className="text-emerald-500" />
+                                                Detalle de NVT Instalados
+                                            </h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {report.nvtLogs && report.nvtLogs.length > 0 ? (
+                                                    report.nvtLogs.map(log => (
+                                                        <div key={log.id} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm flex flex-col justify-between space-y-4">
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between items-start">
+                                                                    <h6 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+                                                                        <CheckCircle2 size={14} className="text-slate-400" />
+                                                                        Nudo de Red (NVT)
+                                                                    </h6>
+                                                                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
+                                                                        log.reviewStatus === 'REVISADO' 
+                                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                                                            : log.reviewStatus === 'DEVUELTO'
+                                                                                ? 'bg-red-50 text-red-700 border-red-200'
+                                                                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                                    }`}>
+                                                                        {log.reviewStatus === 'REVISADO' ? '🟢 Aprobado' : log.reviewStatus === 'DEVUELTO' ? '🔴 Devuelto' : '⏳ Pendiente'}
+                                                                    </span>
+                                                                </div>
+                                                                <p className="text-xs text-slate-400 font-bold">Estado Físico: <span className="text-slate-600 font-extrabold">{log.status}</span></p>
+                                                                
+                                                                {log.notes && (
+                                                                    <p className="text-xs text-slate-600 mt-2 bg-slate-50 p-2.5 rounded-xl italic">"{log.notes}"</p>
+                                                                )}
+
+                                                                {log.reviewStatus === 'DEVUELTO' && log.reviewComments && (
+                                                                    <div className="bg-red-50 text-red-700 p-3 rounded-xl border border-red-100/50 text-xs">
+                                                                        <span className="font-extrabold block mb-0.5">Motivo del rechazo:</span>
+                                                                        <span className="italic">"{log.reviewComments}"</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Photos */}
+                                                            {log.photoUrl && (
+                                                                <div className="grid grid-cols-4 gap-2">
+                                                                    <a href={log.photoUrl} target="_blank" rel="noreferrer" className="block aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50 relative group">
+                                                                        <img src={log.photoUrl} alt="NVT Report" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                                        <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                            <Image size={14} className="text-white" />
+                                                                        </div>
+                                                                    </a>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Admin Actions */}
+                                                            {isManagement && log.reviewStatus === 'PENDIENTE_REVISION' && (
+                                                                <div className="flex gap-2 pt-2 border-t border-slate-100">
+                                                                    <button 
+                                                                        onClick={() => setApprovalModal({ isOpen: true, type: 'nvt', logId: log.id, pricePaid: '' })}
+                                                                        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-xl shadow-sm transition-colors cursor-pointer"
+                                                                    >
+                                                                        <Check size={14} /> Aprobar
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => setRejectionModal({ isOpen: true, type: 'nvt', logId: log.id, comments: '', incorrectPhotos: [], photos: log.photoUrl ? [log.photoUrl] : [] })}
+                                                                        className="flex-1 flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 rounded-xl shadow-sm transition-colors cursor-pointer"
+                                                                    >
+                                                                        <X size={14} /> Devolver
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                            {isManagement && log.reviewStatus === 'REVISADO' && log.pricePaid > 0 && (
+                                                                <div className="text-right text-xs font-bold text-slate-500 pt-2 border-t border-slate-100">
+                                                                    Pago registrado: <span className="text-slate-800 font-extrabold">{log.pricePaid.toFixed(2)}€</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-xs text-slate-400 italic col-span-full">No se reportaron NVTs en este parte.</p>
                                                 )}
                                             </div>
                                         </div>

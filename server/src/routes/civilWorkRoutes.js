@@ -14,13 +14,16 @@ router.post('/manual-duct', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BAC
 router.post('/:id', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'CIVIL_WORKER', 'SUBCONTRACTOR']), civilWorkController.updateCivilWorkStatus);
 router.put('/work-log/:id/review', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.reviewWorkLog);
 router.put('/duct-log/:id/review', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.reviewDuctLog);
+router.put('/nvt-log/:id/review', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.reviewNvtLog);
 
 // Rejection and Resubmission routes
 router.put('/work-log/:id/return', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.returnWorkLog);
 router.put('/duct-log/:id/return', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.returnDuctLog);
+router.put('/nvt-log/:id/return', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.returnNvtLog);
 router.get('/returned', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.getReturnedLogs);
 router.put('/work-log/:id/resubmit', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.resubmitWorkLog);
 router.put('/duct-log/:id/resubmit', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.resubmitDuctLog);
+router.put('/nvt-log/:id/resubmit', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'SUBCONTRACTOR', 'CIVIL_WORKER']), civilWorkController.resubmitNvtLog);
 router.delete('/duct-log/:id', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']), civilWorkController.deleteDuctLog);
 router.put('/address/:id/gps', verifyToken, civilWorkController.updateAddressGps);
 

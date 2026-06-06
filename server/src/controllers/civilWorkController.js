@@ -62,7 +62,23 @@ exports.getMapData = async (req, res) => {
             }
         });
 
-        res.json({ addresses, activeWorkers, ductRoutes });
+        // Fetch NVT logs
+        const nvtLogs = await prisma.civilDailyNvtLog.findMany({
+            include: {
+                report: {
+                    include: { subcontractor: true }
+                }
+            }
+        });
+
+        // Fetch Planned Works
+        const plannedWorks = await prisma.plannedWork.findMany({
+            include: {
+                assignedTo: true
+            }
+        });
+
+        res.json({ addresses, activeWorkers, ductRoutes, nvtLogs, plannedWorks });
     } catch (error) {
         console.error('Error fetching map data:', error);
         res.status(500).json({ message: 'Server error' });
@@ -228,7 +244,7 @@ exports.getAddressesSearch = async (req, res) => {
 
 exports.submitDailyReport = async (req, res) => {
     const userId = req.userId;
-    const { date, peoplePresent, comments, workLogs, ductLogs } = req.body;
+    const { date, peoplePresent, comments, workLogs, ductLogs, nvtLogs } = req.body;
 
     try {
         const user = await prisma.user.findUnique({
@@ -343,6 +359,35 @@ exports.submitDailyReport = async (req, res) => {
                         distance: log.distance ? parseFloat(log.distance) : null,
                         confirmed: log.confirmed || false,
                         ductType: log.ductType || '7x22'
+                    }
+                });
+            }
+        }
+
+        // 4. Process NVT logs
+        if (nvtLogs && Array.isArray(nvtLogs)) {
+            for (const log of nvtLogs) {
+                // Try to extract GPS from first photo if not provided
+                let lat = log.lat;
+                let lng = log.lng;
+                
+                if ((!lat || !lng) && log.photos && log.photos.length > 0) {
+                    const gpsData = await extractGpsFromImage(log.photos[0]);
+                    if (gpsData) {
+                        lat = gpsData.lat;
+                        lng = gpsData.lng;
+                    }
+                }
+
+                await prisma.civilDailyNvtLog.create({
+                    data: {
+                        reportId: report.id,
+                        nvtName: log.nvtName || null,
+                        lat: lat ? parseFloat(lat) : null,
+                        lng: lng ? parseFloat(lng) : null,
+                        photos: log.photos || [],
+                        comments: log.comments || null,
+                        status: log.status || 'Instalado'
                     }
                 });
             }
@@ -856,4 +901,114 @@ exports.updateAddressGps = async (req, res) => {
     }
 };
 
+exports.reviewNvtLog = async (req, res) => {
+    const { id } = req.params;
+    const { status, pricePaid } = req.body;
+    try {
+        const log = await prisma.civilDailyNvtLog.update({
+            where: { id },
+            data: {
+                reviewStatus: status || 'REVISADO',
+                pricePaid: pricePaid !== undefined ? parseFloat(pricePaid) : undefined
+            }
+        });
+        
+        // Si se aprueba, lo ideal sería insertarlo en NvtLocation si no existe
+        if (status === 'APROBADO' || status === 'REVISADO') {
+            const fullLog = await prisma.civilDailyNvtLog.findUnique({
+                where: { id },
+                include: { report: { include: { subcontractor: true } } }
+            });
+            // (Logica futura: crear NvtLocation automaticamente en el inventario del proyecto)
+        }
+        
+        res.json({ message: 'NVT revisado correctamente', log });
+    } catch (error) {
+        console.error('Error reviewing nvt log:', error);
+        res.status(500).json({ message: 'Error interno al revisar el NVT.' });
+    }
+};
 
+exports.returnNvtLog = async (req, res) => {
+    const { id } = req.params;
+    const { reviewComments, incorrectPhotos } = req.body;
+    try {
+        const log = await prisma.civilDailyNvtLog.update({
+            where: { id },
+            data: {
+                reviewStatus: 'DEVUELTO',
+                reviewComments: reviewComments || null,
+                incorrectPhotos: incorrectPhotos || []
+            },
+            include: {
+                report: {
+                    include: { subcontractor: true }
+                }
+            }
+        });
+
+        // Notify subcontractor users
+        const subUsers = await prisma.user.findMany({
+            where: { subcontractorId: log.report.subcontractorId }
+        });
+
+        const infoStr = `NVT (${log.nvtName || 'Sin Nombre'})`;
+
+        for (const user of subUsers) {
+            await prisma.notification.create({
+                data: {
+                    type: 'WORK_FAILED',
+                    message: `Trabajo devuelto por fotos incorrectas en ${infoStr}. Motivo: ${reviewComments || 'Sin comentarios'}`,
+                    targetUserId: user.id,
+                    createdById: req.userId
+                }
+            });
+        }
+
+        res.json({ message: 'NVT devuelto correctamente', log });
+    } catch (error) {
+        console.error('Error returning nvt log:', error);
+        res.status(500).json({ message: 'Error interno al devolver el NVT.' });
+    }
+};
+
+exports.resubmitNvtLog = async (req, res) => {
+    const { id } = req.params;
+    const { photos, comments } = req.body;
+    try {
+        const log = await prisma.civilDailyNvtLog.findUnique({
+            where: { id },
+            include: { report: { include: { subcontractor: true } } }
+        });
+
+        if (!log || log.reviewStatus !== 'DEVUELTO') {
+            return res.status(400).json({ message: 'El reporte no se puede reenviar.' });
+        }
+
+        const updatedLog = await prisma.civilDailyNvtLog.update({
+            where: { id },
+            data: {
+                reviewStatus: 'PENDIENTE_REVISION',
+                reviewComments: null,
+                incorrectPhotos: [],
+                photos: photos || log.photos,
+                comments: comments || log.comments
+            }
+        });
+
+        // Notify admins
+        await prisma.notification.create({
+            data: {
+                type: 'WORK_RESUBMITTED',
+                message: `La subcontrata "${log.report.subcontractor.name}" ha corregido un trabajo NVT rechazado.`,
+                targetRole: 'SUPER_ADMIN',
+                createdById: req.userId
+            }
+        });
+
+        res.json({ message: 'Trabajo NVT reenviado a revisión correctamente.', log: updatedLog });
+    } catch (error) {
+        console.error('Error resubmitting nvt log:', error);
+        res.status(500).json({ message: 'Error interno al reenviar el NVT.' });
+    }
+};

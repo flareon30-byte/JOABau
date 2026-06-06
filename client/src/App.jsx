@@ -8,6 +8,8 @@ import TeamManagement from './pages/TeamManagement';
 import ProjectManagement from './pages/ProjectManagement';
 import AppointmentsPage from './pages/AppointmentsPage';
 import SettingsPage from './pages/SettingsPage';
+import ExecutiveDashboard from './pages/ExecutiveDashboard';
+import PlanningTimeline from './pages/PlanningTimeline';
 
 import BillingPage from './pages/BillingManager';
 import PayrollPage from './pages/PayrollPage';
@@ -38,6 +40,8 @@ function App() {
           <Route path="users" element={<UserManagement />} />
           <Route path="teams" element={<TeamManagement />} />
           <Route path="projects" element={<ProjectManagement />} />
+          <Route path="executive" element={<ExecutiveDashboard />} />
+          <Route path="planning" element={<PlanningTimeline />} />
           <Route path="appointments" element={<AppointmentsPage />} />
           <Route path="billing" element={<BillingPage />} />
           <Route path="payroll" element={<PayrollPage />} />

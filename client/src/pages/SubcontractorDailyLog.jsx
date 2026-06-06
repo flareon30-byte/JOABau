@@ -193,6 +193,12 @@ const SubcontractorDailyLog = () => {
     const [addedConnections, setAddedConnections] = useState([]);
     const [addedDucts, setAddedDucts] = useState([]);
     
+    // NVT Log State
+    const [addedNvts, setAddedNvts] = useState([]);
+    const [nvtStatus, setNvtStatus] = useState('COMPLETED');
+    const [nvtComments, setNvtComments] = useState('');
+    const [nvtPhotoUrl, setNvtPhotoUrl] = useState(null);
+    
     const [submittingReport, setSubmittingReport] = useState(false);
     const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
 
@@ -515,6 +521,21 @@ const SubcontractorDailyLog = () => {
         setStatusMsg({ type: 'success', text: 'Ducto de calle añadido al parte del día.' });
     };
 
+    const handleAddNvt = () => {
+        if (!nvtPhotoUrl) {
+            alert('Debe subir una foto del NVT.');
+            return;
+        }
+        setAddedNvts([...addedNvts, {
+            status: nvtStatus,
+            notes: nvtComments,
+            photoUrl: nvtPhotoUrl
+        }]);
+        setNvtStatus('COMPLETED');
+        setNvtComments('');
+        setNvtPhotoUrl(null);
+    };
+
     // Correction Handlers
     const openCorrectionModal = (log, type) => {
         setSelectedCorrectionLog({ log, type });
@@ -594,14 +615,18 @@ const SubcontractorDailyLog = () => {
     };
 
     // Remove added duct item
-    const handleRemoveDuct = (idx) => {
-        setAddedDucts(prev => prev.filter((_, i) => i !== idx));
+    const removeDuct = (index) => {
+        setAddedDucts(addedDucts.filter((_, i) => i !== index));
+    };
+
+    const removeNvt = (index) => {
+        setAddedNvts(addedNvts.filter((_, i) => i !== index));
     };
 
     // Submit complete daily report to database
     const handleSubmitDailyReport = async () => {
-        if (addedConnections.length === 0 && addedDucts.length === 0) {
-            alert('Debes añadir al menos una acometida o un ducto de calle para poder enviar el parte.');
+        if (addedConnections.length === 0 && addedDucts.length === 0 && addedNvts.length === 0) {
+            alert('Debes añadir al menos una acometida, ducto o NVT para poder enviar el parte.');
             return;
         }
 
@@ -614,7 +639,8 @@ const SubcontractorDailyLog = () => {
                 peoplePresent: parseInt(peoplePresent) || 1,
                 comments: reportComments,
                 workLogs: addedConnections,
-                ductLogs: addedDucts
+                ductLogs: addedDucts,
+                nvtLogs: addedNvts
             };
 
             await api.post('/api/civil-works/daily-report', payload);
@@ -623,6 +649,7 @@ const SubcontractorDailyLog = () => {
             // Clear all state
             setAddedConnections([]);
             setAddedDucts([]);
+            setAddedNvts([]);
             setReportComments('');
             setPeoplePresent(1);
             
@@ -1230,6 +1257,95 @@ const SubcontractorDailyLog = () => {
                 </div>
             </div>
 
+            {/* NVT Section */}
+            <div className="glass-panel bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-50 pb-3">
+                    <CheckCircle size={18} className="text-emerald-600" /> Reportar NVT
+                </h3>
+                
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Estado</label>
+                        <select
+                            value={nvtStatus}
+                            onChange={(e) => setNvtStatus(e.target.value)}
+                            className="bg-white border border-slate-200 text-slate-700 text-sm rounded-xl px-3.5 py-2.5 w-full focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                        >
+                            <option value="COMPLETED">Instalado / Completado</option>
+                            <option value="INCOMPLETE">Incompleto / Faltan Materiales</option>
+                            <option value="PROBLEM">Problema / Brecha</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Comentarios</label>
+                        <textarea
+                            value={nvtComments}
+                            onChange={(e) => setNvtComments(e.target.value)}
+                            className="w-full border border-slate-200 rounded-xl p-3 outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-slate-700 min-h-[60px] text-sm"
+                            placeholder="Comentarios sobre la instalación del NVT..."
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Foto NVT</label>
+                        {nvtPhotoUrl ? (
+                            <div className="relative inline-block">
+                                <img src={getFileUrl(nvtPhotoUrl)} alt="NVT" className="h-32 object-cover rounded-xl border border-slate-200" />
+                                <button
+                                    onClick={() => setNvtPhotoUrl(null)}
+                                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                                >
+                                    <X size={14} />
+                                </button>
+                            </div>
+                        ) : (
+                            <label className="flex items-center justify-center w-full h-32 bg-slate-50 border-2 border-dashed border-slate-300 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                                <div className="text-center">
+                                    <Camera className="mx-auto text-slate-400 mb-2" size={24} />
+                                    <span className="text-sm text-slate-500 font-medium">Subir Foto</span>
+                                </div>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={async (e) => {
+                                        if (e.target.files.length > 0) {
+                                            const file = e.target.files[0];
+                                            setUploadingPhotos(true);
+                                            try {
+                                                const formData = new FormData();
+                                                formData.append('photo', file);
+                                                const res = await api.post('/api/upload', formData);
+                                                setNvtPhotoUrl(res.data.url);
+                                            } catch (err) {
+                                                console.error('Error uploading NVT photo', err);
+                                            } finally {
+                                                setUploadingPhotos(false);
+                                            }
+                                        }
+                                    }}
+                                    className="hidden"
+                                    disabled={uploadingPhotos}
+                                />
+                            </label>
+                        )}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={handleAddNvt}
+                        disabled={!nvtPhotoUrl}
+                        className={`w-full text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${
+                            nvtPhotoUrl 
+                                ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-95 shadow-lg shadow-emerald-600/10' 
+                                : 'bg-slate-300 cursor-not-allowed'
+                        }`}
+                    >
+                        <Plus size={16} /> Añadir NVT al Parte
+                    </button>
+                </div>
+            </div>
+
             {/* Added list overview */}
             <div className="glass-panel bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
                 <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-50 pb-3">
@@ -1337,9 +1453,9 @@ const SubcontractorDailyLog = () => {
                 <button
                     type="button"
                     onClick={handleSubmitDailyReport}
-                    disabled={submittingReport || (addedConnections.length === 0 && addedDucts.length === 0)}
+                    disabled={submittingReport || (addedConnections.length === 0 && addedDucts.length === 0 && addedNvts.length === 0)}
                     className={`px-8 py-4 text-white rounded-2xl font-bold flex items-center gap-2 transition-all shadow-lg active:scale-95 ${
-                        submittingReport || (addedConnections.length === 0 && addedDucts.length === 0)
+                        submittingReport || (addedConnections.length === 0 && addedDucts.length === 0 && addedNvts.length === 0)
                             ? 'bg-slate-300 cursor-not-allowed shadow-none'
                             : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/20'
                     }`}

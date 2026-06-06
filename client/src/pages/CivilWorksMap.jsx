@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
     MapPin, Loader2, HardHat, Map as MapIcon, ClipboardList, 
     Search, Check, RefreshCw, Layers, CheckCircle2, ChevronRight, X,
-    Maximize2, Minimize2
+    Maximize2, Minimize2, Crosshair, Map
 } from 'lucide-react';
 import api from '../api/axios';
+import PlanWorkModal from '../components/PlanWorkModal';
 
 const CACHE_KEY = 'joa-map-geo-cache-v6';
 const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
@@ -278,9 +279,12 @@ const areRoutesOverlapping = (r1, r2) => {
 const CivilWorksMap = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [leafletLoaded, setLeafletLoaded] = useState(false);
+    const [markerClusterLoaded, setMarkerClusterLoaded] = useState(false);
     const [addresses, setAddresses] = useState([]);
     const [activeWorkers, setActiveWorkers] = useState([]);
     const [ductRoutes, setDuctRoutes] = useState([]);
+    const [plannedWorks, setPlannedWorks] = useState([]);
+    const [nvtLogs, setNvtLogs] = useState([]);
     const [projects, setProjects] = useState([]);
     const [subcontractors, setSubcontractors] = useState([]);
     // UI Filters and Tabs
@@ -289,6 +293,9 @@ const CivilWorksMap = () => {
     const [showLegend, setShowLegend] = useState(true);
     const [loadingData, setLoadingData] = useState(true);
     const [loadingMap, setLoadingMap] = useState(false);
+    const [isPlanningMode, setIsPlanningMode] = useState(false);
+    const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+    const [planModalCoords, setPlanModalCoords] = useState(null);
     const [filterProject, setFilterProject] = useState('');
     const [filterSubcontractor, setFilterSubcontractor] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
@@ -330,22 +337,78 @@ const CivilWorksMap = () => {
             document.head.appendChild(link);
         }
 
+        const linkIdMC = 'leaflet-markercluster-css';
+        if (!document.getElementById(linkIdMC)) {
+            const link = document.createElement('link');
+            link.id = linkIdMC;
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';
+            document.head.appendChild(link);
+        }
+
+        const linkIdMCD = 'leaflet-markercluster-default-css';
+        if (!document.getElementById(linkIdMCD)) {
+            const link = document.createElement('link');
+            link.id = linkIdMCD;
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';
+            document.head.appendChild(link);
+        }
+
         let iv = null;
+        let mcInterval = null;
+        
         const scriptId = 'leaflet-js';
         if (!document.getElementById(scriptId)) {
             const script = document.createElement('script');
             script.id = scriptId;
             script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-            script.onload = () => setLeafletLoaded(true);
+            script.onload = () => {
+                setLeafletLoaded(true);
+                // Load MarkerCluster after Leaflet
+                const mcScriptId = 'leaflet-markercluster-js';
+                if (!document.getElementById(mcScriptId)) {
+                    const mcScript = document.createElement('script');
+                    mcScript.id = mcScriptId;
+                    mcScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
+                    mcScript.onload = () => setMarkerClusterLoaded(true);
+                    document.body.appendChild(mcScript);
+                }
+            };
             document.body.appendChild(script);
         } else {
             if (window.L) {
                 setLeafletLoaded(true);
+                const mcScriptId = 'leaflet-markercluster-js';
+                if (!document.getElementById(mcScriptId)) {
+                    const mcScript = document.createElement('script');
+                    mcScript.id = mcScriptId;
+                    mcScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
+                    mcScript.onload = () => setMarkerClusterLoaded(true);
+                    document.body.appendChild(mcScript);
+                } else if (window.L.markerClusterGroup) {
+                    setMarkerClusterLoaded(true);
+                } else {
+                    mcInterval = setInterval(() => {
+                        if (window.L && window.L.markerClusterGroup) {
+                            setMarkerClusterLoaded(true);
+                            clearInterval(mcInterval);
+                        }
+                    }, 100);
+                }
             } else {
                 iv = setInterval(() => {
                     if (window.L) {
                         setLeafletLoaded(true);
                         clearInterval(iv);
+                        const mcScriptId = 'leaflet-markercluster-js';
+                        if (!document.getElementById(mcScriptId)) {
+                            const mcScript = document.createElement('script');
+                            mcScript.id = mcScriptId;
+                            mcScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
+                            mcScript.onload = () => setMarkerClusterLoaded(true);
+                            document.body.appendChild(mcScript);
+                        }
                     }
                 }, 100);
             }
@@ -353,6 +416,7 @@ const CivilWorksMap = () => {
 
         return () => {
             if (iv) clearInterval(iv);
+            if (mcInterval) clearInterval(mcInterval);
         };
     }, []);
 
@@ -393,6 +457,8 @@ const CivilWorksMap = () => {
             setAddresses(mapRes.data.addresses || []);
             setActiveWorkers(mapRes.data.activeWorkers || []);
             setDuctRoutes(mapRes.data.ductRoutes || []);
+            setPlannedWorks(mapRes.data.plannedWorks || []);
+            setNvtLogs(mapRes.data.nvtLogs || []);
             setSubcontractors(subsRes.data || []);
             setProjects(projectsRes.data || []);
         } catch (e) {
@@ -476,7 +542,7 @@ const CivilWorksMap = () => {
 
     // Map Render Loop
     useEffect(() => {
-        if (!leafletLoaded || !addresses.length || !mapRef.current || activeTab !== 'map') return;
+        if (!leafletLoaded || !markerClusterLoaded || !addresses.length || !mapRef.current || activeTab !== 'map') return;
 
         const L = window.L;
         cancelledRef.current = false;
@@ -568,13 +634,44 @@ const CivilWorksMap = () => {
                 }).addTo(mapInstanceRef.current);
                 markersGroupRef.current = L.featureGroup().addTo(mapInstanceRef.current);
                 workersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
-                photoMarkersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
+                
+                if (!photoMarkersGroupRef.current) {
+                photoMarkersGroupRef.current = L.markerClusterGroup({
+                    maxClusterRadius: 40,
+                    spiderfyOnMaxZoom: true,
+                    showCoverageOnHover: false,
+                    zoomToBoundsOnClick: true,
+                    iconCreateFunction: function(cluster) {
+                        return L.divIcon({ 
+                            html: `<div style="background-color:rgba(15,23,42,0.8);color:white;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;border:2px solid white;box-shadow:0 0 10px rgba(0,0,0,0.5);">${cluster.getChildCount()}</div>`,
+                            className: 'custom-cluster-icon', 
+                            iconSize: [30, 30] 
+                        });
+                    }
+                });
+                photoMarkersGroupRef.current.on('clustermouseover', function(a) {
+                    a.layer.spiderfy();
+                });
+                mapInstanceRef.current.addLayer(photoMarkersGroupRef.current);
+            }
             } else {
                 markersGroupRef.current.clearLayers();
                 workersGroupRef.current.clearLayers();
-                if (photoMarkersGroupRef.current) photoMarkersGroupRef.current.clearLayers();
+                photoMarkersGroupRef.current.clearLayers();
             }
             mapInstanceRef.current.invalidateSize();
+
+            // Setup map click listener for planning mode
+            mapInstanceRef.current.off('click');
+            if (isPlanningMode && ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'].includes(user.role)) {
+                mapInstanceRef.current.getContainer().style.cursor = 'crosshair';
+                mapInstanceRef.current.on('click', (e) => {
+                    setPlanModalCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+                    setIsPlanModalOpen(true);
+                });
+            } else {
+                mapInstanceRef.current.getContainer().style.cursor = '';
+            }
 
             const BATCH = 10;
             const DELAY = 80;
@@ -759,154 +856,71 @@ const CivilWorksMap = () => {
             });
 
             // Draw Photo Markers (Visual Record of Civil Works)
-            if (showPhotos && photoMarkersGroupRef.current) {
-                photoMarkersGroupRef.current.clearLayers();
-                const cameraIcon = L.divIcon({
-                    html: `<div class="flex items-center justify-center w-7 h-7 rounded-full bg-orange-500 border-2 border-white shadow-md text-[13px] hover:scale-125 transition-transform cursor-pointer">📸</div>`,
-                    className: '', iconSize: [28, 28], iconAnchor: [14, 14]
-                });
+            const photoArray = [];
 
-                const allPhotos = [];
+            // Helper to collect photos from duct routes
+            filteredDuctRoutes.forEach(route => {
+                const routeCoordinates = cleanCoordinates(route.coordinates);
+                const hasPhotos = routeCoordinates.some(pt => pt && pt.photoUrl);
+                if (!hasPhotos) return;
 
-                // A. Connection Photos (Acometidas)
-                filteredAddresses.forEach((addr, i) => {
-                    if (cancelledRef.current) return;
-                    let coords = coordsList[i] || scatter(center, i);
-                    if (addr.civilWorkInfo?.photos && Array.isArray(addr.civilWorkInfo.photos) && addr.civilWorkInfo.photos.length > 0) {
-                        addr.civilWorkInfo.photos.forEach((photoUrl) => {
-                            allPhotos.push({
-                                url: photoUrl,
-                                lat: coords.lat,
-                                lng: coords.lng,
-                                type: 'acometida',
-                                title: 'Acometida',
-                                subtitle: `${addr.street} ${addr.number || ''}`
-                            });
+                routeCoordinates.forEach((pt) => {
+                    if (pt && pt.photoUrl && pt.lat && pt.lng) {
+                        photoArray.push({
+                            lat: pt.lat,
+                            lng: pt.lng,
+                            photoUrl: pt.photoUrl,
+                            timestamp: pt.timestamp,
+                            type: 'Zanja / Ducto',
+                            label: 'Foto de zanja',
+                            status: route.report?.reviewStatus === 'REVISADO' ? '✅' : '⏳'
                         });
                     }
                 });
+            });
 
-                // B. Duct Photos (Ductos)
-                filteredDuctRoutes.forEach(route => {
-                    if (cancelledRef.current) return;
-                    if (route.photos && Array.isArray(route.photos) && route.photos.length > 0) {
-                        const routeOffset = routeOffsets[route.id] || 0;
-                        route.photos.forEach((photoUrl, photoIdx) => {
-                            let pt = null;
-                            if (route.coordinates && Array.isArray(route.coordinates) && route.coordinates[photoIdx]) {
-                                pt = route.coordinates[photoIdx];
-                            } else if (route.coordinates && Array.isArray(route.coordinates) && route.coordinates.length > 0) {
-                                pt = route.coordinates[0]; // fallback
-                            }
-                            if (!pt || !pt.lat || !pt.lng) return;
-
-                            const offsetPt = offsetPoint(pt, route.coordinates, photoIdx, routeOffset);
-                            const subName = route.report?.subcontractor?.name || 'Socio';
-                            const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
-                            const ductLabel = route.ductType === 'ambos' ? '7x22 y 10x6' : (route.ductType || '7x22');
-
-                            allPhotos.push({
-                                url: photoUrl,
-                                lat: offsetPt.lat,
-                                lng: offsetPt.lng,
-                                type: 'ducto',
-                                title: `Ducto (${ductLabel})`,
-                                subtitle: `${subName} - ${dateText}`
-                            });
-                        });
-                    }
-                });
-
-                // Proximity clustering algorithm
-                const clusters = [];
-                const threshold = 0.00003; // ~3 meters
-
-                allPhotos.forEach(photo => {
-                    let added = false;
-                    for (const cluster of clusters) {
-                        const base = cluster[0];
-                        const dist = Math.abs(base.lat - photo.lat) + Math.abs(base.lng - photo.lng);
-                        if (dist < threshold) {
-                            cluster.push(photo);
-                            added = true;
-                            break;
-                        }
-                    }
-                    if (!added) {
-                        clusters.push([photo]);
-                    }
-                });
-
-                // Calculate average coordinate for each cluster and draw
-                clusters.forEach(cluster => {
-                    let sumLat = 0;
-                    let sumLng = 0;
-                    cluster.forEach(p => {
-                        sumLat += p.lat;
-                        sumLng += p.lng;
+            // Helper to collect photos from nvt logs
+            nvtLogs.forEach(log => {
+                if (log.photoUrl && log.gpsLat && log.gpsLng) {
+                    photoArray.push({
+                        lat: log.gpsLat,
+                        lng: log.gpsLng,
+                        photoUrl: log.photoUrl,
+                        type: 'NVT',
+                        label: 'Nudo de Red (NVT)',
+                        status: log.status
                     });
-                    const lat = sumLat / cluster.length;
-                    const lng = sumLng / cluster.length;
+                }
+            });
 
-                    if (cluster.length === 1) {
-                        const p = cluster[0];
-                        const photoMarker = L.marker([lat, lng], { icon: cameraIcon });
-                        
-                        photoMarker.bindTooltip(`
-                            <div style="padding:2px; width:130px; text-align:center; font:11px sans-serif; white-space: normal;">
-                                <img src="${p.url}" style="width:100%; height:auto; border-radius:4px; display:block; margin-bottom:4px;" />
-                                <b>${p.title}</b><br>
-                                ${p.subtitle}
-                            </div>
-                        `, { direction: 'top', offset: [0, -10], opacity: 0.95 });
-
-                        photoMarker.on('click', () => {
-                            setActivePhotoModal(p.url);
-                        });
-
-                        photoMarkersGroupRef.current.addLayer(photoMarker);
-                    } else {
-                        // Spiderfy group
-                        const N = cluster.length;
-                        let itemsHtml = '';
-                        const radius = 45; // pixels radial expansion
-                        
-                        cluster.forEach((p, idx) => {
-                            const angle = (2 * Math.PI * idx) / N;
-                            const tx = (radius * Math.cos(angle)).toFixed(1);
-                            const ty = (radius * Math.sin(angle)).toFixed(1);
-                            const safeUrl = p.url.replace(/'/g, "\\'");
-                            
-                            itemsHtml += `
-                                <div class="spiderfy-item" style="--tx: ${tx}px; --ty: ${ty}px;" onclick="window.showMapPhotoModal('${safeUrl}')">
-                                    <img src="${p.url}" class="spiderfy-item-img" />
-                                    <div class="spiderfy-tooltip">
-                                        <img src="${p.url}" />
-                                        <b>${p.title}</b><br>
-                                        ${p.subtitle}
-                                    </div>
-                                </div>
-                            `;
-                        });
-
-                        const groupIcon = L.divIcon({
-                            html: `
-                                <div class="spiderfy-group">
-                                    <div class="spiderfy-center">
-                                        📸
-                                        <span class="spiderfy-badge">${N}</span>
-                                    </div>
-                                    ${itemsHtml}
-                                </div>
-                            `,
-                            className: '',
-                            iconSize: [28, 28],
-                            iconAnchor: [14, 14]
-                        });
-
-                        const groupMarker = L.marker([lat, lng], { icon: groupIcon });
-                        photoMarkersGroupRef.current.addLayer(groupMarker);
-                    }
+            if (showPhotos && photoArray.length > 0) {
+                photoArray.forEach(pt => {
+                    const html = `
+                        <div class="photo-marker" style="
+                            width:44px;height:44px;
+                            border-radius:8px;
+                            overflow:hidden;
+                            border:3px solid white;
+                            box-shadow:0 4px 12px rgba(0,0,0,0.4);
+                            cursor:pointer;
+                            transition:transform 0.2s;
+                            background-color:black;
+                        " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">
+                            <img src="${pt.photoUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://placehold.co/100x100?text=Foto'"/>
+                        </div>
+                    `;
+                    const icon = L.divIcon({ html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] });
+                    const photoMarker = L.marker([pt.lat, pt.lng], { icon });
+                    photoMarker.on('click', () => {
+                        if (window.showMapPhotoModal) {
+                            window.showMapPhotoModal(pt.photoUrl);
+                        }
+                    });
+                    
+                    const timeStr = pt.timestamp ? new Date(pt.timestamp).toLocaleTimeString() : '';
+                    photoMarker.bindTooltip(`${pt.type} ${pt.status} ${timeStr}`, { direction: 'top', offset: [0, -20] });
+                    
+                    photoMarkersGroupRef.current.addLayer(photoMarker);
                 });
             }
 
@@ -924,6 +938,70 @@ const CivilWorksMap = () => {
                 });
                 const workerMarker = L.marker([workerLog.gpsLat, workerLog.gpsLng], { icon });
                 workersGroupRef.current.addLayer(workerMarker);
+            });
+
+            // Add Planned Works markers
+            plannedWorks.forEach(work => {
+                if (work.coordinates && work.coordinates.lat && work.coordinates.lng) {
+                    const isBrecha = work.type === 'BRECHA';
+                    const html = `<div style="
+                        background-color: ${isBrecha ? '#f59e0b' : '#3b82f6'};
+                        color: white;
+                        border-radius: 50%;
+                        width: 24px;
+                        height: 24px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        box-shadow: 0 0 10px ${isBrecha ? 'rgba(245, 158, 11, 0.6)' : 'rgba(59, 130, 246, 0.6)'};
+                        border: 2px solid white;
+                        animation: ${isBrecha ? 'pulse 2s infinite' : 'none'};
+                    ">P</div>`;
+                    const icon = L.divIcon({ html, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
+                    const marker = L.marker([work.coordinates.lat, work.coordinates.lng], { icon });
+                    marker.bindPopup(`
+                        <div style="font-family:sans-serif; padding:4px;">
+                            <h4 style="margin:0 0 4px 0;font-weight:bold;color:#1e293b;">${isBrecha ? '⚠️ Brecha' : '📍 ' + work.type}</h4>
+                            <p style="margin:0;font-size:12px;">${work.notes || 'Sin descripción'}</p>
+                            <p style="margin:4px 0 0 0;font-size:11px;color:#64748b;">Límite: ${work.deadline ? new Date(work.deadline).toLocaleDateString() : 'No definido'}</p>
+                            <p style="margin:4px 0 0 0;font-size:11px;font-weight:bold;color:${work.status === 'COMPLETED' ? 'green' : 'blue'}">${work.status}</p>
+                        </div>
+                    `);
+                    markersGroupRef.current.addLayer(marker);
+                    validCoords.push([work.coordinates.lat, work.coordinates.lng]);
+                }
+            });
+
+            // Add NVT Logs
+            nvtLogs.forEach(log => {
+                if (log.gpsLat && log.gpsLng) {
+                    const html = `<div style="
+                        background-color: #8b5cf6;
+                        color: white;
+                        border-radius: 8px;
+                        width: 24px;
+                        height: 24px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-weight: bold;
+                        box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
+                        border: 2px solid white;
+                    ">N</div>`;
+                    const icon = L.divIcon({ html, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
+                    const marker = L.marker([log.gpsLat, log.gpsLng], { icon });
+                    marker.bindPopup(`
+                        <div style="font-family:sans-serif; padding:4px;">
+                            <h4 style="margin:0 0 4px 0;font-weight:bold;color:#1e293b;">Nudo de Red (NVT)</h4>
+                            <p style="margin:0;font-size:12px;">Estado: ${log.status}</p>
+                            ${log.subcontractorNotes ? `<p style="margin:4px 0 0 0;font-size:12px;">Notas: ${log.subcontractorNotes}</p>` : ''}
+                            ${log.photoUrl ? `<img src="${log.photoUrl}" style="width:100px;border-radius:4px;margin-top:4px;" />` : ''}
+                        </div>
+                    `);
+                    markersGroupRef.current.addLayer(marker);
+                    validCoords.push([log.gpsLat, log.gpsLng]);
+                }
             });
 
             if (isNewMap || filtersChanged) {
@@ -948,7 +1026,7 @@ const CivilWorksMap = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, companyCountry, showPhotos, isFullScreen]);
+    }, [leafletLoaded, markerClusterLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, plannedWorks, isPlanningMode, companyCountry, showPhotos, isFullScreen]);
 
     // Bulk address selection
     const toggleSelectAddress = (id) => {
@@ -1391,6 +1469,17 @@ const CivilWorksMap = () => {
                         />
                     </div>
                 </div>
+            )}
+            
+            {isPlanModalOpen && planModalCoords && (
+                <PlanWorkModal 
+                    isOpen={isPlanModalOpen}
+                    onClose={() => setIsPlanModalOpen(false)}
+                    lat={planModalCoords.lat}
+                    lng={planModalCoords.lng}
+                    projects={projects}
+                    onSaved={fetchAllData}
+                />
             )}
         </div>
     );
