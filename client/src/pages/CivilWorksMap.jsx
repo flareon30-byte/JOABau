@@ -784,7 +784,19 @@ const CivilWorksMap = () => {
                     });
                 }
 
+                
                 const marker = L.marker([coords.lat, coords.lng], { icon });
+                
+                let photoUrl = null;
+                if (addr.civilWorkInfo?.photos?.length > 0) {
+                    photoUrl = addr.civilWorkInfo.photos[0];
+                } else if (addr.civilDailyWorkLogs?.length > 0) {
+                    const logsWithPhotos = addr.civilDailyWorkLogs.filter(log => log.photos?.length > 0);
+                    if (logsWithPhotos.length > 0) {
+                        photoUrl = logsWithPhotos[logsWithPhotos.length - 1].photos[0]; // Get the latest one if ordered by ID/created, usually last in array
+                    }
+                }
+
                 marker.bindPopup(`
                     <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
                         <b style="font-size:14px;color:#f97316">Acometida</b><br>
@@ -794,7 +806,7 @@ const CivilWorksMap = () => {
                         <b>Proyecto:</b> ${addr.project?.name || 'N/A'}<br>
                         ${addr.civilWorkInfo?.metersTrench ? `<b>Metros Zanja:</b> ${addr.civilWorkInfo.metersTrench}m<br>` : ''}
                         ${addr.civilWorkInfo?.surfaceType ? `<b>Superficie:</b> ${addr.civilWorkInfo.surfaceType}<br>` : ''}
-                        ${(addr.civilWorkInfo?.photos && addr.civilWorkInfo.photos.length > 0) ? `<div style="margin-top:8px;text-align:center;"><p style="font-size:12px;color:#64748b;margin:0 0 4px 0;">Foto de Evidencia:</p><img src="${addr.civilWorkInfo.photos[0]}" style="width:100%;max-height:120px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #e2e8f0;" onclick="window.showMapPhotoModal('${addr.civilWorkInfo.photos[0]}')" title="Click para ampliar" /></div>` : ''}
+                        ${photoUrl ? `<div style="margin-top:8px;text-align:center;"><p style="font-size:12px;color:#64748b;margin:0 0 4px 0;">Foto de Evidencia:</p><img src="${photoUrl}" style="width:100%;max-height:120px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #e2e8f0;" onclick="window.showMapPhotoModal('${photoUrl}')" title="Click para ampliar" /></div>` : ''}
                     </div>
                 `);
                 markersGroupRef.current.addLayer(marker);

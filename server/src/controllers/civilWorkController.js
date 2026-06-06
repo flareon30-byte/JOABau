@@ -38,6 +38,7 @@ exports.getMapData = async (req, res) => {
         const addresses = await prisma.address.findMany({
             include: {
                 civilWorkInfo: true,
+                civilDailyWorkLogs: true,
                 project: true
             }
         });
