@@ -22,7 +22,7 @@ exports.createPlannedWork = async (req, res) => {
     try {
         const { projectId } = req.params;
         const { items } = req.body; // Expecting an array of planned items
-        const userId = req.user.userId;
+        const userId = req.userId;
 
         const createdItems = await prisma.$transaction(
             items.map(item => prisma.plannedWork.create({
