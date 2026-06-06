@@ -3,7 +3,7 @@ import { X, Calendar, MapPin, Loader2, AlertCircle } from 'lucide-react';
 import api from '../api/axios';
 import { useTranslation } from 'react-i18next';
 
-export default function PlanWorkModal({ isOpen, onClose, lat, lng, projects, onSaved }) {
+export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, onSaved }) {
     const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -29,7 +29,7 @@ export default function PlanWorkModal({ isOpen, onClose, lat, lng, projects, onS
             await api.post(`/api/planning/project/${formData.projectId}`, {
                 items: [{
                     type: formData.type,
-                    coordinates: { lat, lng },
+                    coordinates: coordinates,
                     deadline: formData.deadline || null,
                     notes: formData.notes
                 }]

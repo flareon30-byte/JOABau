@@ -280,6 +280,7 @@ const CivilWorksMap = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [leafletLoaded, setLeafletLoaded] = useState(false);
     const [markerClusterLoaded, setMarkerClusterLoaded] = useState(false);
+    const [geomanLoaded, setGeomanLoaded] = useState(false);
     const [addresses, setAddresses] = useState([]);
     const [activeWorkers, setActiveWorkers] = useState([]);
     const [ductRoutes, setDuctRoutes] = useState([]);
@@ -346,6 +347,7 @@ const CivilWorksMap = () => {
             document.head.appendChild(link);
         }
 
+        
         const linkIdMCD = 'leaflet-markercluster-default-css';
         if (!document.getElementById(linkIdMCD)) {
             const link = document.createElement('link');
@@ -355,70 +357,64 @@ const CivilWorksMap = () => {
             document.head.appendChild(link);
         }
 
-        let iv = null;
-        let mcInterval = null;
-        
-        const scriptId = 'leaflet-js';
-        if (!document.getElementById(scriptId)) {
-            const script = document.createElement('script');
-            script.id = scriptId;
-            script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-            script.onload = () => {
-                setLeafletLoaded(true);
-                // Load MarkerCluster after Leaflet
-                const mcScriptId = 'leaflet-markercluster-js';
-                if (!document.getElementById(mcScriptId)) {
-                    const mcScript = document.createElement('script');
-                    mcScript.id = mcScriptId;
-                    mcScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
-                    mcScript.onload = () => setMarkerClusterLoaded(true);
-                    document.body.appendChild(mcScript);
-                }
-            };
-            document.body.appendChild(script);
-        } else {
-            if (window.L) {
-                setLeafletLoaded(true);
-                const mcScriptId = 'leaflet-markercluster-js';
-                if (!document.getElementById(mcScriptId)) {
-                    const mcScript = document.createElement('script');
-                    mcScript.id = mcScriptId;
-                    mcScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
-                    mcScript.onload = () => setMarkerClusterLoaded(true);
-                    document.body.appendChild(mcScript);
-                } else if (window.L.markerClusterGroup) {
-                    setMarkerClusterLoaded(true);
-                } else {
-                    mcInterval = setInterval(() => {
-                        if (window.L && window.L.markerClusterGroup) {
-                            setMarkerClusterLoaded(true);
-                            clearInterval(mcInterval);
-                        }
-                    }, 100);
-                }
-            } else {
-                iv = setInterval(() => {
-                    if (window.L) {
-                        setLeafletLoaded(true);
-                        clearInterval(iv);
-                        const mcScriptId = 'leaflet-markercluster-js';
-                        if (!document.getElementById(mcScriptId)) {
-                            const mcScript = document.createElement('script');
-                            mcScript.id = mcScriptId;
-                            mcScript.src = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
-                            mcScript.onload = () => setMarkerClusterLoaded(true);
-                            document.body.appendChild(mcScript);
-                        }
-                    }
-                }, 100);
-            }
+        const linkIdGM = 'leaflet-geoman-css';
+        if (!document.getElementById(linkIdGM)) {
+            const link = document.createElement('link');
+            link.id = linkIdGM;
+            link.rel = 'stylesheet';
+            link.href = 'https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css';
+            document.head.appendChild(link);
         }
 
-        return () => {
-            if (iv) clearInterval(iv);
-            if (mcInterval) clearInterval(mcInterval);
+        const loadScript = (id, src) => {
+            return new Promise((resolve) => {
+                if (document.getElementById(id)) {
+                    resolve();
+                } else {
+                    const script = document.createElement('script');
+                    script.id = id;
+                    script.src = src;
+                    script.onload = resolve;
+                    document.body.appendChild(script);
+                }
+            });
         };
-    }, []);
+
+        const initLeafletLibs = async () => {
+            await loadScript('leaflet-js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
+            setLeafletLoaded(true);
+
+            // Give it a tiny tick for window.L to be ready
+            await new Promise(r => setTimeout(r, 50));
+
+            await loadScript('leaflet-markercluster-js', 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js');
+            
+            // Wait for L.markerClusterGroup
+            await new Promise(r => {
+                const check = () => {
+                    if (window.L && window.L.markerClusterGroup) r();
+                    else setTimeout(check, 50);
+                };
+                check();
+            });
+            setMarkerClusterLoaded(true);
+
+            await loadScript('leaflet-geoman-js', 'https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js');
+            // Wait for L.PM
+            await new Promise(r => {
+                const check = () => {
+                    if (window.L && window.L.PM) r();
+                    else setTimeout(check, 50);
+                };
+                check();
+            });
+            setGeomanLoaded(true);
+        };
+
+        initLeafletLibs();
+
+        return () => {};
+        }, []);
 
     // Fetch company settings for dynamic geolocalizer country code
     useEffect(() => {
@@ -542,7 +538,7 @@ const CivilWorksMap = () => {
 
     // Map Render Loop
     useEffect(() => {
-        if (!leafletLoaded || !markerClusterLoaded || !addresses.length || !mapRef.current || activeTab !== 'map') return;
+        if (!leafletLoaded || !markerClusterLoaded || !geomanLoaded || !addresses.length || !mapRef.current || activeTab !== 'map') return;
 
         const L = window.L;
         cancelledRef.current = false;
@@ -632,6 +628,45 @@ const CivilWorksMap = () => {
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; OpenStreetMap'
                 }).addTo(mapInstanceRef.current);
+                
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const canPlan = ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'].includes(user.role);
+                
+                if (mapInstanceRef.current.pm && canPlan) {
+                    mapInstanceRef.current.pm.addControls({
+                        position: 'topleft',
+                        drawCircle: false,
+                        drawCircleMarker: false,
+                        drawText: false,
+                        editControls: false,
+                        cutPolygon: false,
+                        removalMode: false,
+                    });
+                    
+                    mapInstanceRef.current.on('pm:create', (e) => {
+                        const layer = e.layer;
+                        const type = e.shape; // Polygon, Line, Marker
+                        let coordinates = null;
+                        
+                        if (type === 'Marker') {
+                            const latlng = layer.getLatLng();
+                            coordinates = { lat: latlng.lat, lng: latlng.lng };
+                        } else if (type === 'Polygon') {
+                            const latlngs = layer.getLatLngs()[0];
+                            coordinates = latlngs.map(ll => ({ lat: ll.lat, lng: ll.lng }));
+                        } else if (type === 'Line') {
+                            const latlngs = layer.getLatLngs();
+                            coordinates = latlngs.map(ll => ({ lat: ll.lat, lng: ll.lng }));
+                        }
+                        
+                        if (coordinates) {
+                            setPlanModalCoords(coordinates);
+                            setIsPlanModalOpen(true);
+                            mapInstanceRef.current.removeLayer(layer); // Remove temporary drawn shape
+                        }
+                    });
+                }
+
                 markersGroupRef.current = L.featureGroup().addTo(mapInstanceRef.current);
                 workersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
                 
@@ -940,39 +975,57 @@ const CivilWorksMap = () => {
                 workersGroupRef.current.addLayer(workerMarker);
             });
 
+            
             // Add Planned Works markers
             plannedWorks.forEach(work => {
-                if (work.coordinates && work.coordinates.lat && work.coordinates.lng) {
-                    const isBrecha = work.type === 'BRECHA';
+                if (!work.coordinates) return;
+                
+                const isResolved = work.status === 'COMPLETED';
+                const isBrecha = work.type === 'BRECHA';
+                let color = isResolved ? '#10b981' : (isBrecha ? '#ef4444' : '#3b82f6');
+                
+                const popupHtml = `
+                    <div style="font-family:sans-serif; padding:4px; min-width: 200px;">
+                        <h4 style="margin:0 0 8px 0;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">
+                            ${work.type} ${isResolved ? '(Resuelto)' : ''}
+                        </h4>
+                        <div style="font-size:12px;color:#475569;margin-bottom:8px;">
+                            <strong>Proyecto:</strong> ${projects.find(p=>p.id===work.projectId)?.name || 'N/A'}<br/>
+                            <strong>Límite:</strong> ${work.deadline ? new Date(work.deadline).toLocaleDateString() : 'Sin fecha'}<br/>
+                            <strong>Estado:</strong> ${work.status}
+                        </div>
+                        ${work.notes ? `<p style="margin:0;font-size:12px;background:#f8fafc;padding:6px;border-radius:4px;color:#334155;">${work.notes}</p>` : ''}
+                    </div>
+                `;
+
+                if (Array.isArray(work.coordinates)) {
+                    const pts = work.coordinates;
+                    if (pts.length > 2 && pts[0].lat === pts[pts.length-1].lat && pts[0].lng === pts[pts.length-1].lng) {
+                        const polygon = L.polygon(pts, {
+                            color: color, fillColor: color, fillOpacity: 0.3, weight: 2, dashArray: isResolved ? null : '5, 5'
+                        });
+                        polygon.bindPopup(popupHtml);
+                        markersGroupRef.current.addLayer(polygon);
+                        validCoords.push([pts[0].lat, pts[0].lng]);
+                    } else {
+                        const polyline = L.polyline(pts, {
+                            color: color, weight: 4, dashArray: isResolved ? null : '10, 10'
+                        });
+                        polyline.bindPopup(popupHtml);
+                        markersGroupRef.current.addLayer(polyline);
+                        validCoords.push([pts[0].lat, pts[0].lng]);
+                    }
+                } else if (work.coordinates.lat && work.coordinates.lng) {
                     const html = `<div style="
-                        background-color: ${isBrecha ? '#f59e0b' : '#3b82f6'};
-                        color: white;
-                        border-radius: 50%;
-                        width: 24px;
-                        height: 24px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-weight: bold;
-                        box-shadow: 0 0 10px ${isBrecha ? 'rgba(245, 158, 11, 0.6)' : 'rgba(59, 130, 246, 0.6)'};
-                        border: 2px solid white;
-                        animation: ${isBrecha ? 'pulse 2s infinite' : 'none'};
+                        background-color: ${color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 10px ${color}80; border: 2px solid white; animation: ${!isResolved && isBrecha ? 'pulse 2s infinite' : 'none'};
                     ">P</div>`;
                     const icon = L.divIcon({ html, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
                     const marker = L.marker([work.coordinates.lat, work.coordinates.lng], { icon });
-                    marker.bindPopup(`
-                        <div style="font-family:sans-serif; padding:4px;">
-                            <h4 style="margin:0 0 4px 0;font-weight:bold;color:#1e293b;">${isBrecha ? '⚠️ Brecha' : '📍 ' + work.type}</h4>
-                            <p style="margin:0;font-size:12px;">${work.notes || 'Sin descripción'}</p>
-                            <p style="margin:4px 0 0 0;font-size:11px;color:#64748b;">Límite: ${work.deadline ? new Date(work.deadline).toLocaleDateString() : 'No definido'}</p>
-                            <p style="margin:4px 0 0 0;font-size:11px;font-weight:bold;color:${work.status === 'COMPLETED' ? 'green' : 'blue'}">${work.status}</p>
-                        </div>
-                    `);
+                    marker.bindPopup(popupHtml);
                     markersGroupRef.current.addLayer(marker);
                     validCoords.push([work.coordinates.lat, work.coordinates.lng]);
                 }
             });
-
             // Add NVT Logs
             nvtLogs.forEach(log => {
                 if (log.gpsLat && log.gpsLng) {
@@ -1026,7 +1079,7 @@ const CivilWorksMap = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, markerClusterLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, plannedWorks, isPlanningMode, companyCountry, showPhotos, isFullScreen]);
+    }, [leafletLoaded, markerClusterLoaded, geomanLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, plannedWorks, isPlanningMode, companyCountry, showPhotos, isFullScreen]);
 
     // Bulk address selection
     const toggleSelectAddress = (id) => {
