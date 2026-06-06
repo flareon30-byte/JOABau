@@ -43,6 +43,17 @@ const PlannedTasksList = () => {
         }
     };
 
+    const handleDeleteTask = async (taskId) => {
+        if (!window.confirm('¿Seguro que deseas borrar esta planificación?')) return;
+        try {
+            await api.delete(`/api/planning/${taskId}`);
+            fetchPlannedTasks();
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            alert('Error al borrar la planificación.');
+        }
+    };
+
     const handleViewOnMap = (task) => {
         // Redirigir al mapa con las coordenadas o el ID de la tarea
         if (task.coordinates) {
@@ -54,9 +65,9 @@ const PlannedTasksList = () => {
                 lat = task.coordinates.lat;
                 lng = task.coordinates.lng;
             }
-            navigate(`/map?lat=${lat}&lng=${lng}&zoom=18&taskId=${task.id}`);
+            navigate(`/dashboard/civil-works-map?lat=${lat}&lng=${lng}&zoom=18&taskId=${task.id}`);
         } else {
-            navigate(`/map?taskId=${task.id}`);
+            navigate(`/dashboard/civil-works-map?taskId=${task.id}`);
         }
     };
 
@@ -123,6 +134,14 @@ const PlannedTasksList = () => {
                                             className="flex-1 flex justify-center items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"
                                         >
                                             <CheckCircle size={16} /> Completar
+                                        </button>
+                                    )}
+                                    {user.role === 'SUPER_ADMIN' && (
+                                        <button
+                                            onClick={() => handleDeleteTask(task.id)}
+                                            className="flex-1 flex justify-center items-center gap-2 bg-red-50 border border-red-200 hover:bg-red-100 text-red-600 py-2 rounded-lg text-sm font-medium transition-colors"
+                                        >
+                                            Borrar
                                         </button>
                                     )}
                                 </div>

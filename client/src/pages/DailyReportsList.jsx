@@ -8,7 +8,7 @@ import {
 
 const DailyReportsList = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const isManagement = ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'].includes(user.role);
+    const isManagement = ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'PROJECT_MANAGER', 'SITE_MANAGER'].includes(user.role);
 
     const [reports, setReports] = useState([]);
     const [subcontractors, setSubcontractors] = useState([]);
