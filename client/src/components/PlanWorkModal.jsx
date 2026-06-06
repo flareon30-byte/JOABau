@@ -26,7 +26,7 @@ export default function PlanWorkModal({ isOpen, onClose, lat, lng, projects, onS
 
         try {
             setLoading(true);
-            await api.post(`/planning/project/${formData.projectId}`, {
+            await api.post(`/api/planning/project/${formData.projectId}`, {
                 items: [{
                     type: formData.type,
                     coordinates: { lat, lng },

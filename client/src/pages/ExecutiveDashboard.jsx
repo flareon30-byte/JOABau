@@ -19,7 +19,7 @@ export default function ExecutiveDashboard() {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/planning/dashboard');
+      const response = await api.get('/api/planning/dashboard');
       setData(response.data);
     } catch (err) {
       console.error(err);

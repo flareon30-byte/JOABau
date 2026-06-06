@@ -23,7 +23,7 @@ export default function PlanningTimeline() {
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/projects');
+      const response = await api.get('/api/projects');
       setProjects(response.data);
       if (response.data.length > 0) {
         setSelectedProject(response.data[0].id);
@@ -36,7 +36,7 @@ export default function PlanningTimeline() {
   const fetchWorks = async (projectId) => {
     try {
       setLoading(true);
-      const response = await api.get(`/planning/project/${projectId}`);
+      const response = await api.get(`/api/planning/project/${projectId}`);
       setWorks(response.data);
     } catch (err) {
       console.error(err);
