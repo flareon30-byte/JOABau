@@ -302,6 +302,7 @@ const CivilWorksMap = () => {
     const [loadingMap, setLoadingMap] = useState(false);
     const [isPlanningMode, setIsPlanningMode] = useState(false);
     const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+    const [editWork, setEditWork] = useState(null);
     const [planModalCoords, setPlanModalCoords] = useState(null);
     const [filterProject, setFilterProject] = useState('');
     const [filterSubcontractor, setFilterSubcontractor] = useState('');

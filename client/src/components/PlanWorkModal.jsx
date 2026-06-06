@@ -3,7 +3,7 @@ import { X, Calendar, MapPin, Loader2, AlertCircle } from 'lucide-react';
 import api from '../api/axios';
 import { useTranslation } from 'react-i18next';
 
-export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, subcontractors, onSaved }) {
+export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, subcontractors, onSaved, editWork }) {
     const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -14,6 +14,26 @@ export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, 
         notes: '',
         subcontractorId: ''
     });
+
+    React.useEffect(() => {
+        if (editWork) {
+            setFormData({
+                projectId: editWork.projectId || (projects.length > 0 ? projects[0].id : ''),
+                type: editWork.type || 'ACOMETIDA',
+                deadline: editWork.deadline ? new Date(editWork.deadline).toISOString().split('T')[0] : '',
+                notes: editWork.notes || '',
+                subcontractorId: editWork.assignedToId || ''
+            });
+        } else {
+            setFormData({
+                projectId: projects.length > 0 ? projects[0].id : '',
+                type: 'ACOMETIDA',
+                deadline: '',
+                notes: '',
+                subcontractorId: ''
+            });
+        }
+    }, [editWork, projects]);
 
     if (!isOpen) return null;
 

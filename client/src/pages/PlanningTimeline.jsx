@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
-import { Loader2, Calendar, MapPin, AlertCircle, Plus, Filter, CheckCircle, Trash2 } from 'lucide-react';
+import { Loader2, Calendar, MapPin, AlertCircle, Plus, Filter, CheckCircle, Trash2, Pencil } from 'lucide-react';
+import PlanWorkModal from '../components/PlanWorkModal';
 import { useNavigate } from 'react-router-dom';
 
 export default function PlanningTimeline() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [projects, setProjects] = useState([]);
+  const [subcontractors, setSubcontractors] = useState([]);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [editWork, setEditWork] = useState(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handleDelete = async (id) => {
@@ -64,10 +68,14 @@ export default function PlanningTimeline() {
 
   const fetchProjects = async () => {
     try {
-      const response = await api.get('/api/projects');
-      setProjects(response.data);
-      if (response.data.length > 0) {
-        setSelectedProject(response.data[0].id);
+      const [projRes, subRes] = await Promise.all([
+          api.get('/api/projects'),
+          api.get('/api/subcontractors')
+      ]);
+      setProjects(projRes.data);
+      setSubcontractors(subRes.data);
+      if (projRes.data.length > 0) {
+        setSelectedProject(projRes.data[0].id);
       }
     } catch (err) {
       console.error(err);
@@ -234,6 +242,18 @@ export default function PlanningTimeline() {
                           )}
                           {user.role === 'SUPER_ADMIN' && (
                             <button 
+                              onClick={() => {
+                                  setEditWork(work);
+                                  setIsPlanModalOpen(true);
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                              title="Editar Planificación"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                          )}
+                          {user.role === 'SUPER_ADMIN' && (
+                            <button 
                               onClick={() => handleDelete(work.id)}
                               className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                               title="Borrar Planificación"
@@ -250,6 +270,24 @@ export default function PlanningTimeline() {
             </table>
           </div>
         </div>
+      )}
+
+      {isPlanModalOpen && (
+          <PlanWorkModal 
+              isOpen={isPlanModalOpen}
+              onClose={() => {
+                  setIsPlanModalOpen(false);
+                  setEditWork(null);
+              }}
+              editWork={editWork}
+              projects={projects}
+              subcontractors={subcontractors}
+              onSaved={() => {
+                  setIsPlanModalOpen(false);
+                  setEditWork(null);
+                  fetchWorks(selectedProject);
+              }}
+          />
       )}
     </div>
   );
