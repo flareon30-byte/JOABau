@@ -183,6 +183,7 @@ const SubcontractorDailyLog = () => {
     
     // Active Duct Log form state
     const [ductPhotos, setDuctPhotos] = useState([]);
+    const [ductCoordinates, setDuctCoordinates] = useState([]);
     const [ductComments, setDuctComments] = useState('');
     const [processingDuct, setProcessingDuct] = useState(false);
     const [calculatedDuct, setCalculatedDuct] = useState(null);

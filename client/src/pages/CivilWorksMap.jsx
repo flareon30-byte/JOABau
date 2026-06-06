@@ -6,6 +6,17 @@ import {
     Maximize2, Minimize2, Crosshair, Map
 } from 'lucide-react';
 import api from '../api/axios';
+
+const handleReviewDuct = async (id, status) => {
+    try {
+        await api.put(`/api/civil-works/duct/review/${id}`, { status, reviewComments: '' });
+        window.location.reload();
+    } catch (e) {
+        alert('Error al actualizar el estado de la obra.');
+    }
+};
+
+window.handleReviewDuct = handleReviewDuct;
 import PlanWorkModal from '../components/PlanWorkModal';
 
 const CACHE_KEY = 'joa-map-geo-cache-v6';
