@@ -462,201 +462,6 @@ const CivilWorksMap = () => {
             setPlannedWorks(mapRes.data.plannedWorks || []);
             setNvtLogs(mapRes.data.nvtLogs || []);
             setSubcontractors(subsRes.data || []);
-const d1 = Math.abs(start1.lat - start2.lat) + Math.abs(start1.lng - start2.lng);
-    const d2 = Math.abs(start1.lat - end2.lat) + Math.abs(start1.lng - end2.lng);
-    const d3 = Math.abs(end1.lat - start2.lat) + Math.abs(end1.lng - start2.lng);
-    const d4 = Math.abs(end1.lat - end2.lat) + Math.abs(end1.lng - end2.lng);
-    
-    return d1 < threshold || d2 < threshold || d3 < threshold || d4 < threshold;
-};
-
-
-
-const CivilWorksMap = () => {
-    const [searchParams] = useSearchParams();
-    const urlLat = searchParams.get('lat');
-    const urlLng = searchParams.get('lng');
-    const urlZoom = searchParams.get('zoom');
-    const urlTaskId = searchParams.get('taskId');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const [leafletLoaded, setLeafletLoaded] = useState(false);
-    const [markerClusterLoaded, setMarkerClusterLoaded] = useState(false);
-    const [geomanLoaded, setGeomanLoaded] = useState(false);
-    const [addresses, setAddresses] = useState([]);
-    const [activeWorkers, setActiveWorkers] = useState([]);
-    const [ductRoutes, setDuctRoutes] = useState([]);
-    const [plannedWorks, setPlannedWorks] = useState([]);
-    const [nvtLogs, setNvtLogs] = useState([]);
-    const [projects, setProjects] = useState([]);
-    const [subcontractors, setSubcontractors] = useState([]);
-    // UI Filters and Tabs
-    const [activeTab, setActiveTab] = useState('map'); // 'map' | 'table'
-    const [isFullScreen, setIsFullScreen] = useState(false);
-    const [showLegend, setShowLegend] = useState(true);
-    const [loadingData, setLoadingData] = useState(true);
-    const [loadingMap, setLoadingMap] = useState(false);
-    const [isPlanningMode, setIsPlanningMode] = useState(false);
-    const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
-    const [planModalCoords, setPlanModalCoords] = useState(null);
-    const [filterProject, setFilterProject] = useState('');
-    const [filterSubcontractor, setFilterSubcontractor] = useState('');
-    const [filterStatus, setFilterStatus] = useState('');
-    const [searchQuery, setSearchQuery] = useState('');
-
-    // Table view states
-    const [selectedAddressIds, setSelectedAddressIds] = useState([]);
-    const [bulkUpdating, setBulkUpdating] = useState(false);
-
-    const [companyCountry, setCompanyCountry] = useState('ES');
-    const [progress, setProgress] = useState(0);
-    const [progressLabel, setProgressLabel] = useState('');
-    const [showPhotos, setShowPhotos] = useState(true);
-    const [activePhotoModal, setActivePhotoModal] = useState(null);
-    const cancelledRef = useRef(false);
-
-    const mapRef = useRef(null);
-    const mapInstanceRef = useRef(null);
-    const markersGroupRef = useRef(null);
-    const workersGroupRef = useRef(null);
-    const photoMarkersGroupRef = useRef(null);
-    const lastCenteredFiltersRef = useRef({
-        project: undefined,
-        city: undefined,
-        subcontractor: undefined,
-        status: undefined,
-        query: undefined,
-        tab: undefined
-    });
-
-    // Initialize Leaflet
-    useEffect(() => {
-        const linkId = 'leaflet-css';
-        if (!document.getElementById(linkId)) {
-            const link = document.createElement('link');
-            link.id = linkId;
-            link.rel = 'stylesheet';
-            link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-            document.head.appendChild(link);
-        }
-
-        const linkIdMC = 'leaflet-markercluster-css';
-        if (!document.getElementById(linkIdMC)) {
-            const link = document.createElement('link');
-            link.id = linkIdMC;
-            link.rel = 'stylesheet';
-            link.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css';
-            document.head.appendChild(link);
-        }
-
-        
-        const linkIdMCD = 'leaflet-markercluster-default-css';
-        if (!document.getElementById(linkIdMCD)) {
-            const link = document.createElement('link');
-            link.id = linkIdMCD;
-            link.rel = 'stylesheet';
-            link.href = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css';
-            document.head.appendChild(link);
-        }
-
-        const linkIdGM = 'leaflet-geoman-css';
-        if (!document.getElementById(linkIdGM)) {
-            const link = document.createElement('link');
-            link.id = linkIdGM;
-            link.rel = 'stylesheet';
-            link.href = 'https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css';
-            document.head.appendChild(link);
-        }
-
-        const loadScript = (id, src) => {
-            return new Promise((resolve) => {
-                if (document.getElementById(id)) {
-                    resolve();
-                } else {
-                    const script = document.createElement('script');
-                    script.id = id;
-                    script.src = src;
-                    script.onload = resolve;
-                    document.body.appendChild(script);
-                }
-            });
-        };
-
-        const initLeafletLibs = async () => {
-            await loadScript('leaflet-js', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js');
-            setLeafletLoaded(true);
-
-            // Give it a tiny tick for window.L to be ready
-            await new Promise(r => setTimeout(r, 50));
-
-            await loadScript('leaflet-markercluster-js', 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js');
-            
-            // Wait for L.markerClusterGroup
-            await new Promise(r => {
-                const check = () => {
-                    if (window.L && window.L.markerClusterGroup) r();
-                    else setTimeout(check, 50);
-                };
-                check();
-            });
-            setMarkerClusterLoaded(true);
-
-            await loadScript('leaflet-geoman-js', 'https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js');
-            // Wait for L.PM
-            await new Promise(r => {
-                const check = () => {
-                    if (window.L && window.L.PM) r();
-                    else setTimeout(check, 50);
-                };
-                check();
-            });
-            setGeomanLoaded(true);
-        };
-
-        initLeafletLibs();
-
-        return () => {};
-        }, []);
-
-    // Fetch company settings for dynamic geolocalizer country code
-    useEffect(() => {
-        const fetchCompanyCountry = async () => {
-            try {
-                const res = await api.get('/api/company');
-                if (res.data?.country) {
-                    setCompanyCountry(res.data.country);
-                }
-            } catch (err) {
-                console.error("Error loading company country:", err);
-            }
-        };
-        fetchCompanyCountry();
-    }, []);
-
-    // Force Leaflet to recalculate map size when entering/exiting fullscreen mode
-    useEffect(() => {
-        if (mapInstanceRef.current) {
-            const timer = setTimeout(() => {
-                mapInstanceRef.current.invalidateSize();
-            }, 100);
-            return () => clearTimeout(timer);
-        }
-    }, [isFullScreen]);
-
-    // Load filter options and map coordinates
-    const fetchAllData = async () => {
-        try {
-            const [mapRes, subsRes, projectsRes] = await Promise.all([
-                api.get('/api/civil-works/map'),
-                api.get('/api/subcontractors').catch(() => ({ data: [] })),
-                api.get('/api/projects').catch(() => ({ data: [] }))
-            ]);
-            
-            setAddresses(mapRes.data.addresses || []);
-            setActiveWorkers(mapRes.data.activeWorkers || []);
-            setDuctRoutes(mapRes.data.ductRoutes || []);
-            setPlannedWorks(mapRes.data.plannedWorks || []);
-            setNvtLogs(mapRes.data.nvtLogs || []);
-            setSubcontractors(subsRes.data || []);
             setProjects(projectsRes.data || []);
         } catch (e) {
             console.error('Error loading civil works data:', e);
@@ -664,26 +469,6 @@ const CivilWorksMap = () => {
             setLoadingData(false);
         }
     };
-
-    // Fetch initial data
-    useEffect(() => {
-        window.deletePlannedWork = async (id) => {
-            if (!window.confirm('¿Seguro que deseas borrar esta planificación?')) return;
-            try {
-                // Remove from map temporarily
-                setPlannedWorks(prev => prev.filter(w => w.id !== id));
-                // Call API
-                const api = (await import('../api/axios')).default;
-                await api.delete(`/api/planning/${id}`);
-            } catch (error) {
-                console.error('Error deleting planned work:', error);
-                alert('Error al borrar. Puede que necesites recargar la página.');
-            }
-        };
-        return () => {
-            delete window.deletePlannedWork;
-        };
-    }, []);
 
     useEffect(() => {
         fetchAllData();
@@ -1023,6 +808,218 @@ const CivilWorksMap = () => {
                         ${addr.civilWorkInfo?.surfaceType ? `<b>Superficie:</b> ${addr.civilWorkInfo.surfaceType}<br>` : ''}
                         ${photoUrl ? `<div style="margin-top:8px;text-align:center;"><p style="font-size:12px;color:#64748b;margin:0 0 4px 0;">Foto de Evidencia:</p><img src="${photoUrl}" style="width:100%;max-height:120px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #e2e8f0;" onclick="window.showMapPhotoModal('${photoUrl}')" title="Click para ampliar" /></div>` : ''}
                     </div>
+                `);
+                markersGroupRef.current.addLayer(marker);
+            });
+
+            // Draw Subcontractor Duct lines
+            const processedRoutes = [];
+            const routeOffsets = {};
+            const getRouteOffset = (route) => {
+                const coords = cleanCoordinates(route?.coordinates);
+                if (coords.length < 2) return 0;
+                
+                let currentOffset = 0;
+                processedRoutes.forEach(prevRoute => {
+                    if (areRoutesOverlapping(route, prevRoute)) {
+                        let spacing = 4.0;
+                        if (prevRoute.ductType === 'ambos' && route.ductType === 'ambos') {
+                            spacing = 7.0;
+                        } else if (prevRoute.ductType === 'ambos' || route.ductType === 'ambos') {
+                            spacing = 5.5;
+                        }
+                        currentOffset += spacing;
+                    }
+                });
+                
+                processedRoutes.push(route);
+                return currentOffset;
+            };
+
+            filteredDuctRoutes.forEach(route => {
+                if (cancelledRef.current) return;
+                const coords = cleanCoordinates(route?.coordinates);
+                if (coords.length < 2) return;
+                
+                const routeOffset = getRouteOffset(route);
+                routeOffsets[route.id] = routeOffset;
+                
+                const subName = route.report?.subcontractor?.name || 'Subcontrata';
+                const distText = route.distance ? `${route.distance}m` : 'No calculada';
+                const dateText = new Date(route.createdAt).toLocaleDateString('es-ES');
+
+                if (route.ductType === 'ambos') {
+                    // Draw 7x22 (orange) shifted slightly left (-2.5 meters relative to routeOffset)
+                    const coordsOrange = offsetPolyline(route.coordinates, routeOffset - 2.5);
+                    const pathCoordsOrange = coordsOrange.map(pt => [pt.lat, pt.lng]);
+                    const polylineOrange = L.polyline(pathCoordsOrange, {
+                        color: '#f97316',
+                        weight: 5,
+                        opacity: 0.9,
+                        dashArray: '8, 10'
+                    });
+                    
+                    // Draw 10x6 (pink) shifted slightly right (+2.5 meters relative to routeOffset)
+                    const coordsPink = offsetPolyline(route.coordinates, routeOffset + 2.5);
+                    const pathCoordsPink = coordsPink.map(pt => [pt.lat, pt.lng]);
+                    const polylinePink = L.polyline(pathCoordsPink, {
+                        color: '#ec4899',
+                        weight: 5,
+                        opacity: 0.9,
+                        dashArray: '8, 10'
+                    });
+                    
+                    const popupContent = `
+                        <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
+                            <b style="font-size:14px;color:#f97316">Conductos en Paralelo (7x22 y 10x6)</b><br>
+                            <b>Socio:</b> ${subName}<br>
+                            <b>Longitud:</b> ${distText}<br>
+                            <b>Fecha Reporte:</b> ${dateText}<br>
+                            ${route.comments ? `<b>Detalles:</b> <i>"${route.comments}"</i>` : ''}
+                        </div>
+                    `;
+                    polylineOrange.bindPopup(popupContent);
+                    polylinePink.bindPopup(popupContent);
+                    
+                    markersGroupRef.current.addLayer(polylineOrange);
+                    markersGroupRef.current.addLayer(polylinePink);
+                } else {
+                    const coords = offsetPolyline(route.coordinates, routeOffset);
+                    const pathCoords = coords.map(pt => [pt.lat, pt.lng]);
+                    
+                    const ductColor = route.ductType === '10x6' ? '#ec4899' : '#f97316';
+                    const polyline = L.polyline(pathCoords, {
+                        color: ductColor,
+                        weight: 5,
+                        opacity: 0.9,
+                        dashArray: '8, 10'
+                    });
+
+                    polyline.bindPopup(`
+                        <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
+                            <b style="font-size:14px;color:${ductColor}">Conducto (${route.ductType || '7x22'})</b><br>
+                            <b>Socio:</b> ${subName}<br>
+                            <b>Longitud:</b> ${distText}<br>
+                            <b>Fecha Reporte:</b> ${dateText}<br>
+                            ${route.comments ? `<b>Detalles:</b> <i>"${route.comments}"</i>` : ''}
+                        </div>
+                    `);
+
+                    markersGroupRef.current.addLayer(polyline);
+                }
+            });
+
+            // Draw Photo Markers (Visual Record of Civil Works)
+            const photoArray = [];
+
+            // Helper to collect photos from duct routes
+            filteredDuctRoutes.forEach(route => {
+                const routeCoordinates = cleanCoordinates(route.coordinates);
+                const hasPhotos = routeCoordinates.some(pt => pt && pt.photoUrl);
+                if (!hasPhotos) return;
+
+                routeCoordinates.forEach((pt) => {
+                    if (pt && pt.photoUrl && pt.lat && pt.lng) {
+                        photoArray.push({
+                            lat: pt.lat,
+                            lng: pt.lng,
+                            photoUrl: pt.photoUrl,
+                            timestamp: pt.timestamp,
+                            type: 'Zanja / Ducto',
+                            label: 'Foto de zanja',
+                            status: route.report?.reviewStatus === 'REVISADO' ? '✅' : '⏳'
+                        });
+                    }
+                });
+            });
+
+            // Helper to collect photos from nvt logs
+            nvtLogs.forEach(log => {
+                if (log.photoUrl && log.gpsLat && log.gpsLng) {
+                    photoArray.push({
+                        lat: log.gpsLat,
+                        lng: log.gpsLng,
+                        photoUrl: log.photoUrl,
+                        type: 'NVT',
+                        label: 'Nudo de Red (NVT)',
+                        status: log.status
+                    });
+                }
+            });
+
+            if (showPhotos && photoArray.length > 0) {
+                photoArray.forEach(pt => {
+                    const html = `
+                        <div class="photo-marker" style="
+                            width:44px;height:44px;
+                            border-radius:8px;
+                            overflow:hidden;
+                            border:3px solid white;
+                            box-shadow:0 4px 12px rgba(0,0,0,0.4);
+                            cursor:pointer;
+                            transition:transform 0.2s;
+                            background-color:black;
+                        " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">
+                            <img src="${pt.photoUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://placehold.co/100x100?text=Foto'"/>
+                        </div>
+                    `;
+                    const icon = L.divIcon({ html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] });
+                    const photoMarker = L.marker([pt.lat, pt.lng], { icon });
+                    photoMarker.on('click', () => {
+                        if (window.showMapPhotoModal) {
+                            window.showMapPhotoModal(pt.photoUrl);
+                        }
+                    });
+                    
+                    const timeStr = pt.timestamp ? new Date(pt.timestamp).toLocaleTimeString() : '';
+                    photoMarker.bindTooltip(`${pt.type} ${pt.status} ${timeStr}`, { direction: 'top', offset: [0, -20] });
+                    
+                    photoMarkersGroupRef.current.addLayer(photoMarker);
+                });
+            }
+
+            // Draw active worker live locations
+            activeWorkers.forEach(workerLog => {
+                if (cancelledRef.current) return;
+                if (!workerLog.gpsLat || !workerLog.gpsLng) return;
+                
+                const icon = L.divIcon({
+                    html: `<div class="flex flex-col items-center select-none pointer-events-none">
+                            <div class="bg-orange-600 text-white font-bold text-[9px] px-1.5 py-0.5 rounded-md shadow-md whitespace-nowrap mb-1">👷 ${workerLog.user.username}</div>
+                            <div class="w-6 h-6 rounded-full bg-white border-2 border-orange-600 flex items-center justify-center text-[10px] shadow-lg">📍</div>
+                           </div>`,
+                    className: '', iconSize: [50, 40], iconAnchor: [25, 40]
+                });
+                const workerMarker = L.marker([workerLog.gpsLat, workerLog.gpsLng], { icon });
+                workersGroupRef.current.addLayer(workerMarker);
+            });
+
+            
+            // Add Planned Works markers
+            plannedWorks.forEach(work => {
+                if (!work.coordinates) return;
+                
+                const isResolved = work.status === 'COMPLETED';
+                const isBrecha = work.type === 'BRECHA';
+                let color = isResolved ? '#10b981' : (isBrecha ? '#ef4444' : '#3b82f6');
+                
+                const popupHtml = `
+                    <div style="font-family:sans-serif; padding:4px; min-width: 200px;">
+                        <h4 style="margin:0 0 8px 0;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">
+                            ${work.type} ${isResolved ? '(Resuelto)' : ''}
+                        </h4>
+                        <div style="font-size:12px;color:#475569;margin-bottom:8px;">
+                            <strong>Proyecto:</strong> ${projects.find(p=>p.id===work.projectId)?.name || 'N/A'}<br/>
+                            <strong>Límite:</strong> ${work.deadline ? new Date(work.deadline).toLocaleDateString() : 'Sin fecha'}<br/>
+                            <strong>Estado:</strong> ${work.status}
+                        </div>
+                        ${work.notes ? `<p style="margin:0;font-size:12px;background:#f8fafc;padding:6px;border-radius:4px;color:#334155;">${work.notes}</p>` : ''}
+                    </div>
+                `;
+
+                if (Array.isArray(work.coordinates)) {
+                    const pts = work.coordinates;
+                    if (pts.length > 2 && pts[0].lat === pts[pts.length-1].lat && pts[0].lng === pts[pts.length-1].lng) {
                         const polygon = L.polygon(pts, {
                             color: color, fillColor: color, fillOpacity: 0.3, weight: 2, dashArray: isResolved ? null : '5, 5'
                         });
