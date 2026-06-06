@@ -1547,9 +1547,9 @@ const CivilWorksMap = () => {
                 <PlanWorkModal 
                     isOpen={isPlanModalOpen}
                     onClose={() => setIsPlanModalOpen(false)}
-                    lat={planModalCoords.lat}
-                    lng={planModalCoords.lng}
+                    coordinates={planModalCoords}
                     projects={projects}
+                    subcontractors={subcontractors}
                     onSaved={fetchAllData}
                 />
             )}

@@ -3,7 +3,7 @@ import { X, Calendar, MapPin, Loader2, AlertCircle } from 'lucide-react';
 import api from '../api/axios';
 import { useTranslation } from 'react-i18next';
 
-export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, onSaved }) {
+export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, subcontractors, onSaved }) {
     const { t } = useTranslation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -11,7 +11,8 @@ export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, 
         projectId: projects.length > 0 ? projects[0].id : '',
         type: 'ACOMETIDA',
         deadline: '',
-        notes: ''
+        notes: '',
+        subcontractorId: ''
     });
 
     if (!isOpen) return null;
@@ -31,7 +32,8 @@ export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, 
                     type: formData.type,
                     coordinates: coordinates,
                     deadline: formData.deadline || null,
-                    notes: formData.notes
+                    notes: formData.notes,
+                    assignedToId: formData.subcontractorId || null
                 }]
             });
             onSaved();
@@ -75,6 +77,21 @@ export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, 
                         >
                             {projects.map(p => (
                                 <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    
+                    <div className="space-y-2">
+                        <label className="text-sm font-semibold text-slate-700">Subcontrata Asignada (Opcional)</label>
+                        <select
+                            value={formData.subcontractorId}
+                            onChange={(e) => setFormData({ ...formData, subcontractorId: e.target.value })}
+                            className="w-full p-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                            <option value="">-- Ninguna --</option>
+                            {subcontractors?.map(s => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
                             ))}
                         </select>
                     </div>

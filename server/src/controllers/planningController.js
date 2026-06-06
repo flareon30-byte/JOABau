@@ -32,11 +32,38 @@ exports.createPlannedWork = async (req, res) => {
                     coordinates: item.coordinates,
                     deadline: item.deadline ? new Date(item.deadline) : null,
                     notes: item.notes,
+                    assignedToId: item.assignedToId || null,
                     createdById: userId,
                     status: 'PENDING'
                 }
             }))
         );
+
+        // Fetch project to get its name and assigned managers
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            include: {
+                users: {
+                    where: {
+                        role: {
+                            in: ['PROJECT_MANAGER', 'SITE_MANAGER']
+                        }
+                    }
+                }
+            }
+        });
+
+        if (project && project.users && project.users.length > 0) {
+            const notifications = project.users.map(u => ({
+                type: 'PLANNING',
+                message: `Se ha planificado un nuevo trabajo (${items[0]?.type || 'Trabajo'}) en el proyecto ${project.name}.`,
+                targetUserId: u.id,
+                createdById: userId
+            }));
+            await prisma.notification.createMany({
+                data: notifications
+            });
+        }
 
         res.status(201).json(createdItems);
     } catch (error) {
