@@ -13,11 +13,8 @@ enum Role {
   ADMIN
   PROJECT_MANAGER
   SITE_MANAGER
-  BACK_OFFICE
-  ACTIVATOR
-  BLOWER
-  PROTOCOL_MANAGER
-  CIVIL_WORKER
+  SUPERVISOR
+  OPERATOR
   SUBCONTRACTOR
 }
 
@@ -66,6 +63,8 @@ model User {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   PlannedWork PlannedWork[]
+
+  projects Project[] @relation("UserProjects")
 }
 
 model PushSubscription {
@@ -157,6 +156,8 @@ model Project {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   PlannedWork PlannedWork[]
+
+  users User[] @relation("UserProjects")
 }
 
 model Address {

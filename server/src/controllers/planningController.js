@@ -137,3 +137,40 @@ exports.getExecutiveDashboardData = async (req, res) => {
         res.status(500).json({ error: 'Failed to generate executive dashboard data' });
     }
 };
+
+exports.getMyPlannedWorks = async (req, res) => {
+    try {
+        const userId = req.userId;
+        const userRole = req.userRole;
+        
+        let whereClause = {};
+        
+        if (['SUPER_ADMIN', 'ADMIN'].includes(userRole)) {
+            whereClause = {};
+        } else {
+            const userWithProjects = await prisma.user.findUnique({
+                where: { id: userId },
+                include: { projects: true }
+            });
+            if (!userWithProjects || !userWithProjects.projects) {
+                return res.json([]);
+            }
+            const projectIds = userWithProjects.projects.map(p => p.id);
+            whereClause = { projectId: { in: projectIds } };
+        }
+
+        const works = await prisma.plannedWork.findMany({
+            where: whereClause,
+            include: {
+                project: { select: { name: true } },
+                assignedTo: true,
+                createdBy: { select: { username: true } }
+            },
+            orderBy: { createdAt: 'desc' }
+        });
+        res.json(works);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to fetch my planned works' });
+    }
+};

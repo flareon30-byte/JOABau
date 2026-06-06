@@ -17,7 +17,10 @@ exports.getAllUsers = async (req, res) => {
                 vehicleId: true,
                 subcontractorId: true,
                 baseSalary: true,
-                createdAt: true
+                createdAt: true,
+                projects: {
+                    select: { id: true, name: true }
+                }
             }
         });
         res.json(users);
@@ -27,7 +30,7 @@ exports.getAllUsers = async (req, res) => {
 };
 
 exports.createUser = async (req, res) => {
-    const { username, password, role, teamId, phone, vacationDaysTotal, vehicleId, subcontractorId } = req.body;
+    const { username, password, role, teamId, phone, vacationDaysTotal, vehicleId, subcontractorId, projectIds } = req.body;
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const user = await prisma.user.create({
@@ -41,8 +44,12 @@ exports.createUser = async (req, res) => {
                 subcontractorId: subcontractorId || null,
                 baseSalary: (req.body.baseSalary !== undefined && req.body.baseSalary !== '') ? parseFloat(req.body.baseSalary) : 1500.0,
                 vacationDaysTotal: (vacationDaysTotal !== undefined && vacationDaysTotal !== '') ? parseInt(vacationDaysTotal) : 30,
-                isDemo: req.isDemo || false
-            }
+                isDemo: req.isDemo || false,
+                projects: projectIds && Array.isArray(projectIds) ? {
+                    connect: projectIds.map(id => ({ id }))
+                } : undefined
+            },
+            include: { projects: true }
         });
         res.status(201).json({ message: 'User created', user });
     } catch (error) {
@@ -53,7 +60,7 @@ exports.createUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
     const { id } = req.params;
-    const { username, password, role, teamId, phone, vacationDaysTotal, vehicleId, subcontractorId } = req.body;
+    const { username, password, role, teamId, phone, vacationDaysTotal, vehicleId, subcontractorId, projectIds } = req.body;
 
     try {
         const data = {
@@ -72,7 +79,13 @@ exports.updateUser = async (req, res) => {
 
         const user = await prisma.user.update({
             where: { id },
-            data
+            data: {
+                ...data,
+                projects: projectIds && Array.isArray(projectIds) ? {
+                    set: projectIds.map(pid => ({ id: pid }))
+                } : undefined
+            },
+            include: { projects: true }
         });
         res.json({ message: 'User updated', user });
     } catch (error) {

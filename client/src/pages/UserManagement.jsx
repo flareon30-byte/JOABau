@@ -8,18 +8,21 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState(null); // For editing
-    const [formData, setFormData] = useState({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '' });
+    const [formData, setFormData] = useState({ username: '', password: '', role: 'OPERATOR', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
 
     const [vehicles, setVehicles] = useState([]);
+    const [projects, setProjects] = useState([]);
 
     const fetchData = async () => {
         try {
-            const [usersRes, vehiclesRes] = await Promise.all([
+            const [usersRes, vehiclesRes, projectsRes] = await Promise.all([
                 api.get('/api/users'),
-                api.get('/api/vehicles')
+                api.get('/api/vehicles'),
+                api.get('/api/projects')
             ]);
             setUsers(usersRes.data);
             setVehicles(vehiclesRes.data);
+            setProjects(projectsRes.data);
         } catch (error) {
             console.error('Error fetching data:', error);
         }
@@ -44,7 +47,7 @@ const UserManagement = () => {
             });
         } else {
             setCurrentUser(null);
-            setFormData({ username: '', password: '', role: 'BLOWER', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '' });
+            setFormData({ username: '', password: '', role: 'OPERATOR', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
         }
         setIsModalOpen(true);
     };

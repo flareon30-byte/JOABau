@@ -11,5 +11,6 @@ router.get('/project/:projectId', verifyToken, planningController.getPlannedWork
 router.post('/project/:projectId', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER']), planningController.createPlannedWork);
 router.put('/:id', verifyToken, planningController.updatePlannedWork);
 router.delete('/:id', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER']), planningController.deletePlannedWork);
+router.get('/my-tasks', verifyToken, planningController.getMyPlannedWorks);
 
 module.exports = router;

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
     MapPin, Loader2, HardHat, Map as MapIcon, ClipboardList, 
     Search, Check, RefreshCw, Layers, CheckCircle2, ChevronRight, X,
@@ -277,6 +278,11 @@ const areRoutesOverlapping = (r1, r2) => {
 
 
 const CivilWorksMap = () => {
+    const [searchParams] = useSearchParams();
+    const urlLat = searchParams.get('lat');
+    const urlLng = searchParams.get('lng');
+    const urlZoom = searchParams.get('zoom');
+    const urlTaskId = searchParams.get('taskId');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [leafletLoaded, setLeafletLoaded] = useState(false);
     const [markerClusterLoaded, setMarkerClusterLoaded] = useState(false);
@@ -623,7 +629,7 @@ const CivilWorksMap = () => {
                 lastCenteredFiltersRef.current.tab !== activeTab;
 
             if (isNewMap) {
-                mapInstanceRef.current = L.map(mapRef.current, { zoomControl: false }).setView([center.lat, center.lng], 14);
+                mapInstanceRef.current = L.map(mapRef.current, { zoomControl: false }).setView([center.lat, center.lng], urlZoom ? parseInt(urlZoom) : 14);
                 L.control.zoom({ position: 'bottomright' }).addTo(mapInstanceRef.current);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
                     attribution: '&copy; OpenStreetMap'

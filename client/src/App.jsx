@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardLayout from './components/DashboardLayout';
 import DashboardHome from './pages/DashboardHome';
 import UserManagement from './pages/UserManagement';
+import PlannedTasksList from './pages/PlannedTasksList';
 import TeamManagement from './pages/TeamManagement';
 import ProjectManagement from './pages/ProjectManagement';
 import AppointmentsPage from './pages/AppointmentsPage';
@@ -38,6 +39,7 @@ function App() {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
           <Route path="users" element={<UserManagement />} />
+              <Route path="planned-tasks" element={<PlannedTasksList />} />
           <Route path="teams" element={<TeamManagement />} />
           <Route path="projects" element={<ProjectManagement />} />
           <Route path="executive" element={<ExecutiveDashboard />} />
