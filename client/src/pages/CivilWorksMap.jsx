@@ -794,6 +794,7 @@ const CivilWorksMap = () => {
                         <b>Proyecto:</b> ${addr.project?.name || 'N/A'}<br>
                         ${addr.civilWorkInfo?.metersTrench ? `<b>Metros Zanja:</b> ${addr.civilWorkInfo.metersTrench}m<br>` : ''}
                         ${addr.civilWorkInfo?.surfaceType ? `<b>Superficie:</b> ${addr.civilWorkInfo.surfaceType}<br>` : ''}
+                        ${(addr.civilWorkInfo?.photos && addr.civilWorkInfo.photos.length > 0) ? `<div style="margin-top:8px;text-align:center;"><p style="font-size:12px;color:#64748b;margin:0 0 4px 0;">Foto de Evidencia:</p><img src="${addr.civilWorkInfo.photos[0]}" style="width:100%;max-height:120px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #e2e8f0;" onclick="window.showMapPhotoModal('${addr.civilWorkInfo.photos[0]}')" title="Click para ampliar" /></div>` : ''}
                     </div>
                 `);
                 markersGroupRef.current.addLayer(marker);
