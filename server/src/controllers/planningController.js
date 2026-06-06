@@ -108,9 +108,13 @@ exports.getExecutiveDashboardData = async (req, res) => {
             const brechasCount = plannedWorks.filter(w => w.type === 'BRECHA').length;
             const brechasResueltas = plannedWorks.filter(w => w.type === 'BRECHA' && w.status === 'COMPLETED').length;
 
-            // También podemos mezclar datos de CivilDailyWorkLog y DuctLog para porcentaje real
-            const completedAcometidas = await prisma.civilDailyWorkLog.count({
-                where: { address: { projectId: project.id }, status: 'HECHO' }
+            // Calculate real acometidas from Address model
+            const completedAcometidas = await prisma.address.count({
+                where: { projectId: project.id, civilWorkStatus: 'HECHO' }
+            });
+
+            const activations = await prisma.activationInfo.count({
+                where: { address: { projectId: project.id } }
             });
 
             return {
@@ -126,7 +130,8 @@ exports.getExecutiveDashboardData = async (req, res) => {
                     brechasCount,
                     brechasResueltas,
                     completedAcometidas,
-                    totalAcometidas: project._count.addresses
+                    totalAcometidas: project._count.addresses,
+                    activations
                 }
             };
         }));

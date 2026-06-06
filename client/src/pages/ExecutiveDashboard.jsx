@@ -54,8 +54,10 @@ export default function ExecutiveDashboard() {
     acc.overdue += proj.stats.overdue;
     acc.brechasCount += proj.stats.brechasCount;
     acc.brechasResueltas += proj.stats.brechasResueltas;
+    acc.completedAcometidas += proj.stats.completedAcometidas;
+    acc.activations += proj.stats.activations || 0;
     return acc;
-  }, { total: 0, completed: 0, pending: 0, overdue: 0, brechasCount: 0, brechasResueltas: 0 });
+  }, { total: 0, completed: 0, pending: 0, overdue: 0, brechasCount: 0, brechasResueltas: 0, completedAcometidas: 0, activations: 0 });
 
   const pieData = [
     { name: 'Completado', value: totals.completed },
@@ -128,6 +130,30 @@ export default function ExecutiveDashboard() {
             </div>
           </div>
         </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-indigo-100 rounded-lg text-indigo-600">
+              <Activity className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Acometidas Construidas</p>
+              <h3 className="text-2xl font-bold text-slate-800">{totals.completedAcometidas}</h3>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-fuchsia-100 rounded-lg text-fuchsia-600">
+              <CheckCircle className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-500">Clientes Activados</p>
+              <h3 className="text-2xl font-bold text-slate-800">{totals.activations}</h3>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -188,6 +214,7 @@ export default function ExecutiveDashboard() {
                 <th className="px-6 py-4">Brechas</th>
                 <th className="px-6 py-4">Hitos Atrasados</th>
                 <th className="px-6 py-4">Acometidas</th>
+                <th className="px-6 py-4">Activados</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
@@ -221,6 +248,9 @@ export default function ExecutiveDashboard() {
                   </td>
                   <td className="px-6 py-4 text-slate-500">
                     {proj.stats.completedAcometidas} / {proj.stats.totalAcometidas}
+                  </td>
+                  <td className="px-6 py-4 text-slate-500 font-bold text-emerald-600">
+                    {proj.stats.activations || 0}
                   </td>
                 </tr>
               ))}
