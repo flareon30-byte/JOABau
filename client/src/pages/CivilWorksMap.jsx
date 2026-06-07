@@ -20,7 +20,7 @@ window.handleReviewDuct = handleReviewDuct;
 
 const handleCompletePlannedWork = async (id) => {
     try {
-        await api.put(`/api/civil-works/plan/${id}`, { status: 'COMPLETED' });
+        await api.put(`/api/planning/${id}`, { status: 'COMPLETED' });
         window.location.reload();
     } catch (e) {
         alert('Error al completar el hito planificado.');
