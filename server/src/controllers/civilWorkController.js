@@ -84,9 +84,19 @@ exports.getMapData = async (req, res) => {
             }
         });
 
+        // Determine where clause for planned works
+        let pwWhere = { projectId };
+        let user = null;
+        if (req.userId) {
+            user = await prisma.user.findUnique({ where: { id: req.userId } });
+            if (user && user.role === 'SUBCONTRACTOR' && user.subcontractorId) {
+                pwWhere.assignedToId = user.subcontractorId;
+            }
+        }
+
         // Fetch Planned Works
         const plannedWorks = await prisma.plannedWork.findMany({
-            where: { projectId },
+            where: pwWhere,
             include: {
                 assignedTo: true,
                 createdBy: { select: { username: true } }

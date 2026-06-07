@@ -300,10 +300,10 @@ const DashboardLayout = () => {
             id: 'production',
             label: t('dashboard.production_mgmt'),
             icon: Briefcase,
-            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'PROJECT_MANAGER', 'SITE_MANAGER'],
+            roles: ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'PROJECT_MANAGER', 'SITE_MANAGER', 'SUBCONTRACTOR'],
             items: [
                 { icon: TrendingUp, label: 'Dashboard Ejecutivo', path: '/dashboard/executive', roles: ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'] },
-                { icon: Calendar, label: 'Línea de Tiempo', path: '/dashboard/planning', roles: ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER'] },
+                { icon: Calendar, label: 'Línea de Tiempo', path: '/dashboard/planning', roles: ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER', 'SUBCONTRACTOR'] },
                 { icon: Folder, label: t('dashboard.projects'), path: '/dashboard/projects', roles: ['SUPER_ADMIN', 'ADMIN'] },
                 { icon: Calendar, label: t('dashboard.appointments'), path: '/dashboard/appointments', roles: ['BACK_OFFICE', 'SUPER_ADMIN', 'ADMIN'] },
                 { icon: Zap, label: t('dashboard.prod_control'), path: '/dashboard/billing', roles: ['SUPER_ADMIN', 'ADMIN'] },

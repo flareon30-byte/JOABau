@@ -3,8 +3,18 @@ const prisma = require('../prisma');
 exports.getPlannedWorks = async (req, res) => {
     try {
         const { projectId } = req.params;
+        let whereClause = { projectId };
+        
+        // Filter by user role if it's a subcontractor
+        if (req.userId) {
+            const user = await prisma.user.findUnique({ where: { id: req.userId } });
+            if (user && user.role === 'SUBCONTRACTOR' && user.subcontractorId) {
+                whereClause.assignedToId = user.subcontractorId;
+            }
+        }
+
         const works = await prisma.plannedWork.findMany({
-            where: { projectId },
+            where: whereClause,
             include: {
                 assignedTo: true,
                 createdBy: { select: { username: true } }

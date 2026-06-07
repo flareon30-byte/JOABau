@@ -243,7 +243,7 @@ export default function PlanningTimeline() {
                           >
                             <MapPin className="w-4 h-4" />
                           </button>
-                          {work.status !== 'COMPLETED' && (
+                          {work.status !== 'COMPLETED' && ['SUPER_ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER'].includes(user.role) && (
                             <button 
                               onClick={() => handleComplete(work.id)}
                               className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
@@ -252,19 +252,20 @@ export default function PlanningTimeline() {
                               <CheckCircle className="w-4 h-4" />
                             </button>
                           )}
-                          {user.role === 'SUPER_ADMIN' && (
+                          {['SUPER_ADMIN', 'PROJECT_MANAGER'].includes(user.role) && (
                             <button 
                               onClick={() => {
                                   setEditWork(work);
+                                  setPlanModalCoords({ lat: work.coordinates[0].lat, lng: work.coordinates[0].lng });
                                   setIsPlanModalOpen(true);
                               }}
-                              className="p-1.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
                               title="Editar Planificación"
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
                           )}
-                          {user.role === 'SUPER_ADMIN' && (
+                          {['SUPER_ADMIN', 'PROJECT_MANAGER'].includes(user.role) && (
                             <button 
                               onClick={() => handleDelete(work.id)}
                               className="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
