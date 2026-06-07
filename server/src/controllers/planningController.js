@@ -58,11 +58,28 @@ exports.createPlannedWork = async (req, res) => {
                 type: 'PLANNING',
                 message: `Se ha planificado un nuevo trabajo (${items[0]?.type || 'Trabajo'}) en el proyecto ${project.name}.`,
                 targetUserId: u.id,
-                createdById: userId
+                createdById: userId,
+                relatedEntityId: createdItems[0]?.id
             }));
             await prisma.notification.createMany({
                 data: notifications
             });
+        }
+
+        // Notify subcontractors if any items were assigned
+        const assignedItems = createdItems.filter(i => i.assignedToId);
+        for (const item of assignedItems) {
+            const subUsers = await prisma.user.findMany({ where: { subcontractorId: item.assignedToId } });
+            if (subUsers.length > 0) {
+                const subNotifications = subUsers.map(u => ({
+                    type: 'PLANNING_ASSIGNED',
+                    message: `Se te ha asignado un nuevo trabajo (${item.type}) en el proyecto ${project.name}.`,
+                    targetUserId: u.id,
+                    createdById: userId,
+                    relatedEntityId: item.id
+                }));
+                await prisma.notification.createMany({ data: subNotifications });
+            }
         }
 
         res.status(201).json(createdItems);
@@ -76,6 +93,8 @@ exports.updatePlannedWork = async (req, res) => {
     try {
         const { id } = req.params;
         const { status, assignedToId, deadline, notes, coordinates } = req.body;
+
+        const existingWork = await prisma.plannedWork.findUnique({ where: { id } });
 
         const updated = await prisma.plannedWork.update({
             where: { id },
@@ -92,10 +111,151 @@ exports.updatePlannedWork = async (req, res) => {
             }
         });
 
+        if (assignedToId && existingWork && existingWork.assignedToId !== assignedToId) {
+            const subUsers = await prisma.user.findMany({ where: { subcontractorId: assignedToId } });
+            if (subUsers.length > 0) {
+                const project = await prisma.project.findUnique({ where: { id: updated.projectId } });
+                const notifications = subUsers.map(u => ({
+                    type: 'PLANNING_ASSIGNED',
+                    message: `Se te ha asignado un nuevo trabajo (${updated.type}) en el proyecto ${project?.name || 'Asignado'}.`,
+                    targetUserId: u.id,
+                    createdById: req.userId,
+                    relatedEntityId: updated.id
+                }));
+                await prisma.notification.createMany({ data: notifications });
+            }
+        }
+
         res.json(updated);
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: 'Failed to update planned work' });
+    }
+};
+
+exports.submitPlannedWork = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { photos, distance } = req.body;
+
+        const work = await prisma.plannedWork.findUnique({
+            where: { id },
+            include: { project: true }
+        });
+
+        if (!work) return res.status(404).json({ error: 'Not found' });
+
+        const updated = await prisma.plannedWork.update({
+            where: { id },
+            data: {
+                status: 'PENDING_REVISION',
+                photos,
+                distance,
+                incorrectPhotos: [] // Clear any previous rejections
+            }
+        });
+
+        // Notify SITE_MANAGER and PROJECT_MANAGER
+        const managers = await prisma.user.findMany({
+            where: {
+                role: { in: ['PROJECT_MANAGER', 'SITE_MANAGER'] }
+            }
+        });
+
+        if (managers.length > 0) {
+            const notifications = managers.map(m => ({
+                type: 'PLANNING_REVIEW',
+                message: `La subcontrata ha enviado a revisión el trabajo (${work.type}) del proyecto ${work.project.name}.`,
+                targetUserId: m.id,
+                createdById: req.userId,
+                relatedEntityId: id
+            }));
+            await prisma.notification.createMany({ data: notifications });
+        }
+
+        res.json(updated);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to submit planned work' });
+    }
+};
+
+exports.approvePlannedWork = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const work = await prisma.plannedWork.findUnique({
+            where: { id },
+            include: { project: true }
+        });
+
+        if (!work) return res.status(404).json({ error: 'Not found' });
+
+        const updated = await prisma.plannedWork.update({
+            where: { id },
+            data: { status: 'COMPLETED' }
+        });
+
+        if (work.assignedToId) {
+            const subUsers = await prisma.user.findMany({ where: { subcontractorId: work.assignedToId } });
+            if (subUsers.length > 0) {
+                const notifications = subUsers.map(u => ({
+                    type: 'PLANNING_APPROVED',
+                    message: `Tu trabajo (${work.type}) en ${work.project.name} ha sido aprobado.`,
+                    targetUserId: u.id,
+                    createdById: req.userId,
+                    relatedEntityId: id
+                }));
+                await prisma.notification.createMany({ data: notifications });
+            }
+        }
+
+        res.json(updated);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to approve planned work' });
+    }
+};
+
+exports.rejectPlannedWork = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { incorrectPhotos, reviewComments } = req.body;
+
+        const work = await prisma.plannedWork.findUnique({
+            where: { id },
+            include: { project: true }
+        });
+
+        if (!work) return res.status(404).json({ error: 'Not found' });
+
+        const updated = await prisma.plannedWork.update({
+            where: { id },
+            data: {
+                status: 'RETURNED',
+                incorrectPhotos,
+                reviewComments
+            }
+        });
+
+        if (work.assignedToId) {
+            const subUsers = await prisma.user.findMany({ where: { subcontractorId: work.assignedToId } });
+            if (subUsers.length > 0) {
+                const notifications = subUsers.map(u => ({
+                    type: 'PLANNING_REJECTED',
+                    message: `Tu trabajo (${work.type}) en ${work.project.name} requiere correcciones.`,
+                    targetUserId: u.id,
+                    createdById: req.userId,
+                    relatedEntityId: id
+                }));
+                await prisma.notification.createMany({ data: notifications });
+            }
+        }
+
+        res.json(updated);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Failed to reject planned work' });
     }
 };
 

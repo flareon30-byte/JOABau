@@ -13,4 +13,9 @@ router.put('/:id', verifyToken, planningController.updatePlannedWork);
 router.delete('/:id', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER']), planningController.deletePlannedWork);
 router.get('/my-tasks', verifyToken, planningController.getMyPlannedWorks);
 
+// Review Cycle Routes
+router.post('/:id/submit', verifyToken, planningController.submitPlannedWork);
+router.post('/:id/approve', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER']), planningController.approvePlannedWork);
+router.post('/:id/reject', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER']), planningController.rejectPlannedWork);
+
 module.exports = router;

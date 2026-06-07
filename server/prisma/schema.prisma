@@ -401,6 +401,7 @@ model Notification {
   createdById  String?
   targetRole   Role?
   targetUserId String?
+  relatedEntityId String?
 
   createdAt DateTime @default(now())
 }
@@ -856,6 +857,8 @@ enum PlannedWorkType {
 enum PlannedWorkStatus {
   PENDING
   ASSIGNED
+  PENDING_REVISION
+  RETURNED
   COMPLETED
   OVERDUE
 }
@@ -871,6 +874,13 @@ model PlannedWork {
   assignedToId String? // Subcontractor ID
   assignedTo   Subcontractor?    @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
   notes        String?
+  
+  // Review Cycle Fields
+  photos          String[]
+  incorrectPhotos String[]
+  reviewComments  String?
+  distance        Float?
+
   createdById  String?
   createdBy    User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
 

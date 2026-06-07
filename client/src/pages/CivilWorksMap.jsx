@@ -28,6 +28,7 @@ const handleCompletePlannedWork = async (id) => {
 };
 window.handleCompletePlannedWork = handleCompletePlannedWork;
 import PlanWorkModal from '../components/PlanWorkModal';
+import ReviewWorkModal from '../components/ReviewWorkModal';
 
 const CACHE_KEY = 'joa-map-geo-cache-v6';
 const GOOGLE_KEY = import.meta.env.VITE_GOOGLE_MAPS_KEY;
@@ -337,7 +338,12 @@ const CivilWorksMap = () => {
     const [companyCountry, setCompanyCountry] = useState('ES');
     const [progress, setProgress] = useState(0);
     const [progressLabel, setProgressLabel] = useState('');
-    const [showPhotos, setShowPhotos] = useState(true);
+    const [showPhotos, setShowPhotos] = useState(false);
+    
+    // Modals
+    const [selectedReviewWork, setSelectedReviewWork] = useState(null);
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+    
     const [activePhotoModal, setActivePhotoModal] = useState(null);
     const cancelledRef = useRef(false);
 
@@ -441,7 +447,20 @@ const CivilWorksMap = () => {
 
         initLeafletLibs();
 
-        return () => {};
+        window.handleReviewPlannedWork = (workId) => {
+            setPlannedWorks(currentWorks => {
+                const work = currentWorks.find(w => w.id === workId);
+                if (work) {
+                    setSelectedReviewWork(work);
+                    setIsReviewModalOpen(true);
+                }
+                return currentWorks;
+            });
+        };
+
+        return () => {
+            delete window.handleReviewPlannedWork;
+        };
         }, []);
 
     // Fetch company settings for dynamic geolocalizer country code
@@ -1045,8 +1064,9 @@ const CivilWorksMap = () => {
             // Add Planned Works markers
             plannedWorks.forEach(work => {
                 if (!work.coordinates) return;
-                
                 const isResolved = work.status === 'COMPLETED';
+                const isPendingRevision = work.status === 'PENDING_REVISION';
+                const isReturned = work.status === 'RETURNED';
                 const isBrecha = work.type === 'BRECHA';
                 let color = '#3b82f6';
                 if (isResolved) {
@@ -1054,11 +1074,32 @@ const CivilWorksMap = () => {
                     else if (work.type === 'DUCTO_10x6') color = '#ec4899';
                     else if (work.type === 'DUCTO_AMBOS') color = '#a855f7';
                     else color = '#10b981';
+                } else if (isPendingRevision) {
+                    color = '#eab308'; // Yellow for review
+                } else if (isReturned) {
+                    color = '#ef4444'; // Red for returned
                 } else if (isBrecha) {
                     color = '#ef4444';
                 }
                 
                 const canComplete = ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER'].includes(user?.role);
+                const isSubcontractor = user?.role === 'SUBCONTRACTOR' || user?.subcontractorId;
+                
+                let actionButton = '';
+                if (work.status === 'PENDING_REVISION' && canComplete) {
+                    actionButton = `
+                        <button onclick="window.handleReviewPlannedWork('${work.id}')" style="margin-top:8px; width:100%; padding:6px; background-color:#eab308; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+                            Revisar Trabajo
+                        </button>
+                    `;
+                } else if ((work.status === 'PENDING' || work.status === 'RETURNED' || work.status === 'ASSIGNED') && (isSubcontractor || canComplete)) {
+                    actionButton = `
+                        <button onclick="window.handleReviewPlannedWork('${work.id}')" style="margin-top:8px; width:100%; padding:6px; background-color:#3b82f6; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+                            Subir Fotos / Justificar
+                        </button>
+                    `;
+                }
+
                 const popupHtml = `
                     <div style="font-family:sans-serif; padding:4px; min-width: 200px;">
                         <h4 style="margin:0 0 8px 0;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">
@@ -1071,19 +1112,18 @@ const CivilWorksMap = () => {
                             <strong>Dibujado por:</strong> ${work.createdBy?.username || 'Desconocido'}
                         </div>
                         ${work.notes ? `<p style="margin:0;font-size:12px;background:#f8fafc;padding:6px;border-radius:4px;color:#334155;">${work.notes}</p>` : ''}
-                        ${!isResolved && canComplete ? `
-                            <button onclick="window.handleCompletePlannedWork('${work.id}')" style="margin-top:8px; width:100%; padding:6px; background-color:#10b981; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
-                                ✔️ Marcar Completado
-                            </button>
-                        ` : ''}
+                        ${actionButton}
                     </div>
                 `;
+
+                const dashArrayStyle = isResolved ? null : (isPendingRevision ? '15, 10, 5, 10' : '5, 5');
+                const animationClass = isPendingRevision ? 'leaflet-interactive-pulse' : ''; 
 
                 if (Array.isArray(work.coordinates)) {
                     const pts = work.coordinates;
                     if (pts.length > 2 && pts[0].lat === pts[pts.length-1].lat && pts[0].lng === pts[pts.length-1].lng) {
                         const polygon = L.polygon(pts, {
-                            color: color, fillColor: color, fillOpacity: 0.3, weight: 2, dashArray: isResolved ? null : '5, 5'
+                            color: color, fillColor: color, fillOpacity: 0.3, weight: 2, dashArray: dashArrayStyle, className: animationClass
                         });
                         polygon.options.customId = work.id;
                         polygon.options.customType = 'plannedWork';
@@ -1112,7 +1152,7 @@ const CivilWorksMap = () => {
                             markersGroupRef.current.addLayer(polylinePink);
                         } else {
                             const polyline = L.polyline(pts, {
-                                color: color, weight: 4, dashArray: isResolved ? null : '10, 10'
+                                color: color, weight: 4, dashArray: dashArrayStyle, className: animationClass
                             });
                             polyline.options.customId = work.id;
                             polyline.options.customType = 'plannedWork';
@@ -1134,10 +1174,10 @@ const CivilWorksMap = () => {
                         iconAnchor = [16, 10];
                     } else {
                         html = `<div style="
-                            background-color: ${color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 10px ${color}80; border: 2px solid white; animation: ${!isResolved && isBrecha ? 'pulse 2s infinite' : 'none'};
+                            background-color: ${color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 10px ${color}80; border: 2px solid white; animation: ${(!isResolved && isBrecha) || isPendingRevision ? 'pulse 2s infinite' : 'none'};
                         ">${isBrecha ? '!' : 'P'}</div>`;
                     }
-                    const icon = L.divIcon({ html, className: '', iconSize, iconAnchor });
+                    const icon = L.divIcon({ html, className: animationClass, iconSize, iconAnchor });
                     const marker = L.marker([work.coordinates.lat, work.coordinates.lng], { icon });
                     marker.options.customId = work.id;
                     marker.options.customType = 'plannedWork';
@@ -1652,16 +1692,22 @@ const CivilWorksMap = () => {
                 </div>
             )}
             
-            {isPlanModalOpen && planModalCoords && (
-                <PlanWorkModal 
-                    isOpen={isPlanModalOpen}
-                    onClose={() => setIsPlanModalOpen(false)}
-                    coordinates={planModalCoords}
-                    projects={projects}
-                    subcontractors={subcontractors}
-                    onSaved={fetchAllData}
-                />
-            )}
+            <PlanWorkModal
+                isOpen={isPlanModalOpen}
+                onClose={() => setIsPlanModalOpen(false)}
+                coordinates={planModalCoords}
+                projects={projects}
+                subcontractors={subcontractors}
+                onSaved={fetchAllData}
+            />
+
+            <ReviewWorkModal
+                isOpen={isReviewModalOpen}
+                onClose={() => setIsReviewModalOpen(false)}
+                work={selectedReviewWork}
+                user={user}
+                onSaved={fetchAllData}
+            />
         </div>
     );
 };
