@@ -125,7 +125,9 @@ export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, 
                             required
                         >
                             <option value="ACOMETIDA">Acometida</option>
-                            <option value="DUCTO">Ducto de Calle</option>
+                            <option value="DUCTO_7x22">Ducto 7x22</option>
+                            <option value="DUCTO_10x6">Ducto 10x6</option>
+                            <option value="DUCTO_AMBOS">Ducto 7x22 + 10x6</option>
                             <option value="BRECHA">Brecha (Problema en Obra)</option>
                             <option value="NVT">Instalación NVT</option>
                         </select>

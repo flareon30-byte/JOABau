@@ -1011,7 +1011,15 @@ const CivilWorksMap = () => {
                 
                 const isResolved = work.status === 'COMPLETED';
                 const isBrecha = work.type === 'BRECHA';
-                let color = isResolved ? '#10b981' : (isBrecha ? '#ef4444' : '#3b82f6');
+                let color = '#3b82f6';
+                if (isResolved) {
+                    if (work.type === 'DUCTO_7x22') color = '#f97316';
+                    else if (work.type === 'DUCTO_10x6') color = '#ec4899';
+                    else if (work.type === 'DUCTO_AMBOS') color = '#a855f7';
+                    else color = '#10b981';
+                } else if (isBrecha) {
+                    color = '#ef4444';
+                }
                 
                 const popupHtml = `
                     <div style="font-family:sans-serif; padding:4px; min-width: 200px;">
