@@ -688,7 +688,6 @@ const CivilWorksMap = () => {
                 markersGroupRef.current = L.featureGroup().addTo(mapInstanceRef.current);
                 workersGroupRef.current = L.layerGroup().addTo(mapInstanceRef.current);
                 
-                if (!photoMarkersGroupRef.current) {
                 photoMarkersGroupRef.current = L.markerClusterGroup({
                     maxClusterRadius: 40,
                     spiderfyOnMaxZoom: true,
@@ -706,7 +705,6 @@ const CivilWorksMap = () => {
                     a.layer.spiderfy();
                 });
                 mapInstanceRef.current.addLayer(photoMarkersGroupRef.current);
-            }
             } else {
                 markersGroupRef.current.clearLayers();
                 workersGroupRef.current.clearLayers();
