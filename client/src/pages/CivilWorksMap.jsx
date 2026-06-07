@@ -1045,11 +1045,28 @@ const CivilWorksMap = () => {
                         markersGroupRef.current.addLayer(polygon);
                         validCoords.push([pts[0].lat, pts[0].lng]);
                     } else {
-                        const polyline = L.polyline(pts, {
-                            color: color, weight: 4, dashArray: isResolved ? null : '10, 10'
-                        });
-                        polyline.bindPopup(popupHtml);
-                        markersGroupRef.current.addLayer(polyline);
+                        if (work.type === 'DUCTO_AMBOS' && isResolved) {
+                            const ptsOrange = offsetPolyline(pts, -2.5);
+                            const ptsPink = offsetPolyline(pts, 2.5);
+                            
+                            const polylineOrange = L.polyline(ptsOrange.map(p => [p.lat, p.lng]), {
+                                color: '#f97316', weight: 4
+                            });
+                            polylineOrange.bindPopup(popupHtml);
+                            markersGroupRef.current.addLayer(polylineOrange);
+                            
+                            const polylinePink = L.polyline(ptsPink.map(p => [p.lat, p.lng]), {
+                                color: '#ec4899', weight: 4
+                            });
+                            polylinePink.bindPopup(popupHtml);
+                            markersGroupRef.current.addLayer(polylinePink);
+                        } else {
+                            const polyline = L.polyline(pts, {
+                                color: color, weight: 4, dashArray: isResolved ? null : '10, 10'
+                            });
+                            polyline.bindPopup(popupHtml);
+                            markersGroupRef.current.addLayer(polyline);
+                        }
                         validCoords.push([pts[0].lat, pts[0].lng]);
                     }
                 } else if (work.coordinates.lat && work.coordinates.lng) {
