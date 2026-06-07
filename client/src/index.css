@@ -51,7 +51,7 @@ body {
 .drawing-map-container .leaflet-pane,
 .drawing-map-container .leaflet-grab,
 .drawing-map-container .leaflet-interactive {
-  cursor: url("/cursor.svg") 12 12, crosshair !important;
+  cursor: url("/cursor.svg") 16 16, crosshair !important;
 }
 
 /* Ensure hovered marker icons stay on top of others */

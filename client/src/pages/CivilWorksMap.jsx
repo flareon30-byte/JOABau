@@ -1067,7 +1067,8 @@ const CivilWorksMap = () => {
                         <div style="font-size:12px;color:#475569;margin-bottom:8px;">
                             <strong>Proyecto:</strong> ${projects.find(p=>p.id===work.projectId)?.name || 'N/A'}<br/>
                             <strong>Límite:</strong> ${work.deadline ? new Date(work.deadline).toLocaleDateString() : 'Sin fecha'}<br/>
-                            <strong>Estado:</strong> ${work.status}
+                            <strong>Estado:</strong> ${work.status}<br/>
+                            <strong>Dibujado por:</strong> ${work.createdBy?.username || 'Desconocido'}
                         </div>
                         ${work.notes ? `<p style="margin:0;font-size:12px;background:#f8fafc;padding:6px;border-radius:4px;color:#334155;">${work.notes}</p>` : ''}
                         ${!isResolved && canComplete ? `
