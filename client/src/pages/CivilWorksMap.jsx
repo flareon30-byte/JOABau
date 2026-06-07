@@ -1355,7 +1355,7 @@ const CivilWorksMap = () => {
             
             alert('Estados de las acometidas actualizados correctamente.');
             setSelectedAddressIds([]);
-            fetchAllData();
+            if (filterProject) fetchMapData(filterProject);
         } catch (error) {
             console.error('Error bulk updating status:', error);
             alert('Ocurrió un error al actualizar los estados.');
@@ -1469,7 +1469,7 @@ const CivilWorksMap = () => {
 
                     {/* Refresh btn */}
                     <button
-                        onClick={fetchAllData}
+                        onClick={() => { fetchInitialData(); if (filterProject) fetchMapData(filterProject); }}
                         className="p-2.5 text-slate-500 hover:text-orange-600 hover:bg-slate-50 rounded-xl border border-slate-200 bg-white transition-colors"
                         title="Recargar datos"
                     >
@@ -1745,7 +1745,7 @@ const CivilWorksMap = () => {
                                                                 onClick={async () => {
                                                                     setBulkUpdating(true);
                                                                     await api.post(`/api/civil-works/${addr.id}`, { status: 'PLANIFICADO' });
-                                                                    fetchAllData();
+                                                                    if (filterProject) fetchMapData(filterProject);
                                                                     setBulkUpdating(false);
                                                                 }}
                                                                 className="text-amber-600 hover:bg-amber-50 px-2 py-1 rounded-lg border border-amber-100 transition-colors"
@@ -1756,7 +1756,7 @@ const CivilWorksMap = () => {
                                                                 onClick={async () => {
                                                                     setBulkUpdating(true);
                                                                     await api.post(`/api/civil-works/${addr.id}`, { status: 'HECHO' });
-                                                                    fetchAllData();
+                                                                    if (filterProject) fetchMapData(filterProject);
                                                                     setBulkUpdating(false);
                                                                 }}
                                                                 className="text-emerald-600 hover:bg-emerald-50 px-2 py-1 rounded-lg border border-emerald-100 transition-colors"
