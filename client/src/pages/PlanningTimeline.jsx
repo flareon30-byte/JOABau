@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
-import { Loader2, Calendar, MapPin, AlertCircle, Plus, Filter, CheckCircle, Trash2, Pencil, User } from 'lucide-react';
+import { Loader2, Calendar, MapPin, AlertCircle, Plus, Filter, CheckCircle, Trash2, Pencil, User, UploadCloud, Eye } from 'lucide-react';
 import PlanWorkModal from '../components/PlanWorkModal';
+import ReviewWorkModal from '../components/ReviewWorkModal';
 import ReverseGeocodeLabel from '../components/ReverseGeocodeLabel';
 import { useNavigate } from 'react-router-dom';
 
@@ -13,6 +14,8 @@ export default function PlanningTimeline() {
   const [subcontractors, setSubcontractors] = useState([]);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [editWork, setEditWork] = useState(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [reviewWork, setReviewWork] = useState(null);
   const user = JSON.parse(localStorage.getItem('user') || '{}');
 
   const handleDelete = async (id) => {
@@ -252,6 +255,30 @@ export default function PlanningTimeline() {
                               <CheckCircle className="w-4 h-4" />
                             </button>
                           )}
+                          {(user.role === 'SUBCONTRACTOR' && ['PENDING', 'RETURNED', 'ASSIGNED'].includes(work.status)) && (
+                            <button 
+                              onClick={() => {
+                                setReviewWork(work);
+                                setIsReviewModalOpen(true);
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Subir Fotos / Justificar"
+                            >
+                              <UploadCloud className="w-4 h-4" />
+                            </button>
+                          )}
+                          {(['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER'].includes(user.role) && work.status === 'PENDING_REVISION') && (
+                            <button 
+                              onClick={() => {
+                                setReviewWork(work);
+                                setIsReviewModalOpen(true);
+                              }}
+                              className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              title="Revisar Trabajo"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                          )}
                           {['SUPER_ADMIN', 'PROJECT_MANAGER'].includes(user.role) && (
                             <button 
                               onClick={() => {
@@ -298,6 +325,23 @@ export default function PlanningTimeline() {
               onSaved={() => {
                   setIsPlanModalOpen(false);
                   setEditWork(null);
+                  fetchWorks(selectedProject);
+              }}
+          />
+      )}
+
+      {isReviewModalOpen && reviewWork && (
+          <ReviewWorkModal 
+              isOpen={isReviewModalOpen}
+              onClose={() => {
+                  setIsReviewModalOpen(false);
+                  setReviewWork(null);
+              }}
+              work={reviewWork}
+              user={user}
+              onSaved={() => {
+                  setIsReviewModalOpen(false);
+                  setReviewWork(null);
                   fetchWorks(selectedProject);
               }}
           />
