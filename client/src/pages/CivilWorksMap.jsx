@@ -668,7 +668,28 @@ const CivilWorksMap = () => {
                         drawText: false,
                         editControls: false,
                         cutPolygon: false,
-                        removalMode: false,
+                        removalMode: user.role === 'SUPER_ADMIN',
+                    });
+
+                    mapInstanceRef.current.on('pm:remove', async (e) => {
+                        const { customType, customId } = e.layer.options || {};
+                        if (!customType || !customId) return;
+
+                        if (window.confirm('¿Estás seguro de que quieres borrar este elemento permanentemente?')) {
+                            try {
+                                if (customType === 'plannedWork') {
+                                    await api.delete(`/api/planning/${customId}`);
+                                } else if (customType === 'ductLog') {
+                                    await api.delete(`/api/civil-works/duct-log/${customId}`);
+                                }
+                                window.location.reload();
+                            } catch (err) {
+                                alert('Error al borrar el elemento.');
+                                e.layer.addTo(markersGroupRef.current);
+                            }
+                        } else {
+                            e.layer.addTo(markersGroupRef.current);
+                        }
                     });
                     
                     mapInstanceRef.current.on('pm:create', (e) => {
@@ -725,13 +746,13 @@ const CivilWorksMap = () => {
             // Setup map click listener for planning mode
             mapInstanceRef.current.off('click');
             if (isPlanningMode && ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'].includes(user.role)) {
-                mapInstanceRef.current.getContainer().style.cursor = 'crosshair';
+                mapInstanceRef.current.getContainer().classList.add('drawing-map-container');
                 mapInstanceRef.current.on('click', (e) => {
                     setPlanModalCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
                     setIsPlanModalOpen(true);
                 });
             } else {
-                mapInstanceRef.current.getContainer().style.cursor = '';
+                mapInstanceRef.current.getContainer().classList.remove('drawing-map-container');
             }
 
             const BATCH = 10;
@@ -878,6 +899,8 @@ const CivilWorksMap = () => {
                         opacity: 0.9,
                         dashArray: '8, 10'
                     });
+                    polylineOrange.options.customId = route.id;
+                    polylineOrange.options.customType = 'ductLog';
                     
                     // Draw 10x6 (pink) shifted slightly right (+2.5 meters relative to routeOffset)
                     const coordsPink = offsetPolyline(route.coordinates, routeOffset + 2.5);
@@ -888,6 +911,8 @@ const CivilWorksMap = () => {
                         opacity: 0.9,
                         dashArray: '8, 10'
                     });
+                    polylinePink.options.customId = route.id;
+                    polylinePink.options.customType = 'ductLog';
                     
                     const popupContent = `
                         <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
@@ -914,6 +939,8 @@ const CivilWorksMap = () => {
                         opacity: 0.9,
                         dashArray: '8, 10'
                     });
+                    polyline.options.customId = route.id;
+                    polyline.options.customType = 'ductLog';
 
                     polyline.bindPopup(`
                         <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
@@ -1057,6 +1084,8 @@ const CivilWorksMap = () => {
                         const polygon = L.polygon(pts, {
                             color: color, fillColor: color, fillOpacity: 0.3, weight: 2, dashArray: isResolved ? null : '5, 5'
                         });
+                        polygon.options.customId = work.id;
+                        polygon.options.customType = 'plannedWork';
                         polygon.bindPopup(popupHtml);
                         markersGroupRef.current.addLayer(polygon);
                         validCoords.push([pts[0].lat, pts[0].lng]);
@@ -1068,18 +1097,24 @@ const CivilWorksMap = () => {
                             const polylineOrange = L.polyline(ptsOrange.map(p => [p.lat, p.lng]), {
                                 color: '#f97316', weight: 4
                             });
+                            polylineOrange.options.customId = work.id;
+                            polylineOrange.options.customType = 'plannedWork';
                             polylineOrange.bindPopup(popupHtml);
                             markersGroupRef.current.addLayer(polylineOrange);
                             
                             const polylinePink = L.polyline(ptsPink.map(p => [p.lat, p.lng]), {
                                 color: '#ec4899', weight: 4
                             });
+                            polylinePink.options.customId = work.id;
+                            polylinePink.options.customType = 'plannedWork';
                             polylinePink.bindPopup(popupHtml);
                             markersGroupRef.current.addLayer(polylinePink);
                         } else {
                             const polyline = L.polyline(pts, {
                                 color: color, weight: 4, dashArray: isResolved ? null : '10, 10'
                             });
+                            polyline.options.customId = work.id;
+                            polyline.options.customType = 'plannedWork';
                             polyline.bindPopup(popupHtml);
                             markersGroupRef.current.addLayer(polyline);
                         }
@@ -1091,6 +1126,8 @@ const CivilWorksMap = () => {
                     ">P</div>`;
                     const icon = L.divIcon({ html, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
                     const marker = L.marker([work.coordinates.lat, work.coordinates.lng], { icon });
+                    marker.options.customId = work.id;
+                    marker.options.customType = 'plannedWork';
                     marker.bindPopup(popupHtml);
                     markersGroupRef.current.addLayer(marker);
                     validCoords.push([work.coordinates.lat, work.coordinates.lng]);
