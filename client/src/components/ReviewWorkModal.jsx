@@ -23,16 +23,18 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
         setLoading(true);
         setError('');
         try {
-            const uploadedUrls = [];
-            for (const file of files) {
-                const formData = new FormData();
-                formData.append('photo', file);
-                const res = await api.post('/upload', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-                uploadedUrls.push(res.data.url);
+            const formData = new FormData();
+            files.forEach(file => {
+                formData.append('photos', file);
+            });
+            
+            const res = await api.post('/api/uploads', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            
+            if (res.data && res.data.urls) {
+                setPhotos(prev => [...prev, ...res.data.urls]);
             }
-            setPhotos(prev => [...prev, ...uploadedUrls]);
         } catch (err) {
             setError('Error al subir fotos. Asegúrate de estar conectado.');
         } finally {
@@ -54,7 +56,7 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
             // Get AI Distance first
             let distance = null;
             try {
-                const aiRes = await api.post('/ai/process-duct-route', { photos, comments });
+                const aiRes = await api.post('/api/ai/process-duct-route', { photos, comments });
                 if (aiRes.data && aiRes.data.distance) {
                     distance = aiRes.data.distance;
                 }
@@ -62,7 +64,7 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
                 console.warn('AI processing failed, submitting without distance', aiErr);
             }
 
-            await api.post(`/planning/${work.id}/submit`, { photos, distance, comments });
+            await api.post(`/api/planning/${work.id}/submit`, { photos, distance, comments });
             onSaved();
             onClose();
         } catch (err) {
@@ -75,7 +77,7 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
     const handleApprove = async () => {
         setLoading(true);
         try {
-            await api.post(`/planning/${work.id}/approve`);
+            await api.post(`/api/planning/${work.id}/approve`);
             onSaved();
             onClose();
         } catch (err) {
@@ -92,7 +94,7 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
         }
         setLoading(true);
         try {
-            await api.post(`/planning/${work.id}/reject`, { incorrectPhotos, reviewComments });
+            await api.post(`/api/planning/${work.id}/reject`, { incorrectPhotos, reviewComments });
             onSaved();
             onClose();
         } catch (err) {
