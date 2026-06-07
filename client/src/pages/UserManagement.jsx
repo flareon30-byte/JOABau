@@ -8,21 +8,24 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState(null); // For editing
-    const [formData, setFormData] = useState({ username: '', password: '', role: 'OPERATOR', permissions: [], teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
+    const [formData, setFormData] = useState({ username: '', password: '', role: 'OPERATOR', permissions: [], teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [], subcontractorId: '' });
 
     const [vehicles, setVehicles] = useState([]);
     const [projects, setProjects] = useState([]);
+    const [subcontractors, setSubcontractors] = useState([]);
 
     const fetchData = async () => {
         try {
-            const [usersRes, vehiclesRes, projectsRes] = await Promise.all([
+            const [usersRes, vehiclesRes, projectsRes, subRes] = await Promise.all([
                 api.get('/api/users'),
                 api.get('/api/vehicles'),
-                api.get('/api/projects')
+                api.get('/api/projects'),
+                api.get('/api/subcontractors')
             ]);
             setUsers(usersRes.data);
             setVehicles(vehiclesRes.data);
             setProjects(projectsRes.data);
+            setSubcontractors(subRes.data);
         } catch (error) {
             console.error('Error fetching data:', error);
         }
@@ -66,11 +69,12 @@ const UserManagement = () => {
                 phone: user.phone || '',
                 baseSalary: user.baseSalary || 1500,
                 vacationDaysTotal: user.vacationDaysTotal || 30,
-                vehicleId: user.vehicleId || ''
+                vehicleId: user.vehicleId || '',
+                subcontractorId: user.subcontractorId || ''
             });
         } else {
             setCurrentUser(null);
-            setFormData({ username: '', password: '', role: 'OPERATOR', permissions: ['__CUSTOM__'], teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
+            setFormData({ username: '', password: '', role: 'OPERATOR', permissions: ['__CUSTOM__'], teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [], subcontractorId: '' });
         }
         setIsModalOpen(true);
     };
@@ -239,6 +243,23 @@ const UserManagement = () => {
                                 </select>
                             </div>
                             
+                            {formData.role === 'SUBCONTRACTOR' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Subcontrata Asignada</label>
+                                    <select
+                                        value={formData.subcontractorId || ''}
+                                        onChange={(e) => setFormData({ ...formData, subcontractorId: e.target.value })}
+                                        className="w-full border border-slate-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                                        required
+                                    >
+                                        <option value="">-- Seleccionar Subcontrata --</option>
+                                        {subcontractors.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
+
                             {['PROJECT_MANAGER', 'SITE_MANAGER', 'SUPERVISOR'].includes(formData.role) && (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Proyectos Asignados</label>
