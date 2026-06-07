@@ -3,6 +3,8 @@ const router = express.Router();
 const planningController = require('../controllers/planningController');
 const { verifyToken, checkRole } = require('../middleware/authMiddleware');
 
+router.get('/debug', planningController.debugSub);
+
 // Get executive dashboard data
 router.get('/dashboard', verifyToken, checkRole(['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER']), planningController.getExecutiveDashboardData);
 

@@ -1,5 +1,26 @@
 const prisma = require('../prisma');
 
+exports.debugSub = async (req, res) => {
+    try {
+        const user = await prisma.user.findFirst({ where: { username: 'Antonio' }, include: { subcontractor: true } });
+        const subId = user ? user.subcontractorId : 'USER_NOT_FOUND';
+        
+        const proj = await prisma.project.findFirst({ where: { name: 'Gau-Bickelheim' }, include: { subcontractor: true } });
+        
+        const works = await prisma.plannedWork.findMany({ 
+            include: { assignedTo: true, project: true }
+        });
+
+        res.json({
+            user: { username: user?.username, role: user?.role, subId, subName: user?.subcontractor?.name },
+            project: { id: proj?.id, name: proj?.name, subId: proj?.subcontractorId },
+            works: works.map(w => ({ id: w.id, type: w.type, projId: w.projectId, projName: w.project?.name, assignedToId: w.assignedToId, assignedToName: w.assignedTo?.name }))
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
 exports.getPlannedWorks = async (req, res) => {
     try {
         const { projectId } = req.params;
