@@ -1122,10 +1122,22 @@ const CivilWorksMap = () => {
                         validCoords.push([pts[0].lat, pts[0].lng]);
                     }
                 } else if (work.coordinates.lat && work.coordinates.lng) {
-                    const html = `<div style="
-                        background-color: ${color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 10px ${color}80; border: 2px solid white; animation: ${!isResolved && isBrecha ? 'pulse 2s infinite' : 'none'};
-                    ">P</div>`;
-                    const icon = L.divIcon({ html, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
+                    let html = '';
+                    let iconSize = [24, 24];
+                    let iconAnchor = [12, 12];
+                    
+                    if (work.type === 'NVT') {
+                        html = `<div style="
+                            background-color: #2563eb; color: white; border-radius: 4px; width: 32px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; box-shadow: 0 2px 5px rgba(37,99,235,0.5); border: 1px solid white;
+                        ">NVT</div>`;
+                        iconSize = [32, 20];
+                        iconAnchor = [16, 10];
+                    } else {
+                        html = `<div style="
+                            background-color: ${color}; color: white; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-weight: bold; box-shadow: 0 0 10px ${color}80; border: 2px solid white; animation: ${!isResolved && isBrecha ? 'pulse 2s infinite' : 'none'};
+                        ">${isBrecha ? '!' : 'P'}</div>`;
+                    }
+                    const icon = L.divIcon({ html, className: '', iconSize, iconAnchor });
                     const marker = L.marker([work.coordinates.lat, work.coordinates.lng], { icon });
                     marker.options.customId = work.id;
                     marker.options.customType = 'plannedWork';
@@ -1138,19 +1150,9 @@ const CivilWorksMap = () => {
             nvtLogs.forEach(log => {
                 if (log.gpsLat && log.gpsLng) {
                     const html = `<div style="
-                        background-color: #8b5cf6;
-                        color: white;
-                        border-radius: 8px;
-                        width: 24px;
-                        height: 24px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: center;
-                        font-weight: bold;
-                        box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
-                        border: 2px solid white;
-                    ">N</div>`;
-                    const icon = L.divIcon({ html, className: '', iconSize: [24, 24], iconAnchor: [12, 12] });
+                        background-color: #2563eb; color: white; border-radius: 4px; width: 32px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; box-shadow: 0 2px 5px rgba(37,99,235,0.5); border: 1px solid white;
+                    ">NVT</div>`;
+                    const icon = L.divIcon({ html, className: '', iconSize: [32, 20], iconAnchor: [16, 10] });
                     const marker = L.marker([log.gpsLat, log.gpsLng], { icon });
                     marker.bindPopup(`
                         <div style="font-family:sans-serif; padding:4px;">
