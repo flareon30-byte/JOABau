@@ -1297,6 +1297,24 @@ const CivilWorksMap = () => {
                             </div>
                         )}
                         
+                        {/* Mode Toggle Button */}
+                        {['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER'].includes(user.role) && (
+                            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[10000] bg-white/95 backdrop-blur border border-slate-200 p-1.5 rounded-full shadow-xl flex items-center gap-1 font-bold">
+                                <button
+                                    onClick={() => { setIsPlanningMode(false); setShowPhotos(true); }}
+                                    className={`px-4 py-2 rounded-full text-xs transition-all ${!isPlanningMode ? 'bg-orange-500 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                >
+                                    👀 Visión de Proyecto
+                                </button>
+                                <button
+                                    onClick={() => { setIsPlanningMode(true); setShowPhotos(false); }}
+                                    className={`px-4 py-2 rounded-full text-xs transition-all ${isPlanningMode ? 'bg-purple-600 text-white shadow-md' : 'text-slate-500 hover:bg-slate-100'}`}
+                                >
+                                    ✏️ Planificación
+                                </button>
+                            </div>
+                        )}
+
                         {/* Full Screen Toggle Button */}
                         <button
                             onClick={() => setIsFullScreen(!isFullScreen)}
