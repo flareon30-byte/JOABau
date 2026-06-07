@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import api from '../api/axios';
 import { Loader2, Calendar, MapPin, AlertCircle, Plus, Filter, CheckCircle, Trash2, Pencil, User } from 'lucide-react';
 import PlanWorkModal from '../components/PlanWorkModal';
+import ReverseGeocodeLabel from '../components/ReverseGeocodeLabel';
 import { useNavigate } from 'react-router-dom';
 
 export default function PlanningTimeline() {
@@ -195,11 +196,14 @@ export default function PlanningTimeline() {
                           {work.notes || 'Sin descripción'}
                         </p>
                         {work.coordinates && (
-                          <span className="inline-flex items-center gap-1 mt-1 text-xs text-slate-500 mr-3">
-                            <MapPin className="w-3 h-3" /> Coordenadas guardadas
-                          </span>
+                          <div className="mt-1">
+                            <ReverseGeocodeLabel 
+                              lat={Array.isArray(work.coordinates) ? work.coordinates[0]?.lat : work.coordinates.lat} 
+                              lng={Array.isArray(work.coordinates) ? work.coordinates[0]?.lng : work.coordinates.lng} 
+                            />
+                          </div>
                         )}
-                        <span className="inline-flex items-center gap-1 mt-1 text-xs text-slate-500">
+                        <span className="inline-flex items-center gap-1 mt-1 text-xs text-slate-500 block">
                           <User className="w-3 h-3" /> Dibujado por: <span className="font-medium text-slate-700">{work.createdBy?.username || 'Desconocido'}</span>
                         </span>
                       </td>

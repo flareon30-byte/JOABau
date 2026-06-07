@@ -18,15 +18,23 @@ const handleReviewDuct = async (id, status) => {
 
 window.handleReviewDuct = handleReviewDuct;
 
-const handleCompletePlannedWork = async (id) => {
+window.handleCompletePlannedWork = async (workId) => {
     try {
-        await api.put(`/api/planning/${id}`, { status: 'COMPLETED' });
-        window.location.reload();
-    } catch (e) {
-        alert('Error al completar el hito planificado.');
+        await api.put(`/planning/${workId}`, { status: 'COMPLETED' });
+        fetchAllData();
+    } catch (err) {
+        console.error('Error completing work', err);
     }
 };
-window.handleCompletePlannedWork = handleCompletePlannedWork;
+window.handleDeletePlannedWork = async (workId) => {
+    if (!window.confirm('¿Seguro que deseas borrar este ítem del mapa?')) return;
+    try {
+        await api.delete(`/planning/${workId}`);
+        fetchAllData();
+    } catch (err) {
+        console.error('Error deleting work', err);
+    }
+};
 import PlanWorkModal from '../components/PlanWorkModal';
 import ReviewWorkModal from '../components/ReviewWorkModal';
 
@@ -459,6 +467,8 @@ const CivilWorksMap = () => {
         };
 
         return () => {
+            delete window.handleCompletePlannedWork;
+            delete window.handleDeletePlannedWork;
             delete window.handleReviewPlannedWork;
         };
         }, []);
@@ -1083,6 +1093,7 @@ const CivilWorksMap = () => {
                 }
                 
                 const canComplete = ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER'].includes(user?.role);
+                const canDelete = ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'].includes(user?.role);
                 const isSubcontractor = user?.role === 'SUBCONTRACTOR' || user?.subcontractorId;
                 
                 let actionButton = '';
@@ -1113,6 +1124,11 @@ const CivilWorksMap = () => {
                         </div>
                         ${work.notes ? `<p style="margin:0;font-size:12px;background:#f8fafc;padding:6px;border-radius:4px;color:#334155;">${work.notes}</p>` : ''}
                         ${actionButton}
+                        ${canDelete ? `
+                            <button onclick="window.handleDeletePlannedWork('${work.id}')" style="margin-top:4px; width:100%; padding:6px; background-color:#ef4444; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+                                🗑️ Borrar Planificación
+                            </button>
+                        ` : ''}
                     </div>
                 `;
 
@@ -1208,7 +1224,31 @@ const CivilWorksMap = () => {
             });
 
             if (isNewMap || filtersChanged) {
-                if (validCoords.length > 0) {
+                if (urlTaskId && isNewMap) {
+                    let foundLayer = null;
+                    markersGroupRef.current.eachLayer(l => {
+                        if (l.options && l.options.customId === urlTaskId) foundLayer = l;
+                    });
+                    if (foundLayer) {
+                        if (foundLayer.getBounds) {
+                            mapInstanceRef.current.fitBounds(foundLayer.getBounds(), { maxZoom: 18, animate: true, duration: 1 });
+                        } else if (foundLayer.getLatLng) {
+                            mapInstanceRef.current.setView(foundLayer.getLatLng(), 18, { animate: true, duration: 1 });
+                        }
+                        setTimeout(() => { 
+                            if (foundLayer.openPopup) foundLayer.openPopup(); 
+                            
+                            // Make it blink
+                            if (foundLayer._icon) {
+                                foundLayer._icon.classList.add('leaflet-interactive-pulse');
+                                setTimeout(() => foundLayer._icon.classList.remove('leaflet-interactive-pulse'), 3000);
+                            } else if (foundLayer._path) {
+                                foundLayer._path.classList.add('leaflet-interactive-pulse');
+                                setTimeout(() => foundLayer._path.classList.remove('leaflet-interactive-pulse'), 3000);
+                            }
+                        }, 800);
+                    }
+                } else if (validCoords.length > 0) {
                     mapInstanceRef.current.fitBounds(L.latLngBounds(validCoords), { padding: [40, 40] });
                 } else {
                     mapInstanceRef.current.setView([center.lat, center.lng], 14);
