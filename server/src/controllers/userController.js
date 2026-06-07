@@ -10,6 +10,7 @@ exports.getAllUsers = async (req, res) => {
                 id: true,
                 username: true,
                 role: true,
+                permissions: true,
                 teamId: true,
                 phone: true,
                 vacationDaysTotal: true,
