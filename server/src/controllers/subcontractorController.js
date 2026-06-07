@@ -2,7 +2,18 @@ const prisma = require('../prisma');
 
 exports.getAllSubcontractors = async (req, res) => {
     try {
+        let whereClause = {};
+        if (req.userRole === 'SUBCONTRACTOR') {
+            const user = await prisma.user.findUnique({ where: { id: req.userId } });
+            if (user && user.subcontractorId) {
+                whereClause.id = user.subcontractorId;
+            } else {
+                return res.json([]);
+            }
+        }
+
         const subcontractors = await prisma.subcontractor.findMany({
+            where: whereClause,
             include: {
                 _count: {
                     select: {
