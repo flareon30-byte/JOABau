@@ -75,7 +75,8 @@ exports.getMapData = async (req, res) => {
         // Fetch Planned Works
         const plannedWorks = await prisma.plannedWork.findMany({
             include: {
-                assignedTo: true
+                assignedTo: true,
+                createdBy: { select: { username: true } }
             }
         });
 
