@@ -34,8 +34,17 @@ async function extractGpsFromImage(relativeUrl) {
 
 exports.getMapData = async (req, res) => {
     try {
+        const { projectId } = req.query;
+
+        // If a projectId is provided, filter by it. Otherwise, return nothing to prevent heavy loads.
+        // Or if super_admin we could allow all, but for safety and performance, enforce projectId.
+        if (!projectId) {
+            return res.json({ addresses: [], activeWorkers: [], ductRoutes: [], nvtLogs: [], plannedWorks: [] });
+        }
+
         // Fetch all addresses with their civil work status and info
         const addresses = await prisma.address.findMany({
+            where: { projectId },
             include: {
                 civilWorkInfo: true,
                 civilDailyWorkLogs: true,
@@ -50,12 +59,14 @@ exports.getMapData = async (req, res) => {
             include: { user: { select: { username: true, role: true } } },
             where: {
                 timestamp: { gte: new Date(Date.now() - 12 * 60 * 60 * 1000) }
+                // We don't filter locationLog by projectId strictly, as workers might be globally visible to admins,
+                // but if we want to, we could. Let's keep it global for now.
             }
         });
 
         // Fetch all confirmed daily duct log routes for map drawing
         const ductRoutes = await prisma.civilDailyDuctLog.findMany({
-            where: { confirmed: true },
+            where: { confirmed: true, report: { subcontractor: { projects: { some: { id: projectId } } } } },
             include: {
                 report: {
                     include: { subcontractor: true }
@@ -65,6 +76,7 @@ exports.getMapData = async (req, res) => {
 
         // Fetch NVT logs
         const nvtLogs = await prisma.civilDailyNvtLog.findMany({
+            where: { report: { subcontractor: { projects: { some: { id: projectId } } } } },
             include: {
                 report: {
                     include: { subcontractor: true }
@@ -74,6 +86,7 @@ exports.getMapData = async (req, res) => {
 
         // Fetch Planned Works
         const plannedWorks = await prisma.plannedWork.findMany({
+            where: { projectId },
             include: {
                 assignedTo: true,
                 createdBy: { select: { username: true } }

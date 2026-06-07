@@ -20,8 +20,8 @@ window.handleReviewDuct = handleReviewDuct;
 
 window.handleCompletePlannedWork = async (workId) => {
     try {
-        await api.put(`/planning/${workId}`, { status: 'COMPLETED' });
-        fetchAllData();
+        await api.put(`/api/planning/${workId}`, { status: 'COMPLETED' });
+        window.location.reload(); // Fallback reload
     } catch (err) {
         console.error('Error completing work', err);
     }
@@ -29,8 +29,8 @@ window.handleCompletePlannedWork = async (workId) => {
 window.handleDeletePlannedWork = async (workId) => {
     if (!window.confirm('¿Seguro que deseas borrar este ítem del mapa?')) return;
     try {
-        await api.delete(`/planning/${workId}`);
-        fetchAllData();
+        await api.delete(`/api/planning/${workId}`); // FIXED path
+        window.location.reload(); // Fallback reload
     } catch (err) {
         console.error('Error deleting work', err);
     }
@@ -499,31 +499,83 @@ const CivilWorksMap = () => {
     }, [isFullScreen]);
 
     // Load filter options and map coordinates
-    const fetchAllData = async () => {
+    const fetchInitialData = async () => {
         try {
-            const [mapRes, subsRes, projectsRes] = await Promise.all([
-                api.get('/api/civil-works/map'),
+            const [subsRes, projectsRes] = await Promise.all([
                 api.get('/api/subcontractors').catch(() => ({ data: [] })),
                 api.get('/api/projects').catch(() => ({ data: [] }))
             ]);
-            
-            setAddresses(mapRes.data.addresses || []);
-            setActiveWorkers(mapRes.data.activeWorkers || []);
-            setDuctRoutes(mapRes.data.ductRoutes || []);
-            setPlannedWorks(mapRes.data.plannedWorks || []);
-            setNvtLogs(mapRes.data.nvtLogs || []);
             setSubcontractors(subsRes.data || []);
             setProjects(projectsRes.data || []);
+            
+            // Auto select if only one project
+            if (projectsRes.data && projectsRes.data.length === 1 && !filterProject) {
+                setFilterProject(projectsRes.data[0].id);
+            }
         } catch (e) {
-            console.error('Error loading civil works data:', e);
+            console.error('Error loading initial data:', e);
         } finally {
             setLoadingData(false);
         }
     };
 
+    const fetchMapData = async (projectId) => {
+        if (!projectId) return;
+        setLoadingMap(true);
+        try {
+            const mapRes = await api.get(`/api/civil-works/map?projectId=${projectId}`);
+            setAddresses(mapRes.data.addresses || []);
+            setActiveWorkers(mapRes.data.activeWorkers || []);
+            setDuctRoutes(mapRes.data.ductRoutes || []);
+            setPlannedWorks(mapRes.data.plannedWorks || []);
+            setNvtLogs(mapRes.data.nvtLogs || []);
+        } catch (e) {
+            console.error('Error loading civil works map data:', e);
+        } finally {
+            setLoadingMap(false);
+        }
+    };
+
     useEffect(() => {
-        fetchAllData();
+        fetchInitialData();
     }, []);
+
+    useEffect(() => {
+        if (filterProject) {
+            fetchMapData(filterProject);
+        } else {
+            setAddresses([]);
+            setActiveWorkers([]);
+            setDuctRoutes([]);
+            setPlannedWorks([]);
+            setNvtLogs([]);
+        }
+    }, [filterProject]);
+
+    // Update global handlers to refresh specific data
+    useEffect(() => {
+        window.handleCompletePlannedWork = async (workId) => {
+            try {
+                await api.put(`/api/planning/${workId}`, { status: 'COMPLETED' });
+                if (filterProject) fetchMapData(filterProject);
+            } catch (err) {
+                console.error('Error completing work', err);
+            }
+        };
+        window.handleDeletePlannedWork = async (workId) => {
+            if (!window.confirm('¿Seguro que deseas borrar este ítem del mapa?')) return;
+            try {
+                await api.delete(`/api/planning/${workId}`);
+                if (filterProject) fetchMapData(filterProject);
+            } catch (err) {
+                console.error('Error deleting work', err);
+            }
+        };
+        return () => {
+            delete window.handleCompletePlannedWork;
+            delete window.handleDeletePlannedWork;
+        };
+    }, [filterProject]);
 
     useEffect(() => {
         window.showMapPhotoModal = (url) => {
@@ -595,6 +647,7 @@ const CivilWorksMap = () => {
 
     // Map Render Loop
     useEffect(() => {
+        if (!filterProject) return; // Wait until a project is selected
         if (!leafletLoaded || !markerClusterLoaded || !geomanLoaded || !addresses.length || !mapRef.current || activeTab !== 'map') return;
 
         const L = window.L;
@@ -1494,6 +1547,19 @@ const CivilWorksMap = () => {
                         </button>
                         
                         {/* Map wrapper */}
+                        {!filterProject && activeTab === 'map' && (
+                            <div className="absolute inset-0 bg-slate-100 z-50 flex flex-col items-center justify-center m-4 rounded-xl border border-dashed border-slate-300">
+                                <div className="bg-white p-8 rounded-2xl shadow-xl text-center max-w-md">
+                                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <MapPin className="w-8 h-8 text-blue-600" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold text-slate-800 mb-2">Seleccione un Proyecto</h2>
+                                    <p className="text-slate-600 mb-6">
+                                        Para mejorar el rendimiento, seleccione el proyecto en el que desea trabajar desde la barra superior.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                         <div key={isFullScreen ? 'fs-map' : 'normal-map'} ref={mapRef} className={isFullScreen ? "w-full h-full flex-1 z-10" : "w-full h-[55vh] sm:h-full flex-1 z-10 min-h-[420px]"} />
 
                         {/* Legend */}
@@ -1738,7 +1804,9 @@ const CivilWorksMap = () => {
                 coordinates={planModalCoords}
                 projects={projects}
                 subcontractors={subcontractors}
-                onSaved={fetchAllData}
+                onSaved={() => {
+                    if (filterProject) fetchMapData(filterProject);
+                }}
             />
 
             <ReviewWorkModal
@@ -1746,7 +1814,9 @@ const CivilWorksMap = () => {
                 onClose={() => setIsReviewModalOpen(false)}
                 work={selectedReviewWork}
                 user={user}
-                onSaved={fetchAllData}
+                onSaved={() => {
+                    if (filterProject) fetchMapData(filterProject);
+                }}
             />
         </div>
     );

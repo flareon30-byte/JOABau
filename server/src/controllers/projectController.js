@@ -7,8 +7,25 @@ const prisma = new PrismaClient();
 exports.getAllProjects = async (req, res) => {
     try {
         const isDemo = req.isDemo || false;
+        
+        // Find user to check roles
+        let user = null;
+        if (req.userId) {
+            user = await prisma.user.findUnique({ where: { id: req.userId } });
+        }
+
+        let whereClause = { isDemo };
+
+        if (user) {
+            if (user.role === 'SUBCONTRACTOR' && user.subcontractorId) {
+                whereClause.subcontractorId = user.subcontractorId;
+            } else if (['PROJECT_MANAGER', 'SITE_MANAGER'].includes(user.role)) {
+                whereClause.users = { some: { id: user.id } };
+            }
+        }
+
         const projects = await prisma.project.findMany({
-            where: { isDemo },
+            where: whereClause,
             include: {
                 clientCompany: true, // Include client to show in cards
                 _count: {

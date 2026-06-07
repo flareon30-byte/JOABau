@@ -8,7 +8,7 @@ const upload = multer({ dest: 'uploads/' });
 
 router.use(verifyToken);
 
-// List projects (Available to all authenticated users? Or just admins? Let's say all for now so workers can select)
+// List projects (Now protected and role-filtered)
 router.get('/', projectController.getAllProjects);
 
 // Get map data for a specific project
