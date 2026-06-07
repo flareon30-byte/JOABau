@@ -32,6 +32,7 @@ model User {
   username              String        @unique
   password              String
   role                  Role
+  permissions           String[]      @default([])
   teamId                String?
   team                  Team?         @relation(fields: [teamId], references: [id], onDelete: SetNull)
   scheduledAppointments Appointment[] @relation("ScheduledBy")

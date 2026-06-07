@@ -38,6 +38,7 @@ exports.createUser = async (req, res) => {
                 username,
                 password: hashedPassword,
                 role,
+                permissions: req.body.permissions !== undefined ? req.body.permissions : [],
                 teamId: teamId || null,
                 phone: phone || null,
                 vehicleId: vehicleId || null,
@@ -66,6 +67,7 @@ exports.updateUser = async (req, res) => {
         const data = {
             username,
             role,
+            permissions: req.body.permissions !== undefined ? req.body.permissions : undefined,
             teamId: teamId || null,
             phone: phone || null,
             vehicleId: vehicleId || null,

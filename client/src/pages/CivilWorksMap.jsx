@@ -17,6 +17,16 @@ const handleReviewDuct = async (id, status) => {
 };
 
 window.handleReviewDuct = handleReviewDuct;
+
+const handleCompletePlannedWork = async (id) => {
+    try {
+        await api.put(`/api/civil-works/plan/${id}`, { status: 'COMPLETED' });
+        window.location.reload();
+    } catch (e) {
+        alert('Error al completar el hito planificado.');
+    }
+};
+window.handleCompletePlannedWork = handleCompletePlannedWork;
 import PlanWorkModal from '../components/PlanWorkModal';
 
 const CACHE_KEY = 'joa-map-geo-cache-v6';
@@ -1021,6 +1031,7 @@ const CivilWorksMap = () => {
                     color = '#ef4444';
                 }
                 
+                const canComplete = ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER'].includes(user?.role);
                 const popupHtml = `
                     <div style="font-family:sans-serif; padding:4px; min-width: 200px;">
                         <h4 style="margin:0 0 8px 0;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">
@@ -1032,6 +1043,11 @@ const CivilWorksMap = () => {
                             <strong>Estado:</strong> ${work.status}
                         </div>
                         ${work.notes ? `<p style="margin:0;font-size:12px;background:#f8fafc;padding:6px;border-radius:4px;color:#334155;">${work.notes}</p>` : ''}
+                        ${!isResolved && canComplete ? `
+                            <button onclick="window.handleCompletePlannedWork('${work.id}')" style="margin-top:8px; width:100%; padding:6px; background-color:#10b981; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
+                                ✔️ Marcar Completado
+                            </button>
+                        ` : ''}
                     </div>
                 `;
 

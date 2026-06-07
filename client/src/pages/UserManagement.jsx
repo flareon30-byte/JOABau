@@ -8,7 +8,7 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentUser, setCurrentUser] = useState(null); // For editing
-    const [formData, setFormData] = useState({ username: '', password: '', role: 'OPERATOR', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
+    const [formData, setFormData] = useState({ username: '', password: '', role: 'OPERATOR', permissions: [], teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
 
     const [vehicles, setVehicles] = useState([]);
     const [projects, setProjects] = useState([]);
@@ -39,6 +39,7 @@ const UserManagement = () => {
                 username: user.username,
                 password: '',
                 role: user.role,
+                permissions: user.permissions || [],
                 teamId: user.teamId || '',
                 phone: user.phone || '',
                 baseSalary: user.baseSalary || 1500,
@@ -47,7 +48,7 @@ const UserManagement = () => {
             });
         } else {
             setCurrentUser(null);
-            setFormData({ username: '', password: '', role: 'OPERATOR', teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
+            setFormData({ username: '', password: '', role: 'OPERATOR', permissions: [], teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
         }
         setIsModalOpen(true);
     };
@@ -269,6 +270,40 @@ const UserManagement = () => {
                                     required
                                 />
                             </div>
+                            
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Permisos Adicionales (Módulos)</label>
+                                <div className="grid grid-cols-2 gap-2 mt-2">
+                                    {[
+                                        { id: '/dashboard/vehicles', label: 'Control de Flota' },
+                                        { id: '/dashboard/payroll', label: 'Nóminas y Dietas' },
+                                        { id: '/dashboard/invoicing', label: 'Facturación' },
+                                        { id: '/dashboard/planning', label: 'Línea de Tiempo' },
+                                        { id: '/dashboard/executive', label: 'Dashboard Ejecutivo' },
+                                        { id: '/dashboard/material-orders', label: 'Pedidos de Material' },
+                                        { id: '/dashboard/subcontractors', label: 'Gestión Subcontratas' },
+                                        { id: '/dashboard/daily-reports', label: 'Partes Diarios' },
+                                        { id: '/dashboard/accommodations', label: 'Alojamientos' },
+                                    ].map(perm => (
+                                        <label key={perm.id} className="flex items-center gap-2 text-sm text-slate-700">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={formData.permissions?.includes(perm.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setFormData({ ...formData, permissions: [...(formData.permissions || []), perm.id] });
+                                                    } else {
+                                                        setFormData({ ...formData, permissions: (formData.permissions || []).filter(p => p !== perm.id) });
+                                                    }
+                                                }}
+                                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                            />
+                                            {perm.label}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+
                             <div className="flex justify-end gap-3 mt-6">
                                 <button
                                     type="button"

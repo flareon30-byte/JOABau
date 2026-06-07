@@ -435,8 +435,17 @@ const DashboardLayout = () => {
 
                 <nav className="flex-1 px-4 space-y-4 overflow-y-auto custom-scrollbar-dark pb-10">
                     {navGroups.map((group) => {
+                        // Determine which items are visible for this user
+                        const visibleItems = group.items.filter(item => {
+                            const hasRole = !item.roles || item.roles.includes(user.role);
+                            const hasVehicle = item.showIfVehicle && (user.vehicleId || user.vehicle);
+                            const hasPermission = user.permissions && user.permissions.includes(item.path);
+                            return hasRole || hasVehicle || hasPermission;
+                        });
+
                         // Check if group should be visible for this user
-                        if (group.roles && !group.roles.includes(user.role)) return null;
+                        const groupHasRole = !group.roles || group.roles.includes(user.role);
+                        if (!groupHasRole && visibleItems.length === 0) return null;
 
                         const hasActiveChild = group.items.some(item => location.pathname === item.path);
                         const isOpen = openGroups[group.id] || hasActiveChild;
@@ -462,8 +471,9 @@ const DashboardLayout = () => {
                                             // Allow access if user has the role OR if the item is vehicle-related and user has a vehicle
                                             const hasRole = !item.roles || item.roles.includes(user.role);
                                             const hasVehicle = item.showIfVehicle && (user.vehicleId || user.vehicle);
+                                            const hasPermission = user.permissions && user.permissions.includes(item.path);
                                             
-                                            if (!hasRole && !hasVehicle) return null;
+                                            if (!hasRole && !hasVehicle && !hasPermission) return null;
 
                                             const isActive = location.pathname === item.path;
                                             return (
