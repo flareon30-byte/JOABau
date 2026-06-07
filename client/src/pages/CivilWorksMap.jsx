@@ -658,7 +658,7 @@ const CivilWorksMap = () => {
                 }).addTo(mapInstanceRef.current);
                 
                 const user = JSON.parse(localStorage.getItem('user') || '{}');
-                const canPlan = ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'].includes(user.role);
+                const canPlan = ['SUPER_ADMIN', 'PROJECT_MANAGER'].includes(user.role);
                 
                 if (mapInstanceRef.current.pm && canPlan) {
                     mapInstanceRef.current.pm.addControls({
@@ -745,7 +745,7 @@ const CivilWorksMap = () => {
 
             // Setup map click listener for planning mode
             mapInstanceRef.current.off('click');
-            if (isPlanningMode && ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'].includes(user.role)) {
+            if (isPlanningMode && ['SUPER_ADMIN', 'PROJECT_MANAGER'].includes(user.role)) {
                 mapInstanceRef.current.getContainer().classList.add('drawing-map-container');
                 mapInstanceRef.current.on('click', (e) => {
                     setPlanModalCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
@@ -1374,7 +1374,7 @@ const CivilWorksMap = () => {
                         )}
                         
                         {/* Mode Toggle Button */}
-                        {['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER'].includes(user.role) && (
+                        {['SUPER_ADMIN', 'PROJECT_MANAGER'].includes(user.role) && (
                             <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur border border-slate-200 p-1.5 rounded-full shadow-xl flex items-center gap-1 font-bold">
                                 <button
                                     onClick={() => { setIsPlanningMode(false); setShowPhotos(true); }}
