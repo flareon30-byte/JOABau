@@ -18,7 +18,10 @@ exports.getAllProjects = async (req, res) => {
 
         if (user) {
             if (user.role === 'SUBCONTRACTOR' && user.subcontractorId) {
-                whereClause.subcontractorId = user.subcontractorId;
+                whereClause.OR = [
+                    { subcontractorId: user.subcontractorId },
+                    { PlannedWork: { some: { assignedToId: user.subcontractorId } } }
+                ];
             } else if (['PROJECT_MANAGER', 'SITE_MANAGER'].includes(user.role)) {
                 whereClause.users = { some: { id: user.id } };
             }

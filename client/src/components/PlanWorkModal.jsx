@@ -47,15 +47,27 @@ export default function PlanWorkModal({ isOpen, onClose, coordinates, projects, 
 
         try {
             setLoading(true);
-            await api.post(`/api/planning/project/${formData.projectId}`, {
-                items: [{
-                    type: formData.type,
-                    coordinates: coordinates,
+            
+            if (editWork) {
+                await api.put(`/api/planning/${editWork.id}`, {
+                    status: editWork.status,
+                    assignedToId: formData.subcontractorId || null,
                     deadline: formData.deadline || null,
                     notes: formData.notes,
-                    assignedToId: formData.subcontractorId || null
-                }]
-            });
+                    coordinates: coordinates // assuming coordinates could be updated
+                });
+            } else {
+                await api.post(`/api/planning/project/${formData.projectId}`, {
+                    items: [{
+                        type: formData.type,
+                        coordinates: coordinates,
+                        deadline: formData.deadline || null,
+                        notes: formData.notes,
+                        assignedToId: formData.subcontractorId || null
+                    }]
+                });
+            }
+            
             onSaved();
             onClose();
         } catch (err) {
