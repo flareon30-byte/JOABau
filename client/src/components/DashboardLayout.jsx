@@ -437,9 +437,16 @@ const DashboardLayout = () => {
                     {navGroups.map((group) => {
                         // Determine which items are visible for this user
                         const visibleItems = group.items.filter(item => {
+                            const hasCustomPermissions = user.permissions && user.permissions.includes('__CUSTOM__');
+                            const configurablePaths = ['/dashboard/vehicles', '/dashboard/payroll', '/dashboard/invoicing', '/dashboard/planning', '/dashboard/executive', '/dashboard/material-orders', '/dashboard/subcontractors', '/dashboard/daily-reports', '/dashboard/accommodations'];
+                            
                             const hasRole = !item.roles || item.roles.includes(user.role);
                             const hasVehicle = item.showIfVehicle && (user.vehicleId || user.vehicle);
                             const hasPermission = user.permissions && user.permissions.includes(item.path);
+                            
+                            if (hasCustomPermissions && configurablePaths.includes(item.path)) {
+                                return hasPermission;
+                            }
                             return hasRole || hasVehicle || hasPermission;
                         });
 
@@ -468,12 +475,21 @@ const DashboardLayout = () => {
                                 {(isOpen || !group.label || !isSidebarOpen) && (
                                     <div className="space-y-1">
                                         {group.items.map((item) => {
-                                            // Allow access if user has the role OR if the item is vehicle-related and user has a vehicle
+                                            const hasCustomPermissions = user.permissions && user.permissions.includes('__CUSTOM__');
+                                            const configurablePaths = ['/dashboard/vehicles', '/dashboard/payroll', '/dashboard/invoicing', '/dashboard/planning', '/dashboard/executive', '/dashboard/material-orders', '/dashboard/subcontractors', '/dashboard/daily-reports', '/dashboard/accommodations'];
+                                            
                                             const hasRole = !item.roles || item.roles.includes(user.role);
                                             const hasVehicle = item.showIfVehicle && (user.vehicleId || user.vehicle);
                                             const hasPermission = user.permissions && user.permissions.includes(item.path);
                                             
-                                            if (!hasRole && !hasVehicle && !hasPermission) return null;
+                                            let isVisible = false;
+                                            if (hasCustomPermissions && configurablePaths.includes(item.path)) {
+                                                isVisible = hasPermission;
+                                            } else {
+                                                isVisible = hasRole || hasVehicle || hasPermission;
+                                            }
+
+                                            if (!isVisible) return null;
 
                                             const isActive = location.pathname === item.path;
                                             return (

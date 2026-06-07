@@ -32,14 +32,36 @@ const UserManagement = () => {
         fetchData();
     }, []);
 
+    const getConfigurableDefaults = (role) => {
+        const roleMapping = {
+            '/dashboard/vehicles': ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'],
+            '/dashboard/payroll': ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'],
+            '/dashboard/invoicing': ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'],
+            '/dashboard/planning': ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER'],
+            '/dashboard/executive': ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER'],
+            '/dashboard/material-orders': ['SUPER_ADMIN', 'ADMIN', 'PROJECT_MANAGER', 'SITE_MANAGER', 'BACK_OFFICE'],
+            '/dashboard/subcontractors': ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE'],
+            '/dashboard/daily-reports': ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE', 'PROJECT_MANAGER', 'SITE_MANAGER'],
+            '/dashboard/accommodations': ['SUPER_ADMIN', 'ADMIN', 'BACK_OFFICE']
+        };
+        return Object.keys(roleMapping).filter(path => roleMapping[path].includes(role));
+    };
+
     const handleOpenModal = (user = null) => {
         if (user) {
             setCurrentUser(user);
+            const userPerms = user.permissions || [];
+            let formPerms = userPerms;
+            if (!userPerms.includes('__CUSTOM__')) {
+                const defaults = getConfigurableDefaults(user.role);
+                formPerms = [...new Set([...defaults, ...userPerms, '__CUSTOM__'])];
+            }
+
             setFormData({
                 username: user.username,
                 password: '',
                 role: user.role,
-                permissions: user.permissions || [],
+                permissions: formPerms,
                 teamId: user.teamId || '',
                 phone: user.phone || '',
                 baseSalary: user.baseSalary || 1500,
@@ -48,7 +70,7 @@ const UserManagement = () => {
             });
         } else {
             setCurrentUser(null);
-            setFormData({ username: '', password: '', role: 'OPERATOR', permissions: [], teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
+            setFormData({ username: '', password: '', role: 'OPERATOR', permissions: ['__CUSTOM__'], teamId: '', phone: '', baseSalary: 1500, vacationDaysTotal: 30, vehicleId: '', projectIds: [] });
         }
         setIsModalOpen(true);
     };
