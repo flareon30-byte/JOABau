@@ -40,6 +40,7 @@ export default function PlanningTimeline() {
   };
 
   const handleViewOnMap = (work) => {
+    const projectId = work.projectId || selectedProject;
     if (work.coordinates) {
       let lat, lng;
       if (Array.isArray(work.coordinates)) {
@@ -49,9 +50,9 @@ export default function PlanningTimeline() {
           lat = work.coordinates.lat;
           lng = work.coordinates.lng;
       }
-      navigate(`/dashboard/civil-works-map?lat=${lat}&lng=${lng}&zoom=18&taskId=${work.id}`);
+      navigate(`/dashboard/civil-works-map?lat=${lat}&lng=${lng}&zoom=18&taskId=${work.id}&projectId=${projectId}`);
     } else {
-      navigate(`/dashboard/civil-works-map?taskId=${work.id}`);
+      navigate(`/dashboard/civil-works-map?taskId=${work.id}&projectId=${projectId}`);
     }
   };
 

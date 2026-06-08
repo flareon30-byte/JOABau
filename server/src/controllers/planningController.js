@@ -167,7 +167,7 @@ exports.updatePlannedWork = async (req, res) => {
 exports.submitPlannedWork = async (req, res) => {
     try {
         const { id } = req.params;
-        const { photos, distance } = req.body;
+        const { photos, distance, actualCoordinates, comments } = req.body;
 
         const work = await prisma.plannedWork.findUnique({
             where: { id },
@@ -176,14 +176,26 @@ exports.submitPlannedWork = async (req, res) => {
 
         if (!work) return res.status(404).json({ error: 'Not found' });
 
+        const updateData = {
+            status: 'PENDING_REVISION',
+            photos: photos || [],
+            distance: distance || null,
+            incorrectPhotos: [], // Clear any previous rejections
+        };
+
+        // Save actual GPS path if provided (from AI or manual GPS)
+        if (actualCoordinates && Array.isArray(actualCoordinates) && actualCoordinates.length > 0) {
+            updateData.actualCoordinates = actualCoordinates;
+        }
+
+        // Save comments if provided
+        if (comments) {
+            updateData.notes = work.notes ? `${work.notes}\n[Subcontrata]: ${comments}` : `[Subcontrata]: ${comments}`;
+        }
+
         const updated = await prisma.plannedWork.update({
             where: { id },
-            data: {
-                status: 'PENDING_REVISION',
-                photos,
-                distance,
-                incorrectPhotos: [] // Clear any previous rejections
-            }
+            data: updateData
         });
 
         // Notify SITE_MANAGER and PROJECT_MANAGER

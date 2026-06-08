@@ -876,10 +876,11 @@ model PlannedWork {
   notes        String?
   
   // Review Cycle Fields
-  photos          String[]
-  incorrectPhotos String[]
-  reviewComments  String?
-  distance        Float?
+  photos              String[]
+  incorrectPhotos     String[]
+  reviewComments      String?
+  distance            Float?
+  actualCoordinates   Json?    // Real GPS path recorded by subcontractor (vs planned coordinates)
 
   createdById  String?
   createdBy    User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)

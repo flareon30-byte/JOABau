@@ -7,6 +7,7 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
     const [photos, setPhotos] = useState([]);
     const [comments, setComments] = useState('');
     const [error, setError] = useState('');
+    const [aiResult, setAiResult] = useState(null); // Stores AI distance + coordinates
     
     // For Reviewer
     const [incorrectPhotos, setIncorrectPhotos] = useState([]);
@@ -48,23 +49,31 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
 
     const handleSubmitWork = async () => {
         if (photos.length < 2) {
-            setError('Se requieren al menos 2 fotos para calcular la distancia.');
+            setError('Se requieren al menos 2 fotos para documentar la tarea.');
             return;
         }
         setLoading(true);
         try {
-            // Get AI Distance first
+            // Get AI Distance + GPS coordinates
             let distance = null;
+            let actualCoordinates = null;
             try {
                 const aiRes = await api.post('/api/ai/process-duct-route', { photos, comments });
-                if (aiRes.data && aiRes.data.distance) {
-                    distance = aiRes.data.distance;
+                if (aiRes.data) {
+                    distance = aiRes.data.distance || null;
+                    actualCoordinates = aiRes.data.coordinates || null;
+                    setAiResult(aiRes.data);
                 }
             } catch (aiErr) {
                 console.warn('AI processing failed, submitting without distance', aiErr);
             }
 
-            await api.post(`/api/planning/${work.id}/submit`, { photos, distance, comments });
+            await api.post(`/api/planning/${work.id}/submit`, {
+                photos,
+                distance,
+                actualCoordinates,
+                comments
+            });
             onSaved();
             onClose();
         } catch (err) {

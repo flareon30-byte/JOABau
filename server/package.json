@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "check-prices": "node scratch/check_prices.js"
+    "check-prices": "node scratch/check_prices.js",
+    "migrate": "npx prisma migrate deploy",
+    "start": "npx prisma migrate deploy && node index.js"
   },
   "keywords": [],
   "author": "",

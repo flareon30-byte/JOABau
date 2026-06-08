@@ -313,6 +313,7 @@ const CivilWorksMap = () => {
     const urlLng = searchParams.get('lng');
     const urlZoom = searchParams.get('zoom');
     const urlTaskId = searchParams.get('taskId');
+    const urlProjectId = searchParams.get('projectId');
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [leafletLoaded, setLeafletLoaded] = useState(false);
     const [markerClusterLoaded, setMarkerClusterLoaded] = useState(false);
@@ -498,7 +499,6 @@ const CivilWorksMap = () => {
         }
     }, [isFullScreen]);
 
-    // Load filter options and map coordinates
     const fetchInitialData = async () => {
         try {
             const [subsRes, projectsRes] = await Promise.all([
@@ -508,8 +508,11 @@ const CivilWorksMap = () => {
             setSubcontractors(subsRes.data || []);
             setProjects(projectsRes.data || []);
             
-            // Auto select if only one project
-            if (projectsRes.data && projectsRes.data.length === 1 && !filterProject) {
+            // Auto-select project from URL param (e.g. coming from PlanningTimeline)
+            if (urlProjectId && !filterProject) {
+                setFilterProject(urlProjectId);
+            } else if (projectsRes.data && projectsRes.data.length === 1 && !filterProject) {
+                // Auto select if only one project
                 setFilterProject(projectsRes.data[0].id);
             }
         } catch (e) {
@@ -1164,8 +1167,18 @@ const CivilWorksMap = () => {
                     `;
                 }
 
+                const photosHtml = (work.photos && work.photos.length > 0)
+                    ? `<div style="margin-top:8px;">
+                        <p style="font-size:11px;font-weight:bold;color:#64748b;margin:0 0 4px 0;text-transform:uppercase;">Fotos Subidas (${work.photos.length})</p>
+                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+                            ${work.photos.slice(0,4).map(url => `<img src="${url}" onclick="window.showMapPhotoModal('${url}')" style="width:60px;height:60px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #e2e8f0;" title="Ver foto" />`).join('')}
+                            ${work.photos.length > 4 ? `<div style="width:60px;height:60px;background:#f1f5f9;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#64748b;font-weight:bold;">+${work.photos.length - 4}</div>` : ''}
+                        </div>
+                      </div>`
+                    : '';
+
                 const popupHtml = `
-                    <div style="font-family:sans-serif; padding:4px; min-width: 200px;">
+                    <div style="font-family:sans-serif; padding:4px; min-width: 220px;">
                         <h4 style="margin:0 0 8px 0;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;padding-bottom:4px;">
                             ${['DUCTO_7x22', 'DUCTO_10x6', 'DUCTO_AMBOS'].includes(work.type) ? work.type.replace('_', ' ') : work.type} ${isResolved ? '(Resuelto)' : ''}
                         </h4>
@@ -1173,9 +1186,11 @@ const CivilWorksMap = () => {
                             <strong>Proyecto:</strong> ${projects.find(p=>p.id===work.projectId)?.name || 'N/A'}<br/>
                             <strong>Límite:</strong> ${work.deadline ? new Date(work.deadline).toLocaleDateString() : 'Sin fecha'}<br/>
                             <strong>Estado:</strong> ${work.status}<br/>
+                            ${work.distance ? `<strong>Metros reales:</strong> <span style="color:#059669;font-weight:bold;">${work.distance}m</span><br/>` : ''}
                             <strong>Dibujado por:</strong> ${work.createdBy?.username || 'Desconocido'}
                         </div>
-                        ${work.notes ? `<p style="margin:0;font-size:12px;background:#f8fafc;padding:6px;border-radius:4px;color:#334155;">${work.notes}</p>` : ''}
+                        ${work.notes ? `<p style="margin:0 0 6px 0;font-size:12px;background:#f8fafc;padding:6px;border-radius:4px;color:#334155;">${work.notes}</p>` : ''}
+                        ${photosHtml}
                         ${actionButton}
                         ${canDelete ? `
                             <button onclick="window.handleDeletePlannedWork('${work.id}')" style="margin-top:4px; width:100%; padding:6px; background-color:#ef4444; color:white; border:none; border-radius:4px; font-weight:bold; cursor:pointer;">
@@ -1229,6 +1244,24 @@ const CivilWorksMap = () => {
                             markersGroupRef.current.addLayer(polyline);
                         }
                         validCoords.push([pts[0].lat, pts[0].lng]);
+
+                        // Draw ACTUAL GPS path (green solid line) over the planned one if subcontractor submitted it
+                        const actualCoords = cleanCoordinates(work.actualCoordinates);
+                        if (actualCoords.length >= 2) {
+                            const actualPolyline = L.polyline(actualCoords.map(p => [p.lat, p.lng]), {
+                                color: '#10b981',
+                                weight: 5,
+                                opacity: 0.9,
+                                dashArray: null,
+                            });
+                            actualPolyline.bindPopup(`
+                                <div style="font-family:sans-serif;padding:4px;min-width:180px;">
+                                    <b style="color:#059669;">📍 Trazado Real Ejecutado</b><br/>
+                                    <span style="font-size:12px;color:#475569;">Metros: <b>${work.distance ? work.distance + 'm' : 'N/A'}</b></span>
+                                </div>
+                            `);
+                            markersGroupRef.current.addLayer(actualPolyline);
+                        }
                     }
                 } else if (work.coordinates.lat && work.coordinates.lng) {
                     let html = '';
