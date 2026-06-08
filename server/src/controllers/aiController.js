@@ -3,56 +3,74 @@ const exifr = require('exifr');
 const path = require('path');
 const fs = require('fs');
 
-// Fallback: extract GPS visually from image text overlay (like Timemark Camera)
-async function extractGpsVisually(fullPath) {
+
+// Download image from URL and return buffer + mimeType
+async function fetchImageBuffer(url) {
+    try {
+        // If it's a relative path on disk, read directly
+        if (!url.startsWith('http')) {
+            const cleanPath = url.split('?')[0].replace(/^\//, '');
+            const fullPath = path.join(__dirname, '../../', cleanPath);
+            if (fs.existsSync(fullPath)) {
+                const buffer = fs.readFileSync(fullPath);
+                const ext = path.extname(fullPath).toLowerCase();
+                const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
+                return { buffer, mimeType, fullPath };
+            }
+            return null;
+        }
+
+        // Remote URL: download with axios
+        const axios = require('axios');
+        const response = await axios.get(url, { 
+            responseType: 'arraybuffer', 
+            timeout: 12000,
+            headers: { 'User-Agent': 'JOABau-Server/1.0' }
+        });
+        const buffer = Buffer.from(response.data);
+        const contentType = response.headers['content-type'] || '';
+        const mimeType = contentType.includes('png') ? 'image/png' 
+                       : contentType.includes('webp') ? 'image/webp' 
+                       : 'image/jpeg';
+        return { buffer, mimeType, fullPath: null };
+    } catch (err) {
+        console.error(`[fetchImageBuffer] Failed for ${url}:`, err.message);
+        return null;
+    }
+}
+
+// Use Gemini Vision to read GPS coordinates from watermark text visible in the photo
+async function extractGpsVisuallyFromBuffer(buffer, mimeType) {
     try {
         const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey) {
-            console.warn("[GPS Fallback] GEMINI_API_KEY is missing, skipping visual check.");
-            return null;
-        }
+        if (!apiKey) return null;
 
-        if (!fs.existsSync(fullPath)) {
-            console.warn(`[GPS Fallback] File not found: ${fullPath}`);
-            return null;
-        }
-
-        const imageBuffer = fs.readFileSync(fullPath);
-        const base64Data = imageBuffer.toString('base64');
-        const ext = path.extname(fullPath).toLowerCase();
-        const mimeType = ext === '.png' ? 'image/png' : 'image/jpeg';
-
+        const base64Data = buffer.toString('base64');
         const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-        const prompt = `Analiza la marca de agua o texto superpuesto en esta foto (habitualmente en la esquina inferior izquierda, creada por aplicaciones de cámara como Timemark Camera, GPS Camera, etc.).
-Tu tarea es extraer:
-1. La latitud y longitud geográfica que aparecen escritas (en formato decimal, ej: "49.835978" y "8.009682").
-2. La fecha y hora indicadas (ej: "Vie, 05 de jun 2026 09:07").
+        const prompt = `Analiza esta imagen. Puede tener una marca de agua o texto superpuesto con coordenadas GPS (normalmente en las esquinas, creado por apps como GPS Camera, Timemark Camera, etc.).
 
-Responde ESTRICTAMENTE con un objeto JSON (sin bloques de formato de markdown \`\`\`json ni texto adicional, solo el JSON plano en una sola línea) con las siguientes propiedades:
-{
-  "latitude": decimal o null,
-  "longitude": decimal o null,
-  "timestamp": "YYYY-MM-DDTHH:mm:ss" o null
-}
-Si no se encuentran las coordenadas o la fecha, responde con null en esas propiedades. Si la fecha está en español, conviértela a formato ISO de fecha/hora (YYYY-MM-DDTHH:mm:ss).`;
+Extrae la latitud y longitud en formato decimal (ej: "49.835978" y "8.009682") y la fecha/hora si aparece.
+
+Responde SOLO con JSON plano (sin bloques markdown), en una sola línea:
+{"latitude": número_decimal_o_null, "longitude": número_decimal_o_null, "timestamp": "YYYY-MM-DDTHH:mm:ss_o_null"}
+
+Si los números tienen coma como separador decimal, conviértelos a punto. Si no encuentras coordenadas, responde: {"latitude": null, "longitude": null, "timestamp": null}`;
 
         const result = await model.generateContent([
             prompt,
-            {
-                inlineData: {
-                    data: base64Data,
-                    mimeType: mimeType,
-                },
-            },
+            { inlineData: { data: base64Data, mimeType } }
         ]);
 
-        const responseText = result.response.text().trim();
-        const cleanJsonText = responseText.replace(/^```json/i, '').replace(/```$/, '').trim();
+        const responseText = result.response.text().trim()
+            .replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
         
-        const data = JSON.parse(cleanJsonText);
-        if (data && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
+        const data = JSON.parse(responseText);
+        if (data && typeof data.latitude === 'number' && typeof data.longitude === 'number'
+            && !isNaN(data.latitude) && !isNaN(data.longitude)
+            && data.latitude !== 0 && data.longitude !== 0) {
+            console.log(`[GPS Visual] Extracted: ${data.latitude}, ${data.longitude}`);
             return {
                 lat: data.latitude,
                 lng: data.longitude,
@@ -60,44 +78,51 @@ Si no se encuentran las coordenadas o la fecha, responde con null en esas propie
             };
         }
     } catch (err) {
-        console.error(`[GPS Fallback] Error in visual extraction for ${fullPath}:`, err);
+        console.error('[GPS Visual] Gemini extraction failed:', err.message);
     }
     return null;
 }
 
-// Helper to extract GPS metadata from uploaded photo
-async function extractGpsFromImage(relativeUrl) {
+// Helper to extract GPS from uploaded photo URL (EXIF first, then Gemini visual watermark)
+async function extractGpsFromImage(photoUrl) {
     try {
-        if (!relativeUrl) return null;
-        const cleanPath = relativeUrl.split('?')[0].replace(/^\//, '');
-        const fullPath = path.join(__dirname, '../../', cleanPath);
-        
-        if (!fs.existsSync(fullPath)) {
-            console.warn(`[EXIF Parser] File not found: ${fullPath}`);
+        if (!photoUrl) return null;
+
+        const imageData = await fetchImageBuffer(photoUrl);
+        if (!imageData) {
+            console.warn(`[GPS] Could not fetch image: ${photoUrl}`);
             return null;
         }
 
-        const gps = await exifr.gps(fullPath).catch(() => null);
-        const meta = await exifr.parse(fullPath, ['DateTimeOriginal']).catch(() => null);
-        
-        if (gps && gps.latitude && gps.longitude) {
-            return {
-                lat: gps.latitude,
-                lng: gps.longitude,
-                timestamp: meta?.DateTimeOriginal || new Date()
-            };
+        const { buffer, mimeType, fullPath } = imageData;
+
+        // Stage 1: Try EXIF from buffer
+        try {
+            const gps = await exifr.gps(buffer).catch(() => null);
+            const meta = await exifr.parse(buffer, ['DateTimeOriginal']).catch(() => null);
+            if (gps && gps.latitude && gps.longitude) {
+                console.log(`[GPS EXIF] Found for ${photoUrl}: ${gps.latitude}, ${gps.longitude}`);
+                return {
+                    lat: gps.latitude,
+                    lng: gps.longitude,
+                    timestamp: meta?.DateTimeOriginal || new Date()
+                };
+            }
+        } catch (exifErr) {
+            console.warn(`[GPS EXIF] Parse error for ${photoUrl}:`, exifErr.message);
         }
 
-        // Fallback to visual extraction if EXIF metadata is missing
-        const visualGps = await extractGpsVisually(fullPath);
-        if (visualGps) {
-            return visualGps;
-        }
+        // Stage 2: Gemini visual watermark reading
+        console.log(`[GPS] No EXIF for ${photoUrl}, trying Gemini visual extraction...`);
+        const visualGps = await extractGpsVisuallyFromBuffer(buffer, mimeType);
+        if (visualGps) return visualGps;
+
     } catch (error) {
-        console.error(`[EXIF Parser] Error parsing image EXIF:`, error);
+        console.error(`[GPS] extractGpsFromImage error:`, error.message);
     }
     return null;
 }
+
 
 // Helper to calculate Haversine distance in meters
 function getHaversineDistance(coords) {
@@ -166,59 +191,62 @@ exports.checkPhotoQuality = async (req, res) => {
 exports.processDuctRoute = async (req, res) => {
     const { photos, comments } = req.body;
 
-    if (!photos || !Array.isArray(photos) || photos.length < 2) {
-        return res.status(400).json({ message: 'Se requieren al menos 2 fotos del trayecto del ducto para calcular el recorrido.' });
+    if (!photos || !Array.isArray(photos) || photos.length < 1) {
+        return res.status(400).json({ message: 'Se requiere al menos 1 foto del trayecto del ducto.' });
     }
 
     try {
-        // 1. Extract GPS coords from photos
-        const coordinates = [];
-        for (const url of photos) {
-            const gps = await extractGpsFromImage(url);
-            if (gps) {
-                coordinates.push(gps);
-            }
-        }
+        console.log(`[processDuctRoute] Processing ${photos.length} photos...`);
 
-        if (coordinates.length < 2) {
-            return res.status(400).json({ 
-                message: 'No se encontraron suficientes metadatos GPS en las imágenes subidas. Por favor, asegúrate de que la cámara del móvil tiene activa la geolocalización / GPS y vuelve a tomar las fotos.' 
+        // 1. Extract GPS from all photos IN PARALLEL (EXIF first, then Gemini visual watermark)
+        const GPS_TIMEOUT = 25000; // 25s per photo max
+        const gpsResults = await Promise.allSettled(
+            photos.map(url =>
+                Promise.race([
+                    extractGpsFromImage(url),
+                    new Promise(resolve => setTimeout(() => resolve(null), GPS_TIMEOUT))
+                ])
+            )
+        );
+
+        const coordinates = gpsResults
+            .map(r => r.status === 'fulfilled' ? r.value : null)
+            .filter(Boolean);
+
+        console.log(`[processDuctRoute] GPS extracted: ${coordinates.length}/${photos.length} photos`);
+
+        if (coordinates.length < 1) {
+            return res.status(400).json({
+                message: 'No se encontraron coordenadas GPS en ninguna foto. La IA intentó leer tanto los metadatos EXIF como las marcas de agua visibles, pero no encontró coordenadas. Asegúrate de que las fotos tienen la ubicación activada (GPS) o que la marca de agua con coordenadas es legible.'
             });
         }
 
-        // 2. Sort points chronologically
+        // 2. Sort chronologically
         coordinates.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
 
-        // 3. Compute distance programmatically (Haversine)
-        const distance = getHaversineDistance(coordinates);
+        // 3. Compute Haversine distance
+        const distance = coordinates.length >= 2 ? getHaversineDistance(coordinates) : 0;
 
-        // 4. Ask Gemini to analyze the route data and produce a structured summary
-        const apiKey = process.env.GEMINI_API_KEY;
-        let aiSummary = "Trazado de ducto en calle calculado a partir de metadatos GPS.";
         let startPoint = { lat: coordinates[0].lat, lng: coordinates[0].lng };
         let endPoint = { lat: coordinates[coordinates.length - 1].lat, lng: coordinates[coordinates.length - 1].lng };
 
-        if (apiKey) {
+        // 4. Ask Gemini for a route summary (optional, don't block if fails)
+        let aiSummary = `Trazado calculado a partir de ${coordinates.length} punto(s) GPS.`;
+        const apiKey = process.env.GEMINI_API_KEY;
+        if (apiKey && coordinates.length >= 2) {
             try {
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-
-                const pointsText = coordinates.map((c, i) => `Punto ${i + 1}: Lat: ${c.lat}, Lng: ${c.lng}, Hora: ${c.timestamp}`).join('\n');
-                const prompt = `Analiza los siguientes puntos de geolocalización GPS capturados cronológicamente durante la instalación de un ducto de obra civil en la calle.
-                
+                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                const pointsText = coordinates.map((c, i) => `Punto ${i + 1}: Lat ${c.lat.toFixed(6)}, Lng ${c.lng.toFixed(6)}, Hora: ${c.timestamp}`).join('\n');
+                const prompt = `Analiza los siguientes puntos GPS de instalación de ducto de obra civil.
 Comentarios del operario: "${comments || 'Ninguno'}"
-Distancia calculada por algoritmo: ${distance.toFixed(1)} metros.
-
-Puntos GPS:
-${pointsText}
-
-Genera un resumen en español de la trayectoria (ej: 'Instalación de ducto a lo largo de la calle X, desde la esquina Y hasta el portal Z'). Confirma si el trazado parece lógico y describe el punto de inicio y el punto final de forma amigable.
-Responde de forma concisa y directa.`;
-
+Distancia calculada: ${distance.toFixed(1)} metros.
+Puntos GPS:\n${pointsText}\n
+Genera un resumen breve en español (1-2 frases) de la trayectoria del ducto.`;
                 const result = await model.generateContent(prompt);
                 aiSummary = result.response.text().trim();
             } catch (aiErr) {
-                console.error('[Gemini Duct AI Error]', aiErr.message);
+                console.warn('[Gemini Summary]', aiErr.message);
             }
         }
 
@@ -228,6 +256,8 @@ Responde de forma concisa y directa.`;
             startPoint,
             endPoint,
             distance: parseFloat(distance.toFixed(1)),
+            photosProcessed: photos.length,
+            photosWithGps: coordinates.length,
             summary: aiSummary
         });
 

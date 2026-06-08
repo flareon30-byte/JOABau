@@ -4,6 +4,7 @@ import api from '../api/axios';
 
 const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
     const [loading, setLoading] = useState(false);
+    const [aiStatus, setAiStatus] = useState(''); // feedback during processing
     const [photos, setPhotos] = useState([]);
     const [comments, setComments] = useState('');
     const [error, setError] = useState('');
@@ -48,26 +49,34 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
     };
 
     const handleSubmitWork = async () => {
-        if (photos.length < 2) {
-            setError('Se requieren al menos 2 fotos para documentar la tarea.');
+        if (photos.length < 1) {
+            setError('Sube al menos 1 foto para documentar la tarea.');
             return;
         }
         setLoading(true);
+        setError('');
         try {
-            // Get AI Distance + GPS coordinates
+            // Step 1: AI GPS analysis
             let distance = null;
             let actualCoordinates = null;
+            setAiStatus(`🔍 Analizando ${photos.length} foto(s) con IA (leyendo GPS y marcas de agua)...`);
             try {
                 const aiRes = await api.post('/api/ai/process-duct-route', { photos, comments });
                 if (aiRes.data) {
                     distance = aiRes.data.distance || null;
                     actualCoordinates = aiRes.data.coordinates || null;
+                    const found = aiRes.data.photosWithGps || (actualCoordinates?.length ?? 0);
                     setAiResult(aiRes.data);
+                    setAiStatus(`✅ GPS encontrado en ${found}/${photos.length} foto(s)${distance ? ` — ${distance}m` : ''}`);
                 }
             } catch (aiErr) {
-                console.warn('AI processing failed, submitting without distance', aiErr);
+                const msg = aiErr?.response?.data?.message || aiErr.message || '';
+                setAiStatus(`⚠️ IA no pudo leer GPS: ${msg || 'sin coordenadas'}. El trabajo se enviará sin trazado.`);
+                console.warn('AI processing failed:', aiErr);
             }
 
+            // Step 2: Submit work
+            setAiStatus(prev => prev + ' — Enviando...');
             await api.post(`/api/planning/${work.id}/submit`, {
                 photos,
                 distance,
@@ -174,7 +183,9 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
                                         <input type="file" multiple accept="image/*" className="hidden" onChange={handlePhotoUpload} disabled={loading} />
                                     </label>
                                 </div>
-                                <p className="text-xs text-slate-500">La IA necesita al menos 2 fotos con GPS para calcular la distancia.</p>
+                                <p className="text-xs text-slate-500">
+                                    La IA leerá el GPS de las fotos: primero los metadatos EXIF y si no, la <b>marca de agua visible</b> con las coordenadas.
+                                </p>
                             </div>
 
                             <div>
@@ -187,13 +198,25 @@ const ReviewWorkModal = ({ isOpen, onClose, work, user, onSaved }) => {
                                 />
                             </div>
 
+                            {/* AI Status Banner */}
+                            {aiStatus && (
+                                <div className={`px-4 py-3 rounded-xl text-sm font-medium border ${
+                                    aiStatus.startsWith('✅') ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                    : aiStatus.startsWith('⚠') ? 'bg-amber-50 border-amber-200 text-amber-800'
+                                    : 'bg-blue-50 border-blue-200 text-blue-800'
+                                } flex items-center gap-2`}>
+                                    {loading && <Loader2 className="w-4 h-4 animate-spin flex-shrink-0" />}
+                                    <span>{aiStatus}</span>
+                                </div>
+                            )}
+
                             <button
                                 onClick={handleSubmitWork}
-                                disabled={loading || photos.length < 2}
+                                disabled={loading || photos.length < 1}
                                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
                             >
                                 {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                                Enviar a Revisión
+                                {loading ? 'Procesando...' : 'Enviar a Revisión'}
                             </button>
                         </div>
                     )}

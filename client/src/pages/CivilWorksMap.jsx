@@ -353,7 +353,7 @@ const CivilWorksMap = () => {
     const [selectedReviewWork, setSelectedReviewWork] = useState(null);
     const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
     
-    const [activePhotoModal, setActivePhotoModal] = useState(null);
+    const [photoLightbox, setPhotoLightbox] = useState(null); // { urls: [], index: 0 }
     const cancelledRef = useRef(false);
 
     const mapRef = useRef(null);
@@ -581,8 +581,20 @@ const CivilWorksMap = () => {
     }, [filterProject]);
 
     useEffect(() => {
-        window.showMapPhotoModal = (url) => {
-            setActivePhotoModal(url);
+        // Accept (url) for single photo or (urlsJson, index) for gallery
+        window.showMapPhotoModal = (urlOrJson, index) => {
+            if (typeof urlOrJson === 'string' && urlOrJson.startsWith('[')) {
+                try {
+                    const urls = JSON.parse(urlOrJson);
+                    setPhotoLightbox({ urls, index: index || 0 });
+                } catch {
+                    setPhotoLightbox({ urls: [urlOrJson], index: 0 });
+                }
+            } else if (Array.isArray(urlOrJson)) {
+                setPhotoLightbox({ urls: urlOrJson, index: index || 0 });
+            } else {
+                setPhotoLightbox({ urls: [urlOrJson], index: 0 });
+            }
         };
         return () => {
             delete window.showMapPhotoModal;
@@ -1079,36 +1091,57 @@ const CivilWorksMap = () => {
                 }
             });
 
+            // Helper to build a styled photo thumbnail marker
+            const buildPhotoMarkerHtml = (photoUrl, borderColor = 'white') => `
+                <div style="
+                    width:48px;height:48px;
+                    border-radius:8px;
+                    overflow:hidden;
+                    border:3px solid ${borderColor};
+                    box-shadow:0 4px 16px rgba(0,0,0,0.5);
+                    cursor:pointer;
+                    transition:transform 0.18s,box-shadow 0.18s;
+                    background-color:#0f172a;
+                " onmouseover="this.style.transform='scale(1.25)';this.style.boxShadow='0 6px 20px rgba(0,0,0,0.7)'" onmouseout="this.style.transform='scale(1)';this.style.boxShadow='0 4px 16px rgba(0,0,0,0.5)'">
+                    <img src="${photoUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://placehold.co/100x100?text=📸'"/>
+                </div>`;
+
             if (showPhotos && photoArray.length > 0) {
                 photoArray.forEach(pt => {
-                    const html = `
-                        <div class="photo-marker" style="
-                            width:44px;height:44px;
-                            border-radius:8px;
-                            overflow:hidden;
-                            border:3px solid white;
-                            box-shadow:0 4px 12px rgba(0,0,0,0.4);
-                            cursor:pointer;
-                            transition:transform 0.2s;
-                            background-color:black;
-                        " onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">
-                            <img src="${pt.photoUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://placehold.co/100x100?text=Foto'"/>
-                        </div>
-                    `;
-                    const icon = L.divIcon({ html, className: '', iconSize: [44, 44], iconAnchor: [22, 22] });
+                    const icon = L.divIcon({ html: buildPhotoMarkerHtml(pt.photoUrl), className: '', iconSize: [48, 48], iconAnchor: [24, 24] });
                     const photoMarker = L.marker([pt.lat, pt.lng], { icon });
                     photoMarker.on('click', () => {
-                        if (window.showMapPhotoModal) {
-                            window.showMapPhotoModal(pt.photoUrl);
-                        }
+                        if (window.showMapPhotoModal) window.showMapPhotoModal(pt.photoUrl);
                     });
-                    
                     const timeStr = pt.timestamp ? new Date(pt.timestamp).toLocaleTimeString() : '';
-                    photoMarker.bindTooltip(`${pt.type} ${pt.status} ${timeStr}`, { direction: 'top', offset: [0, -20] });
-                    
+                    photoMarker.bindTooltip(`${pt.type} ${timeStr}`, { direction: 'top', offset: [0, -22] });
                     photoMarkersGroupRef.current.addLayer(photoMarker);
                 });
             }
+
+            // Always draw planning-submission photos at GPS locations (from actualCoordinates)
+            plannedWorks.forEach(work => {
+                if (!work.photos || work.photos.length === 0) return;
+                const actualCoords = cleanCoordinates(work.actualCoordinates);
+                if (actualCoords.length === 0) return;
+
+                // Pair each photo with the nearest actualCoordinate point
+                const allUrls = work.photos;
+                const urlsJson = JSON.stringify(allUrls);
+
+                actualCoords.forEach((pt, idx) => {
+                    const photoUrl = allUrls[idx] || allUrls[allUrls.length - 1];
+                    const photoIdx = Math.min(idx, allUrls.length - 1);
+                    const html = buildPhotoMarkerHtml(photoUrl, '#10b981');
+                    const icon = L.divIcon({ html, className: '', iconSize: [48, 48], iconAnchor: [24, 24] });
+                    const marker = L.marker([pt.lat, pt.lng], { icon });
+                    marker.on('click', () => {
+                        if (window.showMapPhotoModal) window.showMapPhotoModal(urlsJson, photoIdx);
+                    });
+                    marker.bindTooltip(`📸 Foto ${photoIdx + 1}/${allUrls.length}`, { direction: 'top', offset: [0, -22] });
+                    photoMarkersGroupRef.current.addLayer(marker);
+                });
+            });
 
             // Draw active worker live locations
             activeWorkers.forEach(workerLog => {
@@ -1168,13 +1201,19 @@ const CivilWorksMap = () => {
                 }
 
                 const photosHtml = (work.photos && work.photos.length > 0)
-                    ? `<div style="margin-top:8px;">
-                        <p style="font-size:11px;font-weight:bold;color:#64748b;margin:0 0 4px 0;text-transform:uppercase;">Fotos Subidas (${work.photos.length})</p>
-                        <div style="display:flex;gap:4px;flex-wrap:wrap;">
-                            ${work.photos.slice(0,4).map(url => `<img src="${url}" onclick="window.showMapPhotoModal('${url}')" style="width:60px;height:60px;object-fit:cover;border-radius:4px;cursor:pointer;border:1px solid #e2e8f0;" title="Ver foto" />`).join('')}
-                            ${work.photos.length > 4 ? `<div style="width:60px;height:60px;background:#f1f5f9;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;color:#64748b;font-weight:bold;">+${work.photos.length - 4}</div>` : ''}
-                        </div>
-                      </div>`
+                    ? (() => {
+                        const urlsJson = JSON.stringify(work.photos).replace(/"/g, '&quot;');
+                        const thumbs = work.photos.slice(0, 4).map((url, i) =>
+                            `<img src="${url}" onclick="window.showMapPhotoModal(JSON.parse(this.getAttribute('data-urls')), ${i})" data-urls="${urlsJson}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;cursor:pointer;border:2px solid #e2e8f0;transition:border-color 0.15s;" onmouseover="this.style.borderColor='#3b82f6'" onmouseout="this.style.borderColor='#e2e8f0'" title="Ver foto ${i+1}" />`
+                        ).join('');
+                        const extra = work.photos.length > 4
+                            ? `<div onclick="window.showMapPhotoModal(JSON.parse(this.getAttribute('data-urls')), 4)" data-urls="${urlsJson}" style="width:60px;height:60px;background:#f1f5f9;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#3b82f6;font-weight:bold;cursor:pointer;border:2px solid #e2e8f0;">+${work.photos.length - 4}</div>`
+                            : '';
+                        return `<div style="margin-top:8px;">
+                            <p style="font-size:11px;font-weight:bold;color:#64748b;margin:0 0 6px 0;text-transform:uppercase;letter-spacing:0.05em;">📸 Fotos (${work.photos.length})</p>
+                            <div style="display:flex;gap:4px;flex-wrap:wrap;">${thumbs}${extra}</div>
+                          </div>`;
+                    })()
                     : '';
 
                 const popupHtml = `
@@ -1809,27 +1848,89 @@ const CivilWorksMap = () => {
                 )}
             </div>
 
-            {/* Full-screen Photo Modal */}
-            {activePhotoModal && (
-                <div 
-                    className="fixed inset-0 bg-black/85 z-[9999] flex items-center justify-center p-4 backdrop-blur-sm"
-                    onClick={() => setActivePhotoModal(null)}
-                >
-                    <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center">
-                        <button 
-                            className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-2.5 transition-colors"
-                            onClick={() => setActivePhotoModal(null)}
+            {/* Full-screen Photo Lightbox with navigation */}
+            {photoLightbox && (() => {
+                const { urls, index } = photoLightbox;
+                const total = urls.length;
+                const goTo = (i) => setPhotoLightbox({ urls, index: (i + total) % total });
+                return (
+                    <div
+                        className="fixed inset-0 bg-black/90 z-[9999] flex items-center justify-center backdrop-blur-sm"
+                        onClick={() => setPhotoLightbox(null)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'ArrowRight') goTo(index + 1);
+                            if (e.key === 'ArrowLeft') goTo(index - 1);
+                            if (e.key === 'Escape') setPhotoLightbox(null);
+                        }}
+                        tabIndex={0}
+                        style={{ outline: 'none' }}
+                        ref={el => el && el.focus()}
+                    >
+                        {/* Close */}
+                        <button
+                            className="absolute top-4 right-4 bg-white/15 hover:bg-white/35 text-white rounded-full p-2.5 transition-colors z-10"
+                            onClick={(e) => { e.stopPropagation(); setPhotoLightbox(null); }}
                         >
-                            <X size={24} />
+                            <X size={22} />
                         </button>
-                        <img 
-                            src={activePhotoModal} 
-                            alt="Trabajo realizado" 
-                            className="max-w-full max-h-[80vh] rounded-2xl object-contain shadow-2xl border border-white/10" 
-                        />
+
+                        {/* Counter */}
+                        {total > 1 && (
+                            <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-black/50 text-white text-sm font-semibold px-3 py-1 rounded-full z-10">
+                                {index + 1} / {total}
+                            </div>
+                        )}
+
+                        {/* Prev */}
+                        {total > 1 && (
+                            <button
+                                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/35 text-white rounded-full p-3 transition-colors z-10"
+                                onClick={(e) => { e.stopPropagation(); goTo(index - 1); }}
+                            >
+                                <ChevronRight size={28} style={{ transform: 'rotate(180deg)' }} />
+                            </button>
+                        )}
+
+                        {/* Image */}
+                        <div className="flex items-center justify-center p-4 w-full h-full" onClick={(e) => e.stopPropagation()}>
+                            <img
+                                key={urls[index]}
+                                src={urls[index]}
+                                alt={`Foto ${index + 1} de ${total}`}
+                                className="max-w-[90vw] max-h-[85vh] rounded-2xl object-contain shadow-2xl border border-white/10"
+                                style={{ animation: 'fadeInPhoto 0.2s ease' }}
+                            />
+                        </div>
+
+                        {/* Next */}
+                        {total > 1 && (
+                            <button
+                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/15 hover:bg-white/35 text-white rounded-full p-3 transition-colors z-10"
+                                onClick={(e) => { e.stopPropagation(); goTo(index + 1); }}
+                            >
+                                <ChevronRight size={28} />
+                            </button>
+                        )}
+
+                        {/* Thumbnail strip */}
+                        {total > 1 && (
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 z-10">
+                                {urls.map((u, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={(e) => { e.stopPropagation(); goTo(i); }}
+                                        className={`w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
+                                            i === index ? 'border-white scale-110 shadow-lg' : 'border-white/30 opacity-60 hover:opacity-90'
+                                        }`}
+                                    >
+                                        <img src={u} alt="" className="w-full h-full object-cover" />
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                </div>
-            )}
+                );
+            })()}
             
             <PlanWorkModal
                 isOpen={isPlanModalOpen}
