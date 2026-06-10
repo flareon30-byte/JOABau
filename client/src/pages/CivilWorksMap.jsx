@@ -1138,29 +1138,31 @@ const CivilWorksMap = () => {
                 });
             }
 
-            // Always draw planning-submission photos at GPS locations (from actualCoordinates)
-            plannedWorks.forEach(work => {
-                if (!work.photos || work.photos.length === 0) return;
-                const actualCoords = cleanCoordinates(work.actualCoordinates);
-                if (actualCoords.length === 0) return;
+            // Always draw planning-submission photos at GPS locations (from actualCoordinates) if showPhotos is enabled
+            if (showPhotos) {
+                plannedWorks.forEach(work => {
+                    if (!work.photos || work.photos.length === 0) return;
+                    const actualCoords = cleanCoordinates(work.actualCoordinates);
+                    if (actualCoords.length === 0) return;
 
-                // Pair each photo with the nearest actualCoordinate point
-                const allUrls = work.photos;
-                const urlsJson = JSON.stringify(allUrls);
+                    // Pair each photo with the nearest actualCoordinate point
+                    const allUrls = work.photos;
+                    const urlsJson = JSON.stringify(allUrls);
 
-                actualCoords.forEach((pt, idx) => {
-                    const photoUrl = allUrls[idx] || allUrls[allUrls.length - 1];
-                    const photoIdx = Math.min(idx, allUrls.length - 1);
-                    const html = buildPhotoMarkerHtml(photoUrl, '#10b981');
-                    const icon = L.divIcon({ html, className: '', iconSize: [48, 48], iconAnchor: [24, 24] });
-                    const marker = L.marker([pt.lat, pt.lng], { icon });
-                    marker.on('click', () => {
-                        if (window.showMapPhotoModal) window.showMapPhotoModal(urlsJson, photoIdx);
+                    actualCoords.forEach((pt, idx) => {
+                        const photoUrl = allUrls[idx] || allUrls[allUrls.length - 1];
+                        const photoIdx = Math.min(idx, allUrls.length - 1);
+                        const html = buildPhotoMarkerHtml(photoUrl, '#10b981');
+                        const icon = L.divIcon({ html, className: '', iconSize: [48, 48], iconAnchor: [24, 24] });
+                        const marker = L.marker([pt.lat, pt.lng], { icon });
+                        marker.on('click', () => {
+                            if (window.showMapPhotoModal) window.showMapPhotoModal(urlsJson, photoIdx);
+                        });
+                        marker.bindTooltip(`📸 Foto ${photoIdx + 1}/${allUrls.length}`, { direction: 'top', offset: [0, -22] });
+                        photoMarkersGroupRef.current.addLayer(marker);
                     });
-                    marker.bindTooltip(`📸 Foto ${photoIdx + 1}/${allUrls.length}`, { direction: 'top', offset: [0, -22] });
-                    photoMarkersGroupRef.current.addLayer(marker);
                 });
-            });
+            }
 
             // Draw active worker live locations
             activeWorkers.forEach(workerLog => {
