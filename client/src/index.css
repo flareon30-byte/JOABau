@@ -52,16 +52,23 @@ body {
 .drawing-map-container .leaflet-grab,
 .drawing-map-container .leaflet-interactive,
 .drawing-map-container .leaflet-container {
-  cursor: crosshair !important;
+  cursor: default !important;
 }
 
 /* For normal project view map (not planning mode), explicitly set grab/pointer cursors to prevent transparent/none cursors */
 .leaflet-container {
-  cursor: grab !important;
+  cursor: default !important;
 }
 
 .leaflet-dragging .leaflet-container {
-  cursor: grabbing !important;
+  cursor: move !important;
+}
+
+/* Force standard system hand cursor for all interactive elements inside leaflet maps */
+.leaflet-interactive,
+.leaflet-marker-icon,
+.leaflet-marker-icon * {
+  cursor: pointer !important;
 }
 
 /* Ensure hovered marker icons stay on top of others */
