@@ -50,8 +50,18 @@ body {
 .drawing-map-container,
 .drawing-map-container .leaflet-pane,
 .drawing-map-container .leaflet-grab,
-.drawing-map-container .leaflet-interactive {
+.drawing-map-container .leaflet-interactive,
+.drawing-map-container .leaflet-container {
   cursor: crosshair !important;
+}
+
+/* For normal project view map (not planning mode), explicitly set grab/pointer cursors to prevent transparent/none cursors */
+.leaflet-container {
+  cursor: grab !important;
+}
+
+.leaflet-dragging .leaflet-container {
+  cursor: grabbing !important;
 }
 
 /* Ensure hovered marker icons stay on top of others */
