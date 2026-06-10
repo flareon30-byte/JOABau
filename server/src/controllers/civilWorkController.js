@@ -39,7 +39,7 @@ exports.getMapData = async (req, res) => {
         // If a projectId is provided, filter by it. Otherwise, return nothing to prevent heavy loads.
         // Or if super_admin we could allow all, but for safety and performance, enforce projectId.
         if (!projectId) {
-            return res.json({ addresses: [], activeWorkers: [], ductRoutes: [], nvtLogs: [], plannedWorks: [] });
+            return res.json({ addresses: [], activeWorkers: [], ductRoutes: [], nvtLogs: [], hpLogs: [], plannedWorks: [] });
         }
 
         // Fetch all addresses with their civil work status and info
@@ -103,7 +103,18 @@ exports.getMapData = async (req, res) => {
             }
         });
 
-        res.json({ addresses, activeWorkers, ductRoutes, nvtLogs, plannedWorks });
+        // Fetch HP+ logs
+        const hpLogs = await prisma.civilDailyHpLog.findMany({
+            where: { report: { subcontractor: { projects: { some: { id: projectId } } } } },
+            include: {
+                address: true,
+                report: {
+                    include: { subcontractor: true }
+                }
+            }
+        });
+
+        res.json({ addresses, activeWorkers, ductRoutes, nvtLogs, hpLogs, plannedWorks });
     } catch (error) {
         console.error('Error fetching map data:', error);
         res.status(500).json({ message: 'Server error' });
@@ -269,7 +280,7 @@ exports.getAddressesSearch = async (req, res) => {
 
 exports.submitDailyReport = async (req, res) => {
     const userId = req.userId;
-    const { date, peoplePresent, comments, workLogs, ductLogs, nvtLogs } = req.body;
+    const { date, peoplePresent, comments, workLogs, ductLogs, nvtLogs, hpLogs } = req.body;
 
     try {
         const user = await prisma.user.findUnique({
@@ -418,6 +429,44 @@ exports.submitDailyReport = async (req, res) => {
             }
         }
 
+        // 5. Process HP+ logs (bolas naranjas enterradas)
+        if (hpLogs && Array.isArray(hpLogs)) {
+            for (const log of hpLogs) {
+                // Try to extract GPS from first photo if not provided
+                let lat = log.lat;
+                let lng = log.lng;
+
+                if ((!lat || !lng) && log.photos && log.photos.length > 0) {
+                    const gpsData = await extractGpsFromImage(log.photos[0]);
+                    if (gpsData) {
+                        lat = gpsData.lat;
+                        lng = gpsData.lng;
+                    }
+                }
+
+                // Fallback: use address GPS coordinates if still no GPS
+                if ((!lat || !lng) && log.addressId) {
+                    const addr = await prisma.address.findUnique({ where: { id: log.addressId } });
+                    if (addr && addr.gpsLat && addr.gpsLng) {
+                        lat = addr.gpsLat;
+                        lng = addr.gpsLng;
+                    }
+                }
+
+                await prisma.civilDailyHpLog.create({
+                    data: {
+                        reportId: report.id,
+                        addressId: log.addressId || null,
+                        quantity: parseInt(log.quantity) || 1,
+                        lat: lat ? parseFloat(lat) : null,
+                        lng: lng ? parseFloat(lng) : null,
+                        photos: log.photos || [],
+                        comments: log.comments || null
+                    }
+                });
+            }
+        }
+
         // Create notification in DB for SUPER_ADMINs
         try {
             await prisma.notification.create({
@@ -470,7 +519,11 @@ exports.getDailyReports = async (req, res) => {
                         address: true
                     }
                 },
-                ductLogs: true
+                ductLogs: true,
+                nvtLogs: true,
+                hpLogs: {
+                    include: { address: true }
+                }
             },
             orderBy: { date: 'desc' }
         });
@@ -701,7 +754,19 @@ exports.getReturnedLogs = async (req, res) => {
             }
         });
 
-        res.json({ workLogs, ductLogs });
+        // Fetch returned HP+ logs
+        const hpLogs = await prisma.civilDailyHpLog.findMany({
+            where: {
+                reviewStatus: 'DEVUELTO',
+                report: { subcontractorId: user.subcontractorId }
+            },
+            include: {
+                address: { include: { project: true } },
+                report: true
+            }
+        });
+
+        res.json({ workLogs, ductLogs, hpLogs });
     } catch (error) {
         console.error('Error fetching returned logs:', error);
         res.status(500).json({ message: 'Error al obtener los trabajos devueltos.' });
@@ -1035,5 +1100,107 @@ exports.resubmitNvtLog = async (req, res) => {
     } catch (error) {
         console.error('Error resubmitting nvt log:', error);
         res.status(500).json({ message: 'Error interno al reenviar el NVT.' });
+    }
+};
+// ─── HP+ Log CRUD ──────────────────────────────────────────────────────────────
+
+exports.reviewHpLog = async (req, res) => {
+    const { id } = req.params;
+    const { status, pricePaid } = req.body;
+    try {
+        const log = await prisma.civilDailyHpLog.update({
+            where: { id },
+            data: {
+                reviewStatus: status || 'REVISADO',
+                pricePaid: pricePaid !== undefined ? parseFloat(pricePaid) : undefined
+            }
+        });
+        res.json({ message: 'HP+ revisada correctamente', log });
+    } catch (error) {
+        console.error('Error reviewing hp log:', error);
+        res.status(500).json({ message: 'Error interno al revisar la HP+.' });
+    }
+};
+
+exports.returnHpLog = async (req, res) => {
+    const { id } = req.params;
+    const { reviewComments, incorrectPhotos } = req.body;
+    try {
+        const log = await prisma.civilDailyHpLog.update({
+            where: { id },
+            data: {
+                reviewStatus: 'DEVUELTO',
+                reviewComments: reviewComments || null,
+                incorrectPhotos: incorrectPhotos || []
+            },
+            include: {
+                report: { include: { subcontractor: true } },
+                address: true
+            }
+        });
+
+        const subUsers = await prisma.user.findMany({
+            where: { subcontractorId: log.report.subcontractorId }
+        });
+
+        const infoStr = log.address
+            ? `HP+ en ${log.address.street || ''} ${log.address.number || ''}`
+            : `HP+ (${log.quantity} uds)`;
+
+        for (const user of subUsers) {
+            await prisma.notification.create({
+                data: {
+                    type: 'WORK_FAILED',
+                    message: `Trabajo devuelto: ${infoStr}. Motivo: ${reviewComments || 'Sin comentarios'}`,
+                    targetUserId: user.id,
+                    createdById: req.userId
+                }
+            });
+        }
+
+        res.json({ message: 'HP+ devuelta correctamente', log });
+    } catch (error) {
+        console.error('Error returning hp log:', error);
+        res.status(500).json({ message: 'Error interno al devolver la HP+.' });
+    }
+};
+
+exports.resubmitHpLog = async (req, res) => {
+    const { id } = req.params;
+    const { photos, comments } = req.body;
+    try {
+        const log = await prisma.civilDailyHpLog.findUnique({
+            where: { id },
+            include: { report: { include: { subcontractor: true } } }
+        });
+
+        if (!log || log.reviewStatus !== 'DEVUELTO') {
+            return res.status(400).json({ message: 'El reporte HP+ no se puede reenviar.' });
+        }
+
+        const updatedLog = await prisma.civilDailyHpLog.update({
+            where: { id },
+            data: {
+                reviewStatus: 'PENDIENTE_REVISION',
+                reviewComments: null,
+                incorrectPhotos: [],
+                photos: photos || log.photos,
+                comments: comments || log.comments
+            }
+        });
+
+        await prisma.notification.create({
+            data: {
+                type: 'WORK_RESUBMITTED',
+                message: `La subcontrata "${log.report.subcontractor.name}" ha corregido un trabajo HP+ rechazado.`,
+                targetRole: 'SUPER_ADMIN',
+                createdById: req.userId
+            }
+        });
+
+        res.json({ message: 'HP+ reenviada a revisión correctamente.', log: updatedLog });
+    } catch (error) {
+        console.error('Error resubmitting hp log:', error);
+        res.status(500).json({ message: 'Error interno al reenviar la HP+.' });
     }
 };

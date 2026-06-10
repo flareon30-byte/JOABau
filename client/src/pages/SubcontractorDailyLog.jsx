@@ -133,7 +133,7 @@ const SubcontractorDailyLog = () => {
     const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
     // Returned Logs State
-    const [returnedLogs, setReturnedLogs] = useState({ workLogs: [], ductLogs: [] });
+    const [returnedLogs, setReturnedLogs] = useState({ workLogs: [], ductLogs: [], hpLogs: [] });
     const [loadingReturned, setLoadingReturned] = useState(false);
 
     // Correction Modal State
@@ -160,7 +160,7 @@ const SubcontractorDailyLog = () => {
         setLoadingReturned(true);
         try {
             const res = await api.get('/api/civil-works/returned');
-            setReturnedLogs(res.data || { workLogs: [], ductLogs: [] });
+            setReturnedLogs(res.data || { workLogs: [], ductLogs: [], hpLogs: [] });
         } catch (error) {
             console.error('Error fetching returned logs:', error);
         } finally {
@@ -199,6 +199,16 @@ const SubcontractorDailyLog = () => {
     const [nvtStatus, setNvtStatus] = useState('COMPLETED');
     const [nvtComments, setNvtComments] = useState('');
     const [nvtPhotoUrl, setNvtPhotoUrl] = useState(null);
+
+    // HP+ Log State (Bolas Naranjas)
+    const [addedHps, setAddedHps] = useState([]);
+    const [hpSelectedAddress, setHpSelectedAddress] = useState(null);
+    const [hpQuantity, setHpQuantity] = useState(1);
+    const [hpComments, setHpComments] = useState('');
+    const [hpPhotos, setHpPhotos] = useState([]);
+    const [hpGpsData, setHpGpsData] = useState([]);
+    const [hpSearchQuery, setHpSearchQuery] = useState('');
+    const [hpSearchResults, setHpSearchResults] = useState([]);
     
     const [submittingReport, setSubmittingReport] = useState(false);
     const [statusMsg, setStatusMsg] = useState({ type: '', text: '' });
@@ -335,7 +345,7 @@ const SubcontractorDailyLog = () => {
         );
     };
 
-    // Generic Image Uploader
+    // Generic Image Uploader — now captures GPS data from server response
     const handlePhotoUpload = async (e, type) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
@@ -351,11 +361,15 @@ const SubcontractorDailyLog = () => {
                 headers: { 'Content-Type': 'multipart/form-data' }
             });
             const uploadedUrls = res.data.urls || [];
-            
+            const gpsData = res.data.gpsData || uploadedUrls.map(() => null);
+
             if (type === 'connection') {
                 setConnectionPhotos(prev => [...prev, ...uploadedUrls]);
             } else if (type === 'duct') {
                 setDuctPhotos(prev => [...prev, ...uploadedUrls]);
+            } else if (type === 'hp') {
+                setHpPhotos(prev => [...prev, ...uploadedUrls]);
+                setHpGpsData(prev => [...prev, ...gpsData]);
             }
         } catch (error) {
             console.error('Error uploading photos:', error);
@@ -585,7 +599,9 @@ const SubcontractorDailyLog = () => {
         try {
             const endpoint = selectedCorrectionLog.type === 'work'
                 ? `/api/civil-works/work-log/${selectedCorrectionLog.log.id}/resubmit`
-                : `/api/civil-works/duct-log/${selectedCorrectionLog.log.id}/resubmit`;
+                : selectedCorrectionLog.type === 'duct'
+                    ? `/api/civil-works/duct-log/${selectedCorrectionLog.log.id}/resubmit`
+                    : `/api/civil-works/hp-log/${selectedCorrectionLog.log.id}/resubmit`;
 
             const payload = {
                 photos: correctedPhotos,
@@ -624,10 +640,56 @@ const SubcontractorDailyLog = () => {
         setAddedNvts(addedNvts.filter((_, i) => i !== index));
     };
 
+    // HP+ search debounce
+    useEffect(() => {
+        if (!hpSearchQuery.trim()) { setHpSearchResults([]); return; }
+        const delay = setTimeout(async () => {
+            try {
+                const res = await api.get(`/api/civil-works/addresses?query=${encodeURIComponent(hpSearchQuery)}`);
+                setHpSearchResults(res.data || []);
+            } catch (err) { console.error('HP+ search error:', err); }
+        }, 300);
+        return () => clearTimeout(delay);
+    }, [hpSearchQuery]);
+
+    const handleAddHp = () => {
+        if (hpPhotos.length === 0) {
+            alert('Debes subir al menos una foto de la HP+ colocada.');
+            return;
+        }
+        const firstGps = hpGpsData.find(g => g && g.lat && g.lng);
+        const lat = firstGps?.lat || hpSelectedAddress?.gpsLat || null;
+        const lng = firstGps?.lng || hpSelectedAddress?.gpsLng || null;
+
+        setAddedHps(prev => [...prev, {
+            addressId: hpSelectedAddress?.id || null,
+            addressName: hpSelectedAddress
+                ? `${hpSelectedAddress.street} ${hpSelectedAddress.number || ''} (${hpSelectedAddress.city || ''})`
+                : null,
+            quantity: parseInt(hpQuantity) || 1,
+            lat,
+            lng,
+            photos: hpPhotos,
+            comments: hpComments
+        }]);
+        setHpSelectedAddress(null);
+        setHpQuantity(1);
+        setHpComments('');
+        setHpPhotos([]);
+        setHpGpsData([]);
+        setHpSearchQuery('');
+        setHpSearchResults([]);
+        setStatusMsg({ type: 'success', text: 'HP+ añadida al parte del día.' });
+    };
+
+    const removeHp = (index) => {
+        setAddedHps(addedHps.filter((_, i) => i !== index));
+    };
+
     // Submit complete daily report to database
     const handleSubmitDailyReport = async () => {
-        if (addedConnections.length === 0 && addedDucts.length === 0 && addedNvts.length === 0) {
-            alert('Debes añadir al menos una acometida, ducto o NVT para poder enviar el parte.');
+        if (addedConnections.length === 0 && addedDucts.length === 0 && addedNvts.length === 0 && addedHps.length === 0) {
+            alert('Debes añadir al menos una acometida, ducto, NVT o HP+ para poder enviar el parte.');
             return;
         }
 
@@ -641,7 +703,8 @@ const SubcontractorDailyLog = () => {
                 comments: reportComments,
                 workLogs: addedConnections,
                 ductLogs: addedDucts,
-                nvtLogs: addedNvts
+                nvtLogs: addedNvts,
+                hpLogs: addedHps
             };
 
             await api.post('/api/civil-works/daily-report', payload);
@@ -651,6 +714,7 @@ const SubcontractorDailyLog = () => {
             setAddedConnections([]);
             setAddedDucts([]);
             setAddedNvts([]);
+            setAddedHps([]);
             setReportComments('');
             setPeoplePresent(1);
             
@@ -703,7 +767,7 @@ const SubcontractorDailyLog = () => {
             )}
 
             {/* Trabajos Devueltos Section */}
-            {(returnedLogs.workLogs.length > 0 || returnedLogs.ductLogs.length > 0) && (
+            {(returnedLogs.workLogs.length > 0 || returnedLogs.ductLogs.length > 0 || (returnedLogs.hpLogs && returnedLogs.hpLogs.length > 0)) && (
                 <div className="glass-panel bg-white rounded-3xl p-6 shadow-sm border-2 border-rose-200 space-y-4">
                     <div className="flex items-center gap-2 border-b border-rose-50 pb-3">
                         <AlertTriangle className="text-rose-500 animate-pulse shrink-0" size={24} />
@@ -791,6 +855,55 @@ const SubcontractorDailyLog = () => {
                                             return (
                                                 <div key={idx} className={`relative w-20 h-20 rounded-xl overflow-hidden border ${isIncorrect ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'}`}>
                                                     <img src={getFileUrl(photo)} alt="Evidence" className="w-full h-full object-cover" />
+                                                    {isIncorrect && (
+                                                        <div className="absolute inset-0 bg-rose-500/30 flex items-center justify-center">
+                                                            <div className="bg-rose-600 text-white p-0.5 rounded-full shadow-sm" title="Foto Incorrecta">
+                                                                <AlertTriangle size={12} />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+
+                        {/* Returned HP+ Logs */}
+                        {returnedLogs.hpLogs && returnedLogs.hpLogs.map((hl) => (
+                            <div key={hl.id} className="bg-rose-50/20 border border-rose-100 rounded-2xl p-4 space-y-3">
+                                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                                    <div>
+                                        <span className="text-[10px] bg-orange-100 text-orange-800 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">HP+ Rechazada</span>
+                                        <h4 className="font-extrabold text-slate-800 text-sm mt-1">
+                                            {hl.quantity} HP+ {hl.address ? `— ${hl.address.street} ${hl.address.number || ''}` : '— Sin dirección'}
+                                        </h4>
+                                        {hl.lat && (
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mt-0.5">📍 GPS: {hl.lat.toFixed(5)}, {hl.lng.toFixed(5)}</p>
+                                        )}
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => openCorrectionModal(hl, 'hp')}
+                                        className="bg-orange-600 hover:bg-orange-700 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 self-start"
+                                    >
+                                        <BrainCircuit size={14} /> Corregir y Reenviar
+                                    </button>
+                                </div>
+
+                                <div className="bg-rose-50 border border-rose-100 rounded-xl p-3 text-xs text-rose-900 font-semibold leading-relaxed">
+                                    <strong>Motivo de rechazo:</strong> "{hl.reviewComments || 'Sin comentarios específicos.'}"
+                                </div>
+
+                                <div>
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Fotos de la HP+:</span>
+                                    <div className="flex flex-wrap gap-2.5">
+                                        {hl.photos && hl.photos.map((photo, idx) => {
+                                            const isIncorrect = (hl.incorrectPhotos || []).includes(photo);
+                                            return (
+                                                <div key={idx} className={`relative w-20 h-20 rounded-xl overflow-hidden border ${isIncorrect ? 'border-rose-500 ring-2 ring-rose-500/20' : 'border-slate-200'}`}>
+                                                    <img src={getFileUrl(photo)} alt="HP+" className="w-full h-full object-cover" />
                                                     {isIncorrect && (
                                                         <div className="absolute inset-0 bg-rose-500/30 flex items-center justify-center">
                                                             <div className="bg-rose-600 text-white p-0.5 rounded-full shadow-sm" title="Foto Incorrecta">
@@ -1347,6 +1460,147 @@ const SubcontractorDailyLog = () => {
                 </div>
             </div>
 
+            {/* HP+ Section */}
+            <div className="glass-panel bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-5">
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-50 pb-3">
+                    <span className="w-5 h-5 rounded-full bg-orange-500 inline-block border-2 border-orange-300 shadow-sm" /> Reportar HP+ (Bolas Naranjas)
+                </h3>
+
+                <div className="bg-orange-50 border border-orange-100 rounded-2xl p-3 flex items-start gap-2">
+                    <span className="text-orange-400 mt-0.5 shrink-0"><MapPin size={16} /></span>
+                    <p className="text-xs text-orange-700 font-semibold leading-relaxed">
+                        Las HP+ son las bolas naranjas de señalización enterradas frente a la vivienda. La foto debe tener GPS activado para ubicarlas exactamente en el mapa de obra.
+                    </p>
+                </div>
+
+                <div className="space-y-4">
+                    {/* HP+ Address Search */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                            Dirección asociada (opcional — mejora la localización)
+                        </label>
+                        {hpSelectedAddress ? (
+                            <div className="flex items-center justify-between bg-orange-50 border border-orange-200 rounded-xl p-3">
+                                <div>
+                                    <p className="font-bold text-slate-800 text-sm">{hpSelectedAddress.street} {hpSelectedAddress.number || ''}</p>
+                                    <p className="text-xs text-slate-500">{hpSelectedAddress.city} — NVT: {hpSelectedAddress.nvt || 'Sin NVT'}</p>
+                                </div>
+                                <button type="button" onClick={() => { setHpSelectedAddress(null); setHpSearchQuery(''); }}
+                                    className="text-slate-400 hover:text-red-500 p-1 rounded-lg transition-colors"><X size={16} /></button>
+                            </div>
+                        ) : (
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    value={hpSearchQuery}
+                                    onChange={(e) => setHpSearchQuery(e.target.value)}
+                                    placeholder="Buscar dirección (calle, NVT)..."
+                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-semibold text-slate-700 text-sm bg-slate-50/30"
+                                />
+                                {hpSearchResults.length > 0 && (
+                                    <div className="absolute z-20 w-full bg-white border border-slate-200 rounded-xl shadow-xl mt-1 max-h-48 overflow-y-auto">
+                                        {hpSearchResults.map(addr => (
+                                            <button key={addr.id} type="button"
+                                                onClick={() => { setHpSelectedAddress(addr); setHpSearchQuery(''); setHpSearchResults([]); }}
+                                                className="w-full text-left px-4 py-2.5 hover:bg-orange-50 text-sm font-semibold text-slate-800 border-b border-slate-50 last:border-0 transition-colors"
+                                            >
+                                                {addr.street} {addr.number || ''}
+                                                <span className="text-xs text-slate-400 ml-1">— {addr.city} / NVT: {addr.nvt || 'Sin NVT'}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Quantity */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                            Número de HP+ colocadas
+                        </label>
+                        <input
+                            type="number" min="1" max="20"
+                            value={hpQuantity}
+                            onChange={(e) => setHpQuantity(e.target.value)}
+                            className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 font-bold text-slate-800 text-center text-lg bg-slate-50/30"
+                        />
+                    </div>
+
+                    {/* Comments */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Comentarios (opcional)</label>
+                        <textarea
+                            value={hpComments}
+                            onChange={(e) => setHpComments(e.target.value)}
+                            rows={2}
+                            placeholder="Ej: HP+ colocada frente al garaje, a 30cm de profundidad..."
+                            className="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 resize-none text-sm font-semibold text-slate-700 bg-slate-50/30"
+                        />
+                    </div>
+
+                    {/* Photo Upload */}
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                            📷 Foto de la HP+ <span className="text-orange-500">(obligatoria — con GPS activado)</span>
+                        </label>
+                        {hpPhotos.length > 0 ? (
+                            <div className="space-y-3">
+                                <div className="flex flex-wrap gap-2">
+                                    {hpPhotos.map((url, i) => (
+                                        <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-slate-200 group">
+                                            <img src={getFileUrl(url)} alt="HP+" className="w-full h-full object-cover" />
+                                            {hpGpsData[i] && (
+                                                <div className="absolute bottom-0 left-0 right-0 bg-emerald-600/90 text-white text-[8px] font-bold px-1 py-0.5 text-center">
+                                                    📍 GPS OK
+                                                </div>
+                                            )}
+                                            <button type="button"
+                                                onClick={() => { setHpPhotos(p => p.filter((_, j) => j !== i)); setHpGpsData(p => p.filter((_, j) => j !== i)); }}
+                                                className="absolute top-1 right-1 bg-red-600 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                            ><X size={10} /></button>
+                                        </div>
+                                    ))}
+                                    <label className="w-24 h-24 rounded-xl border-2 border-dashed border-orange-200 bg-orange-50/50 flex flex-col items-center justify-center cursor-pointer hover:bg-orange-100/50 transition-colors">
+                                        <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handlePhotoUpload(e, 'hp')} />
+                                        <Plus size={20} className="text-orange-400" />
+                                        <span className="text-[9px] text-orange-400 font-bold mt-1">Añadir</span>
+                                    </label>
+                                </div>
+                                {!hpGpsData.some(g => g && g.lat) && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5 flex items-center gap-2">
+                                        <AlertTriangle size={14} className="text-amber-500 shrink-0" />
+                                        <p className="text-xs text-amber-700 font-semibold">
+                                            No se encontró GPS en las fotos. Activa la ubicación en tu cámara o usa una app con marca de agua GPS.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <label className="flex flex-col items-center justify-center gap-3 py-10 border-2 border-dashed border-orange-200 rounded-2xl bg-orange-50/30 cursor-pointer hover:bg-orange-50/60 transition-colors">
+                                <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => handlePhotoUpload(e, 'hp')} />
+                                {uploadingPhotos ? <Loader2 className="animate-spin text-orange-400" size={24} /> : <Camera className="text-orange-300" size={24} />}
+                                <span className="text-sm text-slate-500 font-semibold">Subir foto de la HP+</span>
+                                <span className="text-xs text-orange-500 font-bold">El GPS se leerá automáticamente de los metadatos o la marca de agua</span>
+                            </label>
+                        )}
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={handleAddHp}
+                        disabled={hpPhotos.length === 0 || uploadingPhotos}
+                        className={`w-full text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors ${
+                            hpPhotos.length > 0 && !uploadingPhotos
+                                ? 'bg-orange-500 hover:bg-orange-600 active:scale-95 shadow-lg shadow-orange-500/20'
+                                : 'bg-slate-300 cursor-not-allowed'
+                        }`}
+                    >
+                        <Plus size={16} /> Añadir HP+ al Parte
+                    </button>
+                </div>
+            </div>
+
             {/* Added list overview */}
             <div className="glass-panel bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-6">
                 <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-50 pb-3">
@@ -1437,7 +1691,45 @@ const SubcontractorDailyLog = () => {
                 </div>
             </div>
 
-            {/* Actions Footer */}
+            {/* HP+ Summary in Submitted Work */}
+            {addedHps.length > 0 && (
+                <div className="glass-panel bg-white rounded-3xl p-6 shadow-sm border border-orange-100 space-y-4">
+                    <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 border-b border-slate-50 pb-3">
+                        <span className="w-5 h-5 rounded-full bg-orange-500 inline-block border-2 border-orange-300" />
+                        HP+ a enviar en este parte ({addedHps.length})
+                    </h3>
+                    <div className="space-y-3">
+                        {addedHps.map((item, idx) => (
+                            <div key={idx} className="bg-orange-50 rounded-2xl p-4 border border-orange-100 flex justify-between items-center">
+                                <div>
+                                    <h5 className="font-extrabold text-slate-800 text-sm">
+                                        {item.quantity} HP+ {item.addressName ? `— ${item.addressName}` : '— Sin dirección asociada'}
+                                    </h5>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        {item.lat ? (
+                                            <span className="text-[9px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded-full">
+                                                📍 GPS: {item.lat.toFixed(5)}, {item.lng.toFixed(5)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[9px] bg-amber-100 text-amber-700 font-bold px-1.5 py-0.5 rounded-full">
+                                                ⚠ Sin GPS
+                                            </span>
+                                        )}
+                                        <span className="text-[9px] bg-slate-200 text-slate-600 font-bold px-1.5 py-0.5 rounded-full">
+                                            {item.photos.length} foto{item.photos.length !== 1 ? 's' : ''}
+                                        </span>
+                                    </div>
+                                    {item.comments && <p className="text-xs text-slate-500 italic mt-1">"{item.comments}"</p>}
+                                </div>
+                                <button onClick={() => removeHp(idx)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition-colors" title="Quitar">
+                                    <Trash2 size={16} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="flex justify-end gap-4">
                 <button
                     type="button"
@@ -1454,9 +1746,9 @@ const SubcontractorDailyLog = () => {
                 <button
                     type="button"
                     onClick={handleSubmitDailyReport}
-                    disabled={submittingReport || (addedConnections.length === 0 && addedDucts.length === 0 && addedNvts.length === 0)}
+                    disabled={submittingReport || (addedConnections.length === 0 && addedDucts.length === 0 && addedNvts.length === 0 && addedHps.length === 0)}
                     className={`px-8 py-4 text-white rounded-2xl font-bold flex items-center gap-2 transition-all shadow-lg active:scale-95 ${
-                        submittingReport || (addedConnections.length === 0 && addedDucts.length === 0 && addedNvts.length === 0)
+                        submittingReport || (addedConnections.length === 0 && addedDucts.length === 0 && addedNvts.length === 0 && addedHps.length === 0)
                             ? 'bg-slate-300 cursor-not-allowed shadow-none'
                             : 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 shadow-orange-500/20'
                     }`}

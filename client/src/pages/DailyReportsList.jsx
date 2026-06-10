@@ -116,6 +116,11 @@ const DailyReportsList = () => {
     let pendingNvts = 0;
     let returnedNvts = 0;
 
+    let totalHps = 0;
+    let approvedHps = 0;
+    let pendingHps = 0;
+    let returnedHps = 0;
+
     kpiReports.forEach(report => {
         totalWorkers += report.peoplePresent || 0;
         
@@ -139,6 +144,13 @@ const DailyReportsList = () => {
             if (nl.reviewStatus === 'REVISADO') approvedNvts++;
             else if (nl.reviewStatus === 'DEVUELTO') returnedNvts++;
             else pendingNvts++;
+        });
+
+        (report.hpLogs || []).forEach(hl => {
+            totalHps++;
+            if (hl.reviewStatus === 'REVISADO') approvedHps++;
+            else if (hl.reviewStatus === 'DEVUELTO') returnedHps++;
+            else pendingHps++;
         });
     });
 
@@ -166,15 +178,17 @@ const DailyReportsList = () => {
         let filteredWorkLogs = report.workLogs || [];
         let filteredDuctLogs = report.ductLogs || [];
         let filteredNvtLogs = report.nvtLogs || [];
+        let filteredHpLogs = report.hpLogs || [];
 
         if (filterStatus !== 'TODOS') {
             filteredWorkLogs = filteredWorkLogs.filter(wl => wl.reviewStatus === filterStatus);
             filteredDuctLogs = filteredDuctLogs.filter(dl => dl.reviewStatus === filterStatus);
             filteredNvtLogs = filteredNvtLogs.filter(nl => nl.reviewStatus === filterStatus);
+            filteredHpLogs = filteredHpLogs.filter(hl => hl.reviewStatus === filterStatus);
         }
 
         // Omit report if status filter is active and no logs match
-        if (filterStatus !== 'TODOS' && filteredWorkLogs.length === 0 && filteredDuctLogs.length === 0 && filteredNvtLogs.length === 0) {
+        if (filterStatus !== 'TODOS' && filteredWorkLogs.length === 0 && filteredDuctLogs.length === 0 && filteredNvtLogs.length === 0 && filteredHpLogs.length === 0) {
             return null;
         }
 
@@ -182,7 +196,8 @@ const DailyReportsList = () => {
             ...report,
             workLogs: filteredWorkLogs,
             ductLogs: filteredDuctLogs,
-            nvtLogs: filteredNvtLogs
+            nvtLogs: filteredNvtLogs,
+            hpLogs: filteredHpLogs
         };
     }).filter(Boolean);
 
@@ -194,6 +209,7 @@ const DailyReportsList = () => {
             if (type === 'work') endpoint = `/api/civil-works/work-log/${logId}/review`;
             else if (type === 'duct') endpoint = `/api/civil-works/duct-log/${logId}/review`;
             else if (type === 'nvt') endpoint = `/api/civil-works/nvt-log/${logId}/review`;
+            else if (type === 'hp') endpoint = `/api/civil-works/hp-log/${logId}/review`;
             
             await api.put(endpoint, {
                 status: 'REVISADO',
@@ -220,6 +236,7 @@ const DailyReportsList = () => {
             if (type === 'work') endpoint = `/api/civil-works/work-log/${logId}/return`;
             else if (type === 'duct') endpoint = `/api/civil-works/duct-log/${logId}/return`;
             else if (type === 'nvt') endpoint = `/api/civil-works/nvt-log/${logId}/return`;
+            else if (type === 'hp') endpoint = `/api/civil-works/hp-log/${logId}/return`;
             
             await api.put(endpoint, {
                 reviewComments: comments,
@@ -335,6 +352,62 @@ const DailyReportsList = () => {
                     </div>
                     <div className="p-4 bg-orange-50 text-orange-600 rounded-3xl">
                         <Users size={28} />
+                    </div>
+                </div>
+
+                {/* NVT Card */}
+                <div className="glass-panel bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">NVTs (Totales / Aprobadas)</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-black text-slate-800">{totalNvts}</span>
+                                <span className="text-sm font-bold text-emerald-600">({approvedNvts} apr.)</span>
+                            </div>
+                        </div>
+                        <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl">
+                            <CheckCircle2 size={24} />
+                        </div>
+                    </div>
+                    <div className="mt-4 space-y-1.5">
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div 
+                                className="bg-emerald-500 h-2 rounded-full transition-all duration-500" 
+                                style={{ width: `${totalNvts > 0 ? (approvedNvts / totalNvts) * 100 : 0}%` }}
+                            ></div>
+                        </div>
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+                            <span>Pendientes: {pendingNvts}</span>
+                            <span>Devueltas: {returnedNvts}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* HP+ Card */}
+                <div className="glass-panel bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative overflow-hidden">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">HP+ Bolas Naranjas (Totales / Aprobadas)</span>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-3xl font-black text-slate-800">{totalHps}</span>
+                                <span className="text-sm font-bold text-emerald-600">({approvedHps} apr.)</span>
+                            </div>
+                        </div>
+                        <div className="p-3 bg-orange-50 text-orange-500 rounded-2xl">
+                            <span className="w-6 h-6 rounded-full bg-orange-500 inline-block border-2 border-orange-300"></span>
+                        </div>
+                    </div>
+                    <div className="mt-4 space-y-1.5">
+                        <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                            <div 
+                                className="bg-orange-500 h-2 rounded-full transition-all duration-500" 
+                                style={{ width: `${totalHps > 0 ? (approvedHps / totalHps) * 100 : 0}%` }}
+                            ></div>
+                        </div>
+                        <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+                            <span>Pendientes: {pendingHps}</span>
+                            <span>Devueltas: {returnedHps}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -500,6 +573,10 @@ const DailyReportsList = () => {
                                         <span className="text-xs font-bold bg-emerald-50 text-emerald-600 px-3 py-1 rounded-xl border border-emerald-200/50 flex items-center gap-1.5">
                                             <CheckCircle2 size={14} />
                                             {report.nvtLogs ? report.nvtLogs.length : 0} NVTs
+                                        </span>
+                                        <span className="text-xs font-bold bg-orange-50 text-orange-500 px-3 py-1 rounded-xl border border-orange-200/50 flex items-center gap-1.5">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 inline-block" />
+                                            {report.hpLogs ? report.hpLogs.length : 0} HP+
                                         </span>
                                         <div className="ml-2 text-slate-400">
                                             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
@@ -788,6 +865,92 @@ const DailyReportsList = () => {
                                                     ))
                                                 ) : (
                                                     <p className="text-xs text-slate-400 italic col-span-full">No se reportaron NVTs en este parte.</p>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* HP+ Area */}
+                                        <div className="space-y-3">
+                                            <h5 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+                                                <span className="w-3.5 h-3.5 rounded-full bg-orange-500 inline-block" />
+                                                Detalle de HP+ (Bolas Naranjas)
+                                            </h5>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                {report.hpLogs && report.hpLogs.length > 0 ? (
+                                                    report.hpLogs.map(log => (
+                                                        <div key={log.id} className="bg-white rounded-2xl p-5 border border-orange-100 shadow-sm flex flex-col justify-between space-y-4">
+                                                            <div className="space-y-2">
+                                                                <div className="flex justify-between items-start">
+                                                                    <h6 className="font-extrabold text-slate-800 text-sm flex items-center gap-1.5">
+                                                                        <span className="w-3 h-3 rounded-full bg-orange-500 inline-block" />
+                                                                        {log.quantity} HP+ {log.address ? `— ${log.address.street} ${log.address.number || ''}` : ''}
+                                                                    </h6>
+                                                                    <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
+                                                                        log.reviewStatus === 'REVISADO' 
+                                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                                                            : log.reviewStatus === 'DEVUELTO'
+                                                                                ? 'bg-red-50 text-red-700 border-red-200'
+                                                                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                                                                    }`}>
+                                                                        {log.reviewStatus === 'REVISADO' ? '🟢 Aprobado' : log.reviewStatus === 'DEVUELTO' ? '🔴 Devuelto' : '⏳ Pendiente'}
+                                                                    </span>
+                                                                </div>
+                                                                {log.lat && (
+                                                                    <p className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2 py-1 rounded-lg inline-block">
+                                                                        📍 {log.lat.toFixed(5)}, {log.lng.toFixed(5)}
+                                                                    </p>
+                                                                )}
+                                                                {log.comments && (
+                                                                    <p className="text-xs text-slate-600 mt-1 bg-slate-50 p-2.5 rounded-xl italic">"{log.comments}"</p>
+                                                                )}
+                                                                {log.reviewStatus === 'DEVUELTO' && log.reviewComments && (
+                                                                    <div className="bg-red-50 text-red-700 p-3 rounded-xl border border-red-100/50 text-xs">
+                                                                        <span className="font-extrabold block mb-0.5">Motivo del rechazo:</span>
+                                                                        <span className="italic">"{log.reviewComments}"</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Photos */}
+                                                            {log.photos && log.photos.length > 0 && (
+                                                                <div className="grid grid-cols-4 gap-2">
+                                                                    {log.photos.map((photoUrl, pi) => (
+                                                                        <a key={pi} href={photoUrl} target="_blank" rel="noreferrer" className="block aspect-square rounded-xl overflow-hidden border border-slate-200 bg-slate-50 relative group">
+                                                                            <img src={photoUrl} alt="HP+" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                                                                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                                <Image size={14} className="text-white" />
+                                                                            </div>
+                                                                        </a>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+
+                                                            {/* Admin Actions */}
+                                                            {isManagement && log.reviewStatus === 'PENDIENTE_REVISION' && (
+                                                                <div className="flex gap-2 pt-2 border-t border-slate-100">
+                                                                    <button 
+                                                                        onClick={() => setApprovalModal({ isOpen: true, type: 'hp', logId: log.id, pricePaid: '' })}
+                                                                        className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-xl shadow-sm transition-colors cursor-pointer"
+                                                                    >
+                                                                        <Check size={14} /> Aprobar
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => setRejectionModal({ isOpen: true, type: 'hp', logId: log.id, comments: '', incorrectPhotos: [], photos: log.photos || [] })}
+                                                                        className="flex-1 flex items-center justify-center gap-1.5 bg-red-500 hover:bg-red-600 text-white text-xs font-bold py-2 rounded-xl shadow-sm transition-colors cursor-pointer"
+                                                                    >
+                                                                        <X size={14} /> Devolver
+                                                                    </button>
+                                                                </div>
+                                                            )}
+                                                            {isManagement && log.reviewStatus === 'REVISADO' && log.pricePaid > 0 && (
+                                                                <div className="text-right text-xs font-bold text-slate-500 pt-2 border-t border-slate-100">
+                                                                    Pago registrado: <span className="text-slate-800 font-extrabold">{log.pricePaid.toFixed(2)}€</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="text-xs text-slate-400 italic col-span-full">No se reportaron HP+ en este parte.</p>
                                                 )}
                                             </div>
                                         </div>

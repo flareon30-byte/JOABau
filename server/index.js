@@ -6,11 +6,21 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const { execSync } = require('child_process');
 
 // Ensure uploads directory exists
 if (!fs.existsSync('uploads')) {
     console.log('[Init] Creating uploads directory...');
     fs.mkdirSync('uploads');
+}
+
+// Run pending database migrations automatically on startup
+try {
+    console.log('[Init] Running database migrations...');
+    execSync('npx prisma migrate deploy', { stdio: 'inherit' });
+    console.log('[Init] ✓ Migrations up to date.');
+} catch (err) {
+    console.error('[Init] Migration error (continuing anyway):', err.message);
 }
 
 const authRoutes = require('./src/routes/authRoutes');

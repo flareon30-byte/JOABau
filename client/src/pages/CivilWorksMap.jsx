@@ -323,6 +323,7 @@ const CivilWorksMap = () => {
     const [ductRoutes, setDuctRoutes] = useState([]);
     const [plannedWorks, setPlannedWorks] = useState([]);
     const [nvtLogs, setNvtLogs] = useState([]);
+    const [hpLogs, setHpLogs] = useState([]);
     const [projects, setProjects] = useState([]);
     const [subcontractors, setSubcontractors] = useState([]);
     // UI Filters and Tabs
@@ -532,6 +533,7 @@ const CivilWorksMap = () => {
             setDuctRoutes(mapRes.data.ductRoutes || []);
             setPlannedWorks(mapRes.data.plannedWorks || []);
             setNvtLogs(mapRes.data.nvtLogs || []);
+            setHpLogs(mapRes.data.hpLogs || []);
         } catch (e) {
             console.error('Error loading civil works map data:', e);
         } finally {
@@ -552,6 +554,7 @@ const CivilWorksMap = () => {
             setDuctRoutes([]);
             setPlannedWorks([]);
             setNvtLogs([]);
+            setHpLogs([]);
         }
     }, [filterProject]);
 
@@ -1091,6 +1094,22 @@ const CivilWorksMap = () => {
                 }
             });
 
+            // Helper to collect photos from HP+ logs
+            hpLogs.forEach(log => {
+                if (log.lat && log.lng && log.photos && log.photos.length > 0) {
+                    log.photos.forEach(photoUrl => {
+                        photoArray.push({
+                            lat: log.lat,
+                            lng: log.lng,
+                            photoUrl,
+                            type: 'HP+',
+                            label: `HP+ (${log.quantity} uds)`,
+                            status: log.reviewStatus === 'REVISADO' ? '✅' : '⏳'
+                        });
+                    });
+                }
+            });
+
             // Helper to build a styled photo thumbnail marker
             const buildPhotoMarkerHtml = (photoUrl, borderColor = 'white') => `
                 <div style="
@@ -1348,7 +1367,45 @@ const CivilWorksMap = () => {
                 }
             });
 
+            // Add HP+ Logs (Orange Signal Balls)
+            hpLogs.forEach(log => {
+                if (log.lat && log.lng) {
+                    const html = `<div style="
+                        width: 20px; height: 20px; border-radius: 50%;
+                        background: radial-gradient(circle at 30% 30%, #fb923c, #ea580c);
+                        border: 2.5px solid white;
+                        box-shadow: 0 2px 8px rgba(234,88,12,0.6);
+                    "></div>`;
+                    const icon = L.divIcon({ html, className: '', iconSize: [20, 20], iconAnchor: [10, 10] });
+                    const marker = L.marker([log.lat, log.lng], { icon });
+                    const addrStr = log.address ? `${log.address.street} ${log.address.number || ''}` : 'Sin dirección';
+                    const subName = log.report?.subcontractor?.name || 'N/A';
+                    const statusBadge = log.reviewStatus === 'REVISADO'
+                        ? '<span style="color:#16a34a;font-weight:bold">✅ Aprobada</span>'
+                        : log.reviewStatus === 'DEVUELTO'
+                            ? '<span style="color:#dc2626;font-weight:bold">🔴 Devuelta</span>'
+                            : '<span style="color:#d97706;font-weight:bold">⏳ Pendiente</span>';
+                    const photosHtml = (log.photos && log.photos.length > 0)
+                        ? log.photos.slice(0, 3).map(url => `<img src="${url}" style="width:60px;height:60px;object-fit:cover;border-radius:6px;border:1px solid #e2e8f0;cursor:pointer" onclick="window.showMapPhotoModal('${url}')" />`).join('')
+                        : '';
+                    marker.bindPopup(`
+                        <div style="font:13px sans-serif;color:#1e293b;min-width:200px">
+                            <b style="font-size:14px;color:#ea580c">🟠 HP+ (Bola Naranja)</b><br>
+                            <span style="font-size:12px">${addrStr}</span><br>
+                            <span style="font-size:11px;color:#64748b">Sub: ${subName}</span><br>
+                            <span style="font-size:11px">Cantidad: <b>${log.quantity}</b></span><br>
+                            ${statusBadge}
+                            ${log.comments ? `<p style="font-size:11px;color:#475569;margin:4px 0 0">${log.comments}</p>` : ''}
+                            ${photosHtml ? `<div style="display:flex;gap:4px;margin-top:6px">${photosHtml}</div>` : ''}
+                        </div>
+                    `);
+                    markersGroupRef.current.addLayer(marker);
+                    validCoords.push([log.lat, log.lng]);
+                }
+            });
+
             if (isNewMap || filtersChanged) {
+
                 if (urlTaskId && isNewMap) {
                     let foundLayer = null;
                     markersGroupRef.current.eachLayer(l => {
@@ -1394,7 +1451,7 @@ const CivilWorksMap = () => {
         return () => {
             cancelledRef.current = true;
         };
-    }, [leafletLoaded, markerClusterLoaded, geomanLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, plannedWorks, isPlanningMode, companyCountry, showPhotos, isFullScreen]);
+    }, [leafletLoaded, markerClusterLoaded, geomanLoaded, activeTab, filterProject, filterSubcontractor, filterStatus, searchQuery, addresses, activeWorkers, ductRoutes, plannedWorks, isPlanningMode, companyCountry, showPhotos, isFullScreen, hpLogs]);
 
     // Bulk address selection
     const toggleSelectAddress = (id) => {
