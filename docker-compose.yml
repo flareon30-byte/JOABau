@@ -19,6 +19,7 @@ services:
       DATABASE_URL: postgresql://${DB_USER:-admin}:${DB_PASSWORD:-securepassword}@postgres:5432/${DB_NAME:-fiberoptics}?schema=public
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:-supersecretkey}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - ./server/uploads:/app/uploads
       - ./server/backups:/app/backups
