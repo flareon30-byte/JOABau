@@ -50,6 +50,9 @@ async function readGpsFromExif(fullPath) {
  * Stage 2: Use Gemini Vision to read GPS from visible watermark on the photo
  */
 async function readGpsFromWatermark(fullPath) {
+    if (process.env.GEMINI_API_KEY === '' || !process.env.GEMINI_API_KEY) {
+        delete process.env.GEMINI_API_KEY;
+    }
     // Explicitly load dotenv from root or server dir as fallback
     try {
         const pathsToTry = [

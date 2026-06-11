@@ -96,6 +96,26 @@ exports.getGeminiKey = async (req, res) => {
         let hasKey = false;
         let obfuscatedKey = '';
         
+        if (process.env.GEMINI_API_KEY === '' || !process.env.GEMINI_API_KEY) {
+            delete process.env.GEMINI_API_KEY;
+            try {
+                const pathsToTry = [
+                    path.join(__dirname, '../../.env'),
+                    path.join(__dirname, '../../../.env'),
+                    path.join(process.cwd(), '.env'),
+                    path.join(process.cwd(), '../.env')
+                ];
+                for (const p of pathsToTry) {
+                    if (fs.existsSync(p)) {
+                        require('dotenv').config({ path: p });
+                        break;
+                    }
+                }
+            } catch (envErr) {
+                console.warn('[settingsController] Dotenv reload fallback error:', envErr.message);
+            }
+        }
+        
         let key = process.env.GEMINI_API_KEY;
         
         const configPath = path.join(__dirname, '../../uploads/gemini_config.json');
