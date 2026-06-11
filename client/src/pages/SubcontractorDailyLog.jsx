@@ -1464,7 +1464,7 @@ const SubcontractorDailyLog = () => {
                                                 
                                                 if (errorUrl) {
                                                     const confirmProceed = window.confirm(
-                                                        `No pudimos extraer coordenadas GPS automáticamente:\n\n"${serverMsg}"\n\n¿Deseas continuar añadiendo esta foto sin coordenadas geográficas exactas? (Se subirá la foto correctamente al reporte).`
+                                                        `No pudimos extraer coordenadas GPS automáticamente:\n\n"${serverMsg}"\n\nDetalles del Servidor:\n${details}\n\n¿Deseas continuar añadiendo esta foto sin coordenadas geográficas exactas? (Se subirá la foto correctamente al reporte).`
                                                     );
                                                     if (confirmProceed) {
                                                         setNvtPhotoUrl(errorUrl);

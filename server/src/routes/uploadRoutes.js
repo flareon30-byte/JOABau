@@ -224,6 +224,55 @@ async function extractAndEmbedGps(fullPath) {
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 /**
+ * GET /api/uploads/debug-env
+ * Troubleshooting endpoint to diagnose environment variables and .env file locations
+ */
+router.get('/debug-env', async (req, res) => {
+    try {
+        const pathsToTry = [
+            path.join(__dirname, '../../.env'),
+            path.join(__dirname, '../../../.env'),
+            path.join(process.cwd(), '.env'),
+            path.join(process.cwd(), '../.env')
+        ];
+        const pathResults = pathsToTry.map(p => {
+            const exists = fs.existsSync(p);
+            let geminiKeyLine = 'No leído';
+            if (exists) {
+                try {
+                    const content = fs.readFileSync(p, 'utf8');
+                    const match = content.match(/^GEMINI_API_KEY\s*=\s*(.*)$/m);
+                    if (match) {
+                        const val = match[1].trim();
+                        geminiKeyLine = `Presente (longitud: ${val.length}, empieza por: ${val.substring(0, 5)}...)`;
+                    } else {
+                        geminiKeyLine = 'No encontrado en el archivo';
+                    }
+                } catch (err) {
+                    geminiKeyLine = `Error de lectura: ${err.message}`;
+                }
+            }
+            return { path: p, exists, geminiKeyLine };
+        });
+
+        const currentEnvKey = process.env.GEMINI_API_KEY;
+        const currentEnvStatus = currentEnvKey 
+            ? `Presente (longitud: ${currentEnvKey.length}, empieza por: ${currentEnvKey.substring(0, 5)}...)`
+            : `Faltante o vacio (valor: "${currentEnvKey}", tipo: ${typeof currentEnvKey})`;
+
+        res.json({
+            status: 'ok',
+            currentEnvStatus,
+            pathResults,
+            processCwd: process.cwd(),
+            __dirname
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
  * POST /api/uploads
  * Uploads one or more photos, extracts GPS from each (EXIF → Gemini OCR → EXIF write-back),
  * and returns { urls, gpsData } where gpsData[i] corresponds to urls[i].
