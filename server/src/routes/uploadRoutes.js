@@ -62,16 +62,17 @@ async function readGpsFromWatermark(fullPath) {
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-        const prompt = `Analiza la marca de agua o texto superpuesto en esta foto (habitualmente en la esquina inferior izquierda o inferior derecha, creada por aplicaciones como Timemark Camera, GPS Camera Stamp, etc.).
-Tu tarea es extraer:
-1. La latitud y longitud geográfica (en formato decimal, ej: "49.835978" y "8.009682"). Si aparecen en DMS (grados, minutos, segundos) conviértelos a decimal.
-2. La fecha y hora indicadas.
+        const prompt = `Analiza la imagen minuciosamente buscando marcas de agua o texto superpuesto que muestren coordenadas geográficas y marcas de tiempo (normalmente en la esquina inferior izquierda o en la barra inferior, añadidas por apps como Timemark Camera, GPS Map Camera, etc.).
+Ejemplos de formatos comunes:
+- "49.836566°N, 8.014898°E"
+- "Latitude: 49.835978, Longitude: 8.009682"
 
-Responde ESTRICTAMENTE con JSON plano (sin bloques markdown, sin texto extra) en una sola línea:
-{"latitude": número_decimal_o_null, "longitude": número_decimal_o_null, "timestamp": "YYYY-MM-DDTHH:mm:ss" o null}
+Tu tarea es:
+1. Extraer la latitud y longitud. Si tiene símbolos como "°N", "°S", "°E", "°W" o es DMS, conviértela a un número decimal puro y limpio (si es Sur o Oeste, el valor debe ser negativo).
+2. Extraer la fecha y hora y formatearla en ISO.
 
-Si la fecha está en español (ej: "Vie, 05 de jun 2026 09:07"), conviértela a formato ISO.
-Si no encuentras coordenadas: {"latitude": null, "longitude": null, "timestamp": null}`;
+Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown ```json, sin texto adicional, solo el JSON puro):
+{"latitude": <número_decimal_o_null>, "longitude": <número_decimal_o_null>, "timestamp": "YYYY-MM-DDTHH:mm:ss" o null}`;
 
         const result = await model.generateContent([
             prompt,
