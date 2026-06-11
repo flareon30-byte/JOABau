@@ -85,6 +85,7 @@ Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown
 
         let responseText = result.response.text().trim();
         console.log(`[GPS Watermark] Raw Gemini Response:`, responseText);
+        global.lastGeminiResponse = responseText;
         
         // Clean markdown code blocks from response if present
         responseText = responseText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
@@ -114,6 +115,7 @@ Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown
         }
     } catch (err) {
         console.error(`[GPS Watermark] Gemini extraction failed:`, err);
+        global.lastGeminiResponse = `Error de API o red: ${err.message || String(err)}`;
     }
     return null;
 }
@@ -257,11 +259,15 @@ router.post('/extract-gps', verifyToken, upload.single('photo'), async (req, res
             });
         }
 
+        // Let's check what Gemini actually returned (by doing it manually or storing the debug log)
+        // To make it easy to see, let's run readGpsFromWatermark and if it fails, capture what it returned.
+        // We will call readGpsFromWatermark but we want to capture the responseText if JSON parse or coords check failed.
+        // Let's modify the return to pass details
         return res.status(400).json({
             status: 'no_gps',
             url: relativeUrl,
             message: 'No se encontraron coordenadas GPS en la imagen (ni en metadatos EXIF ni en la marca de agua visible).',
-            details: `GEMINI_API_KEY configurada en el servidor: ${process.env.GEMINI_API_KEY ? 'SÍ (empieza por ' + process.env.GEMINI_API_KEY.substring(0, 5) + '...)' : 'NO'}`
+            details: global.lastGeminiResponse ? `Respuesta de Gemini: "${global.lastGeminiResponse}"` : 'Gemini no devolvió ninguna respuesta (o la clave de API falló).'
         });
     } catch (error) {
         console.error('Error in extract-gps:', error);
