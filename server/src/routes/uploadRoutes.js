@@ -79,8 +79,17 @@ Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown
             { inlineData: { data: base64Data, mimeType } }
         ]);
 
-        const responseText = result.response.text().trim()
-            .replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+        let responseText = result.response.text().trim();
+        
+        // Clean markdown code blocks from response if present
+        responseText = responseText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
+
+        // If Gemini includes other conversational text, locate the JSON object boundaries
+        const firstBracket = responseText.indexOf('{');
+        const lastBracket = responseText.lastIndexOf('}');
+        if (firstBracket !== -1 && lastBracket !== -1) {
+            responseText = responseText.substring(firstBracket, lastBracket + 1);
+        }
 
         const data = JSON.parse(responseText);
 
