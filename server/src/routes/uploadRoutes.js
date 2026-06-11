@@ -63,7 +63,7 @@ async function readGpsFromWatermark(fullPath) {
         const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
 
         console.log(`[GPS Watermark] Sending image ${path.basename(fullPath)} to Gemini... API key starts with: ${apiKey.substring(0, 5)}...`);
-        const genAI = new GoogleGenerativeAI(apiKey);
+        const genAI = new GoogleGenerativeAI(apiKey, { apiVersion: 'v1' });
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
         const prompt = `Analiza la imagen minuciosamente buscando marcas de agua o texto superpuesto que muestren coordenadas geográficas y marcas de tiempo (normalmente en la esquina inferior izquierda o en la barra inferior, añadidas por apps como Timemark Camera, GPS Map Camera, etc.).
