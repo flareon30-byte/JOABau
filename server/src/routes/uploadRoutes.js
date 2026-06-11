@@ -51,7 +51,10 @@ async function readGpsFromExif(fullPath) {
  */
 async function readGpsFromWatermark(fullPath) {
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) return null;
+    if (!apiKey) {
+        console.warn(`[GPS Watermark] GEMINI_API_KEY is missing from process.env!`);
+        return null;
+    }
 
     try {
         const imageBuffer = fs.readFileSync(fullPath);
@@ -59,6 +62,7 @@ async function readGpsFromWatermark(fullPath) {
         const ext = path.extname(fullPath).toLowerCase();
         const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
 
+        console.log(`[GPS Watermark] Sending image ${path.basename(fullPath)} to Gemini... API key starts with: ${apiKey.substring(0, 5)}...`);
         const genAI = new GoogleGenerativeAI(apiKey);
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
@@ -71,7 +75,7 @@ Tu tarea es:
 1. Extraer la latitud y longitud. Si tiene símbolos como "°N", "°S", "°E", "°W" o es DMS, conviértela a un número decimal puro y limpio (si es Sur o Oeste, el valor debe ser negativo).
 2. Extraer la fecha y hora y formatearla en ISO.
 
-Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown ```json, sin texto adicional, solo el JSON puro):
+Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown \`\`\`json, sin texto adicional, solo el JSON puro):
 {"latitude": <número_decimal_o_null>, "longitude": <número_decimal_o_null>, "timestamp": "YYYY-MM-DDTHH:mm:ss" o null}`;
 
         const result = await model.generateContent([
@@ -80,6 +84,7 @@ Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown
         ]);
 
         let responseText = result.response.text().trim();
+        console.log(`[GPS Watermark] Raw Gemini Response:`, responseText);
         
         // Clean markdown code blocks from response if present
         responseText = responseText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '').trim();
@@ -92,6 +97,7 @@ Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown
         }
 
         const data = JSON.parse(responseText);
+        console.log(`[GPS Watermark] Parsed JSON data:`, data);
 
         if (data && typeof data.latitude === 'number' && typeof data.longitude === 'number'
             && !isNaN(data.latitude) && !isNaN(data.longitude)
@@ -103,9 +109,11 @@ Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown
                 timestamp: data.timestamp ? new Date(data.timestamp) : new Date(),
                 source: 'watermark'
             };
+        } else {
+            console.log(`[GPS Watermark] Coords are invalid or empty in JSON response.`);
         }
     } catch (err) {
-        console.warn(`[GPS Watermark] Gemini extraction failed: ${err.message}`);
+        console.error(`[GPS Watermark] Gemini extraction failed:`, err);
     }
     return null;
 }
