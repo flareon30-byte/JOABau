@@ -199,6 +199,7 @@ const SubcontractorDailyLog = () => {
     const [nvtStatus, setNvtStatus] = useState('COMPLETED');
     const [nvtComments, setNvtComments] = useState('');
     const [nvtPhotoUrl, setNvtPhotoUrl] = useState(null);
+    const [nvtGps, setNvtGps] = useState(null);
 
     // HP+ Log State (Bolas Naranjas)
     const [addedHps, setAddedHps] = useState([]);
@@ -541,14 +542,28 @@ const SubcontractorDailyLog = () => {
             alert('Debe subir una foto del NVT.');
             return;
         }
+        
+        // Let's ask for the NVT box name (e.g. NVT 12, Muffa 5) if we can select or prompt one
+        const nvtName = window.prompt("Introduce el nombre/código de la caja NVT (ej: NVT-01):");
+        if (!nvtName) {
+            alert("Es obligatorio introducir un nombre o código para identificar el NVT.");
+            return;
+        }
+
         setAddedNvts([...addedNvts, {
+            nvtName: nvtName,
             status: nvtStatus,
-            notes: nvtComments,
-            photoUrl: nvtPhotoUrl
+            comments: nvtComments,
+            photos: [nvtPhotoUrl],
+            lat: nvtGps ? nvtGps.lat : null,
+            lng: nvtGps ? nvtGps.lng : null
         }]);
+        
         setNvtStatus('COMPLETED');
         setNvtComments('');
         setNvtPhotoUrl(null);
+        setNvtGps(null);
+        setStatusMsg({ type: 'success', text: `NVT "${nvtName}" añadido al parte.` });
     };
 
     // Correction Handlers
@@ -1429,10 +1444,18 @@ const SubcontractorDailyLog = () => {
                                             try {
                                                 const formData = new FormData();
                                                 formData.append('photo', file);
-                                                const res = await api.post('/api/upload', formData);
+                                                const res = await api.post('/api/uploads/extract-gps', formData, {
+                                                    headers: { 'Content-Type': 'multipart/form-data' }
+                                                });
                                                 setNvtPhotoUrl(res.data.url);
+                                                if (res.data.gps) {
+                                                    setNvtGps(res.data.gps);
+                                                } else {
+                                                    setNvtGps(null);
+                                                }
                                             } catch (err) {
                                                 console.error('Error uploading NVT photo', err);
+                                                alert(err.response?.data?.message || 'Error al procesar la foto o extraer coordenadas.');
                                             } finally {
                                                 setUploadingPhotos(false);
                                             }

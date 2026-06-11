@@ -1082,14 +1082,16 @@ const CivilWorksMap = () => {
 
             // Helper to collect photos from nvt logs
             nvtLogs.forEach(log => {
-                if (log.photoUrl && log.gpsLat && log.gpsLng) {
-                    photoArray.push({
-                        lat: log.gpsLat,
-                        lng: log.gpsLng,
-                        photoUrl: log.photoUrl,
-                        type: 'NVT',
-                        label: 'Nudo de Red (NVT)',
-                        status: log.status
+                if (log.lat && log.lng && log.photos && log.photos.length > 0) {
+                    log.photos.forEach(photoUrl => {
+                        photoArray.push({
+                            lat: log.lat,
+                            lng: log.lng,
+                            photoUrl,
+                            type: 'NVT',
+                            label: `NVT (${log.nvtName || 'Sin Nombre'})`,
+                            status: log.reviewStatus === 'REVISADO' ? '✅' : '⏳'
+                        });
                     });
                 }
             });
@@ -1350,22 +1352,24 @@ const CivilWorksMap = () => {
             });
             // Add NVT Logs
             nvtLogs.forEach(log => {
-                if (log.gpsLat && log.gpsLng) {
+                if (log.lat && log.lng) {
                     const html = `<div style="
                         background-color: #2563eb; color: white; border-radius: 4px; width: 32px; height: 20px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 11px; box-shadow: 0 2px 5px rgba(37,99,235,0.5); border: 1px solid white;
                     ">NVT</div>`;
                     const icon = L.divIcon({ html, className: '', iconSize: [32, 20], iconAnchor: [16, 10] });
-                    const marker = L.marker([log.gpsLat, log.gpsLng], { icon });
+                    const marker = L.marker([log.lat, log.lng], { icon });
+                    const firstPhoto = log.photos && log.photos.length > 0 ? log.photos[0] : null;
                     marker.bindPopup(`
-                        <div style="font-family:sans-serif; padding:4px;">
+                        <div style="font-family:sans-serif; padding:4px; min-width: 150px;">
                             <h4 style="margin:0 0 4px 0;font-weight:bold;color:#1e293b;">Nudo de Red (NVT)</h4>
+                            <p style="margin:0;font-size:12px;">Nombre: <b>${log.nvtName || 'Sin Nombre'}</b></p>
                             <p style="margin:0;font-size:12px;">Estado: ${log.status}</p>
-                            ${log.subcontractorNotes ? `<p style="margin:4px 0 0 0;font-size:12px;">Notas: ${log.subcontractorNotes}</p>` : ''}
-                            ${log.photoUrl ? `<img src="${log.photoUrl}" style="width:100px;border-radius:4px;margin-top:4px;" />` : ''}
+                            ${log.comments ? `<p style="margin:4px 0 0 0;font-size:12px;">Notas: <i>"${log.comments}"</i></p>` : ''}
+                            ${firstPhoto ? `<img src="${firstPhoto}" style="width:100%; max-height:100px; object-fit:cover; border-radius:4px; margin-top:6px;" onclick="window.showMapPhotoModal('${firstPhoto}')" />` : ''}
                         </div>
                     `);
                     markersGroupRef.current.addLayer(marker);
-                    validCoords.push([log.gpsLat, log.gpsLng]);
+                    validCoords.push([log.lat, log.lng]);
                 }
             });
 
