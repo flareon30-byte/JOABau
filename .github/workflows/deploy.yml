@@ -71,6 +71,8 @@ jobs:
             echo "--- DIAGNOSTICOS ---"
             echo "1. Variables .env de base de datos:"
             cat /opt/JOABau/.env | grep -E "DB_|DATABASE_URL" || true
+            echo "1.5. Variable GEMINI_API_KEY en el host .env:"
+            grep -E "^GEMINI_API_KEY" /opt/JOABau/.env | sed 's/=.*/=***OCULTADO***/' || echo "GEMINI_API_KEY no encontrada en /opt/JOABau/.env"
             echo "2. Usuarios de la Base de Datos:"
             docker exec -u postgres joabau-postgres-1 psql -c "\du" || true
             echo "3. Bases de Datos existentes:"
