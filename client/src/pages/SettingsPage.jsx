@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
-import { Save, DollarSign, Target, Lock, Truck, Users, Briefcase, Plus, Trash2, Tag, ChevronRight, Pencil, X } from 'lucide-react';
+import { Save, DollarSign, Target, Lock, Truck, Users, Briefcase, Plus, Trash2, Tag, ChevronRight, Pencil, X, BrainCircuit } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 const SettingsPage = () => {
@@ -170,6 +170,10 @@ const SettingsPage = () => {
                 <div className="my-12 border-t border-slate-200"></div>
 
                 <PasswordChangeForm />
+
+                <div className="my-12 border-t border-slate-200"></div>
+
+                <GeminiKeySettings />
             </div>
         </div>
     );
@@ -447,6 +451,97 @@ const PriceItemsManager = ({ clientId, onMessage, client, onUpdate, subcontracto
                         )}
                     </tbody>
                 </table>
+            </div>
+        </div>
+    );
+};
+
+const GeminiKeySettings = () => {
+    const [status, setStatus] = useState({ hasKey: false, obfuscatedKey: '' });
+    const [newKey, setNewKey] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
+    const [message, setMessage] = useState(null);
+
+    useEffect(() => {
+        fetchStatus();
+    }, []);
+
+    const fetchStatus = async () => {
+        try {
+            const res = await api.get('/api/settings/gemini-key');
+            setStatus(res.data);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching Gemini Key status:', error);
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!newKey.trim()) return;
+        setSubmitting(true);
+        setMessage(null);
+        try {
+            const res = await api.post('/api/settings/gemini-key', { key: newKey });
+            setMessage({ type: 'success', text: res.data.message });
+            setNewKey('');
+            fetchStatus();
+        } catch (error) {
+            setMessage({ type: 'error', text: error.response?.data?.message || 'Error al guardar la clave' });
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    if (loading) return <div className="text-slate-400 text-sm">Cargando estado de la IA...</div>;
+
+    return (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-slate-800 mb-2 flex items-center gap-2">
+                <BrainCircuit className="text-joa-blue animate-pulse" />
+                Configuración de Inteligencia Artificial (Gemini)
+            </h2>
+            <p className="text-slate-500 text-sm">
+                La IA de Gemini se utiliza para extraer automáticamente coordenadas GPS de las marcas de agua de las fotos de los contratistas cuando estas carecen de metadatos EXIF (por ejemplo, al enviarse por WhatsApp).
+            </p>
+
+            {message && (
+                <div className={`p-4 rounded-xl text-sm font-semibold border ${
+                    message.type === 'success' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'
+                }`}>
+                    {message.text}
+                </div>
+            )}
+
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200 space-y-4">
+                <div className="flex items-center gap-3">
+                    <span className={`w-3.5 h-3.5 rounded-full ${status.hasKey ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]'}`} />
+                    <span className="text-sm font-bold text-slate-700">
+                        {status.hasKey 
+                            ? `Gemini activo (Clave: ${status.obfuscatedKey})` 
+                            : 'Gemini inactivo (No se ha configurado ninguna clave de API)'}
+                    </span>
+                </div>
+
+                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+                    <input
+                        type="password"
+                        placeholder="Introduce la nueva clave API de Google Gemini (AIzaSy...)"
+                        value={newKey}
+                        onChange={(e) => setNewKey(e.target.value)}
+                        className="flex-1 p-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-joa-blue outline-none text-sm bg-white"
+                        required
+                    />
+                    <button 
+                        type="submit" 
+                        disabled={submitting || !newKey.trim()}
+                        className="bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-md transition disabled:opacity-50 shrink-0"
+                    >
+                        {submitting ? 'Guardando...' : 'Guardar Clave'}
+                    </button>
+                </form>
             </div>
         </div>
     );

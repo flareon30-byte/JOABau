@@ -90,3 +90,60 @@ exports.updateSettings = async (req, res) => {
         res.status(500).json({ message: 'Error updating settings', details: error.message });
     }
 };
+
+exports.getGeminiKey = async (req, res) => {
+    try {
+        let hasKey = false;
+        let obfuscatedKey = '';
+        
+        let key = process.env.GEMINI_API_KEY;
+        
+        const configPath = path.join(__dirname, '../../uploads/gemini_config.json');
+        if (!key && fs.existsSync(configPath)) {
+            try {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                if (config.GEMINI_API_KEY) {
+                    key = config.GEMINI_API_KEY;
+                }
+            } catch (err) {
+                console.warn('Error reading gemini_config.json:', err.message);
+            }
+        }
+        
+        if (key && key.trim().length > 0) {
+            hasKey = true;
+            const cleanKey = key.trim();
+            obfuscatedKey = cleanKey.substring(0, 6) + '...' + cleanKey.substring(cleanKey.length - 4);
+        }
+        
+        res.json({ hasKey, obfuscatedKey });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error checking Gemini Key status' });
+    }
+};
+
+exports.saveGeminiKey = async (req, res) => {
+    const { key } = req.body;
+    try {
+        if (!key || key.trim().length === 0) {
+            return res.status(400).json({ message: 'La clave no puede estar vacía' });
+        }
+        
+        const cleanKey = key.trim();
+        const configDir = path.join(__dirname, '../../uploads');
+        if (!fs.existsSync(configDir)) {
+            fs.mkdirSync(configDir, { recursive: true });
+        }
+        const configPath = path.join(configDir, 'gemini_config.json');
+        
+        fs.writeFileSync(configPath, JSON.stringify({ GEMINI_API_KEY: cleanKey }, null, 2));
+        
+        process.env.GEMINI_API_KEY = cleanKey;
+        
+        res.json({ message: 'Clave de Gemini guardada correctamente y activa de inmediato' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error guardando la clave de Gemini' });
+    }
+};

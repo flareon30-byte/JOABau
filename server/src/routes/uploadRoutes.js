@@ -76,10 +76,25 @@ async function readGpsFromWatermark(fullPath) {
     ];
     const pathResults = pathsToTry.map(p => `${p} (${fs.existsSync(p) ? 'EXISTE' : 'NO EXISTE'})`).join(', ');
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    let apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
-        console.warn(`[GPS Watermark] GEMINI_API_KEY is missing/falsy in process.env! Value: "${apiKey}", Type: ${typeof apiKey}, Length: ${apiKey ? apiKey.length : 0}`);
-        global.lastGeminiResponse = `GEMINI_API_KEY es vacía. Rutas probadas: ${pathResults}. Clave de process.env: "${apiKey}"`;
+        try {
+            const configPath = path.join(__dirname, '../../uploads/gemini_config.json');
+            if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                if (config.GEMINI_API_KEY) {
+                    apiKey = config.GEMINI_API_KEY;
+                    process.env.GEMINI_API_KEY = apiKey;
+                }
+            }
+        } catch (err) {
+            console.warn('[GPS Watermark] Failed to load config fallback key:', err.message);
+        }
+    }
+
+    if (!apiKey) {
+        console.warn(`[GPS Watermark] GEMINI_API_KEY is missing/falsy in process.env and config file! Value: "${apiKey}", Type: ${typeof apiKey}, Length: ${apiKey ? apiKey.length : 0}`);
+        global.lastGeminiResponse = `GEMINI_API_KEY es vacía (tanto en process.env como en uploads/gemini_config.json). Rutas probadas: ${pathResults}. Clave de process.env: "${apiKey}"`;
         return null;
     }
 

@@ -3,6 +3,25 @@ const exifr = require('exifr');
 const path = require('path');
 const fs = require('fs');
 
+function getGeminiKey() {
+    let key = process.env.GEMINI_API_KEY;
+    if (!key) {
+        try {
+            const configPath = path.join(__dirname, '../../uploads/gemini_config.json');
+            if (fs.existsSync(configPath)) {
+                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                if (config.GEMINI_API_KEY) {
+                    key = config.GEMINI_API_KEY;
+                    process.env.GEMINI_API_KEY = key;
+                }
+            }
+        } catch (err) {
+            console.warn('[aiController] Failed to read fallback gemini key:', err.message);
+        }
+    }
+    return key;
+}
+
 
 // Download image from URL and return buffer + mimeType
 async function fetchImageBuffer(url) {
@@ -42,7 +61,7 @@ async function fetchImageBuffer(url) {
 // Use Gemini Vision to read GPS coordinates from watermark text visible in the photo
 async function extractGpsVisuallyFromBuffer(buffer, mimeType) {
     try {
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = getGeminiKey();
         if (!apiKey) return null;
 
         const base64Data = buffer.toString('base64');
@@ -153,7 +172,7 @@ exports.checkPhotoQuality = async (req, res) => {
             return res.status(400).json({ error: "Missing imageBase64" });
         }
 
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = getGeminiKey();
         if (!apiKey) {
             console.warn("GEMINI_API_KEY is missing, skipping AI check.");
             return res.json({ status: 'ok', isBlurry: false }); // Fallback
@@ -232,7 +251,7 @@ exports.processDuctRoute = async (req, res) => {
 
         // 4. Ask Gemini for a route summary (optional, don't block if fails)
         let aiSummary = `Trazado calculado a partir de ${coordinates.length} punto(s) GPS.`;
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = getGeminiKey();
         if (apiKey && coordinates.length >= 2) {
             try {
                 const genAI = new GoogleGenerativeAI(apiKey);
