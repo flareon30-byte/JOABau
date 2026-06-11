@@ -1,4 +1,4 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+// Google SDK removed in favor of direct REST v1 API to support AQ. key format
 const exifr = require('exifr');
 const path = require('path');
 const fs = require('fs');
@@ -85,8 +85,8 @@ async function extractGpsVisuallyFromBuffer(buffer, mimeType) {
         if (!apiKey) return null;
 
         const base64Data = buffer.toString('base64');
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const axios = require('axios');
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const prompt = `Analiza esta imagen. Puede tener una marca de agua o texto superpuesto con coordenadas GPS (normalmente en las esquinas, creado por apps como GPS Camera, Timemark Camera, etc.).
 
@@ -97,12 +97,28 @@ Responde SOLO con JSON plano (sin bloques markdown), en una sola línea:
 
 Si los números tienen coma como separador decimal, conviértelos a punto. Si no encuentras coordenadas, responde: {"latitude": null, "longitude": null, "timestamp": null}`;
 
-        const result = await model.generateContent([
-            prompt,
-            { inlineData: { data: base64Data, mimeType } }
-        ]);
+        const payload = {
+            contents: [
+                {
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                mimeType,
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
 
-        const responseText = result.response.text().trim()
+        const response = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 30000
+        });
+
+        const responseText = response.data.candidates[0].content.parts[0].text.trim()
             .replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
         
         const data = JSON.parse(responseText);
@@ -198,24 +214,34 @@ exports.checkPhotoQuality = async (req, res) => {
             return res.json({ status: 'ok', isBlurry: false }); // Fallback
         }
 
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
-
         const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+        const axios = require('axios');
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const prompt = "Eres un sistema de control de calidad automático y extremadamente estricto. Tu única función es detectar si una foto de una instalación técnica está fuera de foco (desenfocada) o movida. Analiza la imagen: busca texto, cables, o bordes de objetos. Si los bordes no están perfectamente definidos, si el texto o los detalles pequeños no se pueden leer con total claridad, o si la imagen en general se ve borrosa, desenfocada o con efecto de cámara movida, DEBES rechazarla obligatoriamente. Responde ÚNICAMENTE con la palabra 'BORROSA' si hay la más mínima falta de nitidez. Responde 'CLARA' solo y exclusivamente si la imagen tiene un enfoque perfecto, cristalino y todos los detalles son totalmente legibles.";
 
-        const result = await model.generateContent([
-            prompt,
-            {
-                inlineData: {
-                    data: base64Data,
-                    mimeType: "image/jpeg",
-                },
-            },
-        ]);
+        const payload = {
+            contents: [
+                {
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                mimeType: "image/jpeg",
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
 
-        const responseText = result.response.text().trim().toUpperCase();
+        const response = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 25000
+        });
+
+        const responseText = response.data.candidates[0].content.parts[0].text.trim().toUpperCase();
         console.log(`[AI Photo Check] Result: ${responseText}`);
 
         const isBlurry = responseText.includes("BORROSA");
@@ -274,16 +300,31 @@ exports.processDuctRoute = async (req, res) => {
         const apiKey = getGeminiKey();
         if (apiKey && coordinates.length >= 2) {
             try {
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+                const axios = require('axios');
+                const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
                 const pointsText = coordinates.map((c, i) => `Punto ${i + 1}: Lat ${c.lat.toFixed(6)}, Lng ${c.lng.toFixed(6)}, Hora: ${c.timestamp}`).join('\n');
                 const prompt = `Analiza los siguientes puntos GPS de instalación de ducto de obra civil.
 Comentarios del operario: "${comments || 'Ninguno'}"
 Distancia calculada: ${distance.toFixed(1)} metros.
 Puntos GPS:\n${pointsText}\n
 Genera un resumen breve en español (1-2 frases) de la trayectoria del ducto.`;
-                const result = await model.generateContent(prompt);
-                aiSummary = result.response.text().trim();
+
+                const payload = {
+                    contents: [
+                        {
+                            parts: [
+                                { text: prompt }
+                            ]
+                        }
+                    ]
+                };
+
+                const response = await axios.post(url, payload, {
+                    headers: { 'Content-Type': 'application/json' },
+                    timeout: 20000
+                });
+
+                aiSummary = response.data.candidates[0].content.parts[0].text.trim();
             } catch (aiErr) {
                 console.warn('[Gemini Summary]', aiErr.message);
             }

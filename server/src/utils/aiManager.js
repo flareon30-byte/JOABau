@@ -1,72 +1,66 @@
-const { GoogleGenerativeAI, SchemaType } = require("@google/generative-ai");
+// Google SDK removed in favor of direct REST v1 API to support AQ. key format
 
 exports.analyzePendingAppointments = async (addresses) => {
     if (!process.env.GEMINI_API_KEY) {
         throw new Error("La API Key de Gemini no está configurada en .env.server (GEMINI_API_KEY)");
     }
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const apiKey = process.env.GEMINI_API_KEY;
 
-    const model = genAI.getGenerativeModel({
-        model: "gemini-3.1-flash-lite",
-        generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: SchemaType.OBJECT,
-                properties: {
-                    call_back: {
-                        type: SchemaType.ARRAY,
-                        description: "Direcciones de clientes a los que hay que volver a llamar (ej: no contestaron, pidieron llamar más tarde, estaban ocupados, buzón de voz)",
-                        items: {
-                            type: SchemaType.OBJECT,
-                            properties: {
-                                id: { type: SchemaType.STRING, description: "ID de la dirección" },
-                                reason: { type: SchemaType.STRING, description: "Breve resumen en español de por qué hay que rellamar (ej: 'Buzón de voz tras 3 intentos' o 'Pide llamar a partir del día 15')" }
-                            },
-                            required: ["id", "reason"]
-                        }
+    const responseSchema = {
+        type: "OBJECT",
+        properties: {
+            call_back: {
+                type: "ARRAY",
+                description: "Direcciones de clientes a los que hay que volver a llamar (ej: no contestaron, pidieron llamar más tarde, estaban ocupados, buzón de voz)",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        id: { type: "STRING", description: "ID de la dirección" },
+                        reason: { type: "STRING", description: "Breve resumen en español de por qué hay que rellamar (ej: 'Buzón de voz tras 3 intentos' o 'Pide llamar a partir del día 15')" }
                     },
-                    work_finished: {
-                        type: SchemaType.ARRAY,
-                        description: "Direcciones de clientes que ya han finalizado sus trabajos/obras pendientes y están listos para la instalación",
-                        items: {
-                            type: SchemaType.OBJECT,
-                            properties: {
-                                id: { type: SchemaType.STRING, description: "ID de la dirección" },
-                                reason: { type: SchemaType.STRING, description: "Breve resumen en español del comentario del cliente indicando que finalizó sus obras" }
-                            },
-                            required: ["id", "reason"]
-                        }
+                    required: ["id", "reason"]
+                }
+            },
+            work_finished: {
+                type: "ARRAY",
+                description: "Direcciones de clientes que ya han finalizado sus trabajos/obras pendientes y están listos para la instalación",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        id: { type: "STRING", description: "ID de la dirección" },
+                        reason: { type: "STRING", description: "Breve resumen en español del comentario del cliente indicando que finalizó sus obras" }
                     },
-                    needs_auskundung: {
-                        type: SchemaType.ARRAY,
-                        description: "Direcciones que explícitamente necesitan 'Auskundung', visita previa, o estudio",
-                        items: {
-                            type: SchemaType.OBJECT,
-                            properties: {
-                                id: { type: SchemaType.STRING, description: "ID de la dirección" },
-                                reason: { type: SchemaType.STRING, description: "Breve resumen en español de por qué requiere auskundung" }
-                            },
-                            required: ["id", "reason"]
-                        }
+                    required: ["id", "reason"]
+                }
+            },
+            needs_auskundung: {
+                type: "ARRAY",
+                description: "Direcciones que explícitamente necesitan 'Auskundung', visita previa, o estudio",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        id: { type: "STRING", description: "ID de la dirección" },
+                        reason: { type: "STRING", description: "Breve resumen en español de por qué requiere auskundung" }
                     },
-                    others: {
-                        type: SchemaType.ARRAY,
-                        description: "Otras direcciones con comentarios que requieren atención manual por algún problema, queja, o caso especial",
-                        items: {
-                            type: SchemaType.OBJECT,
-                            properties: {
-                                id: { type: SchemaType.STRING, description: "ID de la dirección" },
-                                reason: { type: SchemaType.STRING, description: "Breve resumen en español del problema o caso especial" }
-                            },
-                            required: ["id", "reason"]
-                        }
-                    }
-                },
-                required: ["call_back", "work_finished", "needs_auskundung", "others"]
+                    required: ["id", "reason"]
+                }
+            },
+            others: {
+                type: "ARRAY",
+                description: "Otras direcciones con comentarios que requieren atención manual por algún problema, queja, o caso especial",
+                items: {
+                    type: "OBJECT",
+                    properties: {
+                        id: { type: "STRING", description: "ID de la dirección" },
+                        reason: { type: "STRING", description: "Breve resumen en español del problema o caso especial" }
+                    },
+                    required: ["id", "reason"]
+                }
             }
-        }
-    });
+        },
+        required: ["call_back", "work_finished", "needs_auskundung", "others"]
+    };
 
     // Construir el texto de entrada solo con los datos relevantes para ahorrar tokens
     const inputData = addresses.map(addr => {
@@ -97,8 +91,29 @@ ${inputData}
 `;
 
     try {
-        const result = await model.generateContent(prompt);
-        const responseText = result.response.text();
+        const axios = require('axios');
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+        const payload = {
+            contents: [
+                {
+                    parts: [
+                        { text: prompt }
+                    ]
+                }
+            ],
+            generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: responseSchema
+            }
+        };
+
+        const response = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 30000
+        });
+
+        const responseText = response.data.candidates[0].content.parts[0].text.trim();
         return JSON.parse(responseText);
     } catch (error) {
         console.error("Error calling Gemini API:", error);

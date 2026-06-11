@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const exifr = require('exifr');
 const piexifjs = require('piexifjs');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+// Google SDK removed in favor of direct REST v1 API to support AQ. key format
 const { verifyToken } = require('../middleware/authMiddleware');
 
 // ─── Storage ───────────────────────────────────────────────────────────────────
@@ -107,9 +107,9 @@ async function readGpsFromWatermark(fullPath) {
         const ext = path.extname(fullPath).toLowerCase();
         const mimeType = ext === '.png' ? 'image/png' : ext === '.webp' ? 'image/webp' : 'image/jpeg';
 
-        console.log(`[GPS Watermark] Sending image ${path.basename(fullPath)} to Gemini... API key starts with: ${apiKey.substring(0, 5)}...`);
-        const genAI = new GoogleGenerativeAI(apiKey, { apiVersion: 'v1' });
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        console.log(`[GPS Watermark] Sending image ${path.basename(fullPath)} to Gemini REST v1 API... API key starts with: ${apiKey.substring(0, 5)}...`);
+        const axios = require('axios');
+        const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
         const prompt = `Analiza la imagen minuciosamente buscando marcas de agua o texto superpuesto que muestren coordenadas geográficas y marcas de tiempo (normalmente en la esquina inferior izquierda o en la barra inferior, añadidas por apps como Timemark Camera, GPS Map Camera, etc.).
 Ejemplos de formatos comunes:
@@ -123,12 +123,28 @@ Tu tarea es:
 Responde ESTRICTAMENTE con un objeto JSON en este formato (sin formateo Markdown \`\`\`json, sin texto adicional, solo el JSON puro):
 {"latitude": <número_decimal_o_null>, "longitude": <número_decimal_o_null>, "timestamp": "YYYY-MM-DDTHH:mm:ss" o null}`;
 
-        const result = await model.generateContent([
-            prompt,
-            { inlineData: { data: base64Data, mimeType } }
-        ]);
+        const payload = {
+            contents: [
+                {
+                    parts: [
+                        { text: prompt },
+                        {
+                            inlineData: {
+                                mimeType,
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }
+            ]
+        };
 
-        let responseText = result.response.text().trim();
+        const response = await axios.post(url, payload, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 30000
+        });
+
+        let responseText = response.data.candidates[0].content.parts[0].text.trim();
         console.log(`[GPS Watermark] Raw Gemini Response:`, responseText);
         global.lastGeminiResponse = responseText;
         
