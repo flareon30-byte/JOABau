@@ -52,21 +52,34 @@ async function readGpsFromExif(fullPath) {
 async function readGpsFromWatermark(fullPath) {
     // Explicitly load dotenv from root or server dir as fallback
     try {
-        const rootDotEnvPath = path.join(__dirname, '../../../.env');
-        const serverDotEnvPath = path.join(__dirname, '../../.env');
-        if (fs.existsSync(serverDotEnvPath)) {
-            require('dotenv').config({ path: serverDotEnvPath });
-        } else if (fs.existsSync(rootDotEnvPath)) {
-            require('dotenv').config({ path: rootDotEnvPath });
+        const pathsToTry = [
+            path.join(__dirname, '../../.env'), // /app/.env
+            path.join(__dirname, '../../../.env'), // /opt/JOABau/.env (if volume-mounted)
+            path.join(process.cwd(), '.env'),
+            path.join(process.cwd(), '../.env')
+        ];
+        for (const p of pathsToTry) {
+            if (fs.existsSync(p)) {
+                require('dotenv').config({ path: p });
+                break;
+            }
         }
     } catch (envErr) {
         console.warn('[GPS Watermark] Dotenv reload fallback error:', envErr.message);
     }
 
+    const pathsToTry = [
+        path.join(__dirname, '../../.env'), // /app/.env
+        path.join(__dirname, '../../../.env'), // /opt/JOABau/.env (if volume-mounted)
+        path.join(process.cwd(), '.env'),
+        path.join(process.cwd(), '../.env')
+    ];
+    const pathResults = pathsToTry.map(p => `${p} (${fs.existsSync(p) ? 'EXISTE' : 'NO EXISTE'})`).join(', ');
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
         console.warn(`[GPS Watermark] GEMINI_API_KEY is missing/falsy in process.env! Value: "${apiKey}", Type: ${typeof apiKey}, Length: ${apiKey ? apiKey.length : 0}`);
-        global.lastGeminiResponse = `GEMINI_API_KEY existe en process.env pero es falsy o vacía. Valor: "${apiKey}", Tipo: ${typeof apiKey}, Longitud: ${apiKey ? apiKey.length : 0}`;
+        global.lastGeminiResponse = `GEMINI_API_KEY es vacía. Rutas probadas: ${pathResults}. Clave de process.env: "${apiKey}"`;
         return null;
     }
 
