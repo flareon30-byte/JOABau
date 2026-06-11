@@ -144,6 +144,12 @@ exports.saveGeminiKey = async (req, res) => {
         res.json({ message: 'Clave de Gemini guardada correctamente y activa de inmediato' });
     } catch (error) {
         console.error(error);
+        try {
+            const logPath = path.join(__dirname, '../../uploads/save_error.log');
+            fs.writeFileSync(logPath, `${new Date().toISOString()} - ERROR: ${error.message}\nSTACK: ${error.stack}\n`);
+        } catch (e) {
+            console.error('Failed to write save_error.log:', e.message);
+        }
         res.status(500).json({ 
             message: 'Error guardando la clave de Gemini',
             details: error.message || String(error)

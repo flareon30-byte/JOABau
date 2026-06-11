@@ -275,10 +275,21 @@ router.get('/debug-env', async (req, res) => {
             ? `Presente (longitud: ${currentEnvKey.length}, empieza por: ${currentEnvKey.substring(0, 5)}...)`
             : `Faltante o vacio (valor: "${currentEnvKey}", tipo: ${typeof currentEnvKey})`;
 
+        const errorLogPath = path.join(__dirname, '../../uploads/save_error.log');
+        let latestSaveError = 'Ninguno registrado';
+        if (fs.existsSync(errorLogPath)) {
+            try {
+                latestSaveError = fs.readFileSync(errorLogPath, 'utf8');
+            } catch (err) {
+                latestSaveError = `Error leyendo save_error.log: ${err.message}`;
+            }
+        }
+
         res.json({
             status: 'ok',
             currentEnvStatus,
             pathResults,
+            latestSaveError,
             processCwd: process.cwd(),
             __dirname
         });
