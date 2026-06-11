@@ -1455,7 +1455,9 @@ const SubcontractorDailyLog = () => {
                                                 }
                                             } catch (err) {
                                                 console.error('Error uploading NVT photo', err);
-                                                alert(err.response?.data?.message || 'Error al procesar la foto o extraer coordenadas.');
+                                                const serverMsg = err.response?.data?.message;
+                                                const details = err.response?.data?.details || '';
+                                                alert(`Error al procesar la foto o extraer coordenadas.\n\nServidor dice:\n${serverMsg || err.message}\n${details}`);
                                             } finally {
                                                 setUploadingPhotos(false);
                                             }

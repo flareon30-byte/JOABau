@@ -264,7 +264,10 @@ router.post('/extract-gps', verifyToken, upload.single('photo'), async (req, res
         });
     } catch (error) {
         console.error('Error in extract-gps:', error);
-        res.status(500).json({ message: 'Error interno al procesar los metadatos de la imagen.' });
+        res.status(500).json({ 
+            message: 'Error interno al procesar los metadatos de la imagen.',
+            details: error.message || String(error)
+        });
     }
 });
 
