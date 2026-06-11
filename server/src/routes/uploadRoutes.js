@@ -53,6 +53,7 @@ async function readGpsFromWatermark(fullPath) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
         console.warn(`[GPS Watermark] GEMINI_API_KEY is missing from process.env!`);
+        global.lastGeminiResponse = `GEMINI_API_KEY no está definida en process.env. Las variables disponibles son: ${Object.keys(process.env).join(', ')}`;
         return null;
     }
 
