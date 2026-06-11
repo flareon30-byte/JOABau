@@ -489,7 +489,12 @@ const GeminiKeySettings = () => {
             setNewKey('');
             fetchStatus();
         } catch (error) {
-            setMessage({ type: 'error', text: error.response?.data?.message || 'Error al guardar la clave' });
+            const serverMsg = error.response?.data?.message;
+            const details = error.response?.data?.details;
+            setMessage({ 
+                type: 'error', 
+                text: `${serverMsg || 'Error al guardar la clave'}${details ? ` (Detalle: ${details})` : ''}` 
+            });
         } finally {
             setSubmitting(false);
         }

@@ -144,6 +144,9 @@ exports.saveGeminiKey = async (req, res) => {
         res.json({ message: 'Clave de Gemini guardada correctamente y activa de inmediato' });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: 'Error guardando la clave de Gemini' });
+        res.status(500).json({ 
+            message: 'Error guardando la clave de Gemini',
+            details: error.message || String(error)
+        });
     }
 };
