@@ -260,7 +260,8 @@ router.post('/extract-gps', verifyToken, upload.single('photo'), async (req, res
         return res.status(400).json({
             status: 'no_gps',
             url: relativeUrl,
-            message: 'No se encontraron coordenadas GPS en la imagen (ni en metadatos EXIF ni en la marca de agua visible).'
+            message: 'No se encontraron coordenadas GPS en la imagen (ni en metadatos EXIF ni en la marca de agua visible).',
+            details: `GEMINI_API_KEY configurada en el servidor: ${process.env.GEMINI_API_KEY ? 'SÍ (empieza por ' + process.env.GEMINI_API_KEY.substring(0, 5) + '...)' : 'NO'}`
         });
     } catch (error) {
         console.error('Error in extract-gps:', error);
