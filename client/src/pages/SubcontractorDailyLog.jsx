@@ -1455,9 +1455,24 @@ const SubcontractorDailyLog = () => {
                                                 }
                                             } catch (err) {
                                                 console.error('Error uploading NVT photo', err);
+                                                
+                                                // If server returned no GPS, we let the subcontractor proceed anyway, they shouldn't be blocked.
+                                                // The image is still uploaded and saved in the backend uploads, let's use the uploaded url if present.
+                                                const errorUrl = err.response?.data?.url;
                                                 const serverMsg = err.response?.data?.message;
                                                 const details = err.response?.data?.details || '';
-                                                alert(`Error al procesar la foto o extraer coordenadas.\n\nServidor dice:\n${serverMsg || err.message}\n${details}`);
+                                                
+                                                if (errorUrl) {
+                                                    const confirmProceed = window.confirm(
+                                                        `No pudimos extraer coordenadas GPS automáticamente:\n\n"${serverMsg}"\n\n¿Deseas continuar añadiendo esta foto sin coordenadas geográficas exactas? (Se subirá la foto correctamente al reporte).`
+                                                    );
+                                                    if (confirmProceed) {
+                                                        setNvtPhotoUrl(errorUrl);
+                                                        setNvtGps(null);
+                                                    }
+                                                } else {
+                                                    alert(`Error al procesar la foto o extraer coordenadas.\n\nServidor dice:\n${serverMsg || err.message}\n${details}`);
+                                                }
                                             } finally {
                                                 setUploadingPhotos(false);
                                             }
