@@ -46,8 +46,11 @@ jobs:
             
             echo "3. Deteniendo y limpiando contenedores previos..."
             docker-compose down --remove-orphans || true
-            # Eliminamos forzosamente cualquier residuo para evitar errores de Conflict
-            docker rm -f joabau-server-1 joabau-client-1 joabau-postgres-1 || true
+            # Eliminamos contenedores conflictivos por ID para evitar bugs de nombres en Docker
+            for id in $(docker ps -a --format "{{.ID}} {{.Names}}" | grep -E "joabau|postgres" | awk '{print $1}'); do
+                echo "Eliminando contenedor por ID: $id"
+                docker rm -f "$id" || true
+            done
             docker network prune -f || true
             
             echo "4. Encendiendo aplicación inmediatamente..."
